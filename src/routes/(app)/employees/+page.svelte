@@ -3,26 +3,22 @@
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	type EmployeeStatus = 'Active' | 'On Leave' | 'Invited';
-
 	interface EmployeeRow {
 		id: string;
 		name: string;
-		email: string;
-		role: string;
-		team: string;
-		status: EmployeeStatus;
+		bsn: string;
+		department: string;
 		location: string;
-		lastActive: string;
+		contractType: 'Freelancer' | 'Full-time';
+		contractEndDate: string;
 	}
 
 	const columns: DataTableColumn[] = [
 		{ key: 'name', label: 'Employee' },
-		{ key: 'role', label: 'Role' },
-		{ key: 'team', label: 'Team' },
-		{ key: 'status', label: 'Status', align: 'center', width: '160px' },
+		{ key: 'department', label: 'Department' },
 		{ key: 'location', label: 'Location' },
-		{ key: 'lastActive', label: 'Last active', align: 'right' },
+		{ key: 'contractType', label: 'Contract type', align: 'center', width: '160px' },
+		{ key: 'contractEndDate', label: 'Contract end date', align: 'right' },
 		{ key: 'actions', label: '', align: 'right', width: '120px' }
 	];
 
@@ -30,60 +26,49 @@
 		{
 			id: 'MC-1024',
 			name: 'Ava Reynolds',
-			email: 'ava.reynolds@maicare.io',
-			role: 'Senior Nurse',
-			team: 'Care Ops',
-			status: 'Active',
+			bsn: '1285.44.210',
+			department: 'Care Ops',
 			location: 'Austin, TX',
-			lastActive: '2 min ago'
+			contractType: 'Full-time',
+			contractEndDate: 'Dec 31, 2026'
 		},
 		{
 			id: 'MC-1031',
 			name: 'Noah Patel',
-			email: 'noah.patel@maicare.io',
-			role: 'Case Manager',
-			team: 'Transitions',
-			status: 'On Leave',
+			bsn: '2147.09.662',
+			department: 'Transitions',
 			location: 'San Jose, CA',
-			lastActive: '3 days ago'
+			contractType: 'Freelancer',
+			contractEndDate: 'Jun 30, 2025'
 		},
 		{
 			id: 'MC-1044',
 			name: 'Mia Clark',
-			email: 'mia.clark@maicare.io',
-			role: 'Care Coordinator',
-			team: 'Remote Care',
-			status: 'Active',
+			bsn: '0983.17.504',
+			department: 'Remote Care',
 			location: 'Denver, CO',
-			lastActive: '18 min ago'
+			contractType: 'Full-time',
+			contractEndDate: 'Mar 01, 2027'
 		},
 		{
 			id: 'MC-1052',
 			name: 'Ethan Brooks',
-			email: 'ethan.brooks@maicare.io',
-			role: 'Medical Assistant',
-			team: 'Field',
-			status: 'Invited',
+			bsn: '3321.55.190',
+			department: 'Field',
 			location: 'Tampa, FL',
-			lastActive: 'Pending'
+			contractType: 'Freelancer',
+			contractEndDate: 'Oct 15, 2025'
 		},
 		{
 			id: 'MC-1061',
 			name: 'Sofia Nguyen',
-			email: 'sofia.nguyen@maicare.io',
-			role: 'Operations Lead',
-			team: 'Care Ops',
-			status: 'Active',
+			bsn: '4720.63.889',
+			department: 'Care Ops',
 			location: 'Seattle, WA',
-			lastActive: 'Just now'
+			contractType: 'Full-time',
+			contractEndDate: 'Sep 30, 2026'
 		}
 	];
-
-	const statusClasses: Record<EmployeeStatus, string> = {
-		Active: 'bg-emerald-500/10 text-emerald-500 dark:bg-neutral-900',
-		'On Leave': 'bg-amber-400/20 text-amber-400',
-		Invited: 'bg-indigo-500/10 text-indigo-500'
-	};
 
 	let currentPage = 1;
 	const pageSize = 10;
@@ -95,6 +80,11 @@
 			.slice(0, 2)
 			.join('')
 			.toUpperCase();
+
+	const contractTypeClasses: Record<EmployeeRow['contractType'], string> = {
+		'Full-time': 'bg-emerald-500/10 text-emerald-600',
+		Freelancer: 'bg-amber-500/10 text-amber-600'
+	};
 </script>
 
 <svelte:head>
@@ -148,18 +138,18 @@
 		</div>
 		<div>
 			<p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</p>
-			<p class="text-xs text-zinc-500 dark:text-zinc-400">{row.email}</p>
+			<p class="text-xs text-zinc-500 dark:text-zinc-400">BSN {row.bsn}</p>
 		</div>
 	</div>
 {/snippet}
 
-{#snippet statusCell(row: EmployeeRow)}
+{#snippet contractTypeCell(row: EmployeeRow)}
 	<span
-		class="inline-flex items-center justify-center rounded-lg px-3 py-1 text-xs font-semibold {statusClasses[
-			row.status
+		class="inline-flex items-center justify-center rounded-lg px-3 py-1 text-xs font-semibold {contractTypeClasses[
+			row.contractType
 		]}"
 	>
-		{row.status}
+		{row.contractType}
 	</span>
 {/snippet}
 
@@ -219,6 +209,6 @@
 		description="Track active coverage, leave status, and team ownership in real time."
 		actions={tableActions}
 		filters={tableFilters}
-		cells={{ name: nameCell, status: statusCell, actions: actionsCell }}
+		cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
 	/>
 </section>
