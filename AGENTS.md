@@ -1,0 +1,59 @@
+You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
+
+## Available MCP Tools:
+
+### 1. list-sections
+
+Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
+When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+
+### 2. get-documentation
+
+Retrieves full documentation content for specific sections. Accepts single or multiple sections.
+After calling the list-sections tool, you MUST analyze the returned documentation sections (especially the use_cases field) and then use the get-documentation tool to fetch ALL documentation sections that are relevant for the user's task.
+
+### 3. svelte-autofixer
+
+Analyzes Svelte code and returns issues and suggestions.
+You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
+
+### 4. playground-link
+
+Generates a Svelte Playground link with the provided code.
+After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+
+## UI/UX Guidelines:
+
+Make sure to read UIUX.md for tips on how to make the UI/UX
+
+## Architecture & Code Standards
+
+### Core Principles
+
+- **CSR Only:** `ssr` is disabled globally. All logic runs in the browser.
+- **Svelte 5 Runes:** Use `$state`, `$derived`, `$effect` for reactivity. Avoid legacy stores (`writable`/`readable`) unless interfacing with external libraries.
+- **Strict Typing:** All components and API calls must be strictly typed using TypeScript interfaces/types.
+- **Separation of Concerns:** UI components are "dumb" (pure presentation), Pages/Layouts are "smart" (data fetching/state connection).
+
+### Folder Structure Rules
+
+- `src/lib/api`: HTTP client, endpoints, and WebSocket managers.
+- `src/lib/components/ui`: Reusable, atomic UI components (Buttons, Inputs, Cards). No side effects or API calls.
+- `src/lib/components/layout`: Structural components (Sidebar, Navbar).
+- `src/lib/config`: App-wide constants and configuration.
+- `src/lib/state`: Global state management using Context + Runes (`*.svelte.ts`).
+- `src/lib/types`: TypeScript definitions (`api.d.ts`, `models.d.ts`).
+- `src/routes/(app)`: Protected dashboard routes (requires authentication).
+- `src/routes/(auth)`: Public authentication routes (Login/Register).
+
+### Data Fetching & API
+
+- **Route Data:** Use `+page.ts` `load` functions for initial data fetching (runs in browser).
+- **Client:** Use `src/lib/api/client.ts` wrapper for `fetch`. It handles Authorization headers and 401 redirects.
+- **WebSockets:** Use `src/lib/api/ws.svelte.ts` for real-time connections.
+
+### Component Logic
+
+- **Props:** Use `$props()` for input.
+- **Events:** Pass callbacks as props (e.g., `onSave`, `onCancel`) or use standard events.
+- **State:** Use local `$state` for UI interactions (open/close) and global state for shared data.

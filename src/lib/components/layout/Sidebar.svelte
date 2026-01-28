@@ -1,0 +1,146 @@
+<script lang="ts">
+	/* eslint-disable svelte/no-navigation-without-resolve */
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { LayoutDashboard, Users, X, HelpCircle } from 'lucide-svelte';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
+
+	interface NavItem {
+		label: string;
+		href: string;
+		icon: typeof LayoutDashboard;
+	}
+
+	const items: NavItem[] = [
+		{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+		{ label: 'Employees', href: '/employees', icon: Users }
+	];
+
+	let { collapsed = $bindable(false), mobileOpen = $bindable(false) } = $props();
+
+	// UIUX.md: transition-all duration-300
+	const transitionClass = 'transition-all duration-300 ease-in-out';
+
+	// UIUX.md: Items h-10, hover:bg-zinc-100, active:scale-95
+	const baseItem = `group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${transitionClass} active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20`;
+
+	// UIUX.md: Active: bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400
+	const activeItem = 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400';
+
+	// UIUX.md: Inactive hover:bg-zinc-100 dark:hover:bg-zinc-800
+	const inactiveItem =
+		'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200';
+
+	const isActive = (href: string) => {
+		const path = page.url.pathname;
+		return path === href || path.startsWith(`${href}/`);
+	};
+</script>
+
+<!-- Mobile Backdrop -->
+<div
+	class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+	class:opacity-0={!mobileOpen}
+	class:pointer-events-none={!mobileOpen}
+	onclick={() => (mobileOpen = false)}
+	aria-hidden={!mobileOpen}
+></div>
+
+<!-- Sidebar Container -->
+<!-- UIUX.md: bg-white dark:bg-zinc-900 border-r -->
+<aside
+	class="fixed inset-y-0 left-0 z-50 flex flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 {transitionClass}"
+	class:w-72={!collapsed}
+	class:translate-x-0={mobileOpen}
+	class:-translate-x-full={!mobileOpen}
+	class:lg:translate-x-0={true}
+	class:lg:w-20={collapsed}
+>
+	<!-- Header -->
+	<div class="flex h-16 items-center justify-between px-4">
+		<button
+			onclick={() => goto('/dashboard')}
+			class="group flex items-center gap-3 overflow-hidden outline-none"
+		>
+			<!-- Logo Icon -->
+			<div
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white transition-transform duration-300 group-hover:scale-105 group-active:scale-95 dark:bg-white dark:text-zinc-900"
+			>
+				<span class="text-xs font-bold tracking-tighter">MC</span>
+			</div>
+
+			<!-- Logo Text -->
+			<span
+				class="text-lg font-bold tracking-tight whitespace-nowrap text-zinc-900 dark:text-white {transitionClass}"
+				class:opacity-0={collapsed}
+				class:w-0={collapsed}
+				class:translate-x-[-10px]={collapsed}
+			>
+				MaiCare<span class="text-teal-600 dark:text-teal-400">.</span>
+			</span>
+		</button>
+
+		<!-- Mobile Close Button -->
+		<button
+			onclick={() => (mobileOpen = false)}
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 lg:hidden dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+		>
+			<X class="h-5 w-5" />
+		</button>
+	</div>
+
+	<!-- Navigation -->
+	<div class="flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
+		<nav class="space-y-1">
+			{#each items as item (item.label)}
+				{@const active = isActive(item.href)}
+
+				<Tooltip content={item.label} position="right" disabled={!collapsed}>
+					<button
+						onclick={() => goto(item.href)}
+						class="{baseItem} {active ? activeItem : inactiveItem}"
+						aria-current={active ? 'page' : undefined}
+					>
+						<item.icon
+							class="h-5 w-5 shrink-0 transition-colors duration-300 {active
+								? 'text-teal-600 dark:text-teal-400'
+								: 'text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300'}"
+						/>
+
+						<span
+							class="overflow-hidden whitespace-nowrap {transitionClass}"
+							class:opacity-0={collapsed}
+							class:w-0={collapsed}
+							class:translate-x-[-10px]={collapsed}
+						>
+							{item.label}
+						</span>
+					</button>
+				</Tooltip>
+			{/each}
+		</nav>
+	</div>
+
+	<!-- Footer / Support -->
+	<div class="p-3">
+		<button
+			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 text-left transition-all duration-300 outline-none hover:border-zinc-300 hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-teal-500/20 active:scale-95 dark:border-zinc-800 dark:bg-zinc-800/50 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+		>
+			<div
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-400"
+			>
+				<HelpCircle class="h-4 w-4" />
+			</div>
+
+			<div
+				class="overflow-hidden whitespace-nowrap {transitionClass}"
+				class:opacity-0={collapsed}
+				class:w-0={collapsed}
+				class:translate-x-[-10px]={collapsed}
+			>
+				<span class="block text-sm font-semibold text-zinc-900 dark:text-white">Support</span>
+				<span class="text-xs text-zinc-500 dark:text-zinc-400">24/7 Assistance</span>
+			</div>
+		</button>
+	</div>
+</aside>

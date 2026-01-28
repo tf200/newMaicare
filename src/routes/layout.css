@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+:root {
+	--color-bg: #fafafa;
+	--color-surface: #ffffff;
+	--color-border: #e4e4e7;
+	--color-text: #18181b;
+	--color-text-muted: #71717a;
+	--color-text-subtle: #a1a1aa;
+	--color-brand: #0d9488;
+	--color-brand-strong: #14b8a6;
+	--color-success: #10b981;
+	--color-error: #f43f5e;
+	--color-warning: #fbbf24;
+	--color-info: #6366f1;
+	--radius-card: 24px;
+	--radius-control: 12px;
+	--radius-pill: 999px;
+	--shadow-card: 0 10px 30px -20px rgba(24, 24, 27, 0.35);
+	--font-sans: Inter, system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #000000;
+		--color-surface: #18181b;
+		--color-border: #27272a;
+		--color-text: #fafafa;
+		--color-text-muted: #a1a1aa;
+		--color-text-subtle: #71717a;
+		--color-brand: #2dd4bf;
+		--color-brand-strong: #14b8a6;
+		--color-success: #34d399;
+		--color-error: #fb7185;
+		--color-warning: #fbbf24;
+		--color-info: #818cf8;
+		--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
+	}
+}
+
+body {
+	background: var(--color-bg);
+	color: var(--color-text);
+	font-family: var(--font-sans);
+}
