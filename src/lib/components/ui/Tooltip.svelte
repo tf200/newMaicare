@@ -130,7 +130,7 @@
 	<div
 		role="tooltip"
 		bind:this={tooltipNode}
-		class="pointer-events-none fixed z-[9999] rounded-lg border border-zinc-800/10 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-xl dark:border-zinc-200/20 dark:bg-zinc-100 dark:text-zinc-900"
+		class="pointer-events-none fixed z-[9999] rounded-lg border border-border/30 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-xl dark:bg-zinc-100 dark:text-zinc-900"
 		style="top: {coords.top}px; left: {coords.left}px; transform: translate({position === 'left'
 			? '-100%, -50%'
 			: position === 'right'

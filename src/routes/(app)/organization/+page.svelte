@@ -107,13 +107,13 @@
 	<div class="flex items-center gap-3">
 		<div class="relative">
 			<Search
-				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400"
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
 				type="text"
 				placeholder="Search..."
 				bind:value={searchTerm}
-				class="h-9 w-64 rounded-xl border border-zinc-200 bg-white pr-3 pl-9 text-sm font-medium text-zinc-600 placeholder:text-zinc-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+				class="h-9 w-64 rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
@@ -122,12 +122,12 @@
 		</div>
 		<div class="flex gap-1">
 			<button
-				class="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-900 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+				class="rounded-lg bg-border/50 px-3 py-1.5 text-xs font-semibold text-text transition hover:bg-border"
 			>
 				All
 			</button>
 			<button
-				class="rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+				class="rounded-lg px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:bg-border/30 hover:text-text"
 			>
 				Multi-location
 			</button>
@@ -138,74 +138,72 @@
 {#snippet nameCell(row: OrganizationRow)}
 	<div class="flex items-center gap-3">
 		<div
-			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/20"
+			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20"
 		>
 			<Building2 class="h-5 w-5" />
 		</div>
 		<div>
-			<p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</p>
+			<p class="text-sm font-semibold text-text">{row.name}</p>
 		</div>
 	</div>
 {/snippet}
 
 {#snippet addressCell(row: OrganizationRow)}
-	<div class="text-sm text-zinc-600 dark:text-zinc-300">{formatAddress(row)}</div>
+	<div class="text-sm text-text-muted">{formatAddress(row)}</div>
 {/snippet}
 
 {#snippet cityCell(row: OrganizationRow)}
-	<span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{formatCity(row)}</span>
+	<span class="text-sm font-medium text-text-muted">{formatCity(row)}</span>
 {/snippet}
 
 {#snippet emailCell(row: OrganizationRow)}
-	<span
-		class={`text-sm ${row.email ? 'text-zinc-600 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'}`}
-	>
+	<span class={`text-sm ${row.email ? 'text-text-muted' : 'text-text-subtle'}`}>
 		{formatOptional(row.email)}
 	</span>
 {/snippet}
 
 {#snippet kvkNumberCell(row: OrganizationRow)}
-	<div class="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-300">
+	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+				class="inline-flex w-fit items-center gap-2 rounded-full bg-border/50 px-2.5 py-1 font-semibold text-text"
 			>
-				KVK <span class="font-normal text-zinc-500 dark:text-zinc-400">{row.kvkNumber}</span>
+				KVK <span class="font-normal text-text-muted">{row.kvkNumber}</span>
 			</span>
 		{/if}
 		{#if row.btwNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-teal-50 px-2.5 py-1 font-semibold text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
+				class="inline-flex w-fit items-center gap-2 rounded-full bg-brand/10 px-2.5 py-1 font-semibold text-brand"
 			>
-				BTW <span class="font-normal text-teal-600 dark:text-teal-200">{row.btwNumber}</span>
+				BTW <span class="font-normal text-brand">{row.btwNumber}</span>
 			</span>
 		{/if}
 		{#if !row.kvkNumber && !row.btwNumber}
-			<span class="text-zinc-400 dark:text-zinc-600">—</span>
+			<span class="text-text-subtle">—</span>
 		{/if}
 	</div>
 {/snippet}
 
 {#snippet locationCountCell(row: OrganizationRow)}
 	<span class="inline-flex items-center justify-end gap-1.5">
-		<span class="text-sm font-semibold text-zinc-700 dark:text-zinc-100">
+		<span class="text-sm font-semibold text-text">
 			{row.locationCount}
 		</span>
-		<span class="text-xs text-zinc-400 dark:text-zinc-500">sites</span>
+		<span class="text-xs text-text-subtle">sites</span>
 	</span>
 {/snippet}
 
 {#snippet actionsCell(row: OrganizationRow)}
 	<div class="flex justify-end gap-1">
 		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => goto(`/organization/${row.id}`)}
 			title="View organization"
 		>
 			<Eye class="h-4 w-4" />
 		</button>
 		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => openEdit(row.id)}
 			title="Edit organization"
 		>
@@ -216,21 +214,21 @@
 
 <section class="space-y-6">
 	<header
-		class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white/90 p-6 shadow-sm"
+		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
 			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
-				<div class="flex items-center gap-3 text-sm font-semibold text-teal-600">
-					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50">
+				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<Building2 class="h-5 w-5" />
 					</span>
 					<span>Organization</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-zinc-900">Organizations</h1>
-				<p class="max-w-2xl text-sm font-medium text-zinc-500">
+				<h1 class="text-3xl font-bold tracking-tighter text-text">Organizations</h1>
+				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Track organizations, registration details, and location coverage across MaiCare.
 				</p>
 			</div>
@@ -255,26 +253,28 @@
 	{/if}
 
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Total orgs</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-zinc-900">
+		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Total orgs</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 				{data.pagination.count}
 			</div>
-			<p class="mt-2 text-xs font-medium text-zinc-500">Active in the network</p>
+			<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
 		</div>
-		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Locations</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-teal-600">
+		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Locations</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-brand">
 				{totalLocations}
 			</div>
-			<p class="mt-2 text-xs font-medium text-zinc-500">Total care sites covered</p>
+			<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
 		</div>
-		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Registration</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-zinc-900">
+		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+				Registration
+			</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 				{withRegistration}
 			</div>
-			<p class="mt-2 text-xs font-medium text-zinc-500">KVK or BTW on file</p>
+			<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW on file</p>
 		</div>
 	</div>
 

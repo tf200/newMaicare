@@ -3,12 +3,12 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
-	import { updateOrganization } from '$lib/api/organizations';
-	import type { GetOrganizationResponse, UpdateOrganizationRequest } from '$lib/types/api';
+	import { updateLocation } from '$lib/api/organizations';
+	import type { OrganizationLocation, UpdateLocationRequest } from '$lib/types/api';
 
 	interface Props {
 		open?: boolean;
-		organization?: GetOrganizationResponse | null;
+		location?: OrganizationLocation | null;
 		isFetching?: boolean;
 		loadErrorMessage?: string;
 		onUpdated?: () => void;
@@ -16,7 +16,7 @@
 
 	let {
 		open = $bindable(false),
-		organization = $bindable<GetOrganizationResponse | null>(null),
+		location = $bindable<OrganizationLocation | null>(null),
 		isFetching = false,
 		loadErrorMessage,
 		onUpdated
@@ -47,23 +47,25 @@
 		houseNumber?: string;
 		postalCode?: string;
 		city?: string;
+		capacity?: string;
 	}>({});
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const validate = () => {
-		if (!organization) return false;
+		if (!location) return false;
 		const nextErrors: {
 			name?: string;
 			street?: string;
 			houseNumber?: string;
 			postalCode?: string;
 			city?: string;
+			capacity?: string;
 		} = {};
-		if (!organization.name.trim()) nextErrors.name = 'Name is required.';
-		if (!organization.street.trim()) nextErrors.street = 'Street is required.';
-		if (!organization.house_number.trim()) nextErrors.houseNumber = 'House number is required.';
-		if (!organization.postal_code.trim()) nextErrors.postalCode = 'Postal code is required.';
-		if (!organization.city.trim()) nextErrors.city = 'City is required.';
+		if (!location.name.trim()) nextErrors.name = 'Name is required.';
+		if (!location.street.trim()) nextErrors.street = 'Street is required.';
+		if (!location.house_number.trim()) nextErrors.houseNumber = 'House number is required.';
+		if (!location.postal_code.trim()) nextErrors.postalCode = 'Postal code is required.';
+		if (!location.city.trim()) nextErrors.city = 'City is required.';
 		fieldErrors = nextErrors;
 		return Object.keys(nextErrors).length === 0;
 	};
@@ -78,12 +80,12 @@
 		lookupMessage = '';
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
-			if (!result || !organization) {
+			if (!result || !location) {
 				lookupMessage = 'Address not found. Please fill street and city manually.';
 				return;
 			}
-			organization.street = result.street;
-			organization.city = result.city;
+			location.street = result.street;
+			location.city = result.city;
 		} catch (error) {
 			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
 		} finally {
@@ -102,30 +104,27 @@
 
 	async function handleSubmit() {
 		submitErrorMessage = '';
-		if (!organization) {
-			submitErrorMessage = 'Organization is missing.';
+		if (!location) {
+			submitErrorMessage = 'Location is missing.';
 			return;
 		}
 		if (!validate()) return;
 		isLoading = true;
 		try {
-			const payload: UpdateOrganizationRequest = {
-				name: organization.name.trim(),
-				street: organization.street.trim(),
-				house_number: organization.house_number.trim(),
-				house_number_addition: toOptional(organization.house_number_addition ?? ''),
-				postal_code: formatPostalCode(organization.postal_code).trim(),
-				city: organization.city.trim(),
-				email: toOptional(organization.email ?? ''),
-				kvk_number: toOptional(organization.kvk_number ?? ''),
-				btw_number: toOptional(organization.btw_number ?? '')
+			const payload: UpdateLocationRequest = {
+				name: location.name.trim(),
+				street: location.street.trim(),
+				house_number: location.house_number.trim(),
+				house_number_addition: toOptional(location.house_number_addition ?? ''),
+				postal_code: formatPostalCode(location.postal_code).trim(),
+				city: location.city.trim(),
+				capacity: location.capacity ?? undefined
 			};
-			await updateOrganization(organization.id, payload);
+			await updateLocation(location.id, payload);
 			open = false;
 			onUpdated?.();
 		} catch (error) {
-			submitErrorMessage =
-				error instanceof Error ? error.message : 'Failed to update organization.';
+			submitErrorMessage = error instanceof Error ? error.message : 'Failed to update location.';
 		} finally {
 			isLoading = false;
 		}
@@ -134,13 +133,13 @@
 
 <Modal
 	bind:open
-	title="Edit Organization"
-	description="Update organization details and address information."
+	title="Edit Location"
+	description="Update location details and address information."
 >
 	<div class="space-y-5">
 		{#if isFetching}
 			<div class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted">
-				Loading organization details...
+				Loading location details...
 			</div>
 		{/if}
 		{#if loadErrorMessage}
@@ -149,53 +148,47 @@
 			</div>
 		{/if}
 
-		{#if organization}
-			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<Input
-					label="Organization Name"
-					placeholder="Acme Corp"
-					bind:value={organization.name}
-					error={fieldErrors.name}
-					disabled={isFetching}
-				/>
-				<Input
-					label="Email (optional)"
-					placeholder="contact@acme.com"
-					type="email"
-					bind:value={organization.email}
-					disabled={isFetching}
-				/>
-			</div>
+		{#if location}
+			<Input
+				label="Location Name"
+				placeholder="Main campus"
+				bind:value={location.name}
+				error={fieldErrors.name}
+				disabled={isFetching}
+			/>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
 					label="Postal Code"
 					placeholder="1234 AB"
-					bind:value={organization.postal_code}
+					bind:value={location.postal_code}
 					error={fieldErrors.postalCode}
 					oninput={() => {
-						scheduleLookup(organization.postal_code, organization.house_number);
+						scheduleLookup(location.postal_code, location.house_number);
 					}}
 					onblur={() => {
-						organization.postal_code = formatPostalCode(organization.postal_code);
-						scheduleLookup(organization.postal_code, organization.house_number);
+						location.postal_code = formatPostalCode(location.postal_code);
+						scheduleLookup(location.postal_code, location.house_number);
 					}}
 					disabled={isFetching}
 				/>
 				<Input
 					label="House Number"
 					placeholder="10"
-					bind:value={organization.house_number}
+					bind:value={location.house_number}
 					error={fieldErrors.houseNumber}
 					oninput={() => {
-						scheduleLookup(organization.postal_code, organization.house_number);
+						scheduleLookup(location.postal_code, location.house_number);
 					}}
 					disabled={isFetching}
 				/>
 				<Input
 					label="Addition (optional)"
 					placeholder="A"
-					bind:value={organization.house_number_addition}
+					value={location.house_number_addition ?? ''}
+					oninput={(e) => {
+						location.house_number_addition = e.currentTarget.value;
+					}}
 					disabled={isFetching}
 				/>
 			</div>
@@ -204,14 +197,14 @@
 				<Input
 					label="Street"
 					placeholder="Main Street"
-					bind:value={organization.street}
+					bind:value={location.street}
 					error={fieldErrors.street}
 					disabled={isFetching}
 				/>
 				<Input
 					label="City"
 					placeholder="Amsterdam"
-					bind:value={organization.city}
+					bind:value={location.city}
 					error={fieldErrors.city}
 					disabled={isFetching}
 				/>
@@ -228,20 +221,19 @@
 				</div>
 			{/if}
 
-			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<Input
-					label="KVK Number (optional)"
-					placeholder="12345678"
-					bind:value={organization.kvk_number}
-					disabled={isFetching}
-				/>
-				<Input
-					label="BTW Number (optional)"
-					placeholder="NL123456789B01"
-					bind:value={organization.btw_number}
-					disabled={isFetching}
-				/>
-			</div>
+			<Input
+				label="Capacity (optional)"
+				placeholder="20"
+				type="number"
+				min="0"
+				step="1"
+				value={location.capacity?.toString() ?? ''}
+				oninput={(e) => {
+					const val = e.currentTarget.value;
+					location.capacity = val ? Number.parseInt(val, 10) : null;
+				}}
+				disabled={isFetching}
+			/>
 		{/if}
 
 		{#if submitErrorMessage}
@@ -256,7 +248,7 @@
 			<Button variant="ghost" onclick={handleCancel} disabled={isFetching || isLoading}>
 				Cancel
 			</Button>
-			<Button onclick={handleSubmit} {isLoading} disabled={isFetching || !organization}>
+			<Button onclick={handleSubmit} {isLoading} disabled={isFetching || !location}>
 				Save changes
 			</Button>
 		</div>

@@ -5,9 +5,9 @@
 <div class="flex items-center justify-between gap-4">
 	{#if label}
 		<div class="flex flex-col">
-			<span class="text-sm font-semibold text-zinc-900 dark:text-white">{label}</span>
+			<span class="text-sm font-semibold text-text">{label}</span>
 			{#if description}
-				<span class="text-xs text-zinc-500 dark:text-zinc-400">{description}</span>
+				<span class="text-xs text-text-muted">{description}</span>
 			{/if}
 		</div>
 	{/if}
@@ -18,8 +18,8 @@
 		aria-checked={checked}
 		{disabled}
 		onclick={() => !disabled && (checked = !checked)}
-		class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-teal-500/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50
-        {checked ? 'bg-teal-600' : 'bg-zinc-200 dark:bg-zinc-700'}"
+		class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:ring-2 focus:ring-brand/20 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50
+        {checked ? 'bg-brand' : 'bg-border'}"
 	>
 		<span class="sr-only">Use setting</span>
 		<span

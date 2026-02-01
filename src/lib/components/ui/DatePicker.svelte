@@ -129,7 +129,7 @@
 
 <div class="space-y-2" use:handleOutsideClick>
 	{#if label}
-		<label for={id} class="ml-1 text-sm font-semibold text-zinc-900 dark:text-zinc-300">
+		<label for={id} class="ml-1 text-sm font-semibold text-text">
 			{label}
 		</label>
 	{/if}
@@ -139,41 +139,33 @@
 			{id}
 			type="button"
 			onclick={() => (isOpen = !isOpen)}
-			class="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-100/50 px-4 py-3.5 text-left text-zinc-900 outline-hidden transition-all hover:bg-zinc-100 focus:ring-2 focus:ring-teal-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-white"
+			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
 		>
-			<CalendarIcon class="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+			<CalendarIcon class="h-4 w-4 text-text-muted" />
 			{#if formattedValue}
 				<span class="font-medium">{formattedValue}</span>
 			{:else}
-				<span class="text-zinc-500 dark:text-zinc-400">Select date...</span>
+				<span class="text-text-muted">Select date...</span>
 			{/if}
 		</button>
 
 		{#if isOpen}
 			<div
-				class="absolute z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl ring-1 ring-black/5 dark:border-zinc-700 dark:bg-zinc-900"
+				class="absolute z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-xl ring-1 ring-black/5"
 				transition:scale={{ start: 0.95, duration: 150 }}
 			>
 				<div class="mb-4 flex items-center justify-between">
-					<button
-						type="button"
-						onclick={prev}
-						class="rounded-lg p-1 text-zinc-900 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
-					>
+					<button type="button" onclick={prev} class="rounded-lg p-1 text-text hover:bg-border/50">
 						<ChevronLeft class="h-5 w-5" />
 					</button>
 					<button
 						type="button"
 						onclick={toggleView}
-						class="font-semibold text-zinc-900 transition-colors hover:text-teal-600 dark:text-white dark:hover:text-teal-400"
+						class="font-semibold text-text transition-colors hover:text-brand"
 					>
 						{headerText}
 					</button>
-					<button
-						type="button"
-						onclick={next}
-						class="rounded-lg p-1 text-zinc-900 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
-					>
+					<button type="button" onclick={next} class="rounded-lg p-1 text-text hover:bg-border/50">
 						<ChevronRight class="h-5 w-5" />
 					</button>
 				</div>
@@ -185,9 +177,7 @@
 							in:fly={{ y: 10, duration: 200, delay: 50 }}
 							out:fade={{ duration: 150 }}
 						>
-							<div
-								class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-zinc-600 dark:text-zinc-500"
-							>
+							<div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-text-muted">
 								{#each days as day, i (i)}
 									<div class="py-1">{day}</div>
 								{/each}
@@ -199,9 +189,9 @@
 										<button
 											type="button"
 											onclick={() => selectDate(date)}
-											class="aspect-square rounded-lg text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800
+											class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
                                             {value === date.toISOString().split('T')[0]
-												? 'bg-teal-600 font-bold text-white hover:bg-teal-700 dark:text-white'
+												? 'bg-brand font-bold text-white hover:opacity-90'
 												: ''}"
 										>
 											{date.getDate()}
@@ -223,9 +213,9 @@
 									<button
 										type="button"
 										onclick={() => selectMonth(i)}
-										class="rounded-lg py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800
+										class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
                                         {viewDate.getMonth() === i
-											? 'bg-teal-600 font-bold text-white hover:bg-teal-700 dark:text-white'
+											? 'bg-brand font-bold text-white hover:opacity-90'
 											: ''}"
 									>
 										{month.slice(0, 3)}
@@ -244,9 +234,9 @@
 									<button
 										type="button"
 										onclick={() => selectYear(year)}
-										class="rounded-lg py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800
+										class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
                                         {viewDate.getFullYear() === year
-											? 'bg-teal-600 font-bold text-white hover:bg-teal-700 dark:text-white'
+											? 'bg-brand font-bold text-white hover:opacity-90'
 											: ''}"
 									>
 										{year}
@@ -260,6 +250,6 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-rose-500">{error}</p>
+		<p class="ml-1 text-xs font-medium text-error">{error}</p>
 	{/if}
 </div>

@@ -40,21 +40,19 @@
 
 		<!-- Content -->
 		<div
-			class="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl ring-1 ring-zinc-900/5 dark:bg-zinc-900 dark:ring-white/10 {className}"
+			class="relative w-full max-w-lg rounded-3xl bg-surface shadow-2xl ring-1 ring-border {className}"
 			transition:scale={{ start: 0.95, duration: 200 }}
 		>
-			<div
-				class="flex items-center justify-between rounded-t-3xl border-b border-zinc-100 px-6 py-4 dark:border-zinc-800"
-			>
+			<div class="flex items-center justify-between rounded-t-3xl border-b border-border px-6 py-4">
 				<div>
-					<h2 class="text-lg font-bold text-zinc-900 dark:text-white">{title}</h2>
+					<h2 class="text-lg font-bold text-text">{title}</h2>
 					{#if description}
-						<p class="text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
+						<p class="text-sm text-text-muted">{description}</p>
 					{/if}
 				</div>
 				<button
 					onclick={close}
-					class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+					class="rounded-full p-2 text-text-subtle transition-colors hover:bg-border/50 hover:text-text"
 				>
 					<X class="h-5 w-5" />
 				</button>
@@ -65,9 +63,7 @@
 			</div>
 
 			{#if footer}
-				<div
-					class="rounded-b-3xl border-t border-zinc-100 bg-zinc-50/50 px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900/50"
-				>
+				<div class="rounded-b-3xl border-t border-border bg-bg/50 px-6 py-4">
 					{@render footer()}
 				</div>
 			{/if}

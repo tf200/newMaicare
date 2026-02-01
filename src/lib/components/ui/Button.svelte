@@ -16,10 +16,9 @@
 	}: Props = $props();
 
 	const variants = {
-		primary: 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 shadow-sm',
-		ghost: 'bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
-		destructive:
-			'bg-rose-50 text-rose-600 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/30'
+		primary: 'bg-btn-primary-bg text-btn-primary-text hover:opacity-90 shadow-sm',
+		ghost: 'bg-transparent hover:bg-border/50 dark:hover:bg-border/50',
+		destructive: 'bg-error/10 text-error hover:bg-error/20'
 	};
 </script>
 

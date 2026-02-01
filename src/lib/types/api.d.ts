@@ -65,6 +65,28 @@ export interface OrganizationLocation {
 	updated_at: string;
 }
 
+export type SenderContact = Record<string, unknown>;
+
+export interface SenderListItem {
+	id: string;
+	types: string;
+	name: string;
+	street: string | null;
+	house_number: string | null;
+	house_number_addition: string | null;
+	postal_code: string | null;
+	city: string | null;
+	land: string | null;
+	KVKnumber: string | null;
+	BTWnumber: string | null;
+	phone_number: string | null;
+	client_number: string | null;
+	clients_count: number | null;
+	contacts: SenderContact[];
+	created_at: string;
+	updated_at: string;
+}
+
 export interface CreateOrganizationRequest {
 	name: string;
 	street: string;
@@ -84,6 +106,16 @@ export interface CreateLocationRequest {
 	house_number_addition?: string;
 	postal_code: string;
 	city: string;
+	capacity?: number;
+}
+
+export interface UpdateLocationRequest {
+	name?: string;
+	street?: string;
+	house_number?: string;
+	house_number_addition?: string;
+	postal_code?: string;
+	city?: string;
 	capacity?: number;
 }
 

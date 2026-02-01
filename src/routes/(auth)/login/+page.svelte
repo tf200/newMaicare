@@ -47,9 +47,7 @@
 	<title>{`${m.sign_in()} | Nexus`}</title>
 </svelte:head>
 
-<div
-	class="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-50 px-4 dark:bg-black"
->
+<div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
 	<!-- Background Orbs - Atmosphere & Depth -->
 	<div
 		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-teal-500/20 blur-[120px] dark:bg-teal-500/10"
@@ -61,16 +59,16 @@
 	<!-- Main Card -->
 	<div class="relative w-full max-w-md">
 		<div
-			class="group relative overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/80 p-8 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-zinc-300 dark:border-zinc-800/50 dark:bg-zinc-900/80 dark:hover:border-zinc-700"
+			class="group relative overflow-hidden rounded-3xl border border-border/50 bg-glass-surface p-8 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-border"
 			in:fly={transition}
 		>
 			<!-- Header Section -->
 			<div class="mb-10 text-center" in:fly={{ ...transition, delay: 100 }}>
 				<div
-					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 shadow-lg transition-transform duration-500 group-hover:scale-110 dark:bg-white"
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-btn-primary-bg shadow-lg transition-transform duration-500 group-hover:scale-110"
 				>
 					<svg
-						class="h-8 w-8 text-white dark:text-zinc-900"
+						class="h-8 w-8 text-btn-primary-text"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -81,10 +79,10 @@
 						<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 					</svg>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+				<h1 class="text-3xl font-bold tracking-tight text-text">
 					{m.welcome_back()}
 				</h1>
-				<p class="mt-2 font-medium text-zinc-500 dark:text-zinc-400">
+				<p class="mt-2 font-medium text-text-muted">
 					{m.enter_credentials()}
 				</p>
 			</div>
@@ -92,7 +90,7 @@
 			<form onsubmit={handleSubmit} class="space-y-6">
 				{#if errorMessage}
 					<div
-						class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200"
+						class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error"
 						in:fly={{ ...transition, delay: 160 }}
 					>
 						{errorMessage}
@@ -122,7 +120,7 @@
 					<button
 						type="button"
 						onclick={() => (showPassword = !showPassword)}
-						class="absolute top-[46px] right-3 p-1.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
+						class="absolute top-[46px] right-3 p-1.5 text-text-subtle transition-colors hover:text-text"
 					>
 						{#if showPassword}
 							<svg
@@ -152,7 +150,7 @@
 					</button>
 					<a
 						href="/forgot-password"
-						class="absolute top-0 right-1 text-xs font-bold text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400"
+						class="absolute top-0 right-1 text-xs font-bold text-brand transition-colors hover:opacity-80"
 					>
 						{m.forgot_password()}
 					</a>
@@ -168,12 +166,9 @@
 
 			<!-- Footer Links -->
 			<div class="mt-8 text-center" in:fly={{ ...transition, delay: 500 }}>
-				<p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+				<p class="text-sm font-medium text-text-muted">
 					{m.no_account()}
-					<a
-						href="/register"
-						class="font-bold text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400"
-					>
+					<a href="/register" class="font-bold text-brand transition-colors hover:opacity-80">
 						{m.create_one()}
 					</a>
 				</p>
@@ -181,14 +176,14 @@
 		</div>
 
 		<div
-			class="mt-8 flex justify-center gap-6 text-xs font-semibold text-zinc-400"
+			class="mt-8 flex justify-center gap-6 text-xs font-semibold text-text-subtle"
 			in:fly={{ ...transition, delay: 600 }}
 		>
-			<a href="/privacy" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200">
+			<a href="/privacy" class="transition-colors hover:text-text">
 				{m.privacy_policy()}
 			</a>
 			<span>&bull;</span>
-			<a href="/help" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200">
+			<a href="/help" class="transition-colors hover:text-text">
 				{m.help_center()}
 			</a>
 		</div>

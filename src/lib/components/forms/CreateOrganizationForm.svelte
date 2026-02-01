@@ -201,10 +201,10 @@
 		</div>
 
 		{#if isLookupLoading}
-			<div class="text-xs font-medium text-zinc-500">Looking up address via PDOK...</div>
+			<div class="text-xs font-medium text-text-muted">Looking up address via PDOK...</div>
 		{/if}
 		{#if lookupMessage}
-			<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+			<div class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
 				{lookupMessage}
 			</div>
 		{/if}
@@ -215,7 +215,7 @@
 		</div>
 
 		{#if errorMessage}
-			<div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
 				{errorMessage}
 			</div>
 		{/if}

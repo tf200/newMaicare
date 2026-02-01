@@ -35,7 +35,8 @@
 			icon: HeartHandshake,
 			permission: 'CARE_COORDINATION.VIEW',
 			children: [
-				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' }
+				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' },
+				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' }
 			]
 		}
 	];
@@ -53,14 +54,13 @@
 	const transitionClass = 'transition-all duration-300 ease-in-out';
 
 	// UIUX.md: Items h-10, hover:bg-zinc-100, active:scale-95
-	const baseItem = `group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${transitionClass} active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20`;
+	const baseItem = `group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${transitionClass} active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-brand/20`;
 
 	// UIUX.md: Active: bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400
-	const activeItem = 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400';
+	const activeItem = 'bg-brand/10 text-brand';
 
 	// UIUX.md: Inactive hover:bg-zinc-100 dark:hover:bg-zinc-800
-	const inactiveItem =
-		'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200';
+	const inactiveItem = 'text-text-muted hover:bg-border/50 hover:text-text';
 
 	const isActive = (href: string) => {
 		const path = page.url.pathname;
@@ -88,7 +88,7 @@
 <!-- Sidebar Container -->
 <!-- UIUX.md: bg-white dark:bg-zinc-900 border-r -->
 <aside
-	class="fixed inset-y-0 left-0 z-50 flex flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 {transitionClass}"
+	class="fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-surface {transitionClass}"
 	class:w-72={!collapsed}
 	class:translate-x-0={mobileOpen}
 	class:-translate-x-full={!mobileOpen}
@@ -103,26 +103,26 @@
 		>
 			<!-- Logo Icon -->
 			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white transition-transform duration-300 group-hover:scale-105 group-active:scale-95 dark:bg-white dark:text-zinc-900"
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-btn-primary-bg text-btn-primary-text transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
 			>
 				<span class="text-xs font-bold tracking-tighter">MC</span>
 			</div>
 
 			<!-- Logo Text -->
 			<span
-				class="text-lg font-bold tracking-tight whitespace-nowrap text-zinc-900 dark:text-white {transitionClass}"
+				class="text-lg font-bold tracking-tight whitespace-nowrap text-text {transitionClass}"
 				class:opacity-0={collapsed}
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-teal-600 dark:text-teal-400">.</span>
+				MaiCare<span class="text-brand">.</span>
 			</span>
 		</button>
 
 		<!-- Mobile Close Button -->
 		<button
 			onclick={() => (mobileOpen = false)}
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 lg:hidden dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-border/50 hover:text-text lg:hidden"
 		>
 			<X class="h-5 w-5" />
 		</button>
@@ -152,8 +152,8 @@
 							>
 								<item.icon
 									class="h-5 w-5 shrink-0 transition-colors duration-300 {active
-										? 'text-teal-600 dark:text-teal-400'
-										: 'text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300'}"
+										? 'text-brand'
+										: 'text-text-subtle group-hover:text-text-muted'}"
 								/>
 
 								<span
@@ -183,9 +183,7 @@
 										<button
 											onclick={() => goto(child.href)}
 											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
-											{childActive
-												? 'bg-teal-50/50 text-teal-700 dark:bg-teal-500/5 dark:text-teal-400'
-												: 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'}"
+											{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>
 											{child.label}
 										</button>
@@ -202,10 +200,10 @@
 	<!-- Footer / Support -->
 	<div class="p-3">
 		<button
-			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 text-left transition-all duration-300 outline-none hover:border-zinc-300 hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-teal-500/20 active:scale-95 dark:border-zinc-800 dark:bg-zinc-800/50 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-border hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-95"
 		>
 			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-500 shadow-sm dark:bg-zinc-900 dark:text-zinc-400"
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-text-muted shadow-sm"
 			>
 				<HelpCircle class="h-4 w-4" />
 			</div>
@@ -216,8 +214,8 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				<span class="block text-sm font-semibold text-zinc-900 dark:text-white">{m.support()}</span>
-				<span class="text-xs text-zinc-500 dark:text-zinc-400">{m.assistance_24_7()}</span>
+				<span class="block text-sm font-semibold text-text">{m.support()}</span>
+				<span class="text-xs text-text-muted">{m.assistance_24_7()}</span>
 			</div>
 		</button>
 	</div>

@@ -8,7 +8,8 @@ import type {
 	OrganizationCounts,
 	OrganizationLocation,
 	PaginatedResponse,
-	UpdateOrganizationRequest
+	UpdateOrganizationRequest,
+	UpdateLocationRequest
 } from '$lib/types/api';
 
 export interface ListOrganizationsParams {
@@ -84,4 +85,12 @@ export function listOrganizationLocations(
 
 export function createOrganizationLocation(id: string, payload: CreateLocationRequest) {
 	return api.post<ApiEnvelope<OrganizationLocation>>(`/organisations/${id}/locations`, payload);
+}
+
+export function getLocation(id: string) {
+	return api.get<ApiEnvelope<OrganizationLocation>>(`/locations/${id}`);
+}
+
+export function updateLocation(id: string, payload: UpdateLocationRequest) {
+	return api.put<ApiEnvelope<OrganizationLocation>>(`/locations/${id}`, payload);
 }

@@ -82,8 +82,8 @@
 			.toUpperCase();
 
 	const contractTypeClasses: Record<EmployeeRow['contractType'], string> = {
-		'Full-time': 'bg-emerald-500/10 text-emerald-600',
-		Freelancer: 'bg-amber-500/10 text-amber-600'
+		'Full-time': 'bg-success/10 text-success',
+		Freelancer: 'bg-warning/10 text-warning'
 	};
 </script>
 
@@ -108,22 +108,22 @@
 
 {#snippet tableFilters()}
 	<button
-		class="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+		class="rounded-full bg-btn-primary-bg px-4 py-2 text-xs font-semibold text-btn-primary-text shadow-sm transition hover:opacity-90"
 	>
 		All
 	</button>
 	<button
-		class="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 transition hover:text-zinc-900"
+		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
 	>
 		Active
 	</button>
 	<button
-		class="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 transition hover:text-zinc-900"
+		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
 	>
 		On Leave
 	</button>
 	<button
-		class="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 transition hover:text-zinc-900"
+		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
 	>
 		Invited
 	</button>
@@ -132,13 +132,13 @@
 {#snippet nameCell(row: EmployeeRow)}
 	<div class="flex items-center gap-3">
 		<div
-			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-100 text-xs font-semibold text-zinc-900 shadow-sm"
+			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-border/50 text-xs font-semibold text-text shadow-sm"
 		>
 			{getInitials(row.name)}
 		</div>
 		<div>
-			<p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</p>
-			<p class="text-xs text-zinc-500 dark:text-zinc-400">BSN {row.bsn}</p>
+			<p class="text-sm font-semibold text-text">{row.name}</p>
+			<p class="text-xs text-text-muted">BSN {row.bsn}</p>
 		</div>
 	</div>
 {/snippet}
@@ -155,34 +155,26 @@
 
 {#snippet actionsCell(row: EmployeeRow)}
 	<div class="flex items-center justify-end gap-2 text-xs font-semibold">
-		<button
-			class="text-zinc-500 transition hover:text-teal-600 dark:text-zinc-400 dark:hover:text-teal-300"
-		>
-			View
-		</button>
-		<span class="text-zinc-200 dark:text-zinc-700">|</span>
-		<button
-			class="text-zinc-500 transition hover:text-teal-600 dark:text-zinc-400 dark:hover:text-teal-300"
-		>
-			Message
-		</button>
+		<button class="text-text-muted transition hover:text-brand"> View </button>
+		<span class="text-border">|</span>
+		<button class="text-text-muted transition hover:text-brand"> Message </button>
 	</div>
 {/snippet}
 
 <section class="space-y-6">
-	<header class="rounded-3xl border border-zinc-200 bg-white/90 p-6 shadow-sm">
+	<header class="rounded-3xl border border-border bg-surface/90 p-6 shadow-sm">
 		<div class="flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-2">
-				<div class="flex items-center gap-3 text-sm font-semibold text-teal-600">
+				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 					<span
-						class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-600"
+						class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand"
 					>
 						<Users class="h-5 w-5" />
 					</span>
 					<span>Workforce</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-zinc-900">Employees</h1>
-				<p class="max-w-2xl text-sm font-medium text-zinc-500 dark:text-zinc-400">
+				<h1 class="text-3xl font-bold tracking-tighter text-text">Employees</h1>
+				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Keep a live view of staffing coverage, permissions, and team availability across MaiCare.
 				</p>
 			</div>

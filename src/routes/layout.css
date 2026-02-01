@@ -2,7 +2,8 @@
 @plugin '@tailwindcss/forms';
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
+@theme {
+	/* Semantic Colors - Light mode defaults */
 	--color-bg: #fafafa;
 	--color-surface: #ffffff;
 	--color-border: #e4e4e7;
@@ -15,6 +16,16 @@
 	--color-error: #f43f5e;
 	--color-warning: #fbbf24;
 	--color-info: #6366f1;
+
+	/* Glassmorphism */
+	--color-glass-surface: rgba(255, 255, 255, 0.8);
+	--color-glass-border: rgba(228, 228, 231, 0.5);
+
+	/* Primary Button */
+	--color-btn-primary-bg: #18181b;
+	--color-btn-primary-text: #ffffff;
+
+	/* Radii & Shadows */
 	--radius-card: 24px;
 	--radius-control: 12px;
 	--radius-pill: 999px;
@@ -22,24 +33,7 @@
 	--font-sans: Inter, system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--color-bg: #000000;
-		--color-surface: #18181b;
-		--color-border: #27272a;
-		--color-text: #fafafa;
-		--color-text-muted: #a1a1aa;
-		--color-text-subtle: #71717a;
-		--color-brand: #2dd4bf;
-		--color-brand-strong: #14b8a6;
-		--color-success: #34d399;
-		--color-error: #fb7185;
-		--color-warning: #fbbf24;
-		--color-info: #818cf8;
-		--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
-	}
-}
-
+/* Dark mode overrides - controlled by JS toggle which respects system preference on init */
 :root.dark {
 	--color-bg: #000000;
 	--color-surface: #18181b;
@@ -53,6 +47,13 @@
 	--color-error: #fb7185;
 	--color-warning: #fbbf24;
 	--color-info: #818cf8;
+
+	--color-glass-surface: rgba(24, 24, 27, 0.8);
+	--color-glass-border: rgba(39, 39, 42, 0.5);
+
+	--color-btn-primary-bg: #fafafa;
+	--color-btn-primary-text: #000000;
+
 	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
 }
 

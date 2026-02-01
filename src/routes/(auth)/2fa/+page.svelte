@@ -80,9 +80,7 @@
 	<title>Two-Factor Auth | Nexus</title>
 </svelte:head>
 
-<div
-	class="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-50 px-4 dark:bg-black"
->
+<div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
 	<!-- Background Orbs - Atmosphere & Depth -->
 	<div
 		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-teal-500/20 blur-[120px] dark:bg-teal-500/10"
@@ -94,16 +92,16 @@
 	<!-- Main Card -->
 	<div class="relative w-full max-w-md">
 		<div
-			class="group relative overflow-hidden rounded-3xl border border-zinc-200/50 bg-white/80 p-8 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-zinc-300 dark:border-zinc-800/50 dark:bg-zinc-900/80 dark:hover:border-zinc-700"
+			class="group relative overflow-hidden rounded-3xl border border-border/50 bg-glass-surface p-8 shadow-2xl backdrop-blur-2xl transition-all duration-500 hover:border-border"
 			in:fly={transition}
 		>
 			<!-- Header Section -->
 			<div class="mb-10 text-center" in:fly={{ ...transition, delay: 100 }}>
 				<div
-					class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 shadow-lg transition-transform duration-500 group-hover:scale-110 dark:bg-white"
+					class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-btn-primary-bg shadow-lg transition-transform duration-500 group-hover:scale-110"
 				>
 					<svg
-						class="h-8 w-8 text-white dark:text-zinc-900"
+						class="h-8 w-8 text-btn-primary-text"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -115,19 +113,15 @@
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-					Verify it's you
-				</h1>
-				<p class="mt-2 font-medium text-zinc-500 dark:text-zinc-400">
-					Enter the 6-digit code sent to your device
-				</p>
+				<h1 class="text-3xl font-bold tracking-tight text-text">Verify it's you</h1>
+				<p class="mt-2 font-medium text-text-muted">Enter the 6-digit code sent to your device</p>
 			</div>
 
 			<!-- OTP Input Grid -->
 			<div class="mb-10" in:fly={{ ...transition, delay: 200 }}>
 				{#if errorMessage}
 					<div
-						class="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200"
+						class="mb-6 rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error"
 						in:fly={{ ...transition, delay: 160 }}
 					>
 						{errorMessage}
@@ -143,7 +137,7 @@
 								bind:value={otp[i]}
 								oninput={(e) => handleInput(e, i)}
 								onkeydown={(e) => handleKeyDown(e, i)}
-								class="w-full rounded-2xl border border-zinc-200 bg-zinc-100/50 py-5 text-center text-3xl font-bold text-zinc-900 outline-hidden transition-all focus:ring-4 focus:ring-teal-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-white"
+								class="w-full rounded-2xl border border-border bg-surface py-5 text-center text-3xl font-bold text-text outline-hidden transition-all focus:ring-4 focus:ring-brand/20"
 							/>
 						</div>
 					{/each}
@@ -169,13 +163,10 @@
 
 			<!-- Secondary Action -->
 			<div
-				class="mt-8 border-t border-zinc-100 pt-8 text-center dark:border-zinc-800"
+				class="mt-8 border-t border-border pt-8 text-center"
 				in:fly={{ ...transition, delay: 400 }}
 			>
-				<a
-					href="/login"
-					class="text-sm font-bold text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400"
-				>
+				<a href="/login" class="text-sm font-bold text-brand transition-colors hover:opacity-80">
 					Back to login
 				</a>
 			</div>
@@ -183,7 +174,7 @@
 
 		<!-- Footer Info -->
 		<div
-			class="mt-8 flex justify-center gap-6 text-xs font-semibold text-zinc-400"
+			class="mt-8 flex justify-center gap-6 text-xs font-semibold text-text-subtle"
 			in:fly={{ ...transition, delay: 500 }}
 		>
 			<span class="flex items-center gap-1.5">

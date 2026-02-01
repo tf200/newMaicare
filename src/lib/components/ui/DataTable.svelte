@@ -82,19 +82,17 @@
 	);
 </script>
 
-<section
-	class="overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 {className}"
->
+<section class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm {className}">
 	{#if showHeader()}
 		<div class="mb-2 flex items-end justify-between px-6 pb-6">
 			<div>
 				{#if title}
-					<h2 class="text-2xl font-bold tracking-tighter text-zinc-900 dark:text-white">
+					<h2 class="text-2xl font-bold tracking-tighter text-text">
 						{title}
 					</h2>
 				{/if}
 				{#if description}
-					<p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+					<p class="text-sm font-medium text-text-muted">
 						{description}
 					</p>
 				{/if}
@@ -114,7 +112,7 @@
 
 	<div class="overflow-x-auto px-6">
 		<table class="min-w-full text-left">
-			<thead class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
+			<thead class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				<tr>
 					{#each columns as column (column.key)}
 						<th
@@ -133,14 +131,16 @@
 					<tr>
 						<td colspan={columns.length} class="px-6 py-12 text-center">
 							<div class="flex min-h-[400px] flex-col items-center justify-center gap-4">
-								<div class="h-16 w-16 rounded-full bg-zinc-100 dark:bg-zinc-800"></div>
-								<p class="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
+								<div class="h-16 w-16 rounded-full bg-border/50"></div>
+								<p class="text-xl font-bold tracking-tight text-text">
 									{emptyTitle}
 								</p>
-								<p class="text-sm text-zinc-500 dark:text-zinc-400">
+								<p class="text-sm text-text-muted">
 									{emptyDescription}
 								</p>
-								<button class="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white">
+								<button
+									class="rounded-xl bg-btn-primary-bg px-4 py-2 text-sm font-semibold text-btn-primary-text"
+								>
 									Add record
 								</button>
 							</div>
@@ -149,11 +149,11 @@
 				{:else}
 					{#each paginatedRows as row, index (getRowKey(row, index))}
 						<tr
-							class="border-b border-zinc-100/80 py-4 transition-colors duration-200 last:border-0 hover:bg-zinc-50/50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/30"
+							class="border-b border-border/50 py-4 transition-colors duration-200 last:border-0 hover:bg-border/20"
 						>
 							{#each columns as column (column.key)}
 								<td
-									class="px-6 py-4 text-sm font-medium text-zinc-600 tabular-nums dark:text-zinc-400 {alignClass(
+									class="px-6 py-4 text-sm font-medium text-text-muted tabular-nums {alignClass(
 										column.align
 									)} {column.cellClass ?? ''}"
 								>
@@ -171,7 +171,7 @@
 		</table>
 	</div>
 
-	<div class="border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+	<div class="border-t border-border px-6 py-4">
 		<Pagination
 			{currentPage}
 			{pageSize}

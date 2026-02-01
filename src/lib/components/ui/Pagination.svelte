@@ -35,17 +35,17 @@
 
 <div class="flex items-center justify-between gap-4 {className}">
 	<button
-		class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100/70 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+		class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 disabled:opacity-50"
 		onclick={previousPage}
 		disabled={currentPage <= 1}
 	>
 		Previous
 	</button>
-	<span class="font-mono text-xs tracking-tighter text-zinc-400 dark:text-zinc-500">
+	<span class="font-mono text-xs tracking-tighter text-text-subtle">
 		{rangeStart}—{rangeEnd} of {totalCount}
 	</span>
 	<button
-		class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100/70 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+		class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 disabled:opacity-50"
 		onclick={nextPage}
 		disabled={currentPage >= totalPages}
 	>
