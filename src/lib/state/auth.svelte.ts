@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
-import type { AuthTokenData, AuthRequest, User } from '$lib/types/api';
-import { requestAuthToken, requestVerify2fa } from '$lib/api/auth';
+import type { AuthTokenData, AuthRequest, EmployeeProfile } from '$lib/types/api';
+import { requestAuthToken, requestEmployeeProfile, requestVerify2fa } from '$lib/api/auth';
 
 const AUTH_KEY = Symbol('AUTH');
 
@@ -9,7 +9,7 @@ export interface AuthStorageSnapshot {
 	refreshToken: string | null;
 	tempToken: string | null;
 	requires2fa: boolean;
-	user: User | null;
+	user: EmployeeProfile | null;
 }
 
 export function readAuthStorage(): AuthStorageSnapshot {
@@ -28,7 +28,7 @@ export function readAuthStorage(): AuthStorageSnapshot {
 	const tempToken = localStorage.getItem('temp_token');
 	const requires2fa = localStorage.getItem('requires_2fa') === 'true';
 	const userStr = localStorage.getItem('user');
-	let user: User | null = null;
+	let user: EmployeeProfile | null = null;
 
 	if (userStr) {
 		try {
@@ -48,7 +48,7 @@ export function readAuthStorage(): AuthStorageSnapshot {
 }
 
 export interface AuthContext {
-	user: User | null;
+	user: EmployeeProfile | null;
 	accessToken: string | null;
 	refreshToken: string | null;
 	tempToken: string | null;
@@ -56,11 +56,15 @@ export interface AuthContext {
 	isAuthenticated: boolean;
 	authenticate: (payload: AuthRequest) => Promise<AuthTokenData>;
 	verify2fa: (validationCode: string, tempTokenOverride?: string) => Promise<AuthTokenData>;
+	loadProfile: () => Promise<EmployeeProfile | null>;
+	hasPermission: (permission: string) => boolean;
+	hasAnyPermission: (permissions: string[]) => boolean;
+	hasAllPermissions: (permissions: string[]) => boolean;
 	logout: () => void;
 }
 
 export class AuthState {
-	user = $state<User | null>(null);
+	user = $state<EmployeeProfile | null>(null);
 	accessToken = $state<string | null>(null);
 	refreshToken = $state<string | null>(null);
 	tempToken = $state<string | null>(null);
@@ -79,7 +83,21 @@ export class AuthState {
 		if (snapshot.tempToken) this.tempToken = snapshot.tempToken;
 		this.requires2fa = snapshot.requires2fa;
 		this.user = snapshot.user;
+		if (this.accessToken) {
+			void this.loadProfile();
+		}
 	}
+
+	setUser = (user: EmployeeProfile | null) => {
+		this.user = user;
+		if (typeof localStorage !== 'undefined') {
+			if (user) {
+				localStorage.setItem('user', JSON.stringify(user));
+			} else {
+				localStorage.removeItem('user');
+			}
+		}
+	};
 
 	setTokens = (data: AuthTokenData) => {
 		this.requires2fa = data.requires_2fa;
@@ -87,6 +105,7 @@ export class AuthState {
 		if (data.requires_2fa) {
 			this.accessToken = null;
 			this.refreshToken = null;
+			this.setUser(null);
 		} else {
 			this.accessToken = data.access;
 			this.refreshToken = data.refresh;
@@ -115,6 +134,9 @@ export class AuthState {
 			throw new Error(response.message || 'Authentication failed');
 		}
 		this.setTokens(response.data);
+		if (!this.requires2fa) {
+			await this.loadProfile();
+		}
 		return response.data;
 	};
 
@@ -131,7 +153,39 @@ export class AuthState {
 			throw new Error(response.message || 'Verification failed');
 		}
 		this.setTokens(response.data);
+		await this.loadProfile();
 		return response.data;
+	};
+
+	loadProfile = async () => {
+		if (!this.accessToken) {
+			this.setUser(null);
+			return null;
+		}
+		try {
+			const response = await requestEmployeeProfile();
+			if (!response.success) {
+				throw new Error(response.message || 'Failed to load profile');
+			}
+			this.setUser(response.data);
+			return response.data;
+		} catch (error) {
+			console.error('Failed to load employee profile', error);
+			this.setUser(null);
+			return null;
+		}
+	};
+
+	hasPermission = (permission: string) => {
+		return this.user?.permissions?.some((item) => item.name === permission) ?? false;
+	};
+
+	hasAnyPermission = (permissions: string[]) => {
+		return permissions.some((permission) => this.hasPermission(permission));
+	};
+
+	hasAllPermissions = (permissions: string[]) => {
+		return permissions.every((permission) => this.hasPermission(permission));
 	};
 
 	logout() {

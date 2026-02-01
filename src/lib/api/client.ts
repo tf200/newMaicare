@@ -1,6 +1,7 @@
 import { PUBLIC_API_URL } from '$env/static/public';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import { resolve } from '$app/paths';
 
 type FetchOptions = RequestInit & {
 	requiresAuth?: boolean;
@@ -51,7 +52,7 @@ class ApiClient {
 					localStorage.removeItem('refresh_token');
 					localStorage.removeItem('temp_token');
 					localStorage.removeItem('requires_2fa');
-					goto('/login');
+					await goto(resolve('/login'));
 				}
 				throw new Error('Unauthorized');
 			}
@@ -111,4 +112,4 @@ class ApiClient {
 }
 
 // Export a singleton instance
-export const api = new ApiClient('https://dev-api.maicare.online');
+export const api = new ApiClient(PUBLIC_API_URL);

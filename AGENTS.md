@@ -1,3 +1,7 @@
+## Runtime & Package Manager
+
+- **Package manager:** Bun. Prefer `bun`/`bunx` over `npm`/`npx` for installs, scripts, and one-off CLIs.
+
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
 
 ## Available MCP Tools:
@@ -57,3 +61,12 @@ Make sure to read UIUX.md for tips on how to make the UI/UX
 - **Props:** Use `$props()` for input.
 - **Events:** Pass callbacks as props (e.g., `onSave`, `onCancel`) or use standard events.
 - **State:** Use local `$state` for UI interactions (open/close) and global state for shared data.
+
+### i18n (Internationalization)
+
+- **Tool:** Paraglide-JS (Compiler-based).
+- **Locales:** `en` (base), `nl`.
+- **Source:** `messages/*.json`.
+- **Runtime:** `$lib/paraglide`.
+- **Usage:** `import { m } from '$lib/paraglide/messages'`. Call as functions: `{m.key()}`.
+- **Routing:** Handled via `localizeHref` and `reroute` hook.

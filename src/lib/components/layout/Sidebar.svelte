@@ -1,22 +1,53 @@
 <script lang="ts">
-	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { LayoutDashboard, Users, X, HelpCircle } from 'lucide-svelte';
+	import {
+		LayoutDashboard,
+		Users,
+		X,
+		HelpCircle,
+		ChevronDown,
+		HeartHandshake
+	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { slide } from 'svelte/transition';
 
 	interface NavItem {
 		label: string;
-		href: string;
+		href?: string;
 		icon: typeof LayoutDashboard;
+		permission?: string;
+		children?: { label: string; href: string; permission?: string }[];
 	}
 
 	const items: NavItem[] = [
-		{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-		{ label: 'Employees', href: '/employees', icon: Users }
+		{
+			label: m.dashboard(),
+			href: '/dashboard',
+			icon: LayoutDashboard,
+			permission: 'DASHBOARD.VIEW'
+		},
+		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
+		{
+			label: m.care_coordination(),
+			icon: HeartHandshake,
+			permission: 'CARE_COORDINATION.VIEW',
+			children: [
+				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' }
+			]
+		}
 	];
 
 	let { collapsed = $bindable(false), mobileOpen = $bindable(false) } = $props();
+
+	let expandedItems = $state<Record<string, boolean>>({});
+
+	const toggleExpand = (label: string) => {
+		if (collapsed) return;
+		expandedItems[label] = !expandedItems[label];
+	};
 
 	// UIUX.md: transition-all duration-300
 	const transitionClass = 'transition-all duration-300 ease-in-out';
@@ -34,6 +65,14 @@
 	const isActive = (href: string) => {
 		const path = page.url.pathname;
 		return path === href || path.startsWith(`${href}/`);
+	};
+
+	const isItemActive = (item: NavItem) => {
+		if (item.href && isActive(item.href)) return true;
+		if (item.children) {
+			return item.children.some((child) => isActive(child.href));
+		}
+		return false;
 	};
 </script>
 
@@ -93,30 +132,69 @@
 	<div class="flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
 		<nav class="space-y-1">
 			{#each items as item (item.label)}
-				{@const active = isActive(item.href)}
+				{@const active = isItemActive(item)}
+				{@const hasChildren = item.children && item.children.length > 0}
+				{@const isExpanded = expandedItems[item.label] || (hasChildren && active && !collapsed)}
 
-				<Tooltip content={item.label} position="right" disabled={!collapsed}>
-					<button
-						onclick={() => goto(item.href)}
-						class="{baseItem} {active ? activeItem : inactiveItem}"
-						aria-current={active ? 'page' : undefined}
-					>
-						<item.icon
-							class="h-5 w-5 shrink-0 transition-colors duration-300 {active
-								? 'text-teal-600 dark:text-teal-400'
-								: 'text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300'}"
-						/>
+				<PermissionGuard permission={item.permission}>
+					<div class="space-y-1">
+						<Tooltip content={item.label} position="right" disabled={!collapsed}>
+							<button
+								onclick={() => {
+									if (hasChildren) {
+										toggleExpand(item.label);
+									} else if (item.href) {
+										goto(item.href);
+									}
+								}}
+								class="{baseItem} {active ? activeItem : inactiveItem}"
+								aria-current={active && !hasChildren ? 'page' : undefined}
+							>
+								<item.icon
+									class="h-5 w-5 shrink-0 transition-colors duration-300 {active
+										? 'text-teal-600 dark:text-teal-400'
+										: 'text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300'}"
+								/>
 
-						<span
-							class="overflow-hidden whitespace-nowrap {transitionClass}"
-							class:opacity-0={collapsed}
-							class:w-0={collapsed}
-							class:translate-x-[-10px]={collapsed}
-						>
-							{item.label}
-						</span>
-					</button>
-				</Tooltip>
+								<span
+									class="flex-1 overflow-hidden text-left whitespace-nowrap {transitionClass}"
+									class:opacity-0={collapsed}
+									class:w-0={collapsed}
+									class:translate-x-[-10px]={collapsed}
+								>
+									{item.label}
+								</span>
+
+								{#if hasChildren && !collapsed}
+									<ChevronDown
+										class="h-4 w-4 transition-transform duration-300 {isExpanded
+											? 'rotate-180'
+											: ''}"
+									/>
+								{/if}
+							</button>
+						</Tooltip>
+
+						{#if hasChildren && isExpanded && !collapsed}
+							<div class="ml-9 space-y-1" transition:slide={{ duration: 300 }}>
+								{#each item.children as child (child.label)}
+									<PermissionGuard permission={child.permission}>
+										{@const childActive = isActive(child.href)}
+										<button
+											onclick={() => goto(child.href)}
+											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
+											{childActive
+												? 'bg-teal-50/50 text-teal-700 dark:bg-teal-500/5 dark:text-teal-400'
+												: 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'}"
+										>
+											{child.label}
+										</button>
+									</PermissionGuard>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</PermissionGuard>
 			{/each}
 		</nav>
 	</div>
@@ -138,8 +216,8 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				<span class="block text-sm font-semibold text-zinc-900 dark:text-white">Support</span>
-				<span class="text-xs text-zinc-500 dark:text-zinc-400">24/7 Assistance</span>
+				<span class="block text-sm font-semibold text-zinc-900 dark:text-white">{m.support()}</span>
+				<span class="text-xs text-zinc-500 dark:text-zinc-400">{m.assistance_24_7()}</span>
 			</div>
 		</button>
 	</div>

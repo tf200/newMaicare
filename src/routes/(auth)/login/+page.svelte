@@ -5,6 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let email = $state('');
 	let password = $state('');
@@ -43,7 +44,7 @@
 </script>
 
 <svelte:head>
-	<title>Login | Nexus</title>
+	<title>{`${m.sign_in()} | Nexus`}</title>
 </svelte:head>
 
 <div
@@ -81,10 +82,10 @@
 					</svg>
 				</div>
 				<h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-					Welcome back
+					{m.welcome_back()}
 				</h1>
 				<p class="mt-2 font-medium text-zinc-500 dark:text-zinc-400">
-					Enter your credentials to access Nexus
+					{m.enter_credentials()}
 				</p>
 			</div>
 
@@ -100,7 +101,7 @@
 				<!-- Staggered Input Fields -->
 				<div in:fly={{ ...transition, delay: 200 }}>
 					<Input
-						label="Email address"
+						label={m.email_address()}
 						type="email"
 						id="email"
 						bind:value={email}
@@ -111,7 +112,7 @@
 
 				<div class="relative" in:fly={{ ...transition, delay: 300 }}>
 					<Input
-						label="Password"
+						label={m.password()}
 						type={showPassword ? 'text' : 'password'}
 						id="password"
 						bind:value={password}
@@ -153,14 +154,14 @@
 						href="/forgot-password"
 						class="absolute top-0 right-1 text-xs font-bold text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400"
 					>
-						Forgot?
+						{m.forgot_password()}
 					</a>
 				</div>
 
 				<!-- Form Action -->
 				<div in:fly={{ ...transition, delay: 400 }}>
 					<Button type="submit" class="w-full py-6 text-base" {isLoading}>
-						{isLoading ? 'Verifying...' : 'Sign in'}
+						{isLoading ? m.verifying() : m.sign_in()}
 					</Button>
 				</div>
 			</form>
@@ -168,12 +169,13 @@
 			<!-- Footer Links -->
 			<div class="mt-8 text-center" in:fly={{ ...transition, delay: 500 }}>
 				<p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-					Don't have an account?
+					{m.no_account()}
 					<a
 						href="/register"
 						class="font-bold text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400"
-						>Create one</a
 					>
+						{m.create_one()}
+					</a>
 				</p>
 			</div>
 		</div>
@@ -182,13 +184,13 @@
 			class="mt-8 flex justify-center gap-6 text-xs font-semibold text-zinc-400"
 			in:fly={{ ...transition, delay: 600 }}
 		>
-			<a href="/privacy" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
-				>Privacy Policy</a
-			>
+			<a href="/privacy" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200">
+				{m.privacy_policy()}
+			</a>
 			<span>&bull;</span>
-			<a href="/help" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
-				>Help Center</a
-			>
+			<a href="/help" class="transition-colors hover:text-zinc-600 dark:hover:text-zinc-200">
+				{m.help_center()}
+			</a>
 		</div>
 	</div>
 </div>

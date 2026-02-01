@@ -1,0 +1,302 @@
+<script lang="ts">
+	import { Building2, Eye, Pencil, Plus, Search } from 'lucide-svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import CreateOrganizationForm from '$lib/components/forms/CreateOrganizationForm.svelte';
+	import EditOrganizationForm from '$lib/components/forms/EditOrganizationForm.svelte';
+	import { getOrganization } from '$lib/api/organizations';
+	import type { GetOrganizationResponse } from '$lib/types/api';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+	type OrganizationRow = PageData['organisations'][number];
+
+	let showCreateOrg = $state(false);
+	let showEditOrg = $state(false);
+	let editOrganization = $state<GetOrganizationResponse | null>(null);
+	let isEditLoading = $state(false);
+	let editLoadError = $state('');
+
+	const columns: DataTableColumn[] = [
+		{ key: 'name', label: 'Organization', headerClass: 'pl-14' },
+		{ key: 'address', label: 'Address' },
+		{ key: 'city', label: 'City' },
+		{ key: 'email', label: 'Email' },
+		{ key: 'kvkNumber', label: 'Registration', align: 'left', width: '180px' },
+		{ key: 'locationCount', label: 'Locations', align: 'right', width: '100px' },
+		{ key: 'actions', label: '', align: 'right', width: '60px' }
+	];
+
+	const organisations = $derived.by(() => data.organisations);
+	const totalLocations = $derived.by(() =>
+		organisations.reduce((total, org) => total + org.locationCount, 0)
+	);
+	const withRegistration = $derived.by(
+		() => organisations.filter((org) => Boolean(org.kvkNumber) || Boolean(org.btwNumber)).length
+	);
+
+	const currentPage = $derived.by(() => data.pagination.page);
+	const pageSize = $derived.by(() => data.pagination.pageSize);
+	const appliedSearch = $derived.by(() => (data.pagination.filters.name ?? '').trim());
+	let searchTerm = $state('');
+
+	onMount(() => {
+		searchTerm = appliedSearch;
+	});
+
+	const buildQuery = (pageValue: number, nameValue: string) => {
+		const params = new URLSearchParams();
+		params.set('page', String(pageValue));
+		params.set('page_size', String(pageSize));
+		if (nameValue) params.set('name', nameValue);
+		return params.toString();
+	};
+
+	const updateQuery = (pageValue: number, nameValue: string) => {
+		const nextQuery = buildQuery(pageValue, nameValue);
+		if (page.url.searchParams.toString() === nextQuery) return;
+		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+	};
+
+	const applySearch = () => {
+		const trimmed = searchTerm.trim();
+		updateQuery(1, trimmed);
+	};
+
+	const openEdit = async (id: string) => {
+		editOrganization = null;
+		editLoadError = '';
+		showEditOrg = true;
+		isEditLoading = true;
+		try {
+			const response = await getOrganization(id);
+			editOrganization = {
+				...response.data,
+				house_number_addition: response.data.house_number_addition ?? '',
+				email: response.data.email ?? '',
+				kvk_number: response.data.kvk_number ?? '',
+				btw_number: response.data.btw_number ?? ''
+			};
+		} catch (error) {
+			editLoadError = error instanceof Error ? error.message : 'Failed to load organization.';
+		} finally {
+			isEditLoading = false;
+		}
+	};
+
+	const formatOptional = (value: string | null, fallback = '—') =>
+		value && value.trim().length > 0 ? value : fallback;
+
+	const formatAddress = (org: OrganizationRow) => {
+		const addition = org.houseNumberAddition?.trim() ?? '';
+		const suffix = addition.length > 0 ? addition : '';
+		return `${org.street} ${org.houseNumber}${suffix}`.trim();
+	};
+
+	const formatCity = (org: OrganizationRow) => `${org.postalCode} ${org.city}`.trim();
+</script>
+
+<svelte:head>
+	<title>Organization | MaiCare</title>
+</svelte:head>
+
+{#snippet tableFilters()}
+	<div class="flex items-center gap-3">
+		<div class="relative">
+			<Search
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400"
+			/>
+			<input
+				type="text"
+				placeholder="Search..."
+				bind:value={searchTerm}
+				class="h-9 w-64 rounded-xl border border-zinc-200 bg-white pr-3 pl-9 text-sm font-medium text-zinc-600 placeholder:text-zinc-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+				onkeydown={(event) => {
+					if (event.key === 'Enter') applySearch();
+				}}
+				onblur={applySearch}
+			/>
+		</div>
+		<div class="flex gap-1">
+			<button
+				class="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-900 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+			>
+				All
+			</button>
+			<button
+				class="rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+			>
+				Multi-location
+			</button>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet nameCell(row: OrganizationRow)}
+	<div class="flex items-center gap-3">
+		<div
+			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/20"
+		>
+			<Building2 class="h-5 w-5" />
+		</div>
+		<div>
+			<p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</p>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet addressCell(row: OrganizationRow)}
+	<div class="text-sm text-zinc-600 dark:text-zinc-300">{formatAddress(row)}</div>
+{/snippet}
+
+{#snippet cityCell(row: OrganizationRow)}
+	<span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{formatCity(row)}</span>
+{/snippet}
+
+{#snippet emailCell(row: OrganizationRow)}
+	<span
+		class={`text-sm ${row.email ? 'text-zinc-600 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'}`}
+	>
+		{formatOptional(row.email)}
+	</span>
+{/snippet}
+
+{#snippet kvkNumberCell(row: OrganizationRow)}
+	<div class="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-300">
+		{#if row.kvkNumber}
+			<span
+				class="inline-flex w-fit items-center gap-2 rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+			>
+				KVK <span class="font-normal text-zinc-500 dark:text-zinc-400">{row.kvkNumber}</span>
+			</span>
+		{/if}
+		{#if row.btwNumber}
+			<span
+				class="inline-flex w-fit items-center gap-2 rounded-full bg-teal-50 px-2.5 py-1 font-semibold text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
+			>
+				BTW <span class="font-normal text-teal-600 dark:text-teal-200">{row.btwNumber}</span>
+			</span>
+		{/if}
+		{#if !row.kvkNumber && !row.btwNumber}
+			<span class="text-zinc-400 dark:text-zinc-600">—</span>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet locationCountCell(row: OrganizationRow)}
+	<span class="inline-flex items-center justify-end gap-1.5">
+		<span class="text-sm font-semibold text-zinc-700 dark:text-zinc-100">
+			{row.locationCount}
+		</span>
+		<span class="text-xs text-zinc-400 dark:text-zinc-500">sites</span>
+	</span>
+{/snippet}
+
+{#snippet actionsCell(row: OrganizationRow)}
+	<div class="flex justify-end gap-1">
+		<button
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+			onclick={() => goto(`/organization/${row.id}`)}
+			title="View organization"
+		>
+			<Eye class="h-4 w-4" />
+		</button>
+		<button
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+			onclick={() => openEdit(row.id)}
+			title="Edit organization"
+		>
+			<Pencil class="h-4 w-4" />
+		</button>
+	</div>
+{/snippet}
+
+<section class="space-y-6">
+	<header
+		class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white/90 p-6 shadow-sm"
+	>
+		<div
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+		></div>
+		<div class="relative flex flex-wrap items-start justify-between gap-6">
+			<div class="space-y-3">
+				<div class="flex items-center gap-3 text-sm font-semibold text-teal-600">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50">
+						<Building2 class="h-5 w-5" />
+					</span>
+					<span>Organization</span>
+				</div>
+				<h1 class="text-3xl font-bold tracking-tighter text-zinc-900">Organizations</h1>
+				<p class="max-w-2xl text-sm font-medium text-zinc-500">
+					Track organizations, registration details, and location coverage across MaiCare.
+				</p>
+			</div>
+			<Button class="gap-2" onclick={() => (showCreateOrg = true)}>
+				<Plus class="h-4 w-4" />
+				Add organization
+			</Button>
+		</div>
+	</header>
+
+	<CreateOrganizationForm bind:open={showCreateOrg} onCreated={() => invalidateAll()} />
+	{#if showEditOrg}
+		{#key editOrganization?.id ?? 'loading'}
+			<EditOrganizationForm
+				bind:open={showEditOrg}
+				organization={editOrganization}
+				isFetching={isEditLoading}
+				loadErrorMessage={editLoadError}
+				onUpdated={() => invalidateAll()}
+			/>
+		{/key}
+	{/if}
+
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Total orgs</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-zinc-900">
+				{data.pagination.count}
+			</div>
+			<p class="mt-2 text-xs font-medium text-zinc-500">Active in the network</p>
+		</div>
+		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Locations</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-teal-600">
+				{totalLocations}
+			</div>
+			<p class="mt-2 text-xs font-medium text-zinc-500">Total care sites covered</p>
+		</div>
+		<div class="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
+			<div class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">Registration</div>
+			<div class="mt-2 text-3xl font-bold tracking-tight text-zinc-900">
+				{withRegistration}
+			</div>
+			<p class="mt-2 text-xs font-medium text-zinc-500">KVK or BTW on file</p>
+		</div>
+	</div>
+
+	<DataTable
+		{columns}
+		rows={organisations}
+		{currentPage}
+		{pageSize}
+		totalCount={data.pagination.count}
+		onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+		rowKey="id"
+		title="Organization directory"
+		description="Monitor registered partners, coverage, and contact details across regions."
+		filters={tableFilters}
+		cells={{
+			name: nameCell,
+			address: addressCell,
+			city: cityCell,
+			email: emailCell,
+			kvkNumber: kvkNumberCell,
+			locationCount: locationCountCell,
+			actions: actionsCell
+		}}
+	/>
+</section>

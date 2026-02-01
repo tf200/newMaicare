@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
 	--color-bg: #fafafa;
@@ -37,6 +38,22 @@
 		--color-info: #818cf8;
 		--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
 	}
+}
+
+:root.dark {
+	--color-bg: #000000;
+	--color-surface: #18181b;
+	--color-border: #27272a;
+	--color-text: #fafafa;
+	--color-text-muted: #a1a1aa;
+	--color-text-subtle: #71717a;
+	--color-brand: #2dd4bf;
+	--color-brand-strong: #14b8a6;
+	--color-success: #34d399;
+	--color-error: #fb7185;
+	--color-warning: #fbbf24;
+	--color-info: #818cf8;
+	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
 }
 
 body {

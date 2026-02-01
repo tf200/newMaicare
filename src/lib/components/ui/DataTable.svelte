@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 
 	export interface DataTableColumn {
 		key: string;
@@ -7,6 +8,7 @@
 		align?: 'left' | 'center' | 'right';
 		width?: string;
 		class?: string;
+		headerClass?: string;
 		cellClass?: string;
 	}
 
@@ -25,6 +27,8 @@
 		cells?: Record<string, Snippet<[any]>>;
 		currentPage?: number;
 		pageSize?: number;
+		totalCount?: number;
+		onPageChange?: (page: number) => void;
 		class?: string;
 	}
 
@@ -41,6 +45,8 @@
 		cells,
 		currentPage = $bindable(1),
 		pageSize = 10,
+		totalCount,
+		onPageChange,
 		class: className = ''
 	}: Props = $props();
 
@@ -62,18 +68,18 @@
 
 	const showHeader = () => Boolean(title || description || actions || filters);
 
-	const paginatedRows = $derived(() =>
-		rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+	const handlePageChange = (nextPage: number) => {
+		if (onPageChange) {
+			onPageChange(nextPage);
+			return;
+		}
+		currentPage = nextPage;
+	};
+
+	const effectiveTotal = $derived.by(() => totalCount ?? rows.length);
+	const paginatedRows = $derived.by(() =>
+		totalCount == null ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize) : rows
 	);
-	const totalPages = $derived(() => Math.max(Math.ceil(rows.length / pageSize), 1));
-
-	const previousPage = () => {
-		if (currentPage > 1) currentPage -= 1;
-	};
-
-	const nextPage = () => {
-		if (currentPage < totalPages()) currentPage += 1;
-	};
 </script>
 
 <section
@@ -110,9 +116,11 @@
 		<table class="min-w-full text-left">
 			<thead class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
 				<tr>
-					{#each columns as column}
+					{#each columns as column (column.key)}
 						<th
-							class="py-4 {alignClass(column.align)} {column.class ?? ''}"
+							class="px-6 py-4 {alignClass(column.align)} {column.headerClass ??
+								column.class ??
+								''}"
 							style={column.width ? `width:${column.width}` : undefined}
 						>
 							{column.label}
@@ -139,11 +147,11 @@
 						</td>
 					</tr>
 				{:else}
-					{#each paginatedRows() as row, index (getRowKey(row, index))}
+					{#each paginatedRows as row, index (getRowKey(row, index))}
 						<tr
 							class="border-b border-zinc-100/80 py-4 transition-colors duration-200 last:border-0 hover:bg-zinc-50/50 dark:border-zinc-800/50 dark:hover:bg-zinc-800/30"
 						>
-							{#each columns as column}
+							{#each columns as column (column.key)}
 								<td
 									class="px-6 py-4 text-sm font-medium text-zinc-600 tabular-nums dark:text-zinc-400 {alignClass(
 										column.align
@@ -163,28 +171,12 @@
 		</table>
 	</div>
 
-	<div
-		class="flex items-center justify-between border-t border-zinc-100 px-6 py-4 dark:border-zinc-800"
-	>
-		<button
-			class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 hover:bg-zinc-100/70"
-			onclick={previousPage}
-			disabled={currentPage <= 1}
-		>
-			Previous
-		</button>
-		<span class="font-mono text-xs tracking-tighter text-zinc-400">
-			{(currentPage - 1) * pageSize + 1}
-			—
-			{Math.min(currentPage * pageSize, rows.length)}
-			of {rows.length}
-		</span>
-		<button
-			class="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 hover:bg-zinc-100/70"
-			onclick={nextPage}
-			disabled={currentPage >= totalPages()}
-		>
-			Next
-		</button>
+	<div class="border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+		<Pagination
+			{currentPage}
+			{pageSize}
+			totalCount={effectiveTotal}
+			onPageChange={handlePageChange}
+		/>
 	</div>
 </section>
