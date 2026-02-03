@@ -53,7 +53,7 @@
 		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-teal-500/20 blur-[120px] dark:bg-teal-500/10"
 	></div>
 	<div
-		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-emerald-500/20 blur-[120px] dark:bg-emerald-500/10"
+		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-[var(--color-secondary)]/10 blur-[120px]"
 	></div>
 
 	<!-- Main Card -->
@@ -150,7 +150,7 @@
 					</button>
 					<a
 						href="/forgot-password"
-						class="absolute top-0 right-1 text-xs font-bold text-brand transition-colors hover:opacity-80"
+						class="absolute top-0 right-1 text-xs font-bold text-orange-600 transition-colors hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
 					>
 						{m.forgot_password()}
 					</a>
@@ -168,7 +168,10 @@
 			<div class="mt-8 text-center" in:fly={{ ...transition, delay: 500 }}>
 				<p class="text-sm font-medium text-text-muted">
 					{m.no_account()}
-					<a href="/register" class="font-bold text-brand transition-colors hover:opacity-80">
+					<a
+						href="/register"
+						class="font-bold text-orange-600 transition-colors hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+					>
 						{m.create_one()}
 					</a>
 				</p>

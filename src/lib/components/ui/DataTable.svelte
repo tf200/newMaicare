@@ -21,6 +21,9 @@
 		description?: string;
 		emptyTitle?: string;
 		emptyDescription?: string;
+		emptyActionLabel?: string;
+		emptyAction?: () => void;
+		emptyActionDisabled?: boolean;
 		rowKey?: string | ((row: any, index: number) => string);
 		actions?: Snippet;
 		filters?: Snippet;
@@ -39,6 +42,9 @@
 		description,
 		emptyTitle = 'No records found',
 		emptyDescription = 'Try adjusting your filters or add a new record.',
+		emptyActionLabel = 'Add record',
+		emptyAction,
+		emptyActionDisabled = false,
 		rowKey,
 		actions,
 		filters,
@@ -76,15 +82,21 @@
 		currentPage = nextPage;
 	};
 
+	const handleEmptyAction = () => {
+		if (emptyAction) emptyAction();
+	};
+
 	const effectiveTotal = $derived.by(() => totalCount ?? rows.length);
 	const paginatedRows = $derived.by(() =>
 		totalCount == null ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize) : rows
 	);
 </script>
 
-<section class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm {className}">
+<section class="rounded-3xl border border-border bg-surface shadow-sm {className}">
 	{#if showHeader()}
-		<div class="mb-2 flex items-end justify-between px-6 pb-6">
+		<div
+			class="flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:pb-6"
+		>
 			<div>
 				{#if title}
 					<h2 class="text-2xl font-bold tracking-tighter text-text">
@@ -97,9 +109,9 @@
 					</p>
 				{/if}
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex flex-wrap items-center gap-2">
 				{#if filters}
-					<div>
+					<div class="w-full sm:w-auto">
 						{@render filters?.()}
 					</div>
 				{/if}
@@ -110,7 +122,7 @@
 		</div>
 	{/if}
 
-	<div class="overflow-x-auto px-6">
+	<div class="overflow-x-auto px-4 sm:px-6">
 		<table class="min-w-full text-left">
 			<thead class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				<tr>
@@ -139,9 +151,11 @@
 									{emptyDescription}
 								</p>
 								<button
-									class="rounded-xl bg-btn-primary-bg px-4 py-2 text-sm font-semibold text-btn-primary-text"
+									onclick={handleEmptyAction}
+									disabled={!emptyAction || emptyActionDisabled}
+									class="rounded-xl bg-btn-primary-bg px-4 py-2 text-sm font-semibold text-btn-primary-text disabled:cursor-not-allowed disabled:opacity-70"
 								>
-									Add record
+									{emptyActionLabel}
 								</button>
 							</div>
 						</td>

@@ -5,7 +5,13 @@
 <section class="grid gap-6">
 	<div class="rounded-3xl border border-border/60 bg-glass-surface p-8 shadow-sm backdrop-blur-xl">
 		<h2 class="text-2xl font-bold tracking-tight text-text">Dashboard</h2>
-		<p class="mt-2 text-sm font-medium text-text-muted">
+		<p class="mt-2 flex items-center gap-2 text-sm font-medium text-text-muted">
+			<span class="relative flex h-2 w-2">
+				<span
+					class="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"
+				></span>
+				<span class="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+			</span>
 			Your workspace is ready. Start by selecting a module from the sidebar.
 		</p>
 	</div>

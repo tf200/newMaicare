@@ -83,7 +83,7 @@
 
 	const contractTypeClasses: Record<EmployeeRow['contractType'], string> = {
 		'Full-time': 'bg-success/10 text-success',
-		Freelancer: 'bg-warning/10 text-warning'
+		Freelancer: 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
 	};
 </script>
 
@@ -107,26 +107,28 @@
 {/snippet}
 
 {#snippet tableFilters()}
-	<button
-		class="rounded-full bg-btn-primary-bg px-4 py-2 text-xs font-semibold text-btn-primary-text shadow-sm transition hover:opacity-90"
-	>
-		All
-	</button>
-	<button
-		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
-	>
-		Active
-	</button>
-	<button
-		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
-	>
-		On Leave
-	</button>
-	<button
-		class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
-	>
-		Invited
-	</button>
+	<div class="flex flex-wrap gap-2">
+		<button
+			class="rounded-full bg-btn-primary-bg px-4 py-2 text-xs font-semibold text-btn-primary-text shadow-sm transition hover:opacity-90"
+		>
+			All
+		</button>
+		<button
+			class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
+		>
+			Active
+		</button>
+		<button
+			class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
+		>
+			On Leave
+		</button>
+		<button
+			class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-text-muted transition hover:text-text"
+		>
+			Invited
+		</button>
+	</div>
 {/snippet}
 
 {#snippet nameCell(row: EmployeeRow)}
@@ -183,7 +185,7 @@
 					<Sparkles class="h-4 w-4" />
 					Smart sort
 				</Button>
-				<Button class="gap-2">
+				<Button variant="secondary" class="gap-2">
 					<Plus class="h-4 w-4" />
 					New hire
 				</Button>

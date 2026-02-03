@@ -422,17 +422,17 @@
 		},
 		{
 			"name": "REGISTRATION_FORM.VIEW",
-			"resource": "/registration_form",
+			"resource": "/registration_forms",
 			"method": ["GET"]
 		},
 		{
 			"name": "REGISTRATION_FORM.UPDATE",
-			"resource": "/registration_form",
+			"resource": "/registration_forms",
 			"method": ["PUT"]
 		},
 		{
 			"name": "REGISTRATION_FORM.DELETE",
-			"resource": "/registration_form",
+			"resource": "/registration_forms",
 			"method": ["DELETE"]
 		},
 		{

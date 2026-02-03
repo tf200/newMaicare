@@ -2,6 +2,7 @@ import { PUBLIC_API_URL } from '$env/static/public';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 import { resolve } from '$app/paths';
+import type { ApiEnvelope, RefreshTokenData } from '$lib/types/api';
 
 type FetchOptions = RequestInit & {
 	requiresAuth?: boolean;
@@ -9,6 +10,7 @@ type FetchOptions = RequestInit & {
 
 class ApiClient {
 	private baseUrl: string;
+	private refreshPromise: Promise<void> | null = null;
 
 	constructor(baseUrl: string) {
 		this.baseUrl = baseUrl;
@@ -27,6 +29,45 @@ class ApiClient {
 		}
 
 		return headers;
+	}
+
+	private clearAuth() {
+		if (browser) {
+			localStorage.removeItem('access_token');
+			localStorage.removeItem('refresh_token');
+			localStorage.removeItem('temp_token');
+			localStorage.removeItem('requires_2fa');
+			localStorage.removeItem('user');
+		}
+	}
+
+	private async refreshAccessToken(): Promise<void> {
+		const refreshToken = localStorage.getItem('refresh_token');
+		if (!refreshToken || refreshToken === 'undefined' || refreshToken === 'null') {
+			throw new Error('No refresh token available');
+		}
+
+		try {
+			const response = await this.post<ApiEnvelope<RefreshTokenData>>(
+				'/auth/refresh',
+				{ token: refreshToken },
+				{ requiresAuth: false }
+			);
+
+			if (response.success) {
+				localStorage.setItem('access_token', response.data.access);
+				if (response.data.refresh) {
+					localStorage.setItem('refresh_token', response.data.refresh);
+				}
+				// Dispatch event to notify other parts of the app (like AuthState)
+				window.dispatchEvent(new CustomEvent('auth:refresh'));
+			} else {
+				throw new Error('Refresh failed');
+			}
+		} catch (error) {
+			this.clearAuth();
+			throw error;
+		}
 	}
 
 	async request<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
@@ -48,10 +89,26 @@ class ApiClient {
 
 			if (response.status === 401 && requiresAuth) {
 				if (browser) {
-					localStorage.removeItem('access_token');
-					localStorage.removeItem('refresh_token');
-					localStorage.removeItem('temp_token');
-					localStorage.removeItem('requires_2fa');
+					const refreshToken = localStorage.getItem('refresh_token');
+
+					if (refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null') {
+						if (!this.refreshPromise) {
+							this.refreshPromise = this.refreshAccessToken().finally(() => {
+								this.refreshPromise = null;
+							});
+						}
+
+						try {
+							await this.refreshPromise;
+							return this.request<T>(endpoint, options);
+						} catch (error) {
+							this.clearAuth();
+							await goto(resolve('/login'));
+							throw new Error('Unauthorized');
+						}
+					}
+
+					this.clearAuth();
 					await goto(resolve('/login'));
 				}
 				throw new Error('Unauthorized');
@@ -102,6 +159,14 @@ class ApiClient {
 		return this.request<T>(endpoint, {
 			...options,
 			method: 'PUT',
+			body: JSON.stringify(body)
+		});
+	}
+
+	patch<T>(endpoint: string, body: unknown, options?: FetchOptions) {
+		return this.request<T>(endpoint, {
+			...options,
+			method: 'PATCH',
 			body: JSON.stringify(body)
 		});
 	}

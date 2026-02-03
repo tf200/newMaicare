@@ -13,12 +13,13 @@ Swiss typography + Apple shapes + Bento grids. High whitespace, hyper-rounded co
 - Border: `border-zinc-200` / `dark:border-zinc-800`
 - Text: `text-zinc-900/500/400` / `dark:text-white/zinc-400/500`
 
-**Brand:** `teal-600` (light) / `teal-400` (dark), gradients `from-teal-400 to-emerald-500`  
+**Brand:** `teal-600` (light) / `teal-400` (dark), gradients `from-teal-400 to-emerald-500`
+**Secondary:** `orange-500` (light: #f97316) / `orange-400` (dark: #fb923c) - Used for accents, notifications, and calls to attention.
 **Status:** Success=`emerald-500`, Error=`rose-500`, Warning=`amber-400`, Info=`indigo-500`
 
 ## Shapes & Type
 
-**Radius:** Cards=`rounded-3xl`, Buttons/Inputs=`rounded-xl`, Badges=`rounded-lg/full`  
+**Radius:** Cards=`rounded-3xl`, Buttons/Inputs=`rounded-xl`, Badges=`rounded-lg/full`
 **Typography:** Inter/sans, Headings=`font-bold tracking-tight`, Body=`font-normal/medium`
 
 ## Components
@@ -29,7 +30,8 @@ Swiss typography + Apple shapes + Bento grids. High whitespace, hyper-rounded co
 
 **Buttons:**
 
-- Primary: `bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 shadow-sm rounded-xl`
+- Primary: `bg-brand text-white hover:opacity-90 dark:bg-brand dark:text-black shadow-sm rounded-xl`
+- Secondary: `bg-secondary text-white hover:opacity-90 shadow-sm rounded-xl`
 - Ghost: `bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl`
 - Destructive: `bg-rose-50 text-rose-600 dark:bg-rose-900/20 rounded-xl`
 

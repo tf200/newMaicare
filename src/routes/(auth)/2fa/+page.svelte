@@ -86,7 +86,7 @@
 		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-teal-500/20 blur-[120px] dark:bg-teal-500/10"
 	></div>
 	<div
-		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-emerald-500/20 blur-[120px] dark:bg-emerald-500/10"
+		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-orange-500/15 blur-[120px]"
 	></div>
 
 	<!-- Main Card -->

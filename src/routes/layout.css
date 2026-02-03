@@ -12,6 +12,7 @@
 	--color-text-subtle: #a1a1aa;
 	--color-brand: #0d9488;
 	--color-brand-strong: #14b8a6;
+	--color-secondary: #f97316; /* Warm Coral */
 	--color-success: #10b981;
 	--color-error: #f43f5e;
 	--color-warning: #fbbf24;
@@ -22,7 +23,7 @@
 	--color-glass-border: rgba(228, 228, 231, 0.5);
 
 	/* Primary Button */
-	--color-btn-primary-bg: #18181b;
+	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #ffffff;
 
 	/* Radii & Shadows */
@@ -43,6 +44,7 @@
 	--color-text-subtle: #71717a;
 	--color-brand: #2dd4bf;
 	--color-brand-strong: #14b8a6;
+	--color-secondary: #fb923c; /* Lighter Coral for Dark Mode */
 	--color-success: #34d399;
 	--color-error: #fb7185;
 	--color-warning: #fbbf24;
@@ -51,7 +53,7 @@
 	--color-glass-surface: rgba(24, 24, 27, 0.8);
 	--color-glass-border: rgba(39, 39, 42, 0.5);
 
-	--color-btn-primary-bg: #fafafa;
+	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #000000;
 
 	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);

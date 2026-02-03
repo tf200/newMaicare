@@ -104,8 +104,8 @@
 </svelte:head>
 
 {#snippet tableFilters()}
-	<div class="flex items-center gap-3">
-		<div class="relative">
+	<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
@@ -113,14 +113,14 @@
 				type="text"
 				placeholder="Search..."
 				bind:value={searchTerm}
-				class="h-9 w-64 rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
 				onblur={applySearch}
 			/>
 		</div>
-		<div class="flex gap-1">
+		<div class="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
 			<button
 				class="rounded-lg bg-border/50 px-3 py-1.5 text-xs font-semibold text-text transition hover:bg-border"
 			>
@@ -166,9 +166,9 @@
 	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-border/50 px-2.5 py-1 font-semibold text-text"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/10 px-2.5 py-1 font-semibold text-[var(--color-secondary)]"
 			>
-				KVK <span class="font-normal text-text-muted">{row.kvkNumber}</span>
+				KVK <span class="font-normal text-[var(--color-secondary)]">{row.kvkNumber}</span>
 			</span>
 		{/if}
 		{#if row.btwNumber}
@@ -255,14 +255,14 @@
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Total orgs</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 				{data.pagination.count}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
 		</div>
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Locations</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-brand">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
 				{totalLocations}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
@@ -271,7 +271,9 @@
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				Registration
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div
+				class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+			>
 				{withRegistration}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW on file</p>

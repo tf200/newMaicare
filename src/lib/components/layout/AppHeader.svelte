@@ -146,7 +146,7 @@
 				>
 					<Bell class="h-5 w-5" />
 					<span
-						class="absolute top-2.5 right-2.5 flex h-2 w-2 animate-pulse rounded-full border-2 border-white bg-brand motion-reduce:animate-none dark:border-black"
+						class="absolute top-2.5 right-2.5 flex h-2 w-2 animate-pulse rounded-full border-2 border-white bg-[var(--color-secondary)] motion-reduce:animate-none dark:border-black"
 					></span>
 				</button>
 				<LanguageSwitcher />

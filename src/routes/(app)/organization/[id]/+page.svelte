@@ -98,8 +98,8 @@
 </script>
 
 {#snippet tableFilters()}
-	<div class="flex items-center gap-3">
-		<div class="relative">
+	<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
@@ -107,7 +107,7 @@
 				type="text"
 				placeholder="Search locations..."
 				bind:value={searchTerm}
-				class="h-9 w-64 rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
@@ -250,7 +250,7 @@
 					<Warehouse class="h-4 w-4" />
 				</span>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 				{formatNumber(counts.location_count)}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
@@ -258,11 +258,15 @@
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="flex items-center justify-between">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Clients</div>
-				<span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
+				<span
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400"
+				>
 					<Users class="h-4 w-4" />
 				</span>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-brand">
+			<div
+				class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+			>
 				{formatNumber(counts.client_count)}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
@@ -278,7 +282,7 @@
 					<Users class="h-4 w-4" />
 				</span>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 				{formatNumber(counts.employee_count)}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>

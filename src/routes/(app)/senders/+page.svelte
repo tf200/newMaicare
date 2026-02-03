@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { Eye, Pencil, Phone, Plus, Search, Send, UserRound } from 'lucide-svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
+	import EditSenderForm from '$lib/components/forms/EditSenderForm.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { PageData } from './$types';
 
@@ -20,11 +22,34 @@
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
 
+	const senderTypeMeta: Record<string, { label: string; className: string }> = {
+		main_provider: {
+			label: 'Main provider',
+			className: 'bg-brand/10 text-brand border border-brand/20'
+		},
+		local_authority: {
+			label: 'Local authority',
+			className: 'bg-border/60 text-text-muted border border-border'
+		},
+		particular_party: {
+			label: 'Private individual',
+			className:
+				'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20'
+		},
+		healthcare_institution: {
+			label: 'Healthcare institution',
+			className: 'bg-info/10 text-info border border-info/20'
+		}
+	};
+
 	const senders = $derived.by(() => data.senders);
 	const currentPage = $derived.by(() => data.pagination.page);
 	const pageSize = $derived.by(() => data.pagination.pageSize);
 	const appliedSearch = $derived.by(() => (data.pagination.filters.search ?? '').trim());
 	let searchTerm = $state('');
+	let showCreateSender = $state(false);
+	let showEditSender = $state(false);
+	let selectedSenderId = $state<string | null>(null);
 
 	onMount(() => {
 		searchTerm = appliedSearch;
@@ -49,6 +74,11 @@
 		updateQuery(1, trimmed);
 	};
 
+	const openEdit = (id: string) => {
+		selectedSenderId = id;
+		showEditSender = true;
+	};
+
 	const formatOptional = (value: string | null | undefined, fallback = '—') =>
 		value && value.trim().length > 0 ? value : fallback;
 
@@ -64,13 +94,16 @@
 			.join(' ')
 			.trim();
 
+	const getTypeMeta = (value: string) =>
+		senderTypeMeta[value] ?? { label: value || '—', className: 'bg-border/50 text-text-muted' };
+
 	const isRegistered = (sender: SenderRow) => Boolean(sender.kvkNumber || sender.btwNumber);
 
 	const totalClients = $derived.by(() =>
-		senders.reduce((total, sender) => total + sender.clientsCount, 0)
+		senders.reduce((total: number, sender: SenderRow) => total + sender.clientsCount, 0)
 	);
 	const registeredSenders = $derived.by(
-		() => senders.filter((sender) => isRegistered(sender)).length
+		() => senders.filter((sender: SenderRow) => isRegistered(sender)).length
 	);
 </script>
 
@@ -79,8 +112,8 @@
 </svelte:head>
 
 {#snippet tableFilters()}
-	<div class="flex items-center gap-3">
-		<div class="relative">
+	<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
@@ -88,7 +121,7 @@
 				type="text"
 				placeholder="Search senders..."
 				bind:value={searchTerm}
-				class="h-9 w-64 rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
@@ -99,6 +132,7 @@
 {/snippet}
 
 {#snippet nameCell(row: SenderRow)}
+	{@const typeMeta = getTypeMeta(row.types)}
 	<div class="flex items-center gap-3">
 		<div
 			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20"
@@ -108,9 +142,9 @@
 		<div class="space-y-1">
 			<p class="text-sm font-semibold text-text">{row.name}</p>
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-border/50 px-2.5 py-1 text-[11px] font-semibold text-text"
+				class="inline-flex w-fit items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold {typeMeta.className}"
 			>
-				{row.types}
+				{typeMeta.label}
 			</span>
 		</div>
 	</div>
@@ -134,9 +168,9 @@
 	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-border/50 px-2.5 py-1 font-semibold text-text"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/10 px-2.5 py-1 font-semibold text-[var(--color-secondary)]"
 			>
-				KVK <span class="font-normal text-text-muted">{row.kvkNumber}</span>
+				KVK <span class="font-normal text-[var(--color-secondary)]">{row.kvkNumber}</span>
 			</span>
 		{/if}
 		{#if row.btwNumber}
@@ -170,6 +204,7 @@
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title="Edit sender"
+			onclick={() => openEdit(row.id)}
 		>
 			<Pencil class="h-4 w-4" />
 		</button>
@@ -196,19 +231,26 @@
 					Centralize referral sources, contact points, and active client assignments in one place.
 				</p>
 			</div>
-			<Button class="gap-2" disabled>
+			<Button class="gap-2" onclick={() => (showCreateSender = true)}>
 				<Plus class="h-4 w-4" />
 				Add sender
 			</Button>
 		</div>
 	</header>
 
+	<CreateSenderForm bind:open={showCreateSender} onCreated={() => invalidateAll()} />
+	<EditSenderForm
+		bind:open={showEditSender}
+		senderId={selectedSenderId}
+		onUpdated={() => invalidateAll()}
+	/>
+
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				Total senders
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 				{data.pagination.count}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">Active referral partners</p>
@@ -217,14 +259,16 @@
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				Clients linked
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-brand">{totalClients}</div>
+			<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
+				{totalClients}
+			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">In the current view</p>
 		</div>
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				Registration
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 				{registeredSenders}
 			</div>
 			<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW in view</p>
@@ -244,6 +288,8 @@
 		filters={tableFilters}
 		emptyTitle="No senders found"
 		emptyDescription="Try a different search or add a new sender."
+		emptyActionLabel="Add sender"
+		emptyAction={() => (showCreateSender = true)}
 		cells={{
 			name: nameCell,
 			location: locationCell,

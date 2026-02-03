@@ -36,7 +36,13 @@
 			permission: 'CARE_COORDINATION.VIEW',
 			children: [
 				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' },
-				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' }
+				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' },
+				{ label: m.registrations(), href: '/registrations', permission: 'CARE_COORDINATION.VIEW' },
+				{
+					label: m.intake(),
+					href: '/care-coordination/intake',
+					permission: 'CARE_COORDINATION.VIEW'
+				}
 			]
 		}
 	];
@@ -115,7 +121,7 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-brand">.</span>
+				MaiCare<span class="text-[var(--color-secondary)]">.</span>
 			</span>
 		</button>
 
@@ -200,7 +206,7 @@
 	<!-- Footer / Support -->
 	<div class="p-3">
 		<button
-			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-border hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/20 active:scale-95"
+			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-[var(--color-secondary)] hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)]/20 active:scale-95"
 		>
 			<div
 				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-text-muted shadow-sm"

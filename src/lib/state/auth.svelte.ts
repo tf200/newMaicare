@@ -74,6 +74,9 @@ export class AuthState {
 	constructor() {
 		// Initialize from localStorage if available
 		this.init();
+		if (typeof window !== 'undefined') {
+			window.addEventListener('auth:refresh', () => this.init());
+		}
 	}
 
 	init() {
