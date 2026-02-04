@@ -25,20 +25,19 @@
 	const senderTypeMeta: Record<string, { label: string; className: string }> = {
 		main_provider: {
 			label: 'Main provider',
-			className: 'bg-brand/10 text-brand border border-brand/20'
+			className: 'bg-brand text-white border border-brand/70'
 		},
 		local_authority: {
 			label: 'Local authority',
-			className: 'bg-border/60 text-text-muted border border-border'
+			className: 'bg-border text-text-muted border border-border'
 		},
 		particular_party: {
 			label: 'Private individual',
-			className:
-				'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20'
+			className: 'bg-[var(--color-secondary)] text-white border border-[var(--color-secondary)]/70'
 		},
 		healthcare_institution: {
 			label: 'Healthcare institution',
-			className: 'bg-info/10 text-info border border-info/20'
+			className: 'bg-info text-white border border-info/70'
 		}
 	};
 
@@ -168,16 +167,16 @@
 	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/10 px-2.5 py-1 font-semibold text-[var(--color-secondary)]"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/70 bg-[var(--color-secondary)] px-2.5 py-1 font-semibold text-white"
 			>
-				KVK <span class="font-normal text-[var(--color-secondary)]">{row.kvkNumber}</span>
+				KVK <span class="font-normal text-white">{row.kvkNumber}</span>
 			</span>
 		{/if}
 		{#if row.btwNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full bg-brand/10 px-2.5 py-1 font-semibold text-brand"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-brand/70 bg-brand px-2.5 py-1 font-semibold text-white"
 			>
-				BTW <span class="font-normal text-brand">{row.btwNumber}</span>
+				BTW <span class="font-normal text-white">{row.btwNumber}</span>
 			</span>
 		{/if}
 		{#if !row.kvkNumber && !row.btwNumber}

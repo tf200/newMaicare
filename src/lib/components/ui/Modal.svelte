@@ -10,7 +10,7 @@
 		description,
 		children,
 		header = undefined,
-		footer,
+		footer = undefined,
 		size = 'md' as ModalSize,
 		class: className = ''
 	} = $props();

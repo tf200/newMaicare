@@ -5,17 +5,22 @@
 		Search,
 		Eye,
 		ClipboardCheck,
-		MapPin,
 		CheckCircle,
 		Clock
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
+	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import type { IntakeRow, IntakeFilters } from './+page';
+	import type { IntakeRow as IntakeRowData, IntakeFilters } from './+page';
 	import type { PaginationState } from '$lib/types/ui';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+
+	type IntakeRow = IntakeRowData & {
+		assignedLocationCity: string;
+		assignedLocationAddress: string;
+	};
 
 	let { data } = $props<{
 		data: {
@@ -52,22 +57,22 @@
 		{
 			key: 'careProtectedLiving',
 			label: 'Protected living',
-			className: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+			className: 'bg-emerald-600 text-white border border-emerald-700/60'
 		},
 		{
 			key: 'careAssistedIndependentLiving',
 			label: 'Assisted living',
-			className: 'bg-blue-500/10 text-blue-700 border border-blue-500/20'
+			className: 'bg-blue-600 text-white border border-blue-700/60'
 		},
 		{
 			key: 'careRoomTrainingCenter',
 			label: 'Room training',
-			className: 'bg-purple-500/10 text-purple-700 border border-purple-500/20'
+			className: 'bg-purple-600 text-white border border-purple-700/60'
 		},
 		{
 			key: 'careAmbulatoryGuidance',
 			label: 'Ambulatory guidance',
-			className: 'bg-amber-400/15 text-amber-700 border border-amber-400/30'
+			className: 'bg-amber-500 text-white border border-amber-600/60'
 		}
 	];
 
@@ -98,11 +103,13 @@
 	const getCareTags = (row: IntakeRow) => careOptions.filter((option) => Boolean(row[option.key]));
 
 	const statusStyles: Record<IntakeRow['intakeStatus'], string> = {
-		suitable: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
-		unsuitable: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
-		further_investigation: 'bg-amber-400/15 text-amber-700 border-amber-400/30',
-		possible_palcement_date: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		other: 'bg-border/70 text-text-muted border-border'
+		suitable: 'bg-emerald-600 text-white border-emerald-700/60 shadow-sm shadow-emerald-700/30',
+		unsuitable: 'bg-rose-600 text-white border-rose-700/60 shadow-sm shadow-rose-700/30',
+		further_investigation:
+			'bg-amber-500 text-white border-amber-600/60 shadow-sm shadow-amber-600/30',
+		possible_palcement_date:
+			'bg-blue-600 text-white border-blue-700/60 shadow-sm shadow-blue-700/30',
+		other: 'bg-border text-text-muted border-border'
 	};
 
 	const statusLabels: Record<IntakeRow['intakeStatus'], string> = {
@@ -121,6 +128,23 @@
 		{ value: 'possible_palcement_date', label: 'Possible placement date' },
 		{ value: 'other', label: 'Other' }
 	];
+
+	const filterGroups = $derived([
+		{
+			label: 'Status',
+			items: statusOptions
+				.filter((o) => o.value !== '')
+				.map((o) => ({ key: o.value, label: o.label }))
+		}
+	]);
+
+	const currentDropdownFilters = $derived.by(() => {
+		const state: Record<string, boolean> = {};
+		if (filters.status) {
+			state[filters.status] = true;
+		}
+		return state;
+	});
 
 	const buildQuery = (pageValue: number, nextFilters: IntakeFilters) => {
 		const params = new URLSearchParams();
@@ -141,6 +165,24 @@
 		const nextQuery = buildQuery(pageValue, nextFilters);
 		if (page.url.searchParams.toString() === nextQuery) return;
 		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+	};
+
+	const handleFilterUpdate = (newState: Record<string, boolean | string | number | undefined>) => {
+		const activeKeys = Object.entries(newState)
+			.filter(([_, v]) => Boolean(v))
+			.map(([k]) => k);
+
+		let newStatus: IntakeFilters['status'] = '';
+
+		if (activeKeys.length === 1) {
+			newStatus = activeKeys[0] as IntakeFilters['status'];
+		} else if (activeKeys.length > 1) {
+			const currentStatus = filters.status;
+			const newItem = activeKeys.find((k) => k !== currentStatus);
+			newStatus = (newItem || activeKeys[activeKeys.length - 1]) as IntakeFilters['status'];
+		}
+
+		setFilters({ ...filters, status: newStatus });
 	};
 
 	const applySearch = () => {
@@ -170,19 +212,14 @@
 			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			{#each statusOptions as option (option.value)}
-				<button
-					onclick={() => setFilters({ ...filters, status: option.value })}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-					option.value
-						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-						: 'border border-border text-text-muted hover:text-text'}"
-				>
-					{option.label}
-				</button>
-			{/each}
-		</div>
+		<FilterDropdown
+			filters={currentDropdownFilters}
+			groups={filterGroups}
+			onUpdate={handleFilterUpdate}
+			onClear={() => setFilters({ ...filters, status: '' })}
+			title="Filter by status"
+			buttonLabel="Status"
+		/>
 	</div>
 {/snippet}
 
@@ -222,14 +259,14 @@
 {#snippet goalAssessmentCell(row: IntakeRow)}
 	{#if row.goalAssessmentStatus === 'done'}
 		<span
-			class="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"
+			class="inline-flex items-center rounded-full border border-emerald-700/60 bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-emerald-700/30"
 		>
 			<CheckCircle class="mr-1.5 h-3.5 w-3.5" />
 			Done
 		</span>
 	{:else}
 		<span
-			class="inline-flex items-center rounded-full border border-secondary/20 bg-secondary/10 px-2.5 py-1 text-xs font-semibold text-secondary shadow-sm shadow-secondary/10"
+			class="inline-flex items-center rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-secondary/30"
 		>
 			<Clock class="mr-1.5 h-3.5 w-3.5" />
 			Pending
@@ -255,9 +292,9 @@
 {/snippet}
 
 {#snippet locationCell(row: IntakeRow)}
-	<div class="flex items-center gap-2 text-sm text-text-muted">
-		<MapPin class="h-4 w-4 text-text-subtle" />
-		<span>{row.assignedLocation}</span>
+	<div class="space-y-1">
+		<span class="text-sm font-medium text-text-muted">{row.assignedLocationCity}</span>
+		<span class="block text-xs text-text-subtle">{row.assignedLocationAddress}</span>
 	</div>
 {/snippet}
 

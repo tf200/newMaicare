@@ -19,7 +19,8 @@ export interface IntakeRow {
 	careAssistedIndependentLiving: boolean;
 	careRoomTrainingCenter: boolean;
 	careAmbulatoryGuidance: boolean;
-	assignedLocation: string;
+	assignedLocationCity: string;
+	assignedLocationAddress: string;
 }
 
 export interface IntakeFilters {
@@ -27,33 +28,41 @@ export interface IntakeFilters {
 	status: '' | IntakeConclusionEnum;
 }
 
-const formatLocation = (address?: AssignedLocationAddress | null) => {
-	if (!address) return '—';
+const formatLocationParts = (address?: AssignedLocationAddress | null) => {
+	if (!address) return { city: '—', address: '—' };
 
 	const name = address.name?.trim();
 	const street = [address.street, address.house_number, address.house_number_addition]
 		.filter(Boolean)
 		.join(' ');
 	const city = [address.postal_code, address.city].filter(Boolean).join(' ');
-	const parts = [name, street, city].filter(Boolean);
+	const addressLine = [name, street].filter(Boolean).join(', ');
 
-	return parts.length ? parts.join(', ') : '—';
+	return {
+		city: city || '—',
+		address: addressLine || '—'
+	};
 };
 
-const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => ({
-	id: item.id,
-	clientFirstName: item.client_first_name,
-	clientLastName: item.client_last_name,
-	clientBsnNumber: item.client_bsn_number,
-	intakeDate: item.date_of_intake ?? null,
-	intakeStatus: item.intake_status,
-	goalAssessmentStatus: item.goal_assessment_done ? 'done' : 'pending',
-	careProtectedLiving: item.care_type === 'protected_living',
-	careAssistedIndependentLiving: item.care_type === 'supported_independent_living',
-	careRoomTrainingCenter: item.care_type === 'training_center',
-	careAmbulatoryGuidance: item.care_type === 'ambulatory_support',
-	assignedLocation: formatLocation(item.assigned_location_address)
-});
+const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
+	const locationParts = formatLocationParts(item.assigned_location_address);
+
+	return {
+		id: item.id,
+		clientFirstName: item.client_first_name,
+		clientLastName: item.client_last_name,
+		clientBsnNumber: item.client_bsn_number,
+		intakeDate: item.date_of_intake ?? null,
+		intakeStatus: item.intake_status,
+		goalAssessmentStatus: item.goal_assessment_done ? 'done' : 'pending',
+		careProtectedLiving: item.care_type === 'protected_living',
+		careAssistedIndependentLiving: item.care_type === 'supported_independent_living',
+		careRoomTrainingCenter: item.care_type === 'training_center',
+		careAmbulatoryGuidance: item.care_type === 'ambulatory_support',
+		assignedLocationCity: locationParts.city,
+		assignedLocationAddress: locationParts.address
+	};
+};
 
 export const load: PageLoad = async ({ url }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;

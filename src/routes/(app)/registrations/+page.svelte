@@ -23,12 +23,10 @@
 	const pageSize = $derived.by(() => pagination.pageSize);
 
 	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
-	let searchDraft = $state('');
-	let searchTerm = $derived({
-		get: () => (searchDraft !== '' ? searchDraft : appliedSearch),
-		set: (value: string) => {
-			searchDraft = value;
-		}
+	let searchTerm = $state('');
+
+	$effect(() => {
+		searchTerm = appliedSearch;
 	});
 
 	const defaultFilters: RegistrationFilters = {
@@ -84,41 +82,43 @@
 		{
 			key: 'careProtectedLiving',
 			label: 'Protected living',
-			className: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+			className: 'bg-emerald-600 text-white border border-emerald-700/60'
 		},
 		{
 			key: 'careAssistedIndependentLiving',
 			label: 'Assisted living',
-			className: 'bg-blue-500/10 text-blue-700 border border-blue-500/20'
+			className: 'bg-blue-600 text-white border border-blue-700/60'
 		},
 		{
 			key: 'careRoomTrainingCenter',
 			label: 'Room training',
-			className: 'bg-purple-500/10 text-purple-700 border border-purple-500/20'
+			className: 'bg-purple-600 text-white border border-purple-700/60'
 		},
 		{
 			key: 'careAmbulatoryGuidance',
 			label: 'Ambulatory guidance',
-			className: 'bg-amber-400/15 text-amber-700 border border-amber-400/30'
+			className: 'bg-amber-500 text-white border border-amber-600/60'
 		}
 	];
 
 	const statusMeta: Record<RegistrationRow['formStatus'], { label: string; className: string }> = {
 		pending: {
 			label: m.pending(),
-			className:
-				'bg-secondary/10 text-secondary border border-secondary/20 shadow-sm shadow-secondary/10'
+			className: 'bg-secondary text-white border border-secondary/70 shadow-sm shadow-secondary/30'
 		},
 		processed: {
 			label: m.processed(),
-			className: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+			className:
+				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
 		}
 	};
 
 	const riskTone = (risk: number) => {
-		if (risk >= 4) return 'bg-rose-500/10 text-rose-600 border border-rose-500/20';
-		if (risk >= 2) return 'bg-amber-400/15 text-amber-600 border border-amber-400/30';
-		return 'bg-border/60 text-text-muted border border-border';
+		if (risk >= 4)
+			return 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30';
+		if (risk >= 2)
+			return 'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30';
+		return 'bg-border text-text-muted border border-border';
 	};
 
 	const columns: DataTableColumn[] = [
@@ -200,12 +200,11 @@
 
 	const applySearch = () => {
 		const nextSearch = searchTerm.trim();
-		searchDraft = '';
 		setFilters({ ...filters, search: nextSearch });
 	};
 
 	const clearFilters = () => {
-		searchDraft = '';
+		searchTerm = '';
 		updateQuery(1, { ...defaultFilters });
 	};
 </script>
@@ -263,7 +262,7 @@
 			{filters}
 			groups={filterGroups}
 			title="Filter registrations"
-			onUpdate={(nextFilters) => setFilters(nextFilters as RegistrationFilters)}
+			onUpdate={(nextFilters) => setFilters(nextFilters as unknown as RegistrationFilters)}
 			onClear={clearFilters}
 		/>
 	</div>
