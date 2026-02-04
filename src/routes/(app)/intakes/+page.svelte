@@ -84,25 +84,67 @@
 	const formatClientName = (row: IntakeRow) =>
 		`${row.clientFirstName} ${row.clientLastName}`.trim();
 
-	const formatDate = (value: string) =>
-		new Date(value).toLocaleDateString('nl-NL', {
+	const formatDate = (value?: string | null) => {
+		if (!value) return '—';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return '—';
+		return date.toLocaleDateString('nl-NL', {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
 		});
+	};
 
 	const getCareTags = (row: IntakeRow) => careOptions.filter((option) => Boolean(row[option.key]));
 
 	const statusStyles: Record<IntakeRow['intakeStatus'], string> = {
-		scheduled: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		in_progress: 'bg-amber-400/15 text-amber-700 border-amber-400/30',
-		completed: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+		suitable: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+		unsuitable: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+		further_investigation: 'bg-amber-400/15 text-amber-700 border-amber-400/30',
+		possible_palcement_date: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
+		other: 'bg-border/70 text-text-muted border-border'
 	};
 
 	const statusLabels: Record<IntakeRow['intakeStatus'], string> = {
-		scheduled: m.scheduled(),
-		in_progress: 'In Progress',
-		completed: m.processed()
+		suitable: 'Suitable',
+		unsuitable: 'Unsuitable',
+		further_investigation: 'Further investigation',
+		possible_palcement_date: 'Possible placement date',
+		other: 'Other'
+	};
+
+	const statusOptions: Array<{ value: IntakeFilters['status']; label: string }> = [
+		{ value: '', label: m.all() },
+		{ value: 'suitable', label: 'Suitable' },
+		{ value: 'unsuitable', label: 'Unsuitable' },
+		{ value: 'further_investigation', label: 'Further investigation' },
+		{ value: 'possible_palcement_date', label: 'Possible placement date' },
+		{ value: 'other', label: 'Other' }
+	];
+
+	const buildQuery = (pageValue: number, nextFilters: IntakeFilters) => {
+		const params = new URLSearchParams();
+		params.set('page', String(pageValue));
+		params.set('page_size', String(pageSize));
+
+		if (nextFilters.status) params.set('status', nextFilters.status);
+		if (nextFilters.search) params.set('search', nextFilters.search);
+
+		return params.toString();
+	};
+
+	const setFilters = (nextFilters: IntakeFilters) => {
+		updateQuery(1, nextFilters);
+	};
+
+	const updateQuery = (pageValue: number, nextFilters: IntakeFilters) => {
+		const nextQuery = buildQuery(pageValue, nextFilters);
+		if (page.url.searchParams.toString() === nextQuery) return;
+		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+	};
+
+	const applySearch = () => {
+		setFilters({ ...filters, search: searchTerm.trim() });
 	};
 </script>
 
@@ -129,31 +171,17 @@
 		</div>
 
 		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => setFilters({ ...filters, status: '' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status === ''
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.all()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'pending' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-				'pending'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.pending()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'done' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status === 'done'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				Completed
-			</button>
+			{#each statusOptions as option (option.value)}
+				<button
+					onclick={() => setFilters({ ...filters, status: option.value })}
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
+					option.value
+						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+						: 'border border-border text-text-muted hover:text-text'}"
+				>
+					{option.label}
+				</button>
+			{/each}
 		</div>
 	</div>
 {/snippet}

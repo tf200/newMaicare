@@ -65,19 +65,9 @@
 			<!-- Header Section -->
 			<div class="mb-10 text-center" in:fly={{ ...transition, delay: 100 }}>
 				<div
-					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-btn-primary-bg shadow-lg transition-transform duration-500 group-hover:scale-110"
+					class="mx-auto mb-4 flex h-20 w-20 items-center justify-center transition-transform duration-500 group-hover:scale-110"
 				>
-					<svg
-						class="h-8 w-8 text-btn-primary-text"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-					</svg>
+					<img src="/logo.webp" alt="MaiCare" class="h-16 w-16 object-contain" loading="eager" />
 				</div>
 				<h1 class="text-3xl font-bold tracking-tight text-text">
 					{m.welcome_back()}

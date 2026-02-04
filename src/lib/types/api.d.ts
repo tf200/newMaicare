@@ -440,6 +440,37 @@ export interface ListRegistrationFormsParams {
 	riskDayNightRhythm?: boolean;
 }
 
+export interface AssignedLocationAddress {
+	name?: string | null;
+	street?: string | null;
+	house_number?: string | null;
+	house_number_addition?: string | null;
+	postal_code?: string | null;
+	city?: string | null;
+}
+
+export interface ListIntakeFormsResponse {
+	id: string;
+	registration_form_id: string;
+	client_first_name: string;
+	client_last_name: string;
+	client_bsn_number: string;
+	intake_status: IntakeConclusionEnum;
+	goal_assessment_done: boolean;
+	care_type: IntakeCareType;
+	assigned_location_id?: string | null;
+	assigned_location_address?: AssignedLocationAddress | null;
+	date_of_intake?: string | null;
+}
+
+export interface ListIntakeFormsParams {
+	page?: number;
+	pageSize?: number;
+	search?: string;
+	status?: IntakeConclusionEnum;
+	sortOrder?: 'asc' | 'desc';
+}
+
 export interface CreateIntakeRequest {
 	registration_form_id: string; // uuid
 	date_of_intake: string; // time.Time (ISO string)

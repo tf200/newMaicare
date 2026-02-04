@@ -40,7 +40,7 @@
 				{ label: m.registrations(), href: '/registrations', permission: 'CARE_COORDINATION.VIEW' },
 				{
 					label: m.intake(),
-					href: '/care-coordination/intake',
+					href: '/intakes',
 					permission: 'CARE_COORDINATION.VIEW'
 				}
 			]
@@ -109,9 +109,9 @@
 		>
 			<!-- Logo Icon -->
 			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-btn-primary-bg text-btn-primary-text transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
+				class="flex h-10 w-10 shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
 			>
-				<span class="text-xs font-bold tracking-tighter">MC</span>
+				<img src="/logo.webp" alt="MaiCare" class="h-10 w-10 object-contain" loading="eager" />
 			</div>
 
 			<!-- Logo Text -->
@@ -121,7 +121,7 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-[var(--color-secondary)]">.</span>
+				MaiCare<span class="text-secondary">.</span>
 			</span>
 		</button>
 
@@ -206,7 +206,7 @@
 	<!-- Footer / Support -->
 	<div class="p-3">
 		<button
-			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-[var(--color-secondary)] hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)]/20 active:scale-95"
+			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-secondary hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-secondary/20 active:scale-95"
 		>
 			<div
 				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-text-muted shadow-sm"

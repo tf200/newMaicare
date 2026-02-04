@@ -3,8 +3,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import Filters from './Filters.svelte';
-	import type { RegistrationRow, RegistrationFilters } from './+page';
+	import Filters from '$lib/components/ui/FilterDropdown.svelte';
+	import type { RegistrationRow } from './+page';
+	import type { RegistrationFilters } from '$lib/types/registrations';
 	import type { PaginationState } from '$lib/types/ui';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -22,10 +23,12 @@
 	const pageSize = $derived.by(() => pagination.pageSize);
 
 	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
-	let searchTerm = $state('');
-
-	$effect(() => {
-		searchTerm = appliedSearch;
+	let searchDraft = $state('');
+	let searchTerm = $derived({
+		get: () => (searchDraft !== '' ? searchDraft : appliedSearch),
+		set: (value: string) => {
+			searchDraft = value;
+		}
 	});
 
 	const defaultFilters: RegistrationFilters = {
@@ -41,6 +44,36 @@
 		riskSexualBehavior: undefined,
 		riskDayNightRhythm: undefined
 	};
+
+	const filterGroups: Array<{
+		label: string;
+		items: Array<{ key: keyof RegistrationFilters; label: string }>;
+	}> = [
+		{
+			label: 'Behavioral Risks',
+			items: [
+				{ key: 'riskAggressiveBehavior', label: 'Aggressive behavior' },
+				{ key: 'riskSexualBehavior', label: 'Sexual behavior' },
+				{ key: 'riskFlightBehavior', label: 'Flight behavior' }
+			]
+		},
+		{
+			label: 'Clinical Factors',
+			items: [
+				{ key: 'riskPsychiatricIssues', label: 'Psychiatric issues' },
+				{ key: 'riskSuicidalSelfharm', label: 'Suicidal / Self-harm' },
+				{ key: 'riskSubstanceAbuse', label: 'Substance abuse' },
+				{ key: 'riskDayNightRhythm', label: 'Day/night rhythm' }
+			]
+		},
+		{
+			label: 'Safety & Legal',
+			items: [
+				{ key: 'riskCriminalHistory', label: 'Criminal history' },
+				{ key: 'riskWeaponPossession', label: 'Weapon possession' }
+			]
+		}
+	];
 
 	let filters = $derived.by(() => ({
 		...defaultFilters,
@@ -166,10 +199,13 @@
 	};
 
 	const applySearch = () => {
-		setFilters({ ...filters, search: searchTerm.trim() });
+		const nextSearch = searchTerm.trim();
+		searchDraft = '';
+		setFilters({ ...filters, search: nextSearch });
 	};
 
 	const clearFilters = () => {
+		searchDraft = '';
 		updateQuery(1, { ...defaultFilters });
 	};
 </script>
@@ -223,7 +259,13 @@
 
 		<div class="hidden h-6 w-px bg-border sm:block"></div>
 
-		<Filters {filters} onUpdate={setFilters} onClear={clearFilters} />
+		<Filters
+			{filters}
+			groups={filterGroups}
+			title="Filter registrations"
+			onUpdate={(nextFilters) => setFilters(nextFilters as RegistrationFilters)}
+			onClear={clearFilters}
+		/>
 	</div>
 {/snippet}
 

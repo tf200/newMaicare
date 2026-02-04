@@ -1,63 +1,52 @@
 <script lang="ts">
-	import { Filter, X, Check, ChevronDown } from 'lucide-svelte';
-	import { slide, scale } from 'svelte/transition';
-	import type { RegistrationFilters } from './+page';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { Filter, Check, ChevronDown } from 'lucide-svelte';
+	import { scale } from 'svelte/transition';
 
-	let { filters, onUpdate, onClear } = $props<{
-		filters: RegistrationFilters;
-		onUpdate: (newFilters: RegistrationFilters) => void;
-		onClear: () => void;
+	type FilterItem = {
+		key: string;
+		label: string;
+	};
+
+	type FilterGroup = {
+		label: string;
+		items: FilterItem[];
+	};
+
+	type FiltersState = Record<string, boolean | string | number | undefined>;
+
+	let {
+		filters,
+		groups,
+		onUpdate,
+		onClear,
+		title = 'Filters',
+		buttonLabel = 'Filters',
+		clearLabel = 'Clear all'
+	} = $props<{
+		filters: FiltersState;
+		groups: FilterGroup[];
+		onUpdate: (newFilters: FiltersState) => void;
+		onClear?: () => void;
+		title?: string;
+		buttonLabel?: string;
+		clearLabel?: string;
 	}>();
 
 	let isOpen = $state(false);
-
-	const groups = [
-		{
-			label: 'Behavioral Risks',
-			items: [
-				{ key: 'riskAggressiveBehavior', label: 'Aggressive behavior' },
-				{ key: 'riskSexualBehavior', label: 'Sexual behavior' },
-				{ key: 'riskFlightBehavior', label: 'Flight behavior' }
-			]
-		},
-		{
-			label: 'Clinical Factors',
-			items: [
-				{ key: 'riskPsychiatricIssues', label: 'Psychiatric issues' },
-				{ key: 'riskSuicidalSelfharm', label: 'Suicidal / Self-harm' },
-				{ key: 'riskSubstanceAbuse', label: 'Substance abuse' },
-				{ key: 'riskDayNightRhythm', label: 'Day/night rhythm' }
-			]
-		},
-		{
-			label: 'Safety & Legal',
-			items: [
-				{ key: 'riskCriminalHistory', label: 'Criminal history' },
-				{ key: 'riskWeaponPossession', label: 'Weapon possession' }
-			]
-		}
-	] as const;
 
 	function toggleOpen() {
 		isOpen = !isOpen;
 	}
 
-	function handleOutsideClick(node: HTMLElement) {
-		const handleClick = (e: MouseEvent) => {
-			if (!node.contains(e.target as Node) && isOpen) {
-				isOpen = false;
-			}
-		};
-		document.addEventListener('click', handleClick, true);
-		return {
-			destroy() {
-				document.removeEventListener('click', handleClick, true);
-			}
-		};
+	function handleDocumentClick(event: MouseEvent) {
+		if (!isOpen) return;
+		const target = event.target as Element | null;
+		if (!target?.closest('[data-filter-root]')) {
+			isOpen = false;
+		}
 	}
 
-	function toggleRisk(key: keyof RegistrationFilters) {
+	function toggleFilter(key: string) {
 		const current = filters[key] as boolean | undefined;
 		// Toggle between true (active) and undefined (inactive)
 		// This prevents sending ?param=false which might be interpreted as "must not be true"
@@ -69,14 +58,16 @@
 		let count = 0;
 		for (const group of groups) {
 			for (const item of group.items) {
-				if (filters[item.key as keyof RegistrationFilters]) count++;
+				if (filters[item.key]) count++;
 			}
 		}
 		return count;
 	});
 </script>
 
-<div class="relative inline-block w-full text-left sm:w-auto" use:handleOutsideClick>
+<svelte:document onclick={handleDocumentClick} />
+
+<div class="relative inline-block w-full text-left sm:w-auto" data-filter-root>
 	<button
 		onclick={toggleOpen}
 		class="group inline-flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-auto sm:justify-start {isOpen
@@ -85,7 +76,7 @@
 	>
 		<div class="flex items-center gap-2">
 			<Filter class="h-4 w-4" />
-			<span>Filters</span>
+			<span>{buttonLabel}</span>
 			{#if activeFilterCount > 0}
 				<span
 					class="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand/10 px-1 text-[10px] font-bold text-brand"
@@ -103,19 +94,18 @@
 			class="absolute top-full left-0 z-50 mt-2 w-full origin-top-right rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5 focus:outline-none sm:right-0 sm:left-auto sm:w-[340px]"
 		>
 			<div class="flex items-center justify-between border-b border-border px-4 py-3">
-				<h3 class="text-sm font-semibold text-text">Filter registrations</h3>
-				{#if activeFilterCount > 0}
+				<h3 class="text-sm font-semibold text-text">{title}</h3>
+				{#if onClear && activeFilterCount > 0}
 					<button
-						onclick={onClear}
+						onclick={() => onClear?.()}
 						class="text-xs font-medium text-text-muted hover:text-brand hover:underline"
 					>
-						Clear all
+						{clearLabel}
 					</button>
 				{/if}
 			</div>
 
 			<div class="max-h-[60vh] overflow-y-auto p-4">
-				<!-- Risk Factors -->
 				<div class="space-y-6">
 					{#each groups as group (group.label)}
 						<div>
@@ -124,9 +114,9 @@
 							</h4>
 							<div class="space-y-2">
 								{#each group.items as item (item.key)}
-									{@const isChecked = filters[item.key as keyof RegistrationFilters]}
+									{@const isChecked = Boolean(filters[item.key])}
 									<button
-										onclick={() => toggleRisk(item.key as keyof RegistrationFilters)}
+										onclick={() => toggleFilter(item.key)}
 										class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
 									>
 										<span class={isChecked ? 'font-medium text-text' : 'text-text-muted'}>

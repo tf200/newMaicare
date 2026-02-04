@@ -2,6 +2,7 @@ import type { PageLoad } from './$types';
 import { listRegistrationForms } from '$lib/api/registration';
 import type { ListRegistrationFormsResponse } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import type { RegistrationFilters } from '$lib/types/registrations';
 
 export interface RegistrationRow {
 	id: string;
@@ -18,20 +19,6 @@ export interface RegistrationRow {
 	formStatus: 'pending' | 'processed';
 	intakeFormId?: string | null;
 	submittedAt: string;
-}
-
-export interface RegistrationFilters {
-	status: '' | 'pending' | 'processed';
-	search: string | undefined;
-	riskAggressiveBehavior?: boolean;
-	riskSuicidalSelfharm?: boolean;
-	riskSubstanceAbuse?: boolean;
-	riskPsychiatricIssues?: boolean;
-	riskCriminalHistory?: boolean;
-	riskFlightBehavior?: boolean;
-	riskWeaponPossession?: boolean;
-	riskSexualBehavior?: boolean;
-	riskDayNightRhythm?: boolean;
 }
 
 const mapRegistration = (item: ListRegistrationFormsResponse): RegistrationRow => ({
