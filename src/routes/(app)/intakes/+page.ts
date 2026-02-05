@@ -71,35 +71,60 @@ export const load: PageLoad = async ({ url }) => {
 	const normalizedSearch = search.trim();
 	const status = (url.searchParams.get('status') ?? '') as IntakeFilters['status'];
 
-	const response = await listIntakeForms({
-		page,
-		pageSize,
-		search: normalizedSearch || undefined,
-		status: status === '' ? undefined : status
-	});
-
-	const { count, page_size, results, next, previous } = response.data;
-	const mapped = results.map(mapIntake);
-	const completedCount = mapped.filter((row) => row.goalAssessmentStatus === 'done').length;
-	const pendingCount = mapped.length - completedCount;
-
-	return {
-		intakes: mapped,
-		stats: {
-			total: count,
-			completed: completedCount,
-			pending: pendingCount
-		},
-		pagination: {
-			count,
+	try {
+		const response = await listIntakeForms({
 			page,
-			pageSize: page_size || pageSize,
-			next,
-			previous,
-			filters: {
-				search: normalizedSearch,
-				status
-			}
-		} satisfies PaginationState<IntakeFilters>
-	};
+			pageSize,
+			search: normalizedSearch || undefined,
+			status: status === '' ? undefined : status
+		});
+
+		const { count, page_size, results, next, previous } = response.data;
+		const mapped = results.map(mapIntake);
+		const completedCount = mapped.filter((row) => row.goalAssessmentStatus === 'done').length;
+		const pendingCount = mapped.length - completedCount;
+
+		return {
+			intakes: mapped,
+			stats: {
+				total: count,
+				completed: completedCount,
+				pending: pendingCount
+			},
+			pagination: {
+				count,
+				page,
+				pageSize: page_size || pageSize,
+				next,
+				previous,
+				filters: {
+					search: normalizedSearch,
+					status
+				}
+			} satisfies PaginationState<IntakeFilters>,
+			loadError: null
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to load intakes.';
+		return {
+			intakes: [],
+			stats: {
+				total: 0,
+				completed: 0,
+				pending: 0
+			},
+			pagination: {
+				count: 0,
+				page,
+				pageSize,
+				next: null,
+				previous: null,
+				filters: {
+					search: normalizedSearch,
+					status
+				}
+			} satisfies PaginationState<IntakeFilters>,
+			loadError: message
+		};
+	}
 };

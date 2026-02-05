@@ -471,6 +471,62 @@ export interface ListIntakeFormsParams {
 	sortOrder?: 'asc' | 'desc';
 }
 
+export interface IntakeFormLocationDetails {
+	name: string | null;
+	street: string | null;
+	house_number: string | null;
+	house_number_addition: string | null;
+	postal_code: string | null;
+	city: string | null;
+}
+
+export interface IntakeGoalTopic {
+	assessment_id: string; // uuid
+	topic_id: string; // uuid
+	topic_name: string;
+	current_level: number;
+	proposed_goals: MaturityGoal[];
+	notes: string | null;
+}
+
+export interface GetIntakeFormResponse {
+	id: string; // uuid
+	registration_form_id: string; // uuid
+	date_of_intake: string; // time.Time
+	care_type: IntakeCareType;
+	intake_participants: IntakeParticipantsEnum[];
+	family_situation: string | null;
+	psychological_state: string | null;
+	self_sufficiency: number;
+	sender_id: string | null;
+	assigned_location_id: string | null;
+	risk_assessment: string | null;
+	intake_conclusion: IntakeConclusionEnum;
+	intake_conclusion_notes: string | null;
+	evaluation_intervals_weeks: number;
+	signature: string | null;
+	created_at: string;
+	updated_at: string;
+	client_first_name: string;
+	client_last_name: string;
+	client_bsn_number: string;
+	desired_goals: string[];
+	sender_name: string | null;
+	location: IntakeFormLocationDetails | null;
+	intake_goals_assigned: IntakeGoalTopic[];
+}
+
+export interface CreateIntakeFormGoalItem {
+	topic_id: string; // uuid
+	current_level: number;
+	proposed_goals: MaturityGoal[];
+	notes: string | null;
+}
+
+export interface CreateIntakeFormGoalsRequest {
+	assessments: CreateIntakeFormGoalItem[];
+}
+
 export interface CreateIntakeRequest {
 	registration_form_id: string; // uuid
 	date_of_intake: string; // time.Time (ISO string)
@@ -497,14 +553,6 @@ export interface MaturityGoal {
 	title: string;
 	description: string;
 	priority: 'high' | 'medium' | 'low';
-}
-
-export interface MaturityAssessment {
-	id: string;
-	topic_name: string;
-	current_level: number;
-	notes: string | null;
-	proposed_goals: MaturityGoal[];
 }
 
 export interface MaturityMatrixLevelDescription {

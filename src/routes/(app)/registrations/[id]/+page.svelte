@@ -290,7 +290,7 @@
 					</button>
 				{:else if registration.intake_form_id}
 					<a
-						href={`/intakes/${registration.intake_form_id}/assessments`}
+						href={`/intakes/${registration.intake_form_id}`}
 						class="hover:bg-brand-hover inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30"
 					>
 						<ClipboardCheck class="h-4 w-4" />

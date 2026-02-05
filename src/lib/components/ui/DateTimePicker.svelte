@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock } from 'lucide-svelte';
 	import { scale, fade, fly } from 'svelte/transition';
+	import { portal } from '$lib/actions/portal';
+	import { floating } from '$lib/actions/floating';
 
 	let {
 		label = undefined,
@@ -12,6 +14,8 @@
 	type View = 'days' | 'months' | 'years';
 
 	let isOpen = $state(false);
+	let triggerEl = $state<HTMLElement>();
+	let dropdownEl = $state<HTMLElement>();
 	// Parse the initial value or default to now
 	let viewDate = $state(value ? new Date(value) : new Date());
 
@@ -134,7 +138,8 @@
 
 	function handleOutsideClick(node: HTMLElement) {
 		const handleClick = (e: MouseEvent) => {
-			if (!node.contains(e.target as Node)) {
+			const target = e.target as Node;
+			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
 				isOpen = false;
 				view = 'days';
 			}
@@ -169,6 +174,7 @@
 	<div class="relative">
 		<button
 			{id}
+			bind:this={triggerEl}
 			type="button"
 			onclick={() => (isOpen = !isOpen)}
 			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
@@ -181,9 +187,12 @@
 			{/if}
 		</button>
 
-		{#if isOpen}
+		{#if isOpen && triggerEl}
 			<div
-				class="absolute z-50 mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
+				bind:this={dropdownEl}
+				use:portal
+				use:floating={{ anchor: triggerEl }}
+				class="z-[9999] mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
 				transition:scale={{ start: 0.95, duration: 150 }}
 			>
 				<!-- Calendar Section -->

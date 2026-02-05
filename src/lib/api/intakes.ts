@@ -3,7 +3,9 @@ import type {
 	ApiEnvelope,
 	CreateIntakeRequest,
 	IntakeFormResponse,
+	GetIntakeFormResponse,
 	GenerateGoalsResponse,
+	CreateIntakeFormGoalsRequest,
 	ListIntakeFormsParams,
 	ListIntakeFormsResponse,
 	PaginatedResponse
@@ -44,5 +46,13 @@ export const intakes = {
 			`/intake_maturity/${assessmentId}/generate_goals`,
 			{}
 		);
+	},
+
+	getById: (id: string) => {
+		return api.get<ApiEnvelope<GetIntakeFormResponse>>(`/intake_forms/${id}`);
+	},
+
+	updateGoals: (id: string, data: CreateIntakeFormGoalsRequest) => {
+		return api.put<ApiEnvelope<GetIntakeFormResponse>>(`/intake_forms/${id}/goals`, data);
 	}
 };

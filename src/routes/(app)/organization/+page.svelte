@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import CreateOrganizationForm from '$lib/components/forms/CreateOrganizationForm.svelte';
 	import EditOrganizationForm from '$lib/components/forms/EditOrganizationForm.svelte';
 	import { getOrganization } from '$lib/api/organizations';
@@ -41,6 +42,7 @@
 	const currentPage = $derived.by(() => data.pagination.page);
 	const pageSize = $derived.by(() => data.pagination.pageSize);
 	const appliedSearch = $derived.by(() => (data.pagination.filters.name ?? '').trim());
+	const loadError = $derived.by(() => data.loadError);
 	let searchTerm = $state('');
 
 	onMount(() => {
@@ -238,6 +240,10 @@
 			</Button>
 		</div>
 	</header>
+
+	{#if loadError}
+		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
+	{/if}
 
 	<CreateOrganizationForm bind:open={showCreateOrg} onCreated={() => invalidateAll()} />
 	{#if showEditOrg}

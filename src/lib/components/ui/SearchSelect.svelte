@@ -2,47 +2,49 @@
 	import { Check, ChevronsUpDown, Loader2, Search, X } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import type { Snippet } from 'svelte';
+	import { portal } from '$lib/actions/portal';
+	import { floating } from '$lib/actions/floating';
 
 	// Generic option type
 	type Option = any;
 
-	interface Props {
-		label?: string;
-		placeholder?: string;
-		searchPlaceholder?: string;
-		value?: string; // ID
-		displayValue?: string; // Text to show when selected (initial)
-		error?: string;
-		id?: string;
-		class?: string;
-		disabled?: boolean;
-		loadOptions: (query: string) => Promise<Option[]>;
-		labelFn?: (option: Option) => string;
-		valueFn?: (option: Option) => string;
-		item?: Snippet<[Option]>;
-	}
-
 	let {
 		label,
-		placeholder = 'Select...',
-		searchPlaceholder = 'Search...',
 		value = $bindable(''),
 		displayValue = $bindable(''),
-		error = undefined,
-		id = `search-select-${Math.random().toString(36).substr(2, 9)}`,
-		class: className = '',
+		placeholder = 'Select...',
+		searchPlaceholder = 'Search...',
 		disabled = false,
+		error = undefined,
+		id = `select-${Math.random().toString(36).substr(2, 9)}`,
+		className = '',
+		item,
 		loadOptions,
-		labelFn = (opt: any) => opt.name || opt.label,
-		valueFn = (opt: any) => opt.id || opt.value,
-		item
-	}: Props = $props();
+		labelFn = (opt: Option) => String(opt?.label ?? ''),
+		valueFn = (opt: Option) => String(opt?.value ?? '')
+	} = $props<{
+		label?: string;
+		value?: string;
+		displayValue?: string;
+		placeholder?: string;
+		searchPlaceholder?: string;
+		disabled?: boolean;
+		error?: string;
+		id?: string;
+		className?: string;
+		item?: Snippet<[Option]>;
+		loadOptions: (query: string) => Promise<Option[]>;
+		labelFn?: (opt: Option) => string;
+		valueFn?: (opt: Option) => string;
+	}>();
 
 	let isOpen = $state(false);
 	let isLoading = $state(false);
 	let options = $state<Option[]>([]);
 	let searchQuery = $state('');
 	let searchInput = $state<HTMLInputElement>();
+	let triggerEl = $state<HTMLElement>();
+	let dropdownEl = $state<HTMLElement>();
 
 	let selectedLabel = $derived.by(() => {
 		const found = options.find((opt) => valueFn(opt) === value);
@@ -77,9 +79,7 @@
 		if (disabled) return;
 		isOpen = !isOpen;
 		if (isOpen) {
-			// Focus search input after transition
 			setTimeout(() => searchInput?.focus(), 50);
-			// Always fetch fresh options on open
 			fetchOptions('');
 		}
 	}
@@ -106,13 +106,13 @@
 		value = '';
 		displayValue = '';
 		searchQuery = '';
-		// Optionally refresh options
 		fetchOptions('');
 	}
 
 	function handleOutsideClick(node: HTMLElement) {
 		const handleClick = (e: Event) => {
-			if (!node.contains(e.target as Node)) {
+			const target = e.target as Node;
+			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
 				isOpen = false;
 			}
 		};
@@ -137,19 +137,19 @@
 	{/if}
 
 	<div class="relative">
-		<div
+		<button
 			{id}
+			bind:this={triggerEl}
+			type="button"
 			role="button"
 			tabindex={disabled ? -1 : 0}
 			onclick={toggle}
 			onkeydown={handleKeydown}
-			aria-haspopup="listbox"
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text transition-all {disabled
+				? 'cursor-not-allowed opacity-60'
+				: 'hover:bg-surface/80'} {error ? 'border-error' : ''}"
 			aria-expanded={isOpen}
-			class="flex w-full cursor-pointer items-center justify-between rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-sm transition-all hover:bg-surface/80 focus:ring-2 focus:ring-brand/20 focus:outline-none {disabled
-				? 'cursor-not-allowed opacity-50'
-				: ''}"
-			class:text-text-subtle={!value}
-			class:text-text={!!value}
+			aria-disabled={disabled}
 		>
 			<span class="truncate">{selectedLabel}</span>
 			<div class="flex items-center gap-2">
@@ -165,11 +165,14 @@
 				{/if}
 				<ChevronsUpDown class="h-4 w-4 shrink-0 opacity-50" />
 			</div>
-		</div>
+		</button>
 
-		{#if isOpen}
+		{#if isOpen && triggerEl}
 			<div
-				class="absolute z-50 mt-2 max-h-60 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg ring-1 ring-black/5"
+				bind:this={dropdownEl}
+				use:portal
+				use:floating={{ anchor: triggerEl, matchWidth: true }}
+				class="z-[9999] mt-2 max-h-60 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg ring-1 ring-black/5"
 				transition:scale={{ start: 0.95, duration: 100 }}
 			>
 				<div class="border-b border-border p-2">

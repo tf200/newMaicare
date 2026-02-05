@@ -5,29 +5,27 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
+	import GoalAssessmentForm from './GoalAssessmentForm.svelte';
 	import { listSenders } from '$lib/api/senders';
 	import { listLocations } from '$lib/api/locations';
 	import { intakes } from '$lib/api/intakes';
-	import { listMaturityMatrixTopics } from '$lib/api/maturityMatrix';
 	import {
 		ArrowRight,
 		Activity,
 		Calendar,
 		FileText,
 		Loader2,
-		Sparkles,
 		User,
-		X,
 		ListChecks,
-		Clock
+		Clock,
+		Save
 	} from 'lucide-svelte';
 	import type {
 		GetRegistrationFormResponse,
 		IntakeCareType,
 		IntakeParticipantsEnum,
 		IntakeConclusionEnum,
-		ListCarePlanTopics,
-		MaturityMatrixLevelDescription
+		IntakeGoalTopic
 	} from '$lib/types/api';
 
 	interface Props {
@@ -61,6 +59,8 @@
 	let intakeConclusionNotes = $state('');
 	let signature = $state('');
 
+	let goals = $state<IntakeGoalTopic[]>([]);
+
 	const careTypeOptions = [
 		{ value: 'protected_living', label: 'Protected Living' },
 		{ value: 'training_center', label: 'Training Center' },
@@ -85,115 +85,7 @@
 		{ value: 'other', label: 'Other' }
 	];
 
-	interface LevelDescription {
-		level: number;
-		name: string;
-		description: string;
-	}
-
-	interface CarePlanTopic {
-		id: string;
-		topicName: string;
-		levelDescriptions: LevelDescription[];
-	}
-
-	interface Goal {
-		title: string;
-		description: string;
-		priority: 'low' | 'medium' | 'high';
-	}
-
-	let selectedTopics = $state<string[]>([]);
-	let topicLevels = $state<Record<string, number>>({});
-	let topicGoals = $state<Record<string, Goal[]>>({});
-	let topicDescriptions = $state<Record<string, string>>({}); // User context for AI
-	let assessmentContext = $state(''); // Keeping for now if needed, but UI will move
-	let assessmentNotes = $state('');
-	let generatingFor = $state<string | null>(null);
-	let maturityTopics = $state<CarePlanTopic[]>([]);
-	let maturityLoading = $state(false);
-	let maturityError = $state('');
 	const defaultRiskAssessment = $derived(registration.risk_additional_notes ?? '');
-	const leftTopics = $derived(maturityTopics.filter((_, i) => i % 2 === 0));
-	const rightTopics = $derived(maturityTopics.filter((_, i) => i % 2 === 1));
-
-	const mapTopic = (topic: ListCarePlanTopics): CarePlanTopic => {
-		return {
-			id: topic.id,
-			topicName: topic.topic_name,
-			levelDescriptions: topic.level_descriptions.map((level: MaturityMatrixLevelDescription) => ({
-				level: level.level,
-				name: level.name,
-				description: level.description
-			}))
-		};
-	};
-
-	const toggleTopic = (topicId: string) => {
-		if (selectedTopics.includes(topicId)) {
-			selectedTopics = selectedTopics.filter((id) => id !== topicId);
-			const { [topicId]: _level, ...restLevels } = topicLevels;
-			const { [topicId]: _goals, ...restGoals } = topicGoals;
-			const { [topicId]: _desc, ...restDescs } = topicDescriptions;
-			topicLevels = restLevels;
-			topicGoals = restGoals;
-			topicDescriptions = restDescs;
-			return;
-		}
-		selectedTopics = [...selectedTopics, topicId];
-		topicLevels = { ...topicLevels, [topicId]: topicLevels[topicId] ?? 3 };
-		topicGoals = {
-			...topicGoals,
-			[topicId]: topicGoals[topicId] ?? [{ title: '', description: '', priority: 'medium' }]
-		};
-	};
-
-	const generateGoals = async (topicId: string) => {
-		generatingFor = topicId;
-		// Simulated delay
-		await new Promise((resolve) => setTimeout(resolve, 1500));
-
-		const currentDesc = topicDescriptions[topicId] || '';
-		const currentLevel = topicLevels[topicId];
-
-		// Local generation logic (AI endpoint integration pending)
-		const newGoals: Goal[] = [
-			{
-				title: `Improve ${topicId} stability`,
-				description: `Generated based on level ${currentLevel}: ${currentDesc || 'General improvement needed'}`,
-				priority: 'high'
-			},
-			{
-				title: 'Maintain current progress',
-				description: 'Ensure consistent engagement with support systems.',
-				priority: 'medium'
-			}
-		];
-
-		const existing = topicGoals[topicId] ?? [];
-		topicGoals = { ...topicGoals, [topicId]: [...existing, ...newGoals] };
-		generatingFor = null;
-	};
-
-	const addGoal = (topicId: string) => {
-		const goals = topicGoals[topicId] ?? [];
-		topicGoals = {
-			...topicGoals,
-			[topicId]: [...goals, { title: '', description: '', priority: 'medium' }]
-		};
-	};
-
-	const updateGoal = (topicId: string, index: number, updates: Partial<Goal>) => {
-		const goals = topicGoals[topicId] ?? [];
-		const next = goals.map((goal, i) => (i === index ? { ...goal, ...updates } : goal));
-		topicGoals = { ...topicGoals, [topicId]: next };
-	};
-
-	const removeGoal = (topicId: string, index: number) => {
-		const goals = topicGoals[topicId] ?? [];
-		const next = goals.filter((_, i) => i !== index);
-		topicGoals = { ...topicGoals, [topicId]: next };
-	};
 
 	$effect.pre(() => {
 		if (!open) {
@@ -216,24 +108,7 @@
 			intakeConclusion = 'suitable';
 			intakeConclusionNotes = '';
 			signature = '';
-		}
-	});
-
-	$effect.pre(() => {
-		if (open && maturityTopics.length === 0 && !maturityLoading && !maturityError) {
-			maturityLoading = true;
-			maturityError = '';
-			listMaturityMatrixTopics()
-				.then((res) => {
-					maturityTopics = res.data.map(mapTopic);
-				})
-				.catch((e) => {
-					console.error(e);
-					maturityError = e instanceof Error ? e.message : 'Failed to load maturity topics.';
-				})
-				.finally(() => {
-					maturityLoading = false;
-				});
+			goals = [];
 		}
 	});
 
@@ -310,6 +185,28 @@
 		if (!intakeId) return;
 		open = false;
 	};
+
+	const saveGoalsAndFinish = async () => {
+		if (!createdIntakeId) return;
+		isLoading = true;
+		try {
+			const requestData = {
+				assessments: goals.map((g) => ({
+					maturity_matrix_id: g.topic_id,
+					current_level: g.current_level,
+					proposed_goals: g.proposed_goals,
+					notes: g.notes
+				}))
+			};
+			await intakes.updateGoals(createdIntakeId, requestData);
+			open = false;
+		} catch (e) {
+			console.error(e);
+			error = e instanceof Error ? e.message : 'Failed to save goals.';
+		} finally {
+			isLoading = false;
+		}
+	};
 </script>
 
 {#snippet senderItem(option: any)}
@@ -334,163 +231,6 @@
 				{option.available} spots available
 			</span>
 		</div>
-	</div>
-{/snippet}
-
-{#snippet topicCard(topic: CarePlanTopic)}
-	{@const isSelected = selectedTopics.includes(topic.id)}
-	<div
-		class="mb-4 inline-block w-full break-inside-avoid rounded-2xl border border-border/70 bg-zinc-50/60 p-4 align-top transition-all hover:border-brand/30 dark:bg-zinc-900/40"
-	>
-		<div class="flex items-center justify-between gap-3">
-			<div>
-				<h3 class="text-base font-bold text-text">{topic.topicName}</h3>
-				<p class="text-xs text-text-subtle">
-					{isSelected ? 'Configure levels and goals below.' : 'Select to assess.'}
-				</p>
-			</div>
-			<button
-				onclick={() => toggleTopic(topic.id)}
-				class="rounded-full border px-3 py-1 text-xs font-semibold transition-all {isSelected
-					? 'border-brand bg-brand text-white'
-					: 'border-border bg-surface text-text-subtle hover:text-text'}"
-			>
-				{isSelected ? 'Selected' : 'Select'}
-			</button>
-		</div>
-
-		{#if isSelected}
-			<div class="mt-4 space-y-4">
-				<!-- Compact Level Selector -->
-				<div class="space-y-3 rounded-xl border border-border/60 bg-surface p-3">
-					<div class="flex items-center justify-between">
-						<span class="text-xs font-semibold tracking-wide text-text-subtle uppercase">Level</span
-						>
-						<span class="text-xs font-bold text-brand">
-							{topicLevels[topic.id] ? `Level ${topicLevels[topic.id]}` : 'Not set'}
-						</span>
-					</div>
-					<div class="flex gap-1">
-						{#each topic.levelDescriptions as level (level.level)}
-							{@const isLevelSelected = topicLevels[topic.id] === level.level}
-							<button
-								onclick={() => (topicLevels = { ...topicLevels, [topic.id]: level.level })}
-								class="h-8 flex-1 rounded-lg border text-xs font-bold transition-all {isLevelSelected
-									? 'border-brand bg-brand text-white shadow-sm'
-									: 'border-border bg-zinc-50 text-text-muted hover:border-brand/30 hover:bg-white hover:text-text'}"
-							>
-								{level.level}
-							</button>
-						{/each}
-					</div>
-					{#if topicLevels[topic.id]}
-						{@const currentLevel = topic.levelDescriptions.find(
-							(l) => l.level === topicLevels[topic.id]
-						)}
-						<div class="animate-in fade-in slide-in-from-top-1 rounded-lg bg-brand/5 p-3 text-sm">
-							<p class="text-brand-dark font-semibold">{currentLevel?.name}</p>
-							<p class="mt-1 text-xs text-text-muted">{currentLevel?.description}</p>
-						</div>
-					{/if}
-				</div>
-
-				<!-- AI Assist & Goals -->
-				<div class="rounded-xl border border-border/60 bg-surface p-3">
-					<div class="space-y-3">
-						<div class="flex items-center justify-between">
-							<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">Goals</p>
-							<div class="flex items-center gap-2">
-								<button
-									onclick={() => generateGoals(topic.id)}
-									disabled={generatingFor === topic.id}
-									class="flex items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 disabled:opacity-50"
-								>
-									{#if generatingFor === topic.id}
-										<Loader2 class="h-3.5 w-3.5 animate-spin" />
-									{:else}
-										<Sparkles class="h-3.5 w-3.5 text-purple-200" />
-									{/if}
-									AI Suggest
-								</button>
-								<div class="h-3 w-px bg-border"></div>
-								<button
-									onclick={() => addGoal(topic.id)}
-									class="hover:text-brand-dark flex items-center gap-1 text-[11px] font-semibold text-brand"
-								>
-									+ Add
-								</button>
-							</div>
-						</div>
-
-						<TextArea
-							value={topicDescriptions[topic.id] ?? ''}
-							oninput={(e) =>
-								(topicDescriptions = {
-									...topicDescriptions,
-									[topic.id]: (e.currentTarget as HTMLTextAreaElement).value
-								})}
-							placeholder="Describe client situation for AI suggestions..."
-							rows={2}
-							class="text-sm"
-						/>
-
-						<div class="space-y-3">
-							{#each topicGoals[topic.id] ?? [] as goal, index (index)}
-								<div
-									class="flex flex-col gap-3 rounded-xl border border-border/60 bg-zinc-50/60 p-3"
-								>
-									<div class="flex items-start gap-2">
-										<div class="flex-1">
-											<Input
-												value={goal.title}
-												oninput={(e) =>
-													updateGoal(topic.id, index, {
-														title: (e.currentTarget as HTMLInputElement).value
-													})}
-												placeholder="Goal title"
-												class="h-9 py-1 text-sm"
-											/>
-										</div>
-										<div class="w-24 shrink-0">
-											<select
-												value={goal.priority}
-												onchange={(e) =>
-													updateGoal(topic.id, index, {
-														priority: (e.currentTarget as HTMLSelectElement)
-															.value as Goal['priority']
-													})}
-												class="h-9 w-full rounded-xl border border-border bg-surface px-2 text-xs text-text outline-none focus:ring-2 focus:ring-brand/20"
-											>
-												<option value="high">High</option>
-												<option value="medium">Med</option>
-												<option value="low">Low</option>
-											</select>
-										</div>
-										<button
-											onclick={() => removeGoal(topic.id, index)}
-											class="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100 hover:text-rose-700"
-										>
-											<X class="h-4 w-4" />
-										</button>
-									</div>
-
-									<TextArea
-										value={goal.description}
-										oninput={(e) =>
-											updateGoal(topic.id, index, {
-												description: (e.currentTarget as HTMLTextAreaElement).value
-											})}
-										placeholder="Description..."
-										rows={2}
-										class="min-h-15 text-sm"
-									/>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
 	</div>
 {/snippet}
 
@@ -880,45 +620,21 @@
 									Select relevant topics, assign level, and define goals.
 								</p>
 							</div>
-							<span
-								class="rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand"
+							<button
+								onclick={saveGoalsAndFinish}
+								disabled={isLoading || goals.length === 0}
+								class="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/20 transition-all hover:bg-brand-strong active:scale-95 disabled:opacity-50"
 							>
-								AI-ready
-							</span>
+								{#if isLoading}
+									<Loader2 class="h-4 w-4 animate-spin" />
+								{:else}
+									<Save class="h-4 w-4" />
+								{/if}
+								Save & Finish
+							</button>
 						</div>
 
-						{#if maturityLoading}
-							<div
-								class="rounded-2xl border border-border/60 bg-zinc-50/60 p-6 text-sm text-text-muted"
-							>
-								Loading maturity topics...
-							</div>
-						{:else if maturityError}
-							<div
-								class="rounded-2xl border border-rose-200 bg-rose-50/60 p-6 text-sm text-rose-700"
-							>
-								{maturityError}
-							</div>
-						{:else if maturityTopics.length === 0}
-							<div
-								class="rounded-2xl border border-border/60 bg-zinc-50/60 p-6 text-sm text-text-muted"
-							>
-								No maturity topics available.
-							</div>
-						{:else}
-							<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-								<div class="flex flex-col gap-4 lg:w-1/2">
-									{#each leftTopics as topic (topic.id)}
-										{@render topicCard(topic)}
-									{/each}
-								</div>
-								<div class="flex flex-col gap-4 lg:w-1/2">
-									{#each rightTopics as topic (topic.id)}
-										{@render topicCard(topic)}
-									{/each}
-								</div>
-							</div>
-						{/if}
+						<GoalAssessmentForm bind:goals onGoalsChange={(g) => (goals = g)} />
 					</div>
 				</div>
 			</div>

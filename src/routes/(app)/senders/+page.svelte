@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
 	import EditSenderForm from '$lib/components/forms/EditSenderForm.svelte';
@@ -45,6 +46,7 @@
 	const currentPage = $derived.by(() => data.pagination.page);
 	const pageSize = $derived.by(() => data.pagination.pageSize);
 	const appliedSearch = $derived.by(() => (data.pagination.filters.search ?? '').trim());
+	const loadError = $derived.by(() => data.loadError);
 	let searchTerm = $state('');
 	let showCreateSender = $state(false);
 	let showEditSender = $state(false);
@@ -236,6 +238,10 @@
 			</Button>
 		</div>
 	</header>
+
+	{#if loadError}
+		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
+	{/if}
 
 	<CreateSenderForm bind:open={showCreateSender} onCreated={() => invalidateAll()} />
 	<EditSenderForm

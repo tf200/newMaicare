@@ -10,11 +10,12 @@
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import type { IntakeRow as IntakeRowData, IntakeFilters } from './+page';
 	import type { PaginationState } from '$lib/types/ui';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
 	type IntakeRow = IntakeRowData & {
@@ -27,6 +28,7 @@
 			intakes: IntakeRow[];
 			stats: { total: number; completed: number; pending: number };
 			pagination: PaginationState<IntakeFilters>;
+			loadError?: string | null;
 		};
 	}>();
 
@@ -35,6 +37,7 @@
 	const pagination = $derived.by(() => data.pagination);
 	const currentPage = $derived.by(() => pagination.page);
 	const pageSize = $derived.by(() => pagination.pageSize);
+	const loadError = $derived.by(() => data.loadError);
 
 	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
 	let searchTerm = $state('');
@@ -301,6 +304,7 @@
 {#snippet actionsCell(row: IntakeRow)}
 	<div class="flex justify-end gap-1">
 		<button
+			onclick={() => goto(`/intakes/${row.id}`)}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title="View intake"
 		>
@@ -331,6 +335,10 @@
 			</div>
 		</div>
 	</header>
+
+	{#if loadError}
+		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
+	{/if}
 
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
@@ -367,6 +375,7 @@
 		{pageSize}
 		totalCount={pagination.count}
 		onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+		onRowClick={(row) => goto(`/intakes/${row.id}`)}
 		rowKey="id"
 		title={m.intake()}
 		description={m.intake_management_description()}

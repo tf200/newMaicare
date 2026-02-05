@@ -49,27 +49,47 @@ export const load: PageLoad = async ({ url }) => {
 	const includeArchived =
 		includeArchivedParam === 'true' ? true : includeArchivedParam === 'false' ? false : undefined;
 
-	const response = await listSenders({
-		page,
-		pageSize,
-		search: search.trim() || undefined,
-		includeArchived
-	});
-
-	const { count, page_size, results, next, previous } = response.data;
-
-	return {
-		senders: results.map(mapSender),
-		pagination: {
-			count,
+	try {
+		const response = await listSenders({
 			page,
-			pageSize: page_size || pageSize,
-			next,
-			previous,
-			filters: {
-				search,
-				includeArchived
-			}
-		} satisfies PaginationState<{ search: string; includeArchived?: boolean }>
-	};
+			pageSize,
+			search: search.trim() || undefined,
+			includeArchived
+		});
+
+		const { count, page_size, results, next, previous } = response.data;
+
+		return {
+			senders: results.map(mapSender),
+			pagination: {
+				count,
+				page,
+				pageSize: page_size || pageSize,
+				next,
+				previous,
+				filters: {
+					search,
+					includeArchived
+				}
+			} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
+			loadError: null
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to load senders.';
+		return {
+			senders: [],
+			pagination: {
+				count: 0,
+				page,
+				pageSize,
+				next: null,
+				previous: null,
+				filters: {
+					search,
+					includeArchived
+				}
+			} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
+			loadError: message
+		};
+	}
 };

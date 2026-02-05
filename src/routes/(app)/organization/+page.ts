@@ -36,25 +36,44 @@ export const load: PageLoad = async ({ url }) => {
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const name = url.searchParams.get('name') ?? '';
 
-	const response = await listOrganizations({
-		page,
-		pageSize,
-		name: name.trim() || undefined
-	});
-
-	const { count, page_size, results, next, previous } = response.data;
-
-	return {
-		organisations: results.map(mapOrganization),
-		pagination: {
-			count,
+	try {
+		const response = await listOrganizations({
 			page,
-			pageSize: page_size || pageSize,
-			next,
-			previous,
-			filters: {
-				name
-			}
-		} satisfies PaginationState<{ name: string }>
-	};
+			pageSize,
+			name: name.trim() || undefined
+		});
+
+		const { count, page_size, results, next, previous } = response.data;
+
+		return {
+			organisations: results.map(mapOrganization),
+			pagination: {
+				count,
+				page,
+				pageSize: page_size || pageSize,
+				next,
+				previous,
+				filters: {
+					name
+				}
+			} satisfies PaginationState<{ name: string }>,
+			loadError: null
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to load organizations.';
+		return {
+			organisations: [],
+			pagination: {
+				count: 0,
+				page,
+				pageSize,
+				next: null,
+				previous: null,
+				filters: {
+					name
+				}
+			} satisfies PaginationState<{ name: string }>,
+			loadError: message
+		};
+	}
 };

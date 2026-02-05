@@ -2,18 +2,20 @@
 	import { Calendar, ClipboardList, ShieldAlert, Search, Eye, ClipboardCheck } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
 	import type { RegistrationRow } from './+page';
 	import type { RegistrationFilters } from '$lib/types/registrations';
 	import type { PaginationState } from '$lib/types/ui';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
 	let { data } = $props<{
 		data: {
 			registrations: RegistrationRow[];
 			pagination: PaginationState<RegistrationFilters>;
+			loadError?: string | null;
 		};
 	}>();
 
@@ -21,6 +23,7 @@
 	const pagination = $derived.by(() => data.pagination);
 	const currentPage = $derived.by(() => pagination.page);
 	const pageSize = $derived.by(() => pagination.pageSize);
+	const loadError = $derived.by(() => data.loadError);
 
 	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
 	let searchTerm = $state('');
@@ -382,6 +385,10 @@
 		</div>
 	</header>
 
+	{#if loadError}
+		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
+	{/if}
+
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -426,6 +433,7 @@
 		{pageSize}
 		totalCount={pagination.count}
 		onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+		onRowClick={(row) => goto(`/registrations/${row.id}`)}
 		rowKey="id"
 		title={m.registration_intake()}
 		description={m.registration_intake_description()}
