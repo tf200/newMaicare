@@ -14,10 +14,24 @@
 
 	type View = 'days' | 'months' | 'years';
 
+	function parseDateValue(dateValue?: string) {
+		if (!dateValue) return null;
+		const [year, month, day] = dateValue.split('-').map(Number);
+		if (!year || !month || !day) return null;
+		return new Date(year, month - 1, day);
+	}
+
+	function formatDateValue(date: Date) {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
 	let isOpen = $state(false);
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
-	let viewDate = $state(value ? new Date(value) : new Date());
+	let viewDate = $state(parseDateValue(value) ?? new Date());
 	let view = $state<View>('days');
 
 	// Calendar logic
@@ -57,7 +71,7 @@
 
 	let formattedValue = $derived(
 		value
-			? new Date(value).toLocaleDateString('en-US', {
+			? (parseDateValue(value) ?? new Date(value)).toLocaleDateString('en-US', {
 					month: 'long',
 					day: 'numeric',
 					year: 'numeric'
@@ -75,7 +89,7 @@
 
 	function selectDate(date: Date) {
 		if (!date) return;
-		value = date.toISOString().split('T')[0];
+		value = formatDateValue(date);
 		isOpen = false;
 	}
 
@@ -120,9 +134,10 @@
 			const target = e.target as Node;
 			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
 				isOpen = false;
-				view = 'days'; // Reset view on close
+				view = 'days';
 			}
 		};
+
 		document.addEventListener('click', handleClick);
 		return {
 			destroy() {
@@ -134,7 +149,7 @@
 
 <div class="space-y-2" use:handleOutsideClick>
 	{#if label}
-		<label for={id} class="ml-1 text-sm font-semibold text-text">
+		<label for={id} class="ml-1 text-sm font-semibold text-text-muted">
 			{label}
 		</label>
 	{/if}
@@ -160,100 +175,104 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl }}
-				class="z-[9999] mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-xl ring-1 ring-black/5"
+				class="z-[9999] mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
 				transition:scale={{ start: 0.95, duration: 150 }}
 			>
-				<div class="mb-4 flex items-center justify-between">
-					<button type="button" onclick={prev} class="rounded-lg p-1 text-text hover:bg-border/50">
-						<ChevronLeft class="h-5 w-5" />
-					</button>
-					<button
-						type="button"
-						onclick={toggleView}
-						class="font-semibold text-text transition-colors hover:text-brand"
-					>
-						{headerText}
-					</button>
-					<button type="button" onclick={next} class="rounded-lg p-1 text-text hover:bg-border/50">
-						<ChevronRight class="h-5 w-5" />
-					</button>
-				</div>
-
-				<div class="relative grid min-h-[240px] grid-cols-1 grid-rows-1">
-					{#if view === 'days'}
-						<div
-							class="col-start-1 row-start-1 w-full"
-							in:fly={{ y: 10, duration: 200, delay: 50 }}
-							out:fade={{ duration: 150 }}
+				<div class="w-72 p-4">
+					<div class="mb-4 flex items-center justify-between">
+						<button
+							type="button"
+							onclick={prev}
+							class="rounded-lg p-1 text-text hover:bg-border/50"
 						>
-							<div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-text-muted">
-								{#each days as day, i (i)}
-									<div class="py-1">{day}</div>
-								{/each}
-							</div>
+							<ChevronLeft class="h-5 w-5" />
+						</button>
+						<button
+							type="button"
+							onclick={toggleView}
+							class="font-semibold text-text transition-colors hover:text-brand"
+						>
+							{headerText}
+						</button>
+						<button
+							type="button"
+							onclick={next}
+							class="rounded-lg p-1 text-text hover:bg-border/50"
+						>
+							<ChevronRight class="h-5 w-5" />
+						</button>
+					</div>
 
-							<div class="mt-2 grid grid-cols-7 gap-1">
-								{#each calendarDays as date, i (i)}
-									{#if date}
+					<div class="relative grid min-h-[240px] grid-cols-1 grid-rows-1">
+						{#if view === 'days'}
+							<div
+								class="col-start-1 row-start-1 w-full"
+								in:fly={{ y: 10, duration: 200, delay: 50 }}
+								out:fade={{ duration: 150 }}
+							>
+								<div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-text-muted">
+									{#each days as day, i (i)}
+										<div class="py-1">{day}</div>
+									{/each}
+								</div>
+
+								<div class="mt-2 grid grid-cols-7 gap-1">
+									{#each calendarDays as date, i (i)}
+										{#if date}
+											<button
+												type="button"
+												onclick={() => selectDate(date)}
+												class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
+															{value === formatDateValue(date) ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
+											>
+												{date.getDate()}
+											</button>
+										{:else}
+											<div></div>
+										{/if}
+									{/each}
+								</div>
+							</div>
+						{:else if view === 'months'}
+							<div
+								class="col-start-1 row-start-1 w-full"
+								in:fly={{ y: 10, duration: 200, delay: 50 }}
+								out:fade={{ duration: 150 }}
+							>
+								<div class="grid grid-cols-3 gap-2">
+									{#each monthNames as month, i (i)}
 										<button
 											type="button"
-											onclick={() => selectDate(date)}
-											class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
-                                            {value === date.toISOString().split('T')[0]
-												? 'bg-brand font-bold text-white hover:opacity-90'
-												: ''}"
+											onclick={() => selectMonth(i)}
+											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
+																{viewDate.getMonth() === i ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
 										>
-											{date.getDate()}
+											{month.slice(0, 3)}
 										</button>
-									{:else}
-										<div></div>
-									{/if}
-								{/each}
+									{/each}
+								</div>
 							</div>
-						</div>
-					{:else if view === 'months'}
-						<div
-							class="col-start-1 row-start-1 w-full"
-							in:fly={{ y: 10, duration: 200, delay: 50 }}
-							out:fade={{ duration: 150 }}
-						>
-							<div class="grid grid-cols-3 gap-2">
-								{#each monthNames as month, i (i)}
-									<button
-										type="button"
-										onclick={() => selectMonth(i)}
-										class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
-                                        {viewDate.getMonth() === i
-											? 'bg-brand font-bold text-white hover:opacity-90'
-											: ''}"
-									>
-										{month.slice(0, 3)}
-									</button>
-								{/each}
+						{:else if view === 'years'}
+							<div
+								class="col-start-1 row-start-1 w-full"
+								in:fly={{ y: 10, duration: 200, delay: 50 }}
+								out:fade={{ duration: 150 }}
+							>
+								<div class="grid grid-cols-3 gap-2">
+									{#each years as year (year)}
+										<button
+											type="button"
+											onclick={() => selectYear(year)}
+											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
+																{viewDate.getFullYear() === year ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
+										>
+											{year}
+										</button>
+									{/each}
+								</div>
 							</div>
-						</div>
-					{:else if view === 'years'}
-						<div
-							class="col-start-1 row-start-1 w-full"
-							in:fly={{ y: 10, duration: 200, delay: 50 }}
-							out:fade={{ duration: 150 }}
-						>
-							<div class="grid grid-cols-3 gap-2">
-								{#each years as year (year)}
-									<button
-										type="button"
-										onclick={() => selectYear(year)}
-										class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
-                                        {viewDate.getFullYear() === year
-											? 'bg-brand font-bold text-white hover:opacity-90'
-											: ''}"
-									>
-										{year}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}

@@ -29,7 +29,9 @@
 	let searchTerm = $state('');
 
 	$effect(() => {
-		searchTerm = appliedSearch;
+		if (searchTerm !== appliedSearch) {
+			searchTerm = appliedSearch;
+		}
 	});
 
 	const defaultFilters: RegistrationFilters = {

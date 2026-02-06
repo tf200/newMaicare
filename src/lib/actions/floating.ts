@@ -14,6 +14,8 @@ export function floating(node: HTMLElement, options: FloatingOptions) {
 
 		if (matchWidth) {
 			node.style.width = `${anchorRect.width}px`;
+		} else {
+			node.style.width = 'auto';
 		}
 
 		const nodeRect = node.getBoundingClientRect();
@@ -42,7 +44,6 @@ export function floating(node: HTMLElement, options: FloatingOptions) {
 		node.style.position = 'fixed';
 		node.style.top = `${top}px`;
 		node.style.left = `${left}px`;
-		node.style.width = 'auto'; // Let it take its natural width
 	}
 
 	// Wait for next frame to ensure node is rendered and has dimensions

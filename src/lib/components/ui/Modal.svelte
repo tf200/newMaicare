@@ -59,14 +59,14 @@
 			]} {className}"
 			transition:scale={{ start: 0.95, duration: 200 }}
 		>
-			<div class="flex items-center justify-between rounded-t-3xl border-b border-border px-6 py-4">
+			<div class="flex items-center justify-between rounded-t-3xl border-b border-border px-6 py-3">
 				{#if header}
 					{@render header()}
 				{:else}
 					<div>
 						<h2 class="text-lg font-bold text-text">{title}</h2>
 						{#if description}
-							<p class="text-sm text-text-muted">{description}</p>
+							<p class="text-xs text-text-muted">{description}</p>
 						{/if}
 					</div>
 				{/if}
@@ -83,7 +83,7 @@
 			</div>
 
 			{#if footer}
-				<div class="rounded-b-3xl border-t border-border bg-bg/50 px-6 py-4">
+				<div class="rounded-b-3xl border-t border-border bg-bg/50 px-6 py-3">
 					{@render footer()}
 				</div>
 			{/if}
