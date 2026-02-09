@@ -70,7 +70,7 @@ class ApiClient {
 		}
 	}
 
-	async request<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+	async request<T>(endpoint: string, options: FetchOptions = {}, hasRetried = false): Promise<T> {
 		const { requiresAuth = true, ...fetchOptions } = options;
 		const url = `${this.baseUrl}${endpoint}`;
 
@@ -89,6 +89,12 @@ class ApiClient {
 
 			if (response.status === 401 && requiresAuth) {
 				if (browser) {
+					if (hasRetried) {
+						this.clearAuth();
+						await goto(resolve('/login'));
+						throw new Error('Unauthorized');
+					}
+
 					const refreshToken = localStorage.getItem('refresh_token');
 
 					if (refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null') {
@@ -100,7 +106,7 @@ class ApiClient {
 
 						try {
 							await this.refreshPromise;
-							return this.request<T>(endpoint, options);
+							return this.request<T>(endpoint, options, true);
 						} catch (error) {
 							this.clearAuth();
 							await goto(resolve('/login'));

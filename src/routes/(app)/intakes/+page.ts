@@ -15,6 +15,7 @@ export interface IntakeRow {
 	intakeDate?: string | null;
 	intakeStatus: IntakeConclusionEnum;
 	goalAssessmentStatus: 'done' | 'pending';
+	hasClient: boolean;
 	careProtectedLiving: boolean;
 	careAssistedIndependentLiving: boolean;
 	careRoomTrainingCenter: boolean;
@@ -55,6 +56,7 @@ const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
 		intakeDate: item.date_of_intake ?? null,
 		intakeStatus: item.intake_status,
 		goalAssessmentStatus: item.goal_assessment_done ? 'done' : 'pending',
+		hasClient: item.has_client,
 		careProtectedLiving: item.care_type === 'protected_living',
 		careAssistedIndependentLiving: item.care_type === 'supported_independent_living',
 		careRoomTrainingCenter: item.care_type === 'training_center',

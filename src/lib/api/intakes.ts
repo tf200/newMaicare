@@ -8,7 +8,10 @@ import type {
 	CreateIntakeFormGoalsRequest,
 	ListIntakeFormsParams,
 	ListIntakeFormsResponse,
-	PaginatedResponse
+	PaginatedResponse,
+	PromoteIntakeResponse,
+	UpdateIntakeConclusionRequest,
+	UpdateIntakeConclusionResponse
 } from '$lib/types/api';
 
 export function listIntakeForms(params: ListIntakeFormsParams = {}) {
@@ -54,5 +57,16 @@ export const intakes = {
 
 	updateGoals: (id: string, data: CreateIntakeFormGoalsRequest) => {
 		return api.put<ApiEnvelope<GetIntakeFormResponse>>(`/intake_forms/${id}/goals`, data);
+	},
+
+	updateConclusion: (id: string, data: UpdateIntakeConclusionRequest) => {
+		return api.patch<ApiEnvelope<UpdateIntakeConclusionResponse>>(
+			`/intake_forms/${id}/conclusion`,
+			data
+		);
+	},
+
+	promote: (id: string) => {
+		return api.post<ApiEnvelope<PromoteIntakeResponse>>(`/intake_forms/${id}/promote`, {});
 	}
 };

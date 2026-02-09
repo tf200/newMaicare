@@ -457,6 +457,7 @@ export interface ListIntakeFormsResponse {
 	client_bsn_number: string;
 	intake_status: IntakeConclusionEnum;
 	goal_assessment_done: boolean;
+	has_client: boolean;
 	care_type: IntakeCareType;
 	assigned_location_id?: string | null;
 	assigned_location_address?: AssignedLocationAddress | null;
@@ -514,6 +515,7 @@ export interface GetIntakeFormResponse {
 	sender_name: string | null;
 	location: IntakeFormLocationDetails | null;
 	intake_goals_assigned: IntakeGoalTopic[];
+	has_client: boolean;
 }
 
 export interface CreateIntakeFormGoalItem {
@@ -525,6 +527,26 @@ export interface CreateIntakeFormGoalItem {
 
 export interface CreateIntakeFormGoalsRequest {
 	assessments: CreateIntakeFormGoalItem[];
+}
+
+export interface UpdateIntakeConclusionRequest {
+	decision: 'accept' | 'refuse';
+	intake_conclusion_notes?: string;
+}
+
+export interface UpdateIntakeConclusionResponse {
+	id: string;
+	intake_conclusion: IntakeConclusionEnum;
+	intake_conclusion_notes: string | null;
+	updated_at: string;
+}
+
+export interface PromoteIntakeResponse {
+	client_id: string;
+	intake_form_id: string;
+	registration_form_id: string;
+	maturity_assessments_created: number;
+	emergency_contacts_created: number;
 }
 
 export interface CreateIntakeRequest {
@@ -569,4 +591,30 @@ export interface ListCarePlanTopics {
 
 export interface GenerateGoalsResponse {
 	goals: MaturityGoal[];
+}
+
+export interface ListWaitingListClientsResponse {
+	id: string;
+	first_name: string;
+	last_name: string;
+	care_type: string | null;
+	bsn: string;
+	sender_name: string | null;
+	days_in_waitlist: number;
+	admission_type: 'crisis_admission' | 'regular_placement' | null;
+}
+
+export interface ListWaitingListClientsParams {
+	page: number;
+	pageSize: number;
+	search?: string;
+	placement?: string;
+	sortDays?: 'asc' | 'desc';
+}
+
+export interface PutClientInCareRequest {
+	care_start_date: string;
+	coordinator_employee_id: string;
+	placed_in_care_at?: string;
+	reason?: string;
 }

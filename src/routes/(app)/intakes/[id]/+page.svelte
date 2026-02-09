@@ -2,12 +2,13 @@
 	import {
 		ArrowLeft,
 		Calendar,
-		MapPin,
 		User,
 		Activity,
 		FileText,
 		ShieldAlert,
 		CheckCircle2,
+		AlertTriangle,
+		UserPlus,
 		Target,
 		ListChecks,
 		Plus,
@@ -19,14 +20,26 @@
 	import { untrack } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 	import GoalAssessmentModal from '$lib/components/intake/GoalAssessmentModal.svelte';
+	import IntakeConclusionModal from '$lib/components/intake/IntakeConclusionModal.svelte';
 	import { intakes } from '$lib/api/intakes';
 	import type { PageData } from './$types';
-	import type { IntakeGoalTopic, CreateIntakeFormGoalsRequest } from '$lib/types/api';
+	import type { CreateIntakeFormGoalsRequest, UpdateIntakeConclusionRequest } from '$lib/types/api';
 
 	let { data }: { data: PageData } = $props();
 
 	let intake = $state(untrack(() => data.intake));
 	let isGoalModalOpen = $state(false);
+	let isConclusionModalOpen = $state(false);
+	let isPromoting = $state(false);
+	let actionSuccess = $state<string | null>(null);
+	let actionError = $state<string | null>(null);
+
+	const canProcessIntake = $derived.by(
+		() => intake.intake_conclusion !== 'suitable' && !intake.has_client
+	);
+	const canPromoteToClient = $derived.by(
+		() => intake.intake_conclusion === 'suitable' && !intake.has_client
+	);
 
 	// Sync state if data changes
 	$effect(() => {
@@ -35,12 +48,47 @@
 
 	const handleSaveGoals = async (requestData: CreateIntakeFormGoalsRequest) => {
 		try {
+			actionError = null;
+			actionSuccess = null;
 			await intakes.updateGoals(intake.id, requestData);
 			const refreshed = await intakes.getById(intake.id);
 			intake = refreshed.data;
+			actionSuccess = 'Goals were updated successfully.';
 			isGoalModalOpen = false;
 		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Failed to update goals.';
 			console.error('Failed to update goals:', err);
+		}
+	};
+
+	const handleUpdateConclusion = async (payload: UpdateIntakeConclusionRequest) => {
+		try {
+			actionError = null;
+			actionSuccess = null;
+			await intakes.updateConclusion(intake.id, payload);
+			const refreshed = await intakes.getById(intake.id);
+			intake = refreshed.data;
+			actionSuccess = 'Intake conclusion updated successfully.';
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Failed to update intake conclusion.';
+			console.error('Failed to update intake conclusion:', err);
+		}
+	};
+
+	const handlePromoteToClient = async () => {
+		try {
+			actionError = null;
+			actionSuccess = null;
+			isPromoting = true;
+			const response = await intakes.promote(intake.id);
+			const refreshed = await intakes.getById(intake.id);
+			intake = refreshed.data;
+			actionSuccess = `Intake promoted to client (${response.data.emergency_contacts_created} contacts migrated).`;
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Failed to promote intake to client.';
+			console.error('Failed to promote intake to client:', err);
+		} finally {
+			isPromoting = false;
 		}
 	};
 
@@ -104,26 +152,67 @@
 						<span class="rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-bold text-secondary">
 							{intake.client_bsn_number}
 						</span>
+						{#if intake.has_client}
+							<span
+								class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 ring-1 ring-emerald-500/20"
+							>
+								Converted to Client
+							</span>
+						{/if}
 					</div>
 				</div>
 			</div>
 
-			<div class="flex flex-col items-end gap-2 text-sm">
-				<div
-					class="flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-1.5 text-text-muted dark:bg-zinc-900"
-				>
-					<Calendar class="h-4 w-4 text-secondary" />
-					<span class="font-medium">{formatDate(intake.date_of_intake)}</span>
-				</div>
-				<div
-					class="flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-1.5 text-text-muted dark:bg-zinc-900"
-				>
-					<MapPin class="h-4 w-4 text-brand" />
-					<span class="font-medium">{intake.location?.name || 'No Location Assigned'}</span>
-				</div>
+			<div class="flex flex-col items-stretch gap-2 md:items-end">
+				{#if canProcessIntake}
+					<button
+						onclick={() => (isConclusionModalOpen = true)}
+						class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong"
+					>
+						<CheckCircle2 class="h-4 w-4" />
+						Process intake
+					</button>
+				{:else if canPromoteToClient}
+					<button
+						onclick={handlePromoteToClient}
+						disabled={isPromoting}
+						class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60 dark:text-zinc-900"
+					>
+						<UserPlus class="h-4 w-4" />
+						{isPromoting ? 'Promoting...' : 'Promote to Client'}
+					</button>
+				{/if}
 			</div>
 		</div>
 	</header>
+
+	{#if canPromoteToClient}
+		<div
+			class="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm"
+		>
+			<div class="flex items-start gap-2">
+				<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+				<p>
+					This intake is marked as suitable, but the client has not been added to the waiting list
+					yet. Promote this intake to complete onboarding.
+				</p>
+			</div>
+		</div>
+	{/if}
+
+	{#if actionSuccess}
+		<div
+			class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+		>
+			{actionSuccess}
+		</div>
+	{/if}
+
+	{#if actionError}
+		<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+			{actionError}
+		</div>
+	{/if}
 
 	<div class="grid gap-6 xl:grid-cols-[1fr_380px]">
 		<!-- Left Column -->
@@ -367,6 +456,18 @@
 				<div class="space-y-6">
 					<div>
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
+							>Intake Date</span
+						>
+						<div class="mt-2 flex items-center gap-2 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/50">
+							<Calendar class="h-4 w-4 text-secondary" />
+							<span class="text-sm font-medium text-text-muted"
+								>{formatDate(intake.date_of_intake)}</span
+							>
+						</div>
+					</div>
+
+					<div>
+						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
 							>Assigned Location</span
 						>
 						{#if intake.location}
@@ -473,4 +574,10 @@
 	initialGoals={intake.intake_goals_assigned}
 	onSave={handleSaveGoals}
 	onCancel={() => (isGoalModalOpen = false)}
+/>
+
+<IntakeConclusionModal
+	bind:open={isConclusionModalOpen}
+	onSave={handleUpdateConclusion}
+	onCancel={() => (isConclusionModalOpen = false)}
 />

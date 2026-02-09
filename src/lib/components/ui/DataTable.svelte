@@ -2,6 +2,8 @@
 	import type { Snippet } from 'svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 
+	import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-svelte';
+
 	export interface DataTableColumn {
 		key: string;
 		label: string;
@@ -10,6 +12,7 @@
 		class?: string;
 		headerClass?: string;
 		cellClass?: string;
+		sortable?: boolean;
 	}
 
 	type RowData = Record<string, unknown>;
@@ -31,7 +34,11 @@
 		currentPage?: number;
 		pageSize?: number;
 		totalCount?: number;
+		sortColumn?: string;
+		sortDirection?: 'asc' | 'desc';
 		onPageChange?: (page: number) => void;
+		onRowClick?: (row: any) => void;
+		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		class?: string;
 	}
 
@@ -52,7 +59,11 @@
 		currentPage = $bindable(1),
 		pageSize = 10,
 		totalCount,
+		sortColumn,
+		sortDirection,
 		onPageChange,
+		onRowClick,
+		onSort,
 		class: className = ''
 	}: Props = $props();
 
@@ -84,6 +95,14 @@
 
 	const handleEmptyAction = () => {
 		if (emptyAction) emptyAction();
+	};
+
+	const handleSort = (columnKey: string) => {
+		if (!onSort) return;
+
+		const direction = sortColumn === columnKey && sortDirection === 'asc' ? 'desc' : 'asc';
+
+		onSort(columnKey, direction);
 	};
 
 	const effectiveTotal = $derived.by(() => totalCount ?? rows.length);
@@ -130,10 +149,24 @@
 						<th
 							class="px-6 py-4 {alignClass(column.align)} {column.headerClass ??
 								column.class ??
-								''}"
+								''} {column.sortable && onSort ? 'cursor-pointer select-none hover:text-text' : ''}"
 							style={column.width ? `width:${column.width}` : undefined}
+							onclick={() => column.sortable && handleSort(column.key)}
 						>
-							{column.label}
+							<div class="inline-flex items-center gap-1.5">
+								{column.label}
+								{#if column.sortable && onSort}
+									{#if sortColumn === column.key}
+										{#if sortDirection === 'asc'}
+											<ChevronUp class="h-3 w-3" />
+										{:else}
+											<ChevronDown class="h-3 w-3" />
+										{/if}
+									{:else}
+										<ChevronsUpDown class="h-3 w-3 opacity-30 group-hover:opacity-100" />
+									{/if}
+								{/if}
+							</div>
 						</th>
 					{/each}
 				</tr>
@@ -163,7 +196,10 @@
 				{:else}
 					{#each paginatedRows as row, index (getRowKey(row, index))}
 						<tr
-							class="border-b border-border/50 py-4 transition-colors duration-200 last:border-0 hover:bg-border/20"
+							onclick={() => onRowClick?.(row)}
+							class="border-b border-border/50 py-4 transition-colors duration-200 last:border-0 hover:bg-border/20 {onRowClick
+								? 'cursor-pointer'
+								: ''}"
 						>
 							{#each columns as column (column.key)}
 								<td

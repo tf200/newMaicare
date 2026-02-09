@@ -42,6 +42,11 @@
 					label: m.intake(),
 					href: '/intakes',
 					permission: 'CARE_COORDINATION.VIEW'
+				},
+				{
+					label: m.waiting_for_selection(),
+					href: '/waiting-list',
+					permission: 'CARE_COORDINATION.VIEW'
 				}
 			]
 		}

@@ -19,8 +19,7 @@
 	import { page } from '$app/state';
 
 	type IntakeRow = IntakeRowData & {
-		assignedLocationCity: string;
-		assignedLocationAddress: string;
+		hasClient: boolean;
 	};
 
 	let { data } = $props<{
@@ -238,6 +237,13 @@
 		<div>
 			<div class="flex items-center gap-2">
 				<p class="text-sm font-semibold text-text">{formatClientName(row)}</p>
+				{#if row.hasClient}
+					<span
+						class="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 ring-1 ring-emerald-500/20"
+					>
+						Converted
+					</span>
+				{/if}
 			</div>
 			<p class="text-xs text-text-subtle">{m.bsn()} {row.clientBsnNumber}</p>
 		</div>
