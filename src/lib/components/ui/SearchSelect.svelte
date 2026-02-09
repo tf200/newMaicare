@@ -18,6 +18,7 @@
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = '',
+		compact = false,
 		item,
 		loadOptions,
 		labelFn = (opt: Option) => String(opt?.label ?? ''),
@@ -32,6 +33,7 @@
 		error?: string;
 		id?: string;
 		className?: string;
+		compact?: boolean;
 		item?: Snippet<[Option]>;
 		loadOptions: (query: string) => Promise<Option[]>;
 		labelFn?: (opt: Option) => string;
@@ -129,7 +131,7 @@
 	}
 </script>
 
-<div class="space-y-2 {className}" use:handleOutsideClick>
+<div class="{compact ? '' : 'space-y-2'} {className}" use:handleOutsideClick>
 	{#if label}
 		<label for={id} class="ml-1 text-sm font-semibold text-text-muted">
 			{label}
@@ -145,7 +147,9 @@
 			tabindex={disabled ? -1 : 0}
 			onclick={toggle}
 			onkeydown={handleKeydown}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text transition-all {disabled
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 {compact
+				? 'h-9'
+				: 'py-2.5'} text-sm text-text transition-all {disabled
 				? 'cursor-not-allowed opacity-60'
 				: 'hover:bg-surface/80'} {error ? 'border-error' : ''}"
 			aria-expanded={isOpen}

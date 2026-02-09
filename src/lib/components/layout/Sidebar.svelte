@@ -4,6 +4,7 @@
 	import {
 		LayoutDashboard,
 		Users,
+		UsersRound,
 		X,
 		HelpCircle,
 		ChevronDown,
@@ -13,22 +14,24 @@
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { slide } from 'svelte/transition';
+	import { sidebarState } from '$lib/state/sidebar.svelte';
 
 	interface NavItem {
 		label: string;
 		href?: string;
-		icon: typeof LayoutDashboard;
+		icon: any;
 		permission?: string;
 		children?: { label: string; href: string; permission?: string }[];
 	}
 
-	const items: NavItem[] = [
+	const defaultItems: NavItem[] = [
 		{
 			label: m.dashboard(),
 			href: '/dashboard',
 			icon: LayoutDashboard,
 			permission: 'DASHBOARD.VIEW'
 		},
+		{ label: 'Clients', href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
 		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
 		{
 			label: m.care_coordination(),
@@ -47,10 +50,18 @@
 					label: m.waiting_for_selection(),
 					href: '/waiting-list',
 					permission: 'CARE_COORDINATION.VIEW'
+				},
+				{
+					label: m.in_care(),
+					href: '/in-care',
+					permission: 'CARE_COORDINATION.VIEW'
 				}
 			]
 		}
 	];
+
+	const items = $derived(sidebarState.scopedConfig?.items ?? defaultItems);
+	const title = $derived(sidebarState.scopedConfig?.title);
 
 	let { collapsed = $bindable(false), mobileOpen = $bindable(false) } = $props();
 
@@ -141,6 +152,13 @@
 
 	<!-- Navigation -->
 	<div class="flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
+		{#if title && !collapsed}
+			<div class="mb-4 px-3" transition:slide={{ duration: 300 }}>
+				<h2 class="text-xs font-semibold tracking-wider text-text-muted uppercase">
+					{title}
+				</h2>
+			</div>
+		{/if}
 		<nav class="space-y-1">
 			{#each items as item (item.label)}
 				{@const active = isItemActive(item)}

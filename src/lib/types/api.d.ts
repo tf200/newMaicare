@@ -612,9 +612,170 @@ export interface ListWaitingListClientsParams {
 	sortDays?: 'asc' | 'desc';
 }
 
+export type InCareClientStatus = 'in_care' | 'scheduled_in_care';
+
+export interface ListInCareClientsResponse {
+	id: string;
+	bsn: string | null;
+	first_name: string;
+	last_name: string;
+	coordinator_name: string | null;
+	location_name: string | null;
+	status: InCareClientStatus;
+	care_start_date: string | null;
+	days_in_care: number;
+	has_active_contract: boolean;
+}
+
+export interface ListInCareClientsParams {
+	page: number;
+	pageSize: number;
+	search?: string;
+	status?: InCareClientStatus[];
+	sortDaysInCare?: 'asc' | 'desc';
+}
+
+export type ClientStatus =
+	| 'in_care'
+	| 'on_waiting_list'
+	| 'scheduled_in_care'
+	| 'scheduled_out_of_care'
+	| 'out_of_care';
+
+export interface ListClientsResponse {
+	id: string;
+	first_name: string;
+	last_name: string;
+	bsn: string;
+	filenumber: string;
+	location_name: string | null;
+	care_type: string | null;
+	status: ClientStatus;
+	goals_count: number;
+	risk_count: number;
+	created_at: string;
+}
+
+export interface ListClientsParams {
+	status?: ClientStatus;
+	location_id?: string;
+	search?: string;
+	page: number;
+	pageSize: number;
+}
+
+export interface ListClientsData {
+	results: ListClientsResponse[];
+	total_count: number;
+	page: number;
+	page_size: number;
+}
+
 export interface PutClientInCareRequest {
 	care_start_date: string;
 	coordinator_employee_id: string;
 	placed_in_care_at?: string;
 	reason?: string;
+}
+
+export interface ListUpcomingEvaluationsResponse {
+	client_id: string;
+	client_first_name: string;
+	client_last_name: string;
+	due_date: string;
+	days_left: number;
+	priority: 'critical' | 'normal';
+	has_draft: boolean;
+	filled_goals_count: number;
+	total_goals_count: number;
+}
+
+export interface ListRecentSubmittedEvaluationsResponse {
+	evaluation_id: string;
+	client_id: string;
+	client_first_name: string;
+	client_last_name: string;
+	evaluation_date: string;
+	submitted_at: string;
+	next_evaluation_date: string | null;
+	filled_goals_count: number;
+	total_goals_count: number;
+}
+
+export interface ListRecentDraftEvaluationsResponse {
+	evaluation_id: string;
+	client_id: string;
+	client_first_name: string;
+	client_last_name: string;
+	due_date: string;
+	updated_at: string;
+	days_left: number;
+	priority: 'critical' | 'normal';
+	filled_goals_count: number;
+	total_goals_count: number;
+}
+
+export interface ListEvaluationsParams {
+	page: number;
+	pageSize: number;
+}
+
+export type EvaluationProgress = 'no_progress' | 'limited_progress' | 'good_progress';
+
+export interface EvaluationActiveGoal {
+	goal_id: string;
+	title: string;
+	topic_name_snapshot: string;
+	priority: 'high' | 'medium' | 'low';
+	sort_order: number;
+	last_progress: EvaluationProgress | null;
+	last_notes: string | null;
+}
+
+export interface ExistingDraftEvaluationSummary {
+	id: string;
+	evaluation_date: string;
+	updated_at: string;
+}
+
+export interface LastCompletedEvaluationSummary {
+	id: string;
+	evaluation_date: string;
+	submitted_at: string;
+	overall_notes: string | null;
+	creator_name: string | null;
+}
+
+export interface EvaluationBootstrapResponse {
+	client_id: string;
+	client_first_name: string;
+	client_last_name: string;
+	next_evaluation_date: string;
+	days_left: number;
+	priority: 'critical' | 'normal';
+	existing_draft: ExistingDraftEvaluationSummary | null;
+	last_completed_evaluation: LastCompletedEvaluationSummary | null;
+	active_goals: EvaluationActiveGoal[];
+}
+
+export interface EvaluationItemInput {
+	goal_id: string;
+	progress: EvaluationProgress;
+	notes: string | null;
+}
+
+export interface CreateEvaluationRequest {
+	overall_notes?: string;
+	submit: boolean;
+	items: EvaluationItemInput[];
+}
+
+export interface UpdateEvaluationDraftRequest {
+	overall_notes?: string;
+	items: EvaluationItemInput[];
+}
+
+export interface CreateEvaluationResponse {
+	id: string;
+	status: 'draft' | 'completed';
 }
