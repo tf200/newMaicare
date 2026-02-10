@@ -9,7 +9,8 @@ import type {
 	EvaluationBootstrapResponse,
 	CreateEvaluationRequest,
 	CreateEvaluationResponse,
-	UpdateEvaluationDraftRequest
+	UpdateEvaluationDraftRequest,
+	GoalEvaluationResponse
 } from '$lib/types/api';
 
 export function listUpcomingEvaluations(params: ListEvaluationsParams) {
@@ -64,4 +65,8 @@ export function updateEvaluationDraft(evaluationId: string, payload: UpdateEvalu
 
 export function submitEvaluationDraft(evaluationId: string) {
 	return api.post<ApiEnvelope<CreateEvaluationResponse>>(`/evaluations/${evaluationId}/submit`, {});
+}
+
+export function getGoalEvaluation(evaluationId: string) {
+	return api.get<ApiEnvelope<GoalEvaluationResponse>>(`/evaluations/${evaluationId}`);
 }

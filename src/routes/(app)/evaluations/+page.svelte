@@ -26,9 +26,20 @@
 
 	let showEvaluationForm = $state(false);
 	let activeClientId = $state<string | null>(null);
+	let activeEvaluationId = $state<string | null>(null);
+	let activeClientName = $state<string | null>(null);
 
-	const openEvaluationForm = (clientId: string) => {
+	const openCreateEvaluationForm = (clientId: string, clientFullName: string) => {
 		activeClientId = clientId;
+		activeEvaluationId = null;
+		activeClientName = clientFullName;
+		showEvaluationForm = true;
+	};
+
+	const openExistingEvaluationForm = (evaluationId: string, clientFullName: string) => {
+		activeClientId = null;
+		activeEvaluationId = evaluationId;
+		activeClientName = clientFullName;
 		showEvaluationForm = true;
 	};
 
@@ -218,7 +229,8 @@
 				<button
 					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 					aria-label="View Evaluation"
-					onclick={() => openEvaluationForm(row.clientId)}
+					onclick={() =>
+						openCreateEvaluationForm(row.clientId, `${row.clientFirstName} ${row.clientLastName}`)}
 				>
 					<ChevronRight class="h-5 w-5" />
 				</button>
@@ -275,7 +287,11 @@
 					<button
 						class="text-text-subtle transition hover:text-text"
 						aria-label="Continue Draft"
-						onclick={() => openEvaluationForm(row.clientId)}
+						onclick={() =>
+							openExistingEvaluationForm(
+								row.evaluationId,
+								`${row.clientFirstName} ${row.clientLastName}`
+							)}
 					>
 						<ChevronRight class="h-4 w-4" />
 					</button>
@@ -323,9 +339,17 @@
 				</div>
 			{/snippet}
 
-			{#snippet submittedActions()}
+			{#snippet submittedActions(row: SubmittedEvaluation)}
 				<div class="flex justify-end">
-					<button class="text-text-subtle transition hover:text-text" aria-label="View Evaluation">
+					<button
+						class="text-text-subtle transition hover:text-text"
+						aria-label="View Evaluation"
+						onclick={() =>
+							openExistingEvaluationForm(
+								row.evaluationId,
+								`${row.clientFirstName} ${row.clientLastName}`
+							)}
+					>
 						<Eye class="h-4 w-4" />
 					</button>
 				</div>
@@ -350,6 +374,8 @@
 	<CreateEvaluationForm
 		bind:open={showEvaluationForm}
 		clientId={activeClientId}
+		evaluationId={activeEvaluationId}
+		clientName={activeClientName}
 		onSaved={handleEvaluationSaved}
 	/>
 </section>

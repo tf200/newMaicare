@@ -779,3 +779,32 @@ export interface CreateEvaluationResponse {
 	id: string;
 	status: 'draft' | 'completed';
 }
+
+export interface GoalEvaluationItemResponse {
+	id: string;
+	evaluation_id: string;
+	goal_id: string;
+	goal_title: string;
+	goal_description: string;
+	topic_name_snapshot: string;
+	progress: EvaluationProgress;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface GoalEvaluationResponse {
+	id: string;
+	client_id: string;
+	evaluation_date: string;
+	period_start: string;
+	period_end: string;
+	evaluation_interval_weeks: number;
+	status: 'draft' | 'completed';
+	overall_notes: string | null;
+	created_by_employee_id: string;
+	creator_name: string | null;
+	created_at: string;
+	updated_at: string;
+	items: GoalEvaluationItemResponse[];
+}
