@@ -10,10 +10,19 @@
 	import EditOrganizationForm from '$lib/components/forms/EditOrganizationForm.svelte';
 	import { getOrganization } from '$lib/api/organizations';
 	import type { GetOrganizationResponse } from '$lib/types/api';
-	import type { PageData } from './$types';
+	import type { OrganizationLoadResult } from './+page';
 
-	let { data }: { data: PageData } = $props();
-	type OrganizationRow = PageData['organisations'][number];
+	let { data } = $props<{
+		data: {
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: { name: string };
+			};
+			organizationsData: Promise<OrganizationLoadResult>;
+		};
+	}>();
+	type OrganizationRow = OrganizationLoadResult['organisations'][number];
 
 	let showCreateOrg = $state(false);
 	let showEditOrg = $state(false);
@@ -31,18 +40,10 @@
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
 
-	const organisations = $derived.by(() => data.organisations);
-	const totalLocations = $derived.by(() =>
-		organisations.reduce((total, org) => total + org.locationCount, 0)
-	);
-	const withRegistration = $derived.by(
-		() => organisations.filter((org) => Boolean(org.kvkNumber) || Boolean(org.btwNumber)).length
-	);
-
-	const currentPage = $derived.by(() => data.pagination.page);
-	const pageSize = $derived.by(() => data.pagination.pageSize);
-	const appliedSearch = $derived.by(() => (data.pagination.filters.name ?? '').trim());
-	const loadError = $derived.by(() => data.loadError);
+	const organizationsDataPromise = $derived.by(() => data.organizationsData);
+	const currentPage = $derived.by(() => data.initial.page);
+	const pageSize = $derived.by(() => data.initial.pageSize);
+	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
 	let searchTerm = $state('');
 
 	onMount(() => {
@@ -241,10 +242,6 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
 	<CreateOrganizationForm bind:open={showCreateOrg} onCreated={() => invalidateAll()} />
 	{#if showEditOrg}
 		{#key editOrganization?.id ?? 'loading'}
@@ -258,53 +255,104 @@
 		{/key}
 	{/if}
 
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Total orgs</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-				{data.pagination.count}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
+	{#await organizationsDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#each [1, 2, 3] as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Locations</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-				{totalLocations}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Registration
-			</div>
-			<div
-				class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
-			>
-				{withRegistration}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW on file</p>
-		</div>
-	</div>
 
-	<DataTable
-		{columns}
-		rows={organisations}
-		{currentPage}
-		{pageSize}
-		totalCount={data.pagination.count}
-		onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
-		rowKey="id"
-		title="Organization directory"
-		description="Monitor registered partners, coverage, and contact details across regions."
-		filters={tableFilters}
-		cells={{
-			name: nameCell,
-			address: addressCell,
-			city: cityCell,
-			email: emailCell,
-			kvkNumber: kvkNumberCell,
-			locationCount: locationCountCell,
-			actions: actionsCell
-		}}
-	/>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			rowKey="id"
+			title="Organization directory"
+			description="Monitor registered partners, coverage, and contact details across regions."
+			filters={tableFilters}
+			cells={{
+				name: nameCell,
+				address: addressCell,
+				city: cityCell,
+				email: emailCell,
+				kvkNumber: kvkNumberCell,
+				locationCount: locationCountCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then organizationsData}
+		{@const organisations = organizationsData.organisations}
+		{@const totalLocations = organisations.reduce(
+			(total: number, org: OrganizationRow) => total + org.locationCount,
+			0
+		)}
+		{@const withRegistration = organisations.filter(
+			(org: OrganizationRow) => Boolean(org.kvkNumber) || Boolean(org.btwNumber)
+		).length}
+
+		{#if organizationsData.loadError}
+			<InlineErrorBanner message={organizationsData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total orgs
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{organizationsData.pagination.count}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Locations
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
+					{totalLocations}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Registration
+				</div>
+				<div
+					class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+				>
+					{withRegistration}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW on file</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={organisations}
+			currentPage={organizationsData.pagination.page}
+			pageSize={organizationsData.pagination.pageSize}
+			totalCount={organizationsData.pagination.count}
+			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			rowKey="id"
+			title="Organization directory"
+			description="Monitor registered partners, coverage, and contact details across regions."
+			filters={tableFilters}
+			cells={{
+				name: nameCell,
+				address: addressCell,
+				city: cityCell,
+				email: emailCell,
+				kvkNumber: kvkNumberCell,
+				locationCount: locationCountCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

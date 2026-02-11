@@ -20,6 +20,7 @@
 	export interface Props {
 		columns?: DataTableColumn[];
 		rows?: Array<any>;
+		loading?: boolean;
 		title?: string;
 		description?: string;
 		emptyTitle?: string;
@@ -45,6 +46,7 @@
 	let {
 		columns = [],
 		rows = [],
+		loading = false,
 		title,
 		description,
 		emptyTitle = 'No records found',
@@ -71,6 +73,12 @@
 		if (align === 'center') return 'text-center';
 		if (align === 'right') return 'text-right';
 		return 'text-left';
+	};
+
+	const skeletonAlignClass = (align: DataTableColumn['align'] = 'left') => {
+		if (align === 'center') return 'mx-auto';
+		if (align === 'right') return 'ml-auto';
+		return '';
 	};
 
 	const getRecordValue = (row: any, key: string) => (row as RowData)?.[key];
@@ -109,6 +117,7 @@
 	const paginatedRows = $derived.by(() =>
 		totalCount == null ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize) : rows
 	);
+	const loadingRows = $derived.by(() => Math.max(1, pageSize));
 </script>
 
 <section class="rounded-3xl border border-border bg-surface shadow-sm {className}">
@@ -172,7 +181,26 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#if rows.length === 0}
+				{#if loading}
+					{#each Array.from({ length: loadingRows }) as _, index (`loading-${index}`)}
+						<tr class="border-b border-border/50 py-4 last:border-0">
+							{#each columns as column (column.key)}
+								<td
+									class="px-6 py-4 text-sm font-medium text-text-muted tabular-nums {alignClass(
+										column.align
+									)} {column.cellClass ?? ''}"
+								>
+									<div
+										class="h-4 animate-pulse rounded-md bg-border/70 {skeletonAlignClass(
+											column.align
+										)}"
+										style={`width:${column.width ?? (column.label ? '70%' : '40%')}`}
+									></div>
+								</td>
+							{/each}
+						</tr>
+					{/each}
+				{:else if rows.length === 0}
 					<tr>
 						<td colspan={columns.length} class="px-6 py-12 text-center">
 							<div class="flex min-h-[400px] flex-col items-center justify-center gap-4">
@@ -225,7 +253,7 @@
 		<Pagination
 			{currentPage}
 			{pageSize}
-			totalCount={effectiveTotal}
+			totalCount={loading ? 0 : effectiveTotal}
 			onPageChange={handlePageChange}
 		/>
 	</div>

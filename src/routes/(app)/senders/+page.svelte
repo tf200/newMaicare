@@ -9,10 +9,19 @@
 	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
 	import EditSenderForm from '$lib/components/forms/EditSenderForm.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { PageData } from './$types';
+	import type { SendersLoadResult } from './+page';
 
-	let { data }: { data: PageData } = $props();
-	type SenderRow = PageData['senders'][number];
+	let { data } = $props<{
+		data: {
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: { search: string; includeArchived?: boolean };
+			};
+			sendersData: Promise<SendersLoadResult>;
+		};
+	}>();
+	type SenderRow = SendersLoadResult['senders'][number];
 
 	const columns: DataTableColumn[] = [
 		{ key: 'name', label: 'Sender', headerClass: 'pl-14' },
@@ -42,11 +51,10 @@
 		}
 	};
 
-	const senders = $derived.by(() => data.senders);
-	const currentPage = $derived.by(() => data.pagination.page);
-	const pageSize = $derived.by(() => data.pagination.pageSize);
-	const appliedSearch = $derived.by(() => (data.pagination.filters.search ?? '').trim());
-	const loadError = $derived.by(() => data.loadError);
+	const sendersDataPromise = $derived.by(() => data.sendersData);
+	const currentPage = $derived.by(() => data.initial.page);
+	const pageSize = $derived.by(() => data.initial.pageSize);
+	const appliedSearch = $derived.by(() => (data.initial.filters.search ?? '').trim());
 	let searchTerm = $state('');
 	let showCreateSender = $state(false);
 	let showEditSender = $state(false);
@@ -99,13 +107,6 @@
 		senderTypeMeta[value] ?? { label: value || '—', className: 'bg-border/50 text-text-muted' };
 
 	const isRegistered = (sender: SenderRow) => Boolean(sender.kvkNumber || sender.btwNumber);
-
-	const totalClients = $derived.by(() =>
-		senders.reduce((total: number, sender: SenderRow) => total + sender.clientsCount, 0)
-	);
-	const registeredSenders = $derived.by(
-		() => senders.filter((sender: SenderRow) => isRegistered(sender)).length
-	);
 </script>
 
 <svelte:head>
@@ -239,10 +240,6 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
 	<CreateSenderForm bind:open={showCreateSender} onCreated={() => invalidateAll()} />
 	<EditSenderForm
 		bind:open={showEditSender}
@@ -250,58 +247,106 @@
 		onUpdated={() => invalidateAll()}
 	/>
 
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Total senders
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-				{data.pagination.count}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Active referral partners</p>
+	{#await sendersDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#each [1, 2, 3] as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Clients linked
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-				{totalClients}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">In the current view</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Registration
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-				{registeredSenders}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW in view</p>
-		</div>
-	</div>
 
-	<DataTable
-		{columns}
-		rows={senders}
-		{currentPage}
-		{pageSize}
-		totalCount={data.pagination.count}
-		onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
-		rowKey="id"
-		title="Sender directory"
-		description="Overview of referral sources, contact data, and client volume."
-		filters={tableFilters}
-		emptyTitle="No senders found"
-		emptyDescription="Try a different search or add a new sender."
-		emptyActionLabel="Add sender"
-		emptyAction={() => (showCreateSender = true)}
-		cells={{
-			name: nameCell,
-			location: locationCell,
-			phone: phoneCell,
-			registration: registrationCell,
-			clientCount: clientCountCell,
-			actions: actionsCell
-		}}
-	/>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			rowKey="id"
+			title="Sender directory"
+			description="Overview of referral sources, contact data, and client volume."
+			filters={tableFilters}
+			emptyTitle="No senders found"
+			emptyDescription="Try a different search or add a new sender."
+			emptyActionLabel="Add sender"
+			emptyAction={() => (showCreateSender = true)}
+			cells={{
+				name: nameCell,
+				location: locationCell,
+				phone: phoneCell,
+				registration: registrationCell,
+				clientCount: clientCountCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then sendersData}
+		{@const senders = sendersData.senders}
+		{@const totalClients = senders.reduce(
+			(total: number, sender: SenderRow) => total + sender.clientsCount,
+			0
+		)}
+		{@const registeredSenders = senders.filter((sender: SenderRow) => isRegistered(sender)).length}
+
+		{#if sendersData.loadError}
+			<InlineErrorBanner message={sendersData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total senders
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{sendersData.pagination.count}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">Active referral partners</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Clients linked
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
+					{totalClients}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">In the current view</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Registration
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{registeredSenders}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW in view</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={senders}
+			currentPage={sendersData.pagination.page}
+			pageSize={sendersData.pagination.pageSize}
+			totalCount={sendersData.pagination.count}
+			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			rowKey="id"
+			title="Sender directory"
+			description="Overview of referral sources, contact data, and client volume."
+			filters={tableFilters}
+			emptyTitle="No senders found"
+			emptyDescription="Try a different search or add a new sender."
+			emptyActionLabel="Add sender"
+			emptyAction={() => (showCreateSender = true)}
+			cells={{
+				name: nameCell,
+				location: locationCell,
+				phone: phoneCell,
+				registration: registrationCell,
+				clientCount: clientCountCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

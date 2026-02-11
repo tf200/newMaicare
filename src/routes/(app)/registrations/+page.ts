@@ -21,6 +21,12 @@ export interface RegistrationRow {
 	submittedAt: string;
 }
 
+export interface RegistrationsLoadResult {
+	registrations: RegistrationRow[];
+	pagination: PaginationState<RegistrationFilters>;
+	loadError: string | null;
+}
+
 const mapRegistration = (item: ListRegistrationFormsResponse): RegistrationRow => ({
 	id: item.id,
 	clientFirstName: item.client_first_name,
@@ -44,7 +50,7 @@ const parseBoolean = (value: string | null) => {
 	return undefined;
 };
 
-export const load: PageLoad = async ({ url }) => {
+export const load: PageLoad = ({ url }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const status = (url.searchParams.get('status') ?? '') as RegistrationFilters['status'];
@@ -64,50 +70,59 @@ export const load: PageLoad = async ({ url }) => {
 		riskDayNightRhythm: parseBoolean(url.searchParams.get('risk_day_night_rhythm'))
 	};
 
-	try {
-		const response = await listRegistrationForms({
-			page,
-			pageSize,
-			status: status === '' ? undefined : status,
-			search: filters.search,
-			riskAggressiveBehavior: filters.riskAggressiveBehavior,
-			riskSuicidalSelfharm: filters.riskSuicidalSelfharm,
-			riskSubstanceAbuse: filters.riskSubstanceAbuse,
-			riskPsychiatricIssues: filters.riskPsychiatricIssues,
-			riskCriminalHistory: filters.riskCriminalHistory,
-			riskFlightBehavior: filters.riskFlightBehavior,
-			riskWeaponPossession: filters.riskWeaponPossession,
-			riskSexualBehavior: filters.riskSexualBehavior,
-			riskDayNightRhythm: filters.riskDayNightRhythm
+	const registrationsData: Promise<RegistrationsLoadResult> = listRegistrationForms({
+		page,
+		pageSize,
+		status: status === '' ? undefined : status,
+		search: filters.search,
+		riskAggressiveBehavior: filters.riskAggressiveBehavior,
+		riskSuicidalSelfharm: filters.riskSuicidalSelfharm,
+		riskSubstanceAbuse: filters.riskSubstanceAbuse,
+		riskPsychiatricIssues: filters.riskPsychiatricIssues,
+		riskCriminalHistory: filters.riskCriminalHistory,
+		riskFlightBehavior: filters.riskFlightBehavior,
+		riskWeaponPossession: filters.riskWeaponPossession,
+		riskSexualBehavior: filters.riskSexualBehavior,
+		riskDayNightRhythm: filters.riskDayNightRhythm
+	})
+		.then((response) => {
+			const { count, page_size, results, next, previous } = response.data;
+
+			return {
+				registrations: results.map(mapRegistration),
+				pagination: {
+					count,
+					page,
+					pageSize: page_size || pageSize,
+					next,
+					previous,
+					filters
+				} satisfies PaginationState<RegistrationFilters>,
+				loadError: null
+			} satisfies RegistrationsLoadResult;
+		})
+		.catch((error): RegistrationsLoadResult => {
+			const message = error instanceof Error ? error.message : 'Failed to load registrations.';
+			return {
+				registrations: [],
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters
+				} satisfies PaginationState<RegistrationFilters>,
+				loadError: message
+			};
 		});
 
-		const { count, page_size, results, next, previous } = response.data;
-
-		return {
-			registrations: results.map(mapRegistration),
-			pagination: {
-				count,
-				page,
-				pageSize: page_size || pageSize,
-				next,
-				previous,
-				filters
-			} satisfies PaginationState<RegistrationFilters>,
-			loadError: null
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to load registrations.';
-		return {
-			registrations: [],
-			pagination: {
-				count: 0,
-				page,
-				pageSize,
-				next: null,
-				previous: null,
-				filters
-			} satisfies PaginationState<RegistrationFilters>,
-			loadError: message
-		};
-	}
+	return {
+		initial: {
+			page,
+			pageSize,
+			filters
+		},
+		registrationsData
+	};
 };

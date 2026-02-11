@@ -29,6 +29,17 @@ export interface IntakeFilters {
 	status: '' | IntakeConclusionEnum;
 }
 
+export interface IntakesLoadResult {
+	intakes: IntakeRow[];
+	stats: {
+		total: number;
+		completed: number;
+		pending: number;
+	};
+	pagination: PaginationState<IntakeFilters>;
+	loadError: string | null;
+}
+
 const formatLocationParts = (address?: AssignedLocationAddress | null) => {
 	if (!address) return { city: '—', address: '—' };
 
@@ -66,67 +77,79 @@ const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
 	};
 };
 
-export const load: PageLoad = async ({ url }) => {
+export const load: PageLoad = ({ url }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const search = url.searchParams.get('search') ?? '';
 	const normalizedSearch = search.trim();
 	const status = (url.searchParams.get('status') ?? '') as IntakeFilters['status'];
 
-	try {
-		const response = await listIntakeForms({
-			page,
-			pageSize,
-			search: normalizedSearch || undefined,
-			status: status === '' ? undefined : status
+	const intakesData: Promise<IntakesLoadResult> = listIntakeForms({
+		page,
+		pageSize,
+		search: normalizedSearch || undefined,
+		status: status === '' ? undefined : status
+	})
+		.then((response) => {
+			const { count, page_size, results, next, previous } = response.data;
+			const mapped = results.map(mapIntake);
+			const completedCount = mapped.filter((row) => row.goalAssessmentStatus === 'done').length;
+			const pendingCount = mapped.length - completedCount;
+
+			return {
+				intakes: mapped,
+				stats: {
+					total: count,
+					completed: completedCount,
+					pending: pendingCount
+				},
+				pagination: {
+					count,
+					page,
+					pageSize: page_size || pageSize,
+					next,
+					previous,
+					filters: {
+						search: normalizedSearch,
+						status
+					}
+				} satisfies PaginationState<IntakeFilters>,
+				loadError: null
+			} satisfies IntakesLoadResult;
+		})
+		.catch((error): IntakesLoadResult => {
+			const message = error instanceof Error ? error.message : 'Failed to load intakes.';
+			return {
+				intakes: [],
+				stats: {
+					total: 0,
+					completed: 0,
+					pending: 0
+				},
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters: {
+						search: normalizedSearch,
+						status
+					}
+				} satisfies PaginationState<IntakeFilters>,
+				loadError: message
+			};
 		});
 
-		const { count, page_size, results, next, previous } = response.data;
-		const mapped = results.map(mapIntake);
-		const completedCount = mapped.filter((row) => row.goalAssessmentStatus === 'done').length;
-		const pendingCount = mapped.length - completedCount;
-
-		return {
-			intakes: mapped,
-			stats: {
-				total: count,
-				completed: completedCount,
-				pending: pendingCount
-			},
-			pagination: {
-				count,
-				page,
-				pageSize: page_size || pageSize,
-				next,
-				previous,
-				filters: {
-					search: normalizedSearch,
-					status
-				}
-			} satisfies PaginationState<IntakeFilters>,
-			loadError: null
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to load intakes.';
-		return {
-			intakes: [],
-			stats: {
-				total: 0,
-				completed: 0,
-				pending: 0
-			},
-			pagination: {
-				count: 0,
-				page,
-				pageSize,
-				next: null,
-				previous: null,
-				filters: {
-					search: normalizedSearch,
-					status
-				}
-			} satisfies PaginationState<IntakeFilters>,
-			loadError: message
-		};
-	}
+	return {
+		initial: {
+			page,
+			pageSize,
+			filters: {
+				search: normalizedSearch,
+				status
+			}
+		},
+		intakesData
+	};
 };

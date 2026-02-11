@@ -5,27 +5,28 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
-	import type { RegistrationRow } from './+page';
+	import type { RegistrationRow, RegistrationsLoadResult } from './+page';
 	import type { RegistrationFilters } from '$lib/types/registrations';
-	import type { PaginationState } from '$lib/types/ui';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
 	let { data } = $props<{
 		data: {
-			registrations: RegistrationRow[];
-			pagination: PaginationState<RegistrationFilters>;
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: RegistrationFilters;
+			};
+			registrationsData: Promise<RegistrationsLoadResult>;
 		};
 	}>();
 
-	const registrations = $derived.by(() => data.registrations);
-	const pagination = $derived.by(() => data.pagination);
-	const currentPage = $derived.by(() => pagination.page);
-	const pageSize = $derived.by(() => pagination.pageSize);
-	const loadError = $derived.by(() => data.loadError);
+	const registrationsDataPromise = $derived.by(() => data.registrationsData);
+	const initial = $derived.by(() => data.initial);
+	const currentPage = $derived.by(() => initial.page);
+	const pageSize = $derived.by(() => initial.pageSize);
 
-	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
+	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
 	let searchTerm = $state('');
 
 	$effect(() => {
@@ -80,7 +81,7 @@
 
 	let filters = $derived.by(() => ({
 		...defaultFilters,
-		...pagination.filters
+		...initial.filters
 	}));
 
 	const careOptions: Array<{ key: keyof RegistrationRow; label: string; className: string }> = [
@@ -135,17 +136,6 @@
 		{ key: 'submitted', label: m.submitted(), width: '180px' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
-
-	const totalCount = $derived.by(() => pagination.count);
-	const pendingCount = $derived.by(
-		() => registrations.filter((row: RegistrationRow) => row.formStatus === 'pending').length
-	);
-	const processedCount = $derived.by(
-		() => registrations.filter((row: RegistrationRow) => row.formStatus === 'processed').length
-	);
-	const highRiskCount = $derived.by(
-		() => registrations.filter((row: RegistrationRow) => row.riskCount >= 3).length
-	);
 
 	const formatClientName = (row: RegistrationRow) =>
 		`${row.clientFirstName} ${row.clientLastName}`.trim();
@@ -387,67 +377,115 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
+	{#await registrationsDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			{#each [1, 2, 3, 4] as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
+		</div>
 
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				{m.total_forms()}
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{totalCount}</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.submitted()}</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				{m.pending_review()}
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
-				{pendingCount}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				{m.processed()}
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-				{processedCount}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				{m.high_risk()}
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-				{highRiskCount}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.risk()} 3+</p>
-		</div>
-	</div>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			onRowClick={(row) => goto(`/registrations/${row.id}`)}
+			rowKey="id"
+			title={m.registration_intake()}
+			description={m.registration_intake_description()}
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				referrer: referrerCell,
+				care: careCell,
+				risk: riskCell,
+				status: statusCell,
+				submitted: submittedCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then registrationsData}
+		{@const registrations = registrationsData.registrations}
+		{@const pendingCount = registrations.filter(
+			(row: RegistrationRow) => row.formStatus === 'pending'
+		).length}
+		{@const processedCount = registrations.filter(
+			(row: RegistrationRow) => row.formStatus === 'processed'
+		).length}
+		{@const highRiskCount = registrations.filter(
+			(row: RegistrationRow) => row.riskCount >= 3
+		).length}
 
-	<DataTable
-		{columns}
-		rows={registrations}
-		{currentPage}
-		{pageSize}
-		totalCount={pagination.count}
-		onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-		onRowClick={(row) => goto(`/registrations/${row.id}`)}
-		rowKey="id"
-		title={m.registration_intake()}
-		description={m.registration_intake_description()}
-		filters={tableFilters}
-		cells={{
-			client: clientCell,
-			referrer: referrerCell,
-			care: careCell,
-			risk: riskCell,
-			status: statusCell,
-			submitted: submittedCell,
-			actions: actionsCell
-		}}
-	/>
+		{#if registrationsData.loadError}
+			<InlineErrorBanner message={registrationsData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.total_forms()}
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{registrationsData.pagination.count}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.submitted()}</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.pending_review()}
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
+					{pendingCount}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.processed()}
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
+					{processedCount}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.high_risk()}
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
+					{highRiskCount}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.risk()} 3+</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={registrations}
+			currentPage={registrationsData.pagination.page}
+			pageSize={registrationsData.pagination.pageSize}
+			totalCount={registrationsData.pagination.count}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			onRowClick={(row) => goto(`/registrations/${row.id}`)}
+			rowKey="id"
+			title={m.registration_intake()}
+			description={m.registration_intake_description()}
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				referrer: referrerCell,
+				care: careCell,
+				risk: riskCell,
+				status: statusCell,
+				submitted: submittedCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

@@ -22,6 +22,12 @@ interface SenderRow {
 	updatedAt: string;
 }
 
+export interface SendersLoadResult {
+	senders: SenderRow[];
+	pagination: PaginationState<{ search: string; includeArchived?: boolean }>;
+	loadError: string | null;
+}
+
 const mapSender = (sender: SenderListItem): SenderRow => ({
 	id: sender.id,
 	types: sender.types,
@@ -41,7 +47,7 @@ const mapSender = (sender: SenderListItem): SenderRow => ({
 	updatedAt: sender.updated_at
 });
 
-export const load: PageLoad = async ({ url }) => {
+export const load: PageLoad = ({ url }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const search = url.searchParams.get('search') ?? '';
@@ -49,47 +55,59 @@ export const load: PageLoad = async ({ url }) => {
 	const includeArchived =
 		includeArchivedParam === 'true' ? true : includeArchivedParam === 'false' ? false : undefined;
 
-	try {
-		const response = await listSenders({
-			page,
-			pageSize,
-			search: search.trim() || undefined,
-			includeArchived
+	const sendersData: Promise<SendersLoadResult> = listSenders({
+		page,
+		pageSize,
+		search: search.trim() || undefined,
+		includeArchived
+	})
+		.then((response) => {
+			const { count, page_size, results, next, previous } = response.data;
+
+			return {
+				senders: results.map(mapSender),
+				pagination: {
+					count,
+					page,
+					pageSize: page_size || pageSize,
+					next,
+					previous,
+					filters: {
+						search,
+						includeArchived
+					}
+				} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
+				loadError: null
+			} satisfies SendersLoadResult;
+		})
+		.catch((error): SendersLoadResult => {
+			const message = error instanceof Error ? error.message : 'Failed to load senders.';
+			return {
+				senders: [],
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters: {
+						search,
+						includeArchived
+					}
+				} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
+				loadError: message
+			};
 		});
 
-		const { count, page_size, results, next, previous } = response.data;
-
-		return {
-			senders: results.map(mapSender),
-			pagination: {
-				count,
-				page,
-				pageSize: page_size || pageSize,
-				next,
-				previous,
-				filters: {
-					search,
-					includeArchived
-				}
-			} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
-			loadError: null
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to load senders.';
-		return {
-			senders: [],
-			pagination: {
-				count: 0,
-				page,
-				pageSize,
-				next: null,
-				previous: null,
-				filters: {
-					search,
-					includeArchived
-				}
-			} satisfies PaginationState<{ search: string; includeArchived?: boolean }>,
-			loadError: message
-		};
-	}
+	return {
+		initial: {
+			page,
+			pageSize,
+			filters: {
+				search,
+				includeArchived
+			}
+		},
+		sendersData
+	};
 };

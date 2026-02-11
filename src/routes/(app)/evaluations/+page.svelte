@@ -19,10 +19,10 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	const upcoming = $derived(data.upcoming);
-	const submitted = $derived(data.submitted);
-	const drafts = $derived(data.drafts);
-	const stats = $derived(data.stats);
+	const upcomingPromise = $derived(data.upcoming);
+	const submittedPromise = $derived(data.submitted);
+	const draftsPromise = $derived(data.drafts);
+	const statsPromise = $derived(data.stats);
 
 	let showEvaluationForm = $state(false);
 	let activeClientId = $state<string | null>(null);
@@ -119,46 +119,79 @@
 	</header>
 
 	<!-- KPI Row -->
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
+	{#await statsPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#each [1, 2, 3] as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-3 w-36 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
+		</div>
+	{:then stats}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="flex items-center justify-between">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.attention_required()}
+					</div>
+					<AlertTriangle class="h-4 w-4 text-rose-500" />
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+					{stats.attentionRequired}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.attention_required_description()}</p>
+			</div>
+
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="flex items-center justify-between">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.in_progress()}
+					</div>
+					<FileEdit class="h-4 w-4 text-info" />
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+					{stats.inProgress}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.in_progress_description()}</p>
+			</div>
+
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="flex items-center justify-between">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.recently_finalized()}
+					</div>
+					<CheckCircle2 class="h-4 w-4 text-success" />
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+					{stats.recentlyFinalized}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.recently_finalized_description()}</p>
+			</div>
+		</div>
+	{:catch}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.attention_required()}
 				</div>
-				<AlertTriangle class="h-4 w-4 text-rose-500" />
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-				{stats.attentionRequired}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.attention_required_description()}</p>
-		</div>
-
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.in_progress()}
 				</div>
-				<FileEdit class="h-4 w-4 text-info" />
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-				{stats.inProgress}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.in_progress_description()}</p>
-		</div>
-
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.recently_finalized()}
 				</div>
-				<CheckCircle2 class="h-4 w-4 text-success" />
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
 			</div>
-			<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-				{stats.recentlyFinalized}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.recently_finalized_description()}</p>
 		</div>
-	</div>
+	{/await}
 
 	<!-- Primary Section: Upcoming Evaluations -->
 	<div class="space-y-4">
@@ -237,21 +270,56 @@
 			</div>
 		{/snippet}
 
-		<DataTable
-			columns={upcomingColumns}
-			rows={upcoming}
-			rowKey="clientId"
-			title={m.upcoming_evaluations()}
-			description={m.upcoming_evaluations_description()}
-			emptyTitle={m.no_evaluations_found()}
-			cells={{
-				client: upcomingClient,
-				dueDate: upcomingDueDate,
-				status: upcomingStatus,
-				goals: upcomingGoals,
-				actions: upcomingActions
-			}}
-		/>
+		{#await upcomingPromise}
+			<DataTable
+				columns={upcomingColumns}
+				rows={[]}
+				loading
+				rowKey="clientId"
+				title={m.upcoming_evaluations()}
+				description={m.upcoming_evaluations_description()}
+				emptyTitle={m.no_evaluations_found()}
+				cells={{
+					client: upcomingClient,
+					dueDate: upcomingDueDate,
+					status: upcomingStatus,
+					goals: upcomingGoals,
+					actions: upcomingActions
+				}}
+			/>
+		{:then upcoming}
+			<DataTable
+				columns={upcomingColumns}
+				rows={upcoming}
+				rowKey="clientId"
+				title={m.upcoming_evaluations()}
+				description={m.upcoming_evaluations_description()}
+				emptyTitle={m.no_evaluations_found()}
+				cells={{
+					client: upcomingClient,
+					dueDate: upcomingDueDate,
+					status: upcomingStatus,
+					goals: upcomingGoals,
+					actions: upcomingActions
+				}}
+			/>
+		{:catch}
+			<DataTable
+				columns={upcomingColumns}
+				rows={[]}
+				rowKey="clientId"
+				title={m.upcoming_evaluations()}
+				description={m.upcoming_evaluations_description()}
+				emptyTitle={m.no_evaluations_found()}
+				cells={{
+					client: upcomingClient,
+					dueDate: upcomingDueDate,
+					status: upcomingStatus,
+					goals: upcomingGoals,
+					actions: upcomingActions
+				}}
+			/>
+		{/await}
 	</div>
 
 	<!-- Secondary Grid: Drafts and Submitted -->
@@ -288,8 +356,8 @@
 						class="text-text-subtle transition hover:text-text"
 						aria-label="Continue Draft"
 						onclick={() =>
-							openExistingEvaluationForm(
-								row.evaluationId,
+							openCreateEvaluationForm(
+								row.clientId,
 								`${row.clientFirstName} ${row.clientLastName}`
 							)}
 					>
@@ -298,19 +366,50 @@
 				</div>
 			{/snippet}
 
-			<DataTable
-				columns={draftColumns}
-				rows={drafts}
-				rowKey="evaluationId"
-				title={m.recent_drafts()}
-				description={m.recent_drafts_description()}
-				emptyTitle={m.no_drafts_found()}
-				cells={{
-					client: draftClient,
-					updatedAt: draftUpdatedAt,
-					actions: draftActions
-				}}
-			/>
+			{#await draftsPromise}
+				<DataTable
+					columns={draftColumns}
+					rows={[]}
+					loading
+					rowKey="evaluationId"
+					title={m.recent_drafts()}
+					description={m.recent_drafts_description()}
+					emptyTitle={m.no_drafts_found()}
+					cells={{
+						client: draftClient,
+						updatedAt: draftUpdatedAt,
+						actions: draftActions
+					}}
+				/>
+			{:then drafts}
+				<DataTable
+					columns={draftColumns}
+					rows={drafts}
+					rowKey="evaluationId"
+					title={m.recent_drafts()}
+					description={m.recent_drafts_description()}
+					emptyTitle={m.no_drafts_found()}
+					cells={{
+						client: draftClient,
+						updatedAt: draftUpdatedAt,
+						actions: draftActions
+					}}
+				/>
+			{:catch}
+				<DataTable
+					columns={draftColumns}
+					rows={[]}
+					rowKey="evaluationId"
+					title={m.recent_drafts()}
+					description={m.recent_drafts_description()}
+					emptyTitle={m.no_drafts_found()}
+					cells={{
+						client: draftClient,
+						updatedAt: draftUpdatedAt,
+						actions: draftActions
+					}}
+				/>
+			{/await}
 		</div>
 
 		<!-- Recently Submitted -->
@@ -355,19 +454,50 @@
 				</div>
 			{/snippet}
 
-			<DataTable
-				columns={submittedColumns}
-				rows={submitted}
-				rowKey="evaluationId"
-				title={m.recently_submitted()}
-				description={m.recently_submitted_description()}
-				emptyTitle={m.no_submitted_evaluations_found()}
-				cells={{
-					client: submittedClient,
-					submittedAt: submittedAtSnippet,
-					actions: submittedActions
-				}}
-			/>
+			{#await submittedPromise}
+				<DataTable
+					columns={submittedColumns}
+					rows={[]}
+					loading
+					rowKey="evaluationId"
+					title={m.recently_submitted()}
+					description={m.recently_submitted_description()}
+					emptyTitle={m.no_submitted_evaluations_found()}
+					cells={{
+						client: submittedClient,
+						submittedAt: submittedAtSnippet,
+						actions: submittedActions
+					}}
+				/>
+			{:then submitted}
+				<DataTable
+					columns={submittedColumns}
+					rows={submitted}
+					rowKey="evaluationId"
+					title={m.recently_submitted()}
+					description={m.recently_submitted_description()}
+					emptyTitle={m.no_submitted_evaluations_found()}
+					cells={{
+						client: submittedClient,
+						submittedAt: submittedAtSnippet,
+						actions: submittedActions
+					}}
+				/>
+			{:catch}
+				<DataTable
+					columns={submittedColumns}
+					rows={[]}
+					rowKey="evaluationId"
+					title={m.recently_submitted()}
+					description={m.recently_submitted_description()}
+					emptyTitle={m.no_submitted_evaluations_found()}
+					cells={{
+						client: submittedClient,
+						submittedAt: submittedAtSnippet,
+						actions: submittedActions
+					}}
+				/>
+			{/await}
 		</div>
 	</div>
 

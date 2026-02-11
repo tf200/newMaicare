@@ -55,6 +55,11 @@
 					label: m.in_care(),
 					href: '/in-care',
 					permission: 'CARE_COORDINATION.VIEW'
+				},
+				{
+					label: m.evaluations(),
+					href: '/evaluations',
+					permission: 'CARE_COORDINATION.VIEW'
 				}
 			]
 		}

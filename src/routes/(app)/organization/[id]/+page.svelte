@@ -5,20 +5,36 @@
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import CreateLocationForm from '$lib/components/forms/CreateLocationForm.svelte';
 	import EditLocationForm from '$lib/components/forms/EditLocationForm.svelte';
 	import { getLocation } from '$lib/api/organizations';
-	import type { OrganizationLocation } from '$lib/types/api';
-	import type { PageData } from './$types';
+	import type { GetOrganizationResponse, OrganizationLocation } from '$lib/types/api';
+	import type {
+		OrganizationCountsLoadResult,
+		OrganizationDetailLoadResult,
+		OrganizationLocationsLoadResult
+	} from './+page';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props<{
+		data: {
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: { name: string };
+			};
+			organizationData: Promise<OrganizationDetailLoadResult>;
+			countsData: Promise<OrganizationCountsLoadResult>;
+			locationsData: Promise<OrganizationLocationsLoadResult>;
+		};
+	}>();
 
-	const organization = $derived.by(() => data.organization);
-	const counts = $derived.by(() => data.counts);
-	const locations = $derived.by(() => data.locations);
-	const currentPage = $derived.by(() => data.pagination.page);
-	const pageSize = $derived.by(() => data.pagination.pageSize);
-	const appliedSearch = $derived.by(() => (data.pagination.filters.name ?? '').trim());
+	const organizationDataPromise = $derived.by(() => data.organizationData);
+	const countsDataPromise = $derived.by(() => data.countsData);
+	const locationsDataPromise = $derived.by(() => data.locationsData);
+	const currentPage = $derived.by(() => data.initial.page);
+	const pageSize = $derived.by(() => data.initial.pageSize);
+	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
 	let searchTerm = $state('');
 	let showCreateLocation = $state(false);
 	let showEditLocation = $state(false);
@@ -85,13 +101,13 @@
 	const formatOptional = (value: string | null, fallback = '—') =>
 		value && value.trim().length > 0 ? value : fallback;
 
-	const formatAddress = () => {
+	const formatAddress = (organization: GetOrganizationResponse) => {
 		const addition = organization.house_number_addition?.trim() ?? '';
 		const suffix = addition.length > 0 ? addition : '';
 		return `${organization.street} ${organization.house_number}${suffix}`.trim();
 	};
 
-	const occupancyPercent = (location: PageData['locations'][number]) => {
+	const occupancyPercent = (location: OrganizationLocation) => {
 		if (!location.capacity || location.capacity <= 0) return null;
 		return Math.min(100, Math.round((location.occupied / location.capacity) * 100));
 	};
@@ -117,7 +133,7 @@
 	</div>
 {/snippet}
 
-{#snippet nameCell(row: PageData['locations'][number])}
+{#snippet nameCell(row: OrganizationLocation)}
 	<div class="flex items-center gap-4 py-1">
 		<div
 			class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20"
@@ -133,7 +149,7 @@
 	</div>
 {/snippet}
 
-{#snippet addressCell(row: PageData['locations'][number])}
+{#snippet addressCell(row: OrganizationLocation)}
 	<div class="text-sm text-text-muted">
 		{row.street}
 		{row.house_number}{row.house_number_addition ?? ''}, {row.postal_code}
@@ -141,7 +157,7 @@
 	</div>
 {/snippet}
 
-{#snippet occupancyCell(row: PageData['locations'][number])}
+{#snippet occupancyCell(row: OrganizationLocation)}
 	{#if row.capacity}
 		{@const percent = occupancyPercent(row)}
 		<div class="flex w-full flex-col gap-1.5">
@@ -167,18 +183,18 @@
 	{/if}
 {/snippet}
 
-{#snippet availableCell(row: PageData['locations'][number])}
+{#snippet availableCell(row: OrganizationLocation)}
 	<span class="inline-flex items-center justify-end gap-1">
 		<span class="text-sm font-semibold text-text">{formatNumber(row.available)}</span>
 		<span class="text-xs text-text-subtle">beds</span>
 	</span>
 {/snippet}
 
-{#snippet updatedAtCell(row: PageData['locations'][number])}
+{#snippet updatedAtCell(row: OrganizationLocation)}
 	<span class="text-sm text-text-muted">{formatDate(row.updated_at)}</span>
 {/snippet}
 
-{#snippet actionsCell(row: PageData['locations'][number])}
+{#snippet actionsCell(row: OrganizationLocation)}
 	<button
 		class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 		onclick={() => openEdit(row.id)}
@@ -189,161 +205,230 @@
 {/snippet}
 
 <section class="space-y-8">
-	<header
-		class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
-	>
-		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
-		></div>
-		<div class="relative flex flex-wrap items-start justify-between gap-6">
-			<div class="space-y-3">
-				<div class="flex items-center gap-2 text-xs font-semibold text-text-subtle">
-					<span>Organizations</span>
-					<span>/</span>
-					<span class="text-text-muted">{page.params.id}</span>
-				</div>
-				<div class="flex items-center gap-3">
-					<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
-						<Building2 class="h-6 w-6 text-brand" />
-					</span>
-					<div>
-						<h1 class="text-3xl font-bold tracking-tighter text-text">
-							{organization.name}
-						</h1>
-						<p class="text-sm font-medium text-text-muted">{organization.id}</p>
-					</div>
-				</div>
-			</div>
-			<Button class="gap-2" onclick={() => (showCreateLocation = true)}>
-				<Plus class="h-4 w-4" />
-				Add location
-			</Button>
-		</div>
-	</header>
+	{#await organizationDataPromise}
+		<header
+			class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
+			aria-busy="true"
+		>
+			<div class="h-8 w-56 animate-pulse rounded bg-border/70"></div>
+			<div class="mt-4 h-4 w-36 animate-pulse rounded bg-border/70"></div>
+		</header>
+	{:then organizationData}
+		{#if organizationData.loadError}
+			<InlineErrorBanner message={organizationData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
 
-	<CreateLocationForm
-		bind:open={showCreateLocation}
-		organizationId={organization.id}
-		onCreated={() => invalidateAll()}
-	/>
-	{#if showEditLocation}
-		{#key editLocation?.id ?? 'loading'}
-			<EditLocationForm
-				bind:open={showEditLocation}
-				location={editLocation}
-				isFetching={isEditLoading}
-				loadErrorMessage={editLoadError}
-				onUpdated={() => invalidateAll()}
+		{#if organizationData.organization}
+			{@const organization = organizationData.organization}
+
+			<header
+				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
+			>
+				<div
+					class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+				></div>
+				<div class="relative flex flex-wrap items-start justify-between gap-6">
+					<div class="space-y-3">
+						<div class="flex items-center gap-2 text-xs font-semibold text-text-subtle">
+							<span>Organizations</span>
+							<span>/</span>
+							<span class="text-text-muted">{page.params.id}</span>
+						</div>
+						<div class="flex items-center gap-3">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
+								<Building2 class="h-6 w-6 text-brand" />
+							</span>
+							<div>
+								<h1 class="text-3xl font-bold tracking-tighter text-text">
+									{organization.name}
+								</h1>
+								<p class="text-sm font-medium text-text-muted">{organization.id}</p>
+							</div>
+						</div>
+					</div>
+					<Button class="gap-2" onclick={() => (showCreateLocation = true)}>
+						<Plus class="h-4 w-4" />
+						Add location
+					</Button>
+				</div>
+			</header>
+
+			<CreateLocationForm
+				bind:open={showCreateLocation}
+				organizationId={organization.id}
+				onCreated={() => invalidateAll()}
 			/>
-		{/key}
-	{/if}
+			{#if showEditLocation}
+				{#key editLocation?.id ?? 'loading'}
+					<EditLocationForm
+						bind:open={showEditLocation}
+						location={editLocation}
+						isFetching={isEditLoading}
+						loadErrorMessage={editLoadError}
+						onUpdated={() => invalidateAll()}
+					/>
+				{/key}
+			{/if}
 
-	<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Locations
-				</div>
-				<span
-					class="flex h-9 w-9 items-center justify-center rounded-full bg-border/30 text-text-muted"
-				>
-					<Warehouse class="h-4 w-4" />
-				</span>
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-				{formatNumber(counts.location_count)}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Clients</div>
-				<span
-					class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400"
-				>
-					<Users class="h-4 w-4" />
-				</span>
-			</div>
-			<div
-				class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
-			>
-				{formatNumber(counts.client_count)}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="flex items-center justify-between">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Employees
-				</div>
-				<span
-					class="flex h-9 w-9 items-center justify-center rounded-full bg-success/10 text-success"
-				>
-					<Users class="h-4 w-4" />
-				</span>
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-				{formatNumber(counts.employee_count)}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>
-		</div>
-	</section>
-
-	<div class="grid gap-6 lg:grid-cols-[1fr_2.2fr]">
-		<aside class="space-y-6">
-			<div
-				class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-teal-900/10"
-			>
-				<h2 class="text-lg font-bold tracking-tight text-white">Organization details</h2>
-				<div class="mt-6 space-y-4 text-sm">
-					<div>
-						<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Address</p>
-						<p class="mt-1 font-semibold text-white">{formatAddress()}</p>
-						<p class="text-white/90">
-							{organization.postal_code}
-							{organization.city}
-						</p>
-					</div>
-					<div>
-						<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Email</p>
-						<p class="mt-1 text-white">{formatOptional(organization.email)}</p>
-					</div>
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<p class="text-xs font-bold tracking-wider text-white/80 uppercase">KVK</p>
-							<p class="mt-1 text-white">{formatOptional(organization.kvk_number)}</p>
+			{#await countsDataPromise}
+				<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					{#each [1, 2, 3] as _}
+						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+							<div class="h-3 w-20 animate-pulse rounded bg-border/70"></div>
+							<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 						</div>
-						<div>
-							<p class="text-xs font-bold tracking-wider text-white/80 uppercase">BTW</p>
-							<p class="mt-1 text-white">{formatOptional(organization.btw_number)}</p>
+					{/each}
+				</section>
+			{:then countsData}
+				{#if countsData.loadError}
+					<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
+				{/if}
+
+				<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+						<div class="flex items-center justify-between">
+							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+								Locations
+							</div>
+							<span
+								class="flex h-9 w-9 items-center justify-center rounded-full bg-border/30 text-text-muted"
+							>
+								<Warehouse class="h-4 w-4" />
+							</span>
+						</div>
+						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+							{formatNumber(countsData.counts.location_count)}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
+					</div>
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+						<div class="flex items-center justify-between">
+							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+								Clients
+							</div>
+							<span
+								class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400"
+							>
+								<Users class="h-4 w-4" />
+							</span>
+						</div>
+						<div
+							class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+						>
+							{formatNumber(countsData.counts.client_count)}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
+					</div>
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+						<div class="flex items-center justify-between">
+							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+								Employees
+							</div>
+							<span
+								class="flex h-9 w-9 items-center justify-center rounded-full bg-success/10 text-success"
+							>
+								<Users class="h-4 w-4" />
+							</span>
+						</div>
+						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+							{formatNumber(countsData.counts.employee_count)}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>
+					</div>
+				</section>
+			{/await}
+
+			<div class="grid gap-6 lg:grid-cols-[1fr_2.2fr]">
+				<aside class="space-y-6">
+					<div
+						class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-teal-900/10"
+					>
+						<h2 class="text-lg font-bold tracking-tight text-white">Organization details</h2>
+						<div class="mt-6 space-y-4 text-sm">
+							<div>
+								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Address</p>
+								<p class="mt-1 font-semibold text-white">{formatAddress(organization)}</p>
+								<p class="text-white/90">
+									{organization.postal_code}
+									{organization.city}
+								</p>
+							</div>
+							<div>
+								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Email</p>
+								<p class="mt-1 text-white">{formatOptional(organization.email)}</p>
+							</div>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">KVK</p>
+									<p class="mt-1 text-white">{formatOptional(organization.kvk_number)}</p>
+								</div>
+								<div>
+									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">BTW</p>
+									<p class="mt-1 text-white">{formatOptional(organization.btw_number)}</p>
+								</div>
+							</div>
+						</div>
+						<div class="mt-6 border-t border-white/20 pt-4 text-xs text-white/70">
+							Updated {formatDate(organization.updated_at)}
 						</div>
 					</div>
-				</div>
-				<div class="mt-6 border-t border-white/20 pt-4 text-xs text-white/70">
-					Updated {formatDate(organization.updated_at)}
-				</div>
-			</div>
-		</aside>
+				</aside>
 
-		<DataTable
-			title="Locations"
-			description="Availability across organization sites."
-			{columns}
-			rows={locations}
-			{currentPage}
-			{pageSize}
-			totalCount={data.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
-			rowKey="id"
-			filters={tableFilters}
-			cells={{
-				name: nameCell,
-				address: addressCell,
-				occupancy: occupancyCell,
-				available: availableCell,
-				updated_at: updatedAtCell,
-				actions: actionsCell
-			}}
-		/>
-	</div>
+				{#await locationsDataPromise}
+					<DataTable
+						title="Locations"
+						description="Availability across organization sites."
+						{columns}
+						rows={[]}
+						loading
+						{currentPage}
+						{pageSize}
+						totalCount={0}
+						onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+						rowKey="id"
+						filters={tableFilters}
+						cells={{
+							name: nameCell,
+							address: addressCell,
+							occupancy: occupancyCell,
+							available: availableCell,
+							updated_at: updatedAtCell,
+							actions: actionsCell
+						}}
+					/>
+				{:then locationsData}
+					{#if locationsData.loadError}
+						<InlineErrorBanner message={locationsData.loadError} onRetry={() => invalidateAll()} />
+					{/if}
+
+					<DataTable
+						title="Locations"
+						description="Availability across organization sites."
+						{columns}
+						rows={locationsData.locations}
+						currentPage={locationsData.pagination.page}
+						pageSize={locationsData.pagination.pageSize}
+						totalCount={locationsData.pagination.count}
+						onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+						rowKey="id"
+						filters={tableFilters}
+						cells={{
+							name: nameCell,
+							address: addressCell,
+							occupancy: occupancyCell,
+							available: availableCell,
+							updated_at: updatedAtCell,
+							actions: actionsCell
+						}}
+					/>
+				{/await}
+			</div>
+		{:else}
+			<div
+				class="rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm"
+			>
+				Organization not available.
+			</div>
+		{/if}
+	{/await}
 </section>

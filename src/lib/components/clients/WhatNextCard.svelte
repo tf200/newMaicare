@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import { Activity, ChevronRight } from 'lucide-svelte';
 	import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
+	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
 
 	interface Props {
 		client: ClientOverviewData;
@@ -8,6 +10,7 @@
 	}
 
 	let { client, status }: Props = $props();
+	let showPutInCareForm = $state(false);
 
 	const formatDate = (dateString?: string) => {
 		if (!dateString) return 'N/A';
@@ -22,9 +25,9 @@
 		switch (status) {
 			case 'on_waiting_list':
 				return {
-					title: 'Prepare for Intake',
-					description: 'Review missing documents and finalize intake appointment.',
-					action: 'View Checklist'
+					title: 'Move Client to In Care',
+					description: 'Next step is to place this client in care and confirm the start plan.',
+					action: 'Start In Care'
 				};
 			case 'scheduled_in_care':
 				return {
@@ -56,6 +59,11 @@
 	};
 
 	const whatsNext = $derived(getWhatsNext(status));
+
+	const handleActionClick = () => {
+		if (status !== 'on_waiting_list') return;
+		showPutInCareForm = true;
+	};
 </script>
 
 {#if whatsNext}
@@ -73,10 +81,20 @@
 			<p class="mt-1 text-sm text-text-muted">{whatsNext.description}</p>
 		</div>
 		<button
+			type="button"
+			onclick={handleActionClick}
 			class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-bold text-brand shadow-sm ring-1 ring-brand/20 transition hover:bg-brand hover:text-white"
 		>
 			{whatsNext.action}
 			<ChevronRight class="h-4 w-4" />
 		</button>
 	</div>
+
+	{#if status === 'on_waiting_list'}
+		<PutClientInCareForm
+			bind:open={showPutInCareForm}
+			clientId={client.id}
+			onSuccess={() => invalidateAll()}
+		/>
+	{/if}
 {/if}

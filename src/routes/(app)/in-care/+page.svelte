@@ -5,29 +5,28 @@
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import type { PaginationState } from '$lib/types/ui';
-	import type { InCareFilters, InCareRow } from './+page';
+	import type { InCareFilters, InCareLoadResult, InCareRow } from './+page';
 
 	let { data } = $props<{
 		data: {
-			rows: InCareRow[];
-			stats: { total: number };
-			pagination: PaginationState<InCareFilters>;
-			sort: { direction: 'asc' | 'desc' };
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: InCareFilters;
+				sort: { direction: 'asc' | 'desc' };
+			};
+			inCareData: Promise<InCareLoadResult>;
 		};
 	}>();
 
-	const rows = $derived(data.rows);
-	const stats = $derived(data.stats);
-	const pagination = $derived(data.pagination);
-	const currentPage = $derived(pagination.page);
-	const pageSize = $derived(pagination.pageSize);
-	const sort = $derived(data.sort);
-	const loadError = $derived(data.loadError);
+	const inCareDataPromise = $derived(data.inCareData);
+	const initial = $derived(data.initial);
+	const currentPage = $derived(initial.page);
+	const pageSize = $derived(initial.pageSize);
+	const sort = $derived(initial.sort);
 
-	const appliedSearch = $derived((pagination.filters.search ?? '').trim());
-	const appliedStatuses = $derived(pagination.filters.status ?? []);
+	const appliedSearch = $derived((initial.filters.search ?? '').trim());
+	const appliedStatuses = $derived(initial.filters.status ?? []);
 	const selectedStatus = $derived(appliedStatuses.length === 1 ? appliedStatuses[0] : '');
 
 	const columns: DataTableColumn[] = [
@@ -248,42 +247,79 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Total In Care
+	{#await inCareDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+				<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{stats.total}</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">Clients</p>
 		</div>
-	</div>
 
-	<DataTable
-		{columns}
-		{rows}
-		{currentPage}
-		{pageSize}
-		totalCount={pagination.count}
-		sortColumn="daysInCare"
-		sortDirection={sort.direction}
-		onPageChange={(nextPage) =>
-			updateQuery(nextPage, appliedSearch, appliedStatuses, sort.direction)}
-		onSort={handleSort}
-		rowKey="id"
-		title="In Care"
-		description="Active clients who are receiving care or scheduled for upcoming intake."
-		filters={tableFilters}
-		cells={{
-			client: clientCell,
-			status: statusCell,
-			contract: contractCell,
-			startDate: startDateCell,
-			location: locationCell,
-			actions: actionsCell
-		}}
-	/>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			sortColumn="daysInCare"
+			sortDirection={sort.direction}
+			onPageChange={(nextPage) =>
+				updateQuery(nextPage, appliedSearch, appliedStatuses, sort.direction)}
+			onSort={handleSort}
+			rowKey="id"
+			title="In Care"
+			description="Active clients who are receiving care or scheduled for upcoming intake."
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				status: statusCell,
+				contract: contractCell,
+				startDate: startDateCell,
+				location: locationCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then inCareData}
+		{#if inCareData.loadError}
+			<InlineErrorBanner message={inCareData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total In Care
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{inCareData.stats.total}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">Clients</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={inCareData.rows}
+			currentPage={inCareData.pagination.page}
+			pageSize={inCareData.pagination.pageSize}
+			totalCount={inCareData.pagination.count}
+			sortColumn="daysInCare"
+			sortDirection={sort.direction}
+			onPageChange={(nextPage) =>
+				updateQuery(nextPage, appliedSearch, appliedStatuses, sort.direction)}
+			onSort={handleSort}
+			rowKey="id"
+			title="In Care"
+			description="Active clients who are receiving care or scheduled for upcoming intake."
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				status: statusCell,
+				contract: contractCell,
+				startDate: startDateCell,
+				location: locationCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

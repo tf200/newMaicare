@@ -8,14 +8,20 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
 	import CreateEmployeeForm from '$lib/components/forms/CreateEmployeeForm.svelte';
-	import type { EmployeeFilters as EmployeePageFilters, EmployeeRow } from './+page';
-	import type { PaginationState } from '$lib/types/ui';
+	import type {
+		EmployeeFilters as EmployeePageFilters,
+		EmployeeRow,
+		EmployeesLoadResult
+	} from './+page';
 
 	let { data } = $props<{
 		data: {
-			employees: EmployeeRow[];
-			pagination: PaginationState<EmployeePageFilters>;
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: EmployeePageFilters;
+			};
+			employeesData: Promise<EmployeesLoadResult>;
 		};
 	}>();
 	type EmployeeFilters = EmployeePageFilters;
@@ -29,11 +35,11 @@
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
 	];
 
-	const employees = $derived.by(() => data.employees);
-	const currentPage = $derived.by(() => data.pagination.page);
-	const pageSize = $derived.by(() => data.pagination.pageSize);
-	const appliedSearch = $derived.by(() => (data.pagination.filters.search ?? '').trim());
-	const loadError = $derived.by(() => data.loadError);
+	const employeesDataPromise = $derived.by(() => data.employeesData);
+	const initial = $derived.by(() => data.initial);
+	const currentPage = $derived.by(() => initial.page);
+	const pageSize = $derived.by(() => initial.pageSize);
+	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
 
 	const defaultFilters: EmployeeFilters = {
 		search: '',
@@ -46,7 +52,7 @@
 	let showCreateEmployee = $state(false);
 	let filters = $derived.by(() => ({
 		...defaultFilters,
-		...data.pagination.filters
+		...initial.filters
 	}));
 
 	onMount(() => {
@@ -243,23 +249,40 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
 	<CreateEmployeeForm bind:open={showCreateEmployee} onCreated={handleEmployeeCreated} />
 
-	<DataTable
-		{columns}
-		rows={employees}
-		{currentPage}
-		{pageSize}
-		totalCount={data.pagination.count}
-		onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-		rowKey="id"
-		title="Employee roster"
-		description="Track active coverage, leave status, and team ownership in real time."
-		filters={tableFilters}
-		cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
-	/>
+	{#await employeesDataPromise}
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			rowKey="id"
+			title="Employee roster"
+			description="Track active coverage, leave status, and team ownership in real time."
+			filters={tableFilters}
+			cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
+		/>
+	{:then employeesData}
+		{#if employeesData.loadError}
+			<InlineErrorBanner message={employeesData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<DataTable
+			{columns}
+			rows={employeesData.employees}
+			currentPage={employeesData.pagination.page}
+			pageSize={employeesData.pagination.pageSize}
+			totalCount={employeesData.pagination.count}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			rowKey="id"
+			title="Employee roster"
+			description="Track active coverage, leave status, and team ownership in real time."
+			filters={tableFilters}
+			cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
+		/>
+	{/await}
 </section>

@@ -48,6 +48,7 @@ export interface ClientOverviewData {
 	careType?: string;
 	coordinator?: string;
 	dateOfBirth: string;
+	senderName?: string;
 	phone?: string;
 	email?: string;
 	maskedBsn: string;
@@ -79,6 +80,7 @@ export interface ClientOverviewData {
 		status: string;
 		startDate?: string;
 		endDate?: string;
+		daysUntilContractEnd?: number;
 		financing?: string;
 		outstandingInvoices?: { count: number; amount: string };
 	};
@@ -97,6 +99,7 @@ const baseClient: Omit<
 	careType: 'Protected living',
 	coordinator: 'Sanne Meijer',
 	dateOfBirth: '2005-02-18',
+	senderName: 'Centrum voor Jeugd en Gezin',
 	phone: '+31 6 3012 8890',
 	email: 'noah.vdijk@example.com',
 	maskedBsn: '***.**.482',

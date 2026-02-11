@@ -2,7 +2,12 @@
 	import ClientOverviewPage from '$lib/components/clients/ClientOverviewPage.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import { invalidateAll } from '$app/navigation';
-	import type { WaitlistClientLoadResult } from './+page';
+	import type { ClientOverviewData } from '$lib/mock/client-overview';
+
+	interface WaitlistClientLoadResult {
+		client: ClientOverviewData;
+		loadError: string | null;
+	}
 
 	let { data } = $props<{
 		data: {

@@ -13,8 +13,7 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import type { IntakeRow as IntakeRowData, IntakeFilters } from './+page';
-	import type { PaginationState } from '$lib/types/ui';
+	import type { IntakeRow as IntakeRowData, IntakeFilters, IntakesLoadResult } from './+page';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
@@ -24,21 +23,21 @@
 
 	let { data } = $props<{
 		data: {
-			intakes: IntakeRow[];
-			stats: { total: number; completed: number; pending: number };
-			pagination: PaginationState<IntakeFilters>;
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: IntakeFilters;
+			};
+			intakesData: Promise<IntakesLoadResult>;
 		};
 	}>();
 
-	const intakes = $derived.by(() => data.intakes);
-	const stats = $derived.by(() => data.stats);
-	const pagination = $derived.by(() => data.pagination);
-	const currentPage = $derived.by(() => pagination.page);
-	const pageSize = $derived.by(() => pagination.pageSize);
-	const loadError = $derived.by(() => data.loadError);
+	const intakesDataPromise = $derived.by(() => data.intakesData);
+	const initial = $derived.by(() => data.initial);
+	const currentPage = $derived.by(() => initial.page);
+	const pageSize = $derived.by(() => initial.pageSize);
 
-	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
+	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
 	let searchTerm = $state('');
 
 	$effect(() => {
@@ -54,7 +53,7 @@
 
 	let filters = $derived.by(() => ({
 		...defaultFilters,
-		...pagination.filters
+		...initial.filters
 	}));
 
 	const careOptions: Array<{ key: keyof IntakeRow; label: string; className: string }> = [
@@ -344,58 +343,95 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
+	{#await intakesDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#each [1, 2, 3] as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
+		</div>
 
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Total Intakes
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{stats.total}</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.all()}</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Completed Assessments
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-				{stats.completed}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
-		</div>
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Pending Assessments
-			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
-				{stats.pending}
-			</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
-		</div>
-	</div>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			onRowClick={(row) => goto(`/intakes/${row.id}`)}
+			rowKey="id"
+			title={m.intake()}
+			description={m.intake_management_description()}
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				intakeDate: intakeDateCell,
+				intakeStatus: intakeStatusCell,
+				goalAssessment: goalAssessmentCell,
+				care: careCell,
+				location: locationCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then intakesData}
+		{#if intakesData.loadError}
+			<InlineErrorBanner message={intakesData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
 
-	<DataTable
-		{columns}
-		rows={intakes}
-		{currentPage}
-		{pageSize}
-		totalCount={pagination.count}
-		onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-		onRowClick={(row) => goto(`/intakes/${row.id}`)}
-		rowKey="id"
-		title={m.intake()}
-		description={m.intake_management_description()}
-		filters={tableFilters}
-		cells={{
-			client: clientCell,
-			intakeDate: intakeDateCell,
-			intakeStatus: intakeStatusCell,
-			goalAssessment: goalAssessmentCell,
-			care: careCell,
-			location: locationCell,
-			actions: actionsCell
-		}}
-	/>
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total Intakes
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{intakesData.stats.total}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.all()}</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Completed Assessments
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
+					{intakesData.stats.completed}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
+			</div>
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Pending Assessments
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
+					{intakesData.stats.pending}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={intakesData.intakes}
+			currentPage={intakesData.pagination.page}
+			pageSize={intakesData.pagination.pageSize}
+			totalCount={intakesData.pagination.count}
+			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
+			onRowClick={(row) => goto(`/intakes/${row.id}`)}
+			rowKey="id"
+			title={m.intake()}
+			description={m.intake_management_description()}
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				intakeDate: intakeDateCell,
+				intakeStatus: intakeStatusCell,
+				goalAssessment: goalAssessmentCell,
+				care: careCell,
+				location: locationCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

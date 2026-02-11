@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { User, MapPin, Phone } from 'lucide-svelte';
+	import { User, MapPin, Phone, Building2, Mail } from 'lucide-svelte';
 	import type { ClientOverviewData } from '$lib/mock/client-overview';
 
 	interface Props {
@@ -50,12 +50,27 @@
 			<div
 				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-900"
 			>
-				<Phone class="h-4 w-4" />
+				<Building2 class="h-4 w-4" />
 			</div>
 			<div>
-				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Contact</p>
-				<p class="text-sm font-medium text-text">{client.phone || 'No phone'}</p>
-				<p class="text-xs text-text-muted">{client.email || 'No email'}</p>
+				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Sender / Referrer
+				</p>
+				<p class="text-sm font-bold text-text">{client.senderName || 'Unknown Sender'}</p>
+				<div class="mt-1 space-y-1">
+					{#if client.phone}
+						<p class="flex items-center gap-1.5 text-xs text-text-muted">
+							<Phone class="h-3 w-3 opacity-70" />
+							{client.phone}
+						</p>
+					{/if}
+					{#if client.email}
+						<p class="flex items-center gap-1.5 text-xs text-text-muted">
+							<Mail class="h-3 w-3 opacity-70" />
+							{client.email}
+						</p>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>

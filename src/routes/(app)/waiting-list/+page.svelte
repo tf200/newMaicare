@@ -5,34 +5,33 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
-	import type { PaginationState } from '$lib/types/ui';
-	import type { WaitingListFilters, WaitingListRow } from './+page';
+	import type { WaitingListFilters, WaitingListLoadResult, WaitingListRow } from './+page';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
 	let { data } = $props<{
 		data: {
-			rows: WaitingListRow[];
-			stats: { total: number };
-			pagination: PaginationState<WaitingListFilters>;
-			sort: { direction: 'asc' | 'desc' };
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: WaitingListFilters;
+				sort: { direction: 'asc' | 'desc' };
+			};
+			waitingListData: Promise<WaitingListLoadResult>;
 		};
 	}>();
 
-	const rows = $derived.by(() => data.rows);
-	const stats = $derived.by(() => data.stats);
-	const pagination = $derived.by(() => data.pagination);
-	const currentPage = $derived.by(() => pagination.page);
-	const pageSize = $derived.by(() => pagination.pageSize);
-	const loadError = $derived.by(() => data.loadError);
-	const sort = $derived.by(() => data.sort);
+	const waitingListDataPromise = $derived.by(() => data.waitingListData);
+	const initial = $derived.by(() => data.initial);
+	const currentPage = $derived.by(() => initial.page);
+	const pageSize = $derived.by(() => initial.pageSize);
+	const sort = $derived.by(() => initial.sort);
 	let isPutInCareModalOpen = $state(false);
 	let selectedClientId = $state<string | null>(null);
 
-	const appliedSearch = $derived.by(() => (pagination.filters.search ?? '').trim());
-	const appliedAdmissionType = $derived.by(() => (pagination.filters.admissionType ?? '').trim());
-	const appliedPlacement = $derived.by(() => (pagination.filters.placement ?? '').trim());
+	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
+	const appliedAdmissionType = $derived.by(() => (initial.filters.admissionType ?? '').trim());
+	const appliedPlacement = $derived.by(() => (initial.filters.placement ?? '').trim());
 
 	const columns: DataTableColumn[] = [
 		{ key: 'client', label: m.client(), headerClass: 'pl-14' },
@@ -275,14 +274,13 @@
 				<HeartHandshake class="h-4 w-4" />
 			</button>
 		</PermissionGuard>
-		<button
-			type="button"
-			disabled
-			class="flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg text-text-subtle/60"
+		<a
+			href="/clients/{row.id}"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title="View details"
 		>
 			<Eye class="h-4 w-4" />
-		</button>
+		</a>
 	</div>
 {/snippet}
 
@@ -309,43 +307,91 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Total Waiting
+	{#await waitingListDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+				<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{stats.total}</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
 		</div>
-	</div>
 
-	<DataTable
-		{columns}
-		{rows}
-		{currentPage}
-		{pageSize}
-		totalCount={pagination.count}
-		sortColumn="daysInWaitingList"
-		sortDirection={sort.direction}
-		onPageChange={(nextPage) =>
-			updateQuery(nextPage, appliedSearch, appliedAdmissionType, appliedPlacement, sort.direction)}
-		onSort={handleSort}
-		rowKey="id"
-		title="Waiting List"
-		description="Clients currently in waiting list"
-		filters={tableFilters}
-		cells={{
-			client: clientCell,
-			careType: careTypeCell,
-			daysInWaitingList: daysCell,
-			admissionType: admissionTypeCell,
-			actions: actionsCell
-		}}
-	/>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			sortColumn="daysInWaitingList"
+			sortDirection={sort.direction}
+			onPageChange={(nextPage) =>
+				updateQuery(
+					nextPage,
+					appliedSearch,
+					appliedAdmissionType,
+					appliedPlacement,
+					sort.direction
+				)}
+			onSort={handleSort}
+			rowKey="id"
+			title="Waiting List"
+			description="Clients currently in waiting list"
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				careType: careTypeCell,
+				daysInWaitingList: daysCell,
+				admissionType: admissionTypeCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then waitingListData}
+		{#if waitingListData.loadError}
+			<InlineErrorBanner message={waitingListData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total Waiting
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{waitingListData.stats.total}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={waitingListData.rows}
+			currentPage={waitingListData.pagination.page}
+			pageSize={waitingListData.pagination.pageSize}
+			totalCount={waitingListData.pagination.count}
+			sortColumn="daysInWaitingList"
+			sortDirection={sort.direction}
+			onPageChange={(nextPage) =>
+				updateQuery(
+					nextPage,
+					appliedSearch,
+					appliedAdmissionType,
+					appliedPlacement,
+					sort.direction
+				)}
+			onSort={handleSort}
+			rowKey="id"
+			title="Waiting List"
+			description="Clients currently in waiting list"
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				careType: careTypeCell,
+				daysInWaitingList: daysCell,
+				admissionType: admissionTypeCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 
 	<PutClientInCareForm
 		bind:open={isPutInCareModalOpen}

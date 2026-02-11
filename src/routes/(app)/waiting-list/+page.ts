@@ -26,6 +26,13 @@ export interface WaitingListRow {
 	admissionType: 'crisis' | 'regular' | 'unknown';
 }
 
+export interface WaitingListLoadResult {
+	rows: WaitingListRow[];
+	stats: { total: number };
+	pagination: PaginationState<WaitingListFilters>;
+	loadError: string | null;
+}
+
 const mapAdmissionType = (
 	admissionType: ListWaitingListClientsResponse['admission_type']
 ): WaitingListRow['admissionType'] => {
@@ -49,7 +56,7 @@ const matchesAdmissionType = (row: WaitingListRow, type: string) => {
 	return row.admissionType === type;
 };
 
-export const load: PageLoad = async ({ url }) => {
+export const load: PageLoad = ({ url }) => {
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const requestedPageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
@@ -59,76 +66,86 @@ export const load: PageLoad = async ({ url }) => {
 	const sortParam = (url.searchParams.get('sort_days') ?? 'desc').toLowerCase();
 	const sortDirection: 'asc' | 'desc' = sortParam === 'asc' ? 'asc' : 'desc';
 
-	try {
-		const response = await listWaitingListClients({
-			page,
-			pageSize,
-			search: search || undefined,
-			placement: placement || undefined,
-			sortDays: sortDirection
+	const waitingListData: Promise<WaitingListLoadResult> = listWaitingListClients({
+		page,
+		pageSize,
+		search: search || undefined,
+		placement: placement || undefined,
+		sortDays: sortDirection
+	})
+		.then((response) => {
+			const { count, next, previous, page_size, results } = response.data;
+			const mappedRows = results.map(
+				(item): WaitingListRow => ({
+					id: item.id,
+					clientFirstName: item.first_name,
+					clientLastName: item.last_name,
+					clientBsnNumber: item.bsn,
+					careType: mapCareType(item.care_type),
+					senderName: item.sender_name ?? '—',
+					daysInWaitingList: item.days_in_waitlist,
+					admissionType: mapAdmissionType(item.admission_type)
+				})
+			);
+
+			const filteredRows = mappedRows.filter((row) => matchesAdmissionType(row, admissionType));
+
+			return {
+				rows: filteredRows,
+				stats: {
+					total: admissionType ? filteredRows.length : count
+				},
+				pagination: {
+					count: admissionType ? filteredRows.length : count,
+					page,
+					pageSize: page_size || pageSize,
+					next: admissionType ? null : next,
+					previous: admissionType ? null : previous,
+					filters: {
+						search,
+						admissionType,
+						placement
+					}
+				} satisfies PaginationState<WaitingListFilters>,
+				loadError: null
+			} satisfies WaitingListLoadResult;
+		})
+		.catch((error): WaitingListLoadResult => {
+			const message = error instanceof Error ? error.message : 'Failed to load waiting list.';
+			return {
+				rows: [],
+				stats: {
+					total: 0
+				},
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters: {
+						search,
+						admissionType,
+						placement
+					}
+				} satisfies PaginationState<WaitingListFilters>,
+				loadError: message
+			};
 		});
 
-		const { count, next, previous, page_size, results } = response.data;
-		const mappedRows = results.map(
-			(item): WaitingListRow => ({
-				id: item.id,
-				clientFirstName: item.first_name,
-				clientLastName: item.last_name,
-				clientBsnNumber: item.bsn,
-				careType: mapCareType(item.care_type),
-				senderName: item.sender_name ?? '—',
-				daysInWaitingList: item.days_in_waitlist,
-				admissionType: mapAdmissionType(item.admission_type)
-			})
-		);
-
-		const filteredRows = mappedRows.filter((row) => matchesAdmissionType(row, admissionType));
-
-		return {
-			rows: filteredRows,
-			stats: {
-				total: admissionType ? filteredRows.length : count
+	return {
+		initial: {
+			page,
+			pageSize,
+			filters: {
+				search,
+				admissionType,
+				placement
 			},
-			pagination: {
-				count: admissionType ? filteredRows.length : count,
-				page,
-				pageSize: page_size || pageSize,
-				next: admissionType ? null : next,
-				previous: admissionType ? null : previous,
-				filters: {
-					search,
-					admissionType,
-					placement
-				}
-			} satisfies PaginationState<WaitingListFilters>,
 			sort: {
 				direction: sortDirection
-			},
-			loadError: null
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to load waiting list.';
-		return {
-			rows: [],
-			stats: {
-				total: 0
-			},
-			pagination: {
-				count: 0,
-				page,
-				pageSize,
-				next: null,
-				previous: null,
-				filters: {
-					search,
-					admissionType,
-					placement
-				}
-			} satisfies PaginationState<WaitingListFilters>,
-			sort: {
-				direction: sortDirection
-			},
-			loadError: message
-		};
-	}
+			}
+		},
+		waitingListData
+	};
 };

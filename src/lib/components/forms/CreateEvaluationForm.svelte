@@ -7,9 +7,7 @@
 	import {
 		createEvaluation,
 		getEvaluationBootstrap,
-		getGoalEvaluation,
-		submitEvaluationDraft,
-		updateEvaluationDraft
+		getGoalEvaluation
 	} from '$lib/api/evaluations';
 	import type {
 		EvaluationBootstrapResponse,
@@ -18,7 +16,7 @@
 		GoalEvaluationResponse
 	} from '$lib/types/api';
 
-	type Mode = 'create_new' | 'edit_draft';
+	type Mode = 'create_new' | 'edit_draft' | 'view_only';
 
 	let {
 		open = $bindable(false),
@@ -37,7 +35,6 @@
 	let bootstrap = $state<EvaluationBootstrapResponse | null>(null);
 	let evaluation = $state<GoalEvaluationResponse | null>(null);
 	let mode = $state<Mode>('create_new');
-	let draftId = $state<string | null>(null);
 	let overallNotes = $state('');
 	let goalItems = $state<Record<string, { progress: EvaluationProgress; notes: string }>>({});
 	let progressErrors = $state<Record<string, string>>({});
@@ -48,8 +45,11 @@
 
 	const progressOptions = [
 		{ value: 'no_progress', label: 'No progress' },
+		{ value: 'regression', label: 'Regression' },
 		{ value: 'limited_progress', label: 'Limited progress' },
-		{ value: 'good_progress', label: 'Good progress' }
+		{ value: 'good_progress', label: 'Good progress' },
+		{ value: 'achieved', label: 'Achieved' },
+		{ value: 'blocked', label: 'Blocked' }
 	];
 
 	const sortedGoals = $derived.by(() =>
@@ -64,7 +64,9 @@
 		return next;
 	});
 
-	const isReadOnly = $derived(evaluation?.status === 'completed');
+	const isReadOnly = $derived(
+		evaluation?.status === 'completed' || evaluation?.status === 'archived'
+	);
 	const showLastEvaluation = $derived(!evaluation || evaluation.status === 'draft');
 
 	const viewGoals = $derived.by(() => {
@@ -125,6 +127,9 @@
 		return trimmed.length > 0 ? trimmed : null;
 	};
 
+	const isSameTimestamp = (left: string, right: string) =>
+		new Date(left).getTime() === new Date(right).getTime();
+
 	const buildItemsPayload = (): EvaluationItemInput[] =>
 		viewGoals.map((goal) => ({
 			goal_id: goal.goal_id,
@@ -145,6 +150,12 @@
 
 	const initGoalItemsFromEvaluation = (payload: GoalEvaluationResponse) => {
 		const next: Record<string, { progress: EvaluationProgress; notes: string }> = {};
+		for (const goal of bootstrap?.active_goals ?? []) {
+			next[goal.goal_id] = {
+				progress: 'no_progress',
+				notes: ''
+			};
+		}
 		for (const item of payload.items) {
 			next[item.goal_id] = {
 				progress: item.progress,
@@ -157,36 +168,42 @@
 	const loadByEvaluationId = async (id: string) => {
 		const response = await getGoalEvaluation(id);
 		evaluation = response.data;
-		draftId = response.data.id;
 		overallNotes = response.data.overall_notes ?? '';
 		progressErrors = {};
-		initGoalItemsFromEvaluation(response.data);
 
 		if (response.data.status === 'draft') {
 			mode = 'edit_draft';
 			const bootstrapResponse = await getEvaluationBootstrap(response.data.client_id);
 			bootstrap = bootstrapResponse.data;
 		} else {
-			mode = 'edit_draft';
+			mode = 'view_only';
 			bootstrap = null;
 		}
+
+		initGoalItemsFromEvaluation(response.data);
 	};
 
 	const loadBootstrap = async () => {
 		if (!clientId || !open) return;
 		const response = await getEvaluationBootstrap(clientId);
 		bootstrap = response.data;
+		evaluation = null;
+		mode = 'create_new';
+		overallNotes = '';
+		progressErrors = {};
 
-		if (response.data.existing_draft?.id) {
+		if (
+			response.data.existing_draft?.id &&
+			response.data.next_evaluation_date &&
+			isSameTimestamp(
+				response.data.existing_draft.evaluation_date,
+				response.data.next_evaluation_date
+			)
+		) {
 			await loadByEvaluationId(response.data.existing_draft.id);
 			return;
 		}
 
-		evaluation = null;
-		mode = 'create_new';
-		draftId = null;
-		overallNotes = '';
-		progressErrors = {};
 		initGoalItems(response.data);
 	};
 
@@ -213,39 +230,26 @@
 		}
 	});
 
-	const validateSubmit = () => {
-		const nextErrors: Record<string, string> = {};
-		for (const goal of viewGoals) {
-			const progress = goalItems[goal.goal_id]?.progress ?? 'no_progress';
-			if (progress === 'no_progress') {
-				nextErrors[goal.goal_id] = 'Select progress before submitting';
-			}
-		}
-		progressErrors = nextErrors;
-		return Object.keys(nextErrors).length === 0;
-	};
-
 	const saveDraft = async () => {
 		if (isReadOnly || isSaving || isSubmitting) return;
 		isSaving = true;
 		formError = '';
 		try {
-			if (mode === 'edit_draft' && draftId) {
-				await updateEvaluationDraft(draftId, {
-					overall_notes: trimOrNull(overallNotes) ?? undefined,
-					items: buildItemsPayload()
-				});
-			} else if (clientId) {
-				const response = await createEvaluation(clientId, {
-					overall_notes: trimOrNull(overallNotes) ?? undefined,
-					submit: false,
-					items: buildItemsPayload()
-				});
-				mode = 'edit_draft';
-				draftId = response.data.id;
-			} else {
+			if (!clientId) {
 				throw new Error('Missing client for draft creation.');
 			}
+
+			const response = await createEvaluation(clientId, {
+				overall_notes: trimOrNull(overallNotes),
+				submit: false,
+				items: buildItemsPayload()
+			});
+
+			evaluation = response.data;
+			mode = 'edit_draft';
+			overallNotes = response.data.overall_notes ?? '';
+			progressErrors = {};
+			initGoalItemsFromEvaluation(response.data);
 			onSaved?.();
 		} catch (error) {
 			formError = normalizeErrorMessage(
@@ -258,28 +262,38 @@
 
 	const submitEvaluation = async () => {
 		if (isReadOnly || isSaving || isSubmitting) return;
-		if (!validateSubmit()) return;
 
 		isSubmitting = true;
 		formError = '';
 		try {
-			if (mode === 'edit_draft' && draftId) {
-				await updateEvaluationDraft(draftId, {
-					overall_notes: trimOrNull(overallNotes) ?? undefined,
-					items: buildItemsPayload()
-				});
-				await submitEvaluationDraft(draftId);
-			} else if (clientId) {
-				await createEvaluation(clientId, {
-					overall_notes: trimOrNull(overallNotes) ?? undefined,
-					submit: true,
-					items: buildItemsPayload()
-				});
-			} else {
+			if (!clientId) {
 				throw new Error('Missing client for submission.');
 			}
+
+			const response = await createEvaluation(clientId, {
+				overall_notes: trimOrNull(overallNotes),
+				submit: true,
+				items: buildItemsPayload()
+			});
+
+			evaluation = response.data;
+			mode =
+				response.data.status === 'completed' || response.data.status === 'archived'
+					? 'view_only'
+					: 'edit_draft';
+			overallNotes = response.data.overall_notes ?? '';
+			progressErrors = {};
+			initGoalItemsFromEvaluation(response.data);
 			onSaved?.();
-			open = false;
+
+			if (response.data.status === 'draft' && response.data.submit_error) {
+				formError = normalizeErrorMessage(response.data.submit_error);
+				return;
+			}
+
+			if (response.data.status === 'completed' || response.data.status === 'archived') {
+				open = false;
+			}
 		} catch (error) {
 			formError = normalizeErrorMessage(
 				error instanceof Error ? error.message : 'Failed to submit evaluation.'
@@ -321,7 +335,11 @@
 					{#if bootstrap}
 						<div class="flex items-center gap-2 text-sm font-semibold text-text-muted">
 							<CalendarClock class="h-4 w-4" />
-							{bootstrap.days_left} days left
+							{#if bootstrap.next_evaluation_date}
+								{bootstrap.days_left} days left
+							{:else}
+								No due date scheduled
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -395,7 +413,7 @@
 								<div class="mb-3 flex flex-wrap items-start justify-between gap-2">
 									<div>
 										<p class="text-sm font-semibold text-text">{goal.title}</p>
-										<p class="text-xs text-text-muted">{goal.topic_name_snapshot}</p>
+										<p class="text-xs text-text-muted">{goal.topic_name_snapshot ?? '—'}</p>
 									</div>
 									{#if goal.priority}
 										<span
@@ -420,7 +438,7 @@
 									<Textarea
 										label="Notes"
 										disabled={true}
-										bind:value={goalItems[goal.goal_id].notes}
+										value={goalItems[goal.goal_id]?.notes ?? ''}
 									/>
 								{:else}
 									<Select
@@ -466,7 +484,7 @@
 			<div class="flex items-center justify-between gap-3">
 				<div class="inline-flex items-center gap-2 text-xs text-text-muted">
 					<CircleAlert class="h-3.5 w-3.5" />
-					Submit requires progress on every goal.
+					Submit saves first; if completion is blocked it remains a draft.
 				</div>
 				<div class="flex gap-2">
 					<Button variant="ghost" onclick={() => (open = false)} disabled={isSaving || isSubmitting}

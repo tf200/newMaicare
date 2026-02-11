@@ -11,38 +11,109 @@ import type {
 } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
-export const load: PageLoad = async ({ params, url }) => {
+export interface OrganizationDetailLoadResult {
+	organization: GetOrganizationResponse | null;
+	loadError: string | null;
+}
+
+export interface OrganizationCountsLoadResult {
+	counts: OrganizationCounts;
+	loadError: string | null;
+}
+
+export interface OrganizationLocationsLoadResult {
+	locations: OrganizationLocation[];
+	pagination: PaginationState<{ name: string }>;
+	loadError: string | null;
+}
+
+export const load: PageLoad = ({ params, url }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const name = url.searchParams.get('name') ?? '';
 
-	const [organizationResponse, countsResponse, locationsResponse] = await Promise.all([
-		getOrganization(params.id),
-		getOrganizationCounts(params.id),
-		listOrganizationLocations(params.id, {
+	const organizationData: Promise<OrganizationDetailLoadResult> = getOrganization(params.id)
+		.then((organizationResponse) => ({
+			organization: organizationResponse.data,
+			loadError: null
+		}))
+		.catch(
+			(error): OrganizationDetailLoadResult => ({
+				organization: null,
+				loadError: error instanceof Error ? error.message : 'Failed to load organization.'
+			})
+		);
+
+	const countsData: Promise<OrganizationCountsLoadResult> = getOrganizationCounts(params.id)
+		.then((countsResponse) => ({
+			counts: countsResponse.data,
+			loadError: null
+		}))
+		.catch(
+			(error): OrganizationCountsLoadResult => ({
+				counts: {
+					organisation_id: params.id,
+					organisation_name: '',
+					employee_count: 0,
+					client_count: 0,
+					location_count: 0
+				},
+				loadError: error instanceof Error ? error.message : 'Failed to load organization counts.'
+			})
+		);
+
+	const locationsData: Promise<OrganizationLocationsLoadResult> = listOrganizationLocations(
+		params.id,
+		{
 			page,
 			pageSize,
 			name: name.trim() || undefined
+		}
+	)
+		.then((locationsResponse) => {
+			const { count, page_size, results, next, previous } = locationsResponse.data;
+			return {
+				locations: results as OrganizationLocation[],
+				pagination: {
+					count,
+					page,
+					pageSize: page_size || pageSize,
+					next,
+					previous,
+					filters: {
+						name
+					}
+				} satisfies PaginationState<{ name: string }>,
+				loadError: null
+			} satisfies OrganizationLocationsLoadResult;
 		})
-	]);
-
-	const organization: GetOrganizationResponse = organizationResponse.data;
-	const counts: OrganizationCounts = countsResponse.data;
-	const { count, page_size, results, next, previous } = locationsResponse.data;
+		.catch(
+			(error): OrganizationLocationsLoadResult => ({
+				locations: [],
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters: {
+						name
+					}
+				} satisfies PaginationState<{ name: string }>,
+				loadError: error instanceof Error ? error.message : 'Failed to load organization locations.'
+			})
+		);
 
 	return {
-		organization,
-		counts,
-		locations: results as OrganizationLocation[],
-		pagination: {
-			count,
+		initial: {
 			page,
-			pageSize: page_size || pageSize,
-			next,
-			previous,
+			pageSize,
 			filters: {
 				name
 			}
-		} satisfies PaginationState<{ name: string }>
+		},
+		organizationData,
+		countsData,
+		locationsData
 	};
 };

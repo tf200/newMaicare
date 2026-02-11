@@ -31,6 +31,7 @@
 	}
 
 	let { client, status }: Props = $props();
+	const isWaitlistClient = $derived(status === 'on_waiting_list');
 
 	// --- Helpers ---
 	const formatDate = (dateString?: string) => {
@@ -40,6 +41,15 @@
 			month: 'short',
 			year: 'numeric'
 		});
+	};
+
+	const getDaysOnWaitlist = (dateString?: string) => {
+		if (!dateString) return 'N/A';
+		const waitlistDate = new Date(dateString);
+		if (Number.isNaN(waitlistDate.getTime())) return 'N/A';
+
+		const days = Math.max(0, Math.floor((Date.now() - waitlistDate.getTime()) / 86400000));
+		return `${days} day${days === 1 ? '' : 's'}`;
 	};
 
 	const statusLabels: Record<ClientOverviewStatus, string> = {
@@ -63,6 +73,12 @@
 		medium: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
 		low: 'bg-blue-500/10 text-blue-700 border-blue-500/20'
 	};
+
+	const prioritySolidColors = {
+		high: 'bg-rose-500',
+		medium: 'bg-orange-500',
+		low: 'bg-blue-500'
+	};
 </script>
 
 <div class="space-y-6">
@@ -75,18 +91,20 @@
 		</nav>
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
-			<button
-				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-			>
-				<MessageSquare class="h-4 w-4" />
-				New progress report
-			</button>
-			<button
-				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-			>
-				<ShieldAlert class="h-4 w-4" />
-				Log incident
-			</button>
+			{#if !isWaitlistClient}
+				<button
+					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+				>
+					<MessageSquare class="h-4 w-4" />
+					New progress report
+				</button>
+				<button
+					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+				>
+					<ShieldAlert class="h-4 w-4" />
+					Log incident
+				</button>
+			{/if}
 			<button
 				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 			>
@@ -154,26 +172,44 @@
 			</div>
 
 			<div class="flex flex-wrap gap-4 border-t border-border/40 pt-6 lg:border-t-0 lg:pt-0">
-				<div class="flex flex-col">
-					<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-						>Last Eval</span
-					>
-					<span class="text-sm font-bold text-text">{formatDate(client.lastEvaluationDate)}</span>
-				</div>
-				<div class="h-8 w-px bg-border lg:block"></div>
-				<div class="flex flex-col">
-					<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-						>Next Eval</span
-					>
-					<span class="text-sm font-bold text-text">{formatDate(client.nextEvaluationDate)}</span>
-				</div>
-				<div class="h-8 w-px bg-border lg:block"></div>
-				<div class="flex flex-col">
-					<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-						>Start Date</span
-					>
-					<span class="text-sm font-bold text-text">{formatDate(client.plannedInCareDate)}</span>
-				</div>
+				{#if isWaitlistClient}
+					<div class="flex flex-col">
+						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+							>Waitlist Since</span
+						>
+						<span class="text-sm font-bold text-text">{formatDate(client.plannedInCareDate)}</span>
+					</div>
+					<div class="h-8 w-px bg-border lg:block"></div>
+					<div class="flex flex-col">
+						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+							>Days on Waitlist</span
+						>
+						<span class="text-sm font-bold text-text"
+							>{getDaysOnWaitlist(client.plannedInCareDate)}</span
+						>
+					</div>
+				{:else}
+					<div class="flex flex-col">
+						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+							>Last Eval</span
+						>
+						<span class="text-sm font-bold text-text">{formatDate(client.lastEvaluationDate)}</span>
+					</div>
+					<div class="h-8 w-px bg-border lg:block"></div>
+					<div class="flex flex-col">
+						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+							>Next Eval</span
+						>
+						<span class="text-sm font-bold text-text">{formatDate(client.nextEvaluationDate)}</span>
+					</div>
+					<div class="h-8 w-px bg-border lg:block"></div>
+					<div class="flex flex-col">
+						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+							>Start Date</span
+						>
+						<span class="text-sm font-bold text-text">{formatDate(client.plannedInCareDate)}</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</header>
@@ -216,32 +252,64 @@
 					</div>
 					<button class="text-sm font-bold text-brand transition hover:underline">View All</button>
 				</div>
-				<div class="divide-y divide-border/40">
-					{#each client.goals as goal}
-						<div class="p-6 transition hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
-							<div class="flex items-start justify-between gap-4">
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<p class="text-sm font-bold text-text">{goal.title}</p>
-										<span
-											class={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${priorityColors[goal.priority]}`}
-										>
-											{goal.priority}
-										</span>
-									</div>
-									{#if goal.progressNote}
-										<p class="mt-1 text-xs text-text-muted italic">"{goal.progressNote}"</p>
-									{/if}
-								</div>
-								<div class="flex shrink-0 items-center gap-1.5">
-									<div class="h-1.5 w-24 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-										<div class="h-full w-2/3 bg-orange-500"></div>
-									</div>
-									<span class="text-[10px] font-bold text-text">66%</span>
-								</div>
+				<div class="space-y-4 p-4 sm:p-6">
+					{#if client.goals.length === 0}
+						<div
+							class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-zinc-50/50 px-6 py-12 text-center dark:bg-zinc-900/20"
+						>
+							<div
+								class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800"
+							>
+								<Target class="h-6 w-6 text-zinc-400" />
 							</div>
+							<p class="text-sm font-medium text-text-subtle">No care goals established yet.</p>
+							<p class="mt-1 text-xs text-text-muted">
+								New goals will appear here once they are added to the plan.
+							</p>
 						</div>
-					{/each}
+					{:else}
+						<div class="grid gap-3">
+							{#each client.goals as goal}
+								<article
+									class="group relative overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm transition-all hover:border-brand/30 hover:shadow-md dark:bg-zinc-900/40"
+								>
+									<div
+										class={`absolute inset-y-0 left-0 w-1.5 ${prioritySolidColors[goal.priority]}`}
+									></div>
+									<div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-8">
+										<div class="min-w-0 flex-1">
+											<p class="text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">
+												Title
+											</p>
+											<p
+												class="mt-1 truncate text-[15px] leading-tight font-bold text-text transition-colors group-hover:text-brand"
+											>
+												{goal.title}
+											</p>
+										</div>
+										<div class="sm:w-36 sm:border-l sm:border-border/40 sm:pl-6">
+											<p class="text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">
+												Priority
+											</p>
+											<span
+												class={`mt-1 inline-flex rounded-full border px-2 py-1 text-[10px] font-black tracking-wide uppercase ${priorityColors[goal.priority]}`}
+											>
+												{goal.priority}
+											</span>
+										</div>
+										<div class="sm:w-64 sm:border-l sm:border-border/40 sm:pl-6">
+											<p class="text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">
+												Topic
+											</p>
+											<p class="mt-1 text-xs leading-relaxed font-medium text-text-muted">
+												{goal.progressNote || 'Not specified'}
+											</p>
+										</div>
+									</div>
+								</article>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</section>
 
@@ -328,17 +396,17 @@
 								{/if}
 							</div>
 							<p class="text-xs text-text-muted">{contact.relation}</p>
-							<div class="mt-2 flex items-center gap-3">
-								<button
-									class="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border hover:bg-zinc-50 dark:bg-zinc-800"
-								>
+							<div class="mt-3 space-y-1.5 border-t border-border/40 pt-3">
+								<div class="flex items-center gap-2 text-[11px]">
 									<Phone class="h-3 w-3 text-text-subtle" />
-								</button>
-								<button
-									class="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border hover:bg-zinc-50 dark:bg-zinc-800"
-								>
+									<span class="font-medium text-text-muted">{contact.phone || 'No phone'}</span>
+								</div>
+								<div class="flex items-center gap-2 text-[11px]">
 									<Mail class="h-3 w-3 text-text-subtle" />
-								</button>
+									<span class="truncate font-medium text-text-muted"
+										>{contact.email || 'No email'}</span
+									>
+								</div>
 							</div>
 						</div>
 					{/each}
@@ -389,6 +457,25 @@
 							<span class="text-xs text-text-muted">Financing</span>
 							<span class="text-xs font-bold text-text">{client.contractSummary.financing}</span>
 						</div>
+						{#if client.contractSummary.daysUntilContractEnd !== undefined}
+							<div class="flex items-center justify-between border-b border-border/40 pb-2">
+								<span class="text-xs text-text-muted">Contract Ends In</span>
+								<span class="text-xs font-bold text-text">
+									{#if client.contractSummary.daysUntilContractEnd >= 0}
+										{client.contractSummary.daysUntilContractEnd} day{client.contractSummary
+											.daysUntilContractEnd === 1
+											? ''
+											: 's'}
+									{:else}
+										Expired {Math.abs(client.contractSummary.daysUntilContractEnd)} day{Math.abs(
+											client.contractSummary.daysUntilContractEnd
+										) === 1
+											? ''
+											: 's'} ago
+									{/if}
+								</span>
+							</div>
+						{/if}
 						{#if client.contractSummary.outstandingInvoices}
 							<div class="rounded-2xl bg-rose-50 p-3 dark:bg-rose-950/20">
 								<div class="flex items-center justify-between">

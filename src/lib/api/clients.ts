@@ -5,6 +5,7 @@ import type {
 	ListClientsParams,
 	ListInCareClientsParams,
 	ListInCareClientsResponse,
+	GetClientResponse,
 	ListWaitingListClientsParams,
 	ListWaitingListClientsResponse,
 	PutClientInCareRequest,
@@ -31,6 +32,10 @@ export function listWaitingListClients(params: ListWaitingListClientsParams) {
 	return api.get<ApiEnvelope<PaginatedResponse<ListWaitingListClientsResponse>>>(
 		`/clients/waiting-list?${query}`
 	);
+}
+
+export function getClientById(id: string) {
+	return api.get<ApiEnvelope<GetClientResponse>>(`/clients/${id}`);
 }
 
 export function putClientInCare(id: string, payload: PutClientInCareRequest) {

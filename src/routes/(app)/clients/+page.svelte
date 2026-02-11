@@ -8,28 +8,27 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import { listLocations } from '$lib/api/locations';
 	import type { ClientStatus } from '$lib/types/api';
-	import type { PaginationState } from '$lib/types/ui';
-	import type { ClientsFilters, ClientsRow } from './+page';
+	import type { ClientsFilters, ClientsLoadResult, ClientsRow } from './+page';
 
 	let { data } = $props<{
 		data: {
-			rows: ClientsRow[];
-			stats: { total: number };
-			pagination: PaginationState<ClientsFilters>;
-			loadError?: string | null;
+			initial: {
+				page: number;
+				pageSize: number;
+				filters: ClientsFilters;
+			};
+			clientsData: Promise<ClientsLoadResult>;
 		};
 	}>();
 
-	const rows = $derived(data.rows);
-	const stats = $derived(data.stats);
-	const pagination = $derived(data.pagination);
-	const currentPage = $derived(pagination.page);
-	const pageSize = $derived(pagination.pageSize);
-	const loadError = $derived(data.loadError);
+	const clientsDataPromise = $derived(data.clientsData);
+	const initial = $derived(data.initial);
+	const currentPage = $derived(initial.page);
+	const pageSize = $derived(initial.pageSize);
 
-	const appliedSearch = $derived((pagination.filters.search ?? '').trim());
-	const appliedStatus = $derived((pagination.filters.status ?? '') as ClientStatus | '');
-	const appliedLocationId = $derived((pagination.filters.locationId ?? '').trim());
+	const appliedSearch = $derived((initial.filters.search ?? '').trim());
+	const appliedStatus = $derived((initial.filters.status ?? '') as ClientStatus | '');
+	const appliedLocationId = $derived((initial.filters.locationId ?? '').trim());
 
 	let selectedLocationId = $state('');
 
@@ -135,8 +134,12 @@
 	};
 
 	const openClientDetail = (row: ClientsRow) => {
-		const path = statusMeta[row.status].detailPath;
-		goto(`/clients/${row.id}/${path}`);
+		if (row.status === 'on_waiting_list') {
+			goto(`/clients/${row.id}`);
+			return;
+		}
+
+		goto(`/clients/${row.id}/${statusMeta[row.status].detailPath}`);
 	};
 </script>
 
@@ -310,7 +313,9 @@
 {#snippet actionsCell(row: ClientsRow)}
 	<div class="flex justify-end gap-1">
 		<a
-			href={`/clients/${row.id}/${statusMeta[row.status].detailPath}`}
+			href={row.status === 'on_waiting_list'
+				? `/clients/${row.id}`
+				: `/clients/${row.id}/${statusMeta[row.status].detailPath}`}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title="View details"
 			aria-label="View details"
@@ -343,41 +348,77 @@
 		</div>
 	</header>
 
-	{#if loadError}
-		<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
-	{/if}
-
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-			<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Total Clients
+	{#await clientsDataPromise}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+				<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
+				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 			</div>
-			<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{stats.total}</div>
-			<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
 		</div>
-	</div>
 
-	<DataTable
-		{columns}
-		{rows}
-		{currentPage}
-		{pageSize}
-		totalCount={pagination.count}
-		onPageChange={(nextPage) =>
-			updateQuery(nextPage, appliedSearch, appliedStatus, appliedLocationId)}
-		onRowClick={openClientDetail}
-		rowKey="id"
-		title="Clients"
-		description="All clients with status, care type, location, goals, and risk signals."
-		filters={tableFilters}
-		cells={{
-			client: clientCell,
-			fileNumber: fileNumberCell,
-			status: statusCell,
-			careType: careTypeCell,
-			locationName: locationCell,
-			metrics: metricsCell,
-			actions: actionsCell
-		}}
-	/>
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			{currentPage}
+			{pageSize}
+			totalCount={0}
+			onPageChange={(nextPage) =>
+				updateQuery(nextPage, appliedSearch, appliedStatus, appliedLocationId)}
+			onRowClick={openClientDetail}
+			rowKey="id"
+			title="Clients"
+			description="All clients with status, care type, location, goals, and risk signals."
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				fileNumber: fileNumberCell,
+				status: statusCell,
+				careType: careTypeCell,
+				locationName: locationCell,
+				metrics: metricsCell,
+				actions: actionsCell
+			}}
+		/>
+	{:then clientsData}
+		{#if clientsData.loadError}
+			<InlineErrorBanner message={clientsData.loadError} onRetry={() => invalidateAll()} />
+		{/if}
+
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Total Clients
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+					{clientsData.stats.total}
+				</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
+			</div>
+		</div>
+
+		<DataTable
+			{columns}
+			rows={clientsData.rows}
+			currentPage={clientsData.pagination.page}
+			pageSize={clientsData.pagination.pageSize}
+			totalCount={clientsData.pagination.count}
+			onPageChange={(nextPage) =>
+				updateQuery(nextPage, appliedSearch, appliedStatus, appliedLocationId)}
+			onRowClick={openClientDetail}
+			rowKey="id"
+			title="Clients"
+			description="All clients with status, care type, location, goals, and risk signals."
+			filters={tableFilters}
+			cells={{
+				client: clientCell,
+				fileNumber: fileNumberCell,
+				status: statusCell,
+				careType: careTypeCell,
+				locationName: locationCell,
+				metrics: metricsCell,
+				actions: actionsCell
+			}}
+		/>
+	{/await}
 </section>

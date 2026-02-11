@@ -56,6 +56,22 @@ Make sure to read UIUX.md for tips on how to make the UI/UX
 - **Client:** Use `src/lib/api/client.ts` wrapper for `fetch`. It handles Authorization headers and 401 redirects.
 - **WebSockets:** Use `src/lib/api/ws.svelte.ts` for real-time connections.
 
+### Streaming Pattern for Listing/Detail Pages
+
+- **Default for table pages:** Prefer SvelteKit streaming over blocking `await Promise.all(...)` in `+page.ts`.
+- **Load contract:** Return synchronous `initial` URL state (page/pageSize/filters/sort) and one or more promise fields (for example `clientsData`, `locationsData`, `countsData`).
+- **Promise payload shape:** Each streamed payload should be fully typed and include:
+  - resolved data (rows/cards/detail objects)
+  - UI metadata (pagination/sort when relevant)
+  - `loadError: string | null`
+- **Error handling:** Catch per request and resolve safe fallback data instead of throwing; this keeps unaffected sections rendering.
+- **Component consumption:** In `+page.svelte`, use independent `{#await ...}` blocks per section (header/cards/table), so slow endpoints do not block the full page.
+- **Table loading UX:** Use `DataTable` with `loading` prop during pending states (`rows={[]}` + `loading`) to show skeleton rows and preserve layout.
+- **Pagination/filter stability:** Build query params from `initial` state and keep existing `goto(..., { replaceState: true, keepFocus: true, noScroll: true })` behavior.
+- **Stats/KPIs:** Compute KPIs from resolved streamed data in the `{#await ... :then}` branch, or stream a dedicated `stats` promise when needed.
+- **Resilience rule:** One failing API must not blank the whole page; render partial content + inline error banner for failed section.
+- **Type exports:** Export `*LoadResult` interfaces from route `+page.ts` when they are consumed by `+page.svelte`.
+
 ### Component Logic
 
 - **Props:** Use `$props()` for input.
