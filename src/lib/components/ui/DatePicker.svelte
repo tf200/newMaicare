@@ -7,10 +7,18 @@
 	let {
 		label,
 		value = $bindable(),
+		onchange,
 		error = undefined,
 		minDate = undefined,
 		id = `date-${Math.random().toString(36).substr(2, 9)}`
-	} = $props();
+	} = $props<{
+		label?: string;
+		value?: string;
+		onchange?: (value: string) => void;
+		error?: string;
+		minDate?: string;
+		id?: string;
+	}>();
 
 	type View = 'days' | 'months' | 'years';
 
@@ -89,7 +97,9 @@
 
 	function selectDate(date: Date) {
 		if (!date) return;
-		value = formatDateValue(date);
+		const nextValue = formatDateValue(date);
+		value = nextValue;
+		onchange?.(nextValue);
 		isOpen = false;
 	}
 

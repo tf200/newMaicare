@@ -8,7 +8,7 @@
 		accept?: string;
 		fileId?: string | null;
 		class?: string;
-		onUpload?: (fileId: string) => void;
+		onUpload?: (fileId: string, fileName: string) => void;
 	}
 
 	let {
@@ -36,7 +36,7 @@
 			// We could also search uploadManager.uploads by file name/size if we wanted more global sync
 			const result = await uploadManager.uploadFile(selected);
 			fileId = result.file_id;
-			if (onUpload) onUpload(result.file_id);
+			if (onUpload) onUpload(result.file_id, selected.name);
 		} catch (err) {
 			console.error('Upload failed:', err);
 		}

@@ -39,6 +39,7 @@
 			permission: 'CARE_COORDINATION.VIEW',
 			children: [
 				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' },
+				{ label: m.contracts(), href: '/contracts', permission: 'CARE_COORDINATION.VIEW' },
 				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' },
 				{ label: m.registrations(), href: '/registrations', permission: 'CARE_COORDINATION.VIEW' },
 				{

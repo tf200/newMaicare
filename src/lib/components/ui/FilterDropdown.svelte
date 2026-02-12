@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { Filter, Check, ChevronDown } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
+	import DatePicker from './DatePicker.svelte';
 
 	type FilterItem = {
 		key: string;
 		label: string;
+		type?: 'checkbox' | 'date';
 	};
 
 	type FilterGroup = {
@@ -114,24 +116,40 @@
 							</h4>
 							<div class="space-y-2">
 								{#each group.items as item (item.key)}
-									{@const isChecked = Boolean(filters[item.key])}
-									<button
-										onclick={() => toggleFilter(item.key)}
-										class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-									>
-										<span class={isChecked ? 'font-medium text-text' : 'text-text-muted'}>
-											{item.label}
-										</span>
-										<div
-											class="flex h-5 w-5 items-center justify-center rounded border transition-all {isChecked
-												? 'border-brand bg-brand text-white'
-												: 'border-border bg-surface'}"
-										>
-											{#if isChecked}
-												<Check class="h-3.5 w-3.5" />
-											{/if}
+									{#if item.type === 'date'}
+										<div class="px-2 py-1">
+											<label
+												for={item.key}
+												class="mb-1.5 block text-[10px] font-bold text-text-subtle uppercase"
+											>
+												{item.label}
+											</label>
+											<DatePicker
+												id={item.key}
+												value={filters[item.key] as string}
+												onchange={(val) => onUpdate({ ...filters, [item.key]: val })}
+											/>
 										</div>
-									</button>
+									{:else}
+										{@const isChecked = Boolean(filters[item.key])}
+										<button
+											onclick={() => toggleFilter(item.key)}
+											class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+										>
+											<span class={isChecked ? 'font-medium text-text' : 'text-text-muted'}>
+												{item.label}
+											</span>
+											<div
+												class="flex h-5 w-5 items-center justify-center rounded border transition-all {isChecked
+													? 'border-brand bg-brand text-white'
+													: 'border-border bg-surface'}"
+											>
+												{#if isChecked}
+													<Check class="h-3.5 w-3.5" />
+												{/if}
+											</div>
+										</button>
+									{/if}
 								{/each}
 							</div>
 						</div>
