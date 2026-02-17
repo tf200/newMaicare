@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import {
-		ArrowLeft,
 		Calendar,
+		CircleDashed,
 		FileText,
 		User,
 		Building2,
@@ -17,11 +17,15 @@
 		Phone,
 		Mail,
 		Info,
-		Wallet
+		Wallet,
+		SquarePen,
+		ChevronRight
 	} from 'lucide-svelte';
 	import type { ContractDetailLoadResult } from './+page';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import EditContractForm from '$lib/components/forms/EditContractForm.svelte';
+	import UpdateContractStatusForm from '$lib/components/forms/UpdateContractStatusForm.svelte';
 
 	let { data } = $props<{
 		data: {
@@ -30,6 +34,8 @@
 	}>();
 
 	const contractDataPromise = $derived(data.contractData);
+	let showEditContractModal = $state(false);
+	let showUpdateStatusModal = $state(false);
 
 	const statusMeta = {
 		approved: {
@@ -107,19 +113,15 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<!-- Back Link -->
-	<div>
-		<a
-			href="/contracts"
-			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
-		>
-			<ArrowLeft class="h-4 w-4" />
-			Back to contracts
-		</a>
-	</div>
-
 	{#await contractDataPromise}
 		<!-- Loading State -->
+		<div class="flex items-center justify-between">
+			<div class="h-8 w-48 animate-pulse rounded bg-border/70"></div>
+			<div class="flex gap-2">
+				<div class="h-9 w-32 animate-pulse rounded-xl bg-border/70"></div>
+				<div class="h-9 w-32 animate-pulse rounded-xl bg-border/70"></div>
+			</div>
+		</div>
 		<header
 			class="h-48 w-full animate-pulse rounded-3xl border border-border bg-surface/50"
 		></header>
@@ -144,7 +146,50 @@
 		{/if}
 
 		{#if contract}
+			<!-- Breadcrumbs & Actions -->
+			<div class="flex items-center justify-between">
+				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+					<a href="/contracts" class="transition-colors hover:text-text">Contracts</a>
+					<ChevronRight class="h-4 w-4" />
+					<span class="text-text">{contract.careName}</span>
+				</nav>
+
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					<Button
+						variant="ghost"
+						class="h-9 gap-2 px-4 ring-1 ring-border"
+						onclick={() => (showUpdateStatusModal = true)}
+					>
+						<CircleDashed class="h-4 w-4" />
+						Update Status
+					</Button>
+					<Button
+						class="h-9 gap-2 px-4 shadow-md shadow-brand/25"
+						onclick={() => (showEditContractModal = true)}
+					>
+						<SquarePen class="h-4 w-4" />
+						Update Contract
+					</Button>
+				</div>
+			</div>
+
 			{@const meta = statusMeta[contract.status as keyof typeof statusMeta]}
+			{#key `${contract.id}-edit-${showEditContractModal}`}
+				<EditContractForm
+					bind:open={showEditContractModal}
+					{contract}
+					onUpdated={() => invalidateAll()}
+				/>
+			{/key}
+			{#key `${contract.id}-status-${showUpdateStatusModal}`}
+				<UpdateContractStatusForm
+					bind:open={showUpdateStatusModal}
+					contractId={contract.id}
+					currentStatus={contract.status}
+					onUpdated={() => invalidateAll()}
+				/>
+			{/key}
+
 			<!-- Hero Header -->
 			<header
 				class="relative overflow-hidden rounded-3xl border border-border bg-surface shadow-sm"
@@ -158,55 +203,57 @@
 				></div>
 
 				<div class="relative p-8">
-					<div class="space-y-4">
-						<div class="flex items-center gap-4">
-							<div
-								class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 text-2xl font-bold text-zinc-700 shadow-inner ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:text-zinc-300 dark:ring-white/10"
-							>
-								<FileText class="h-8 w-8 text-brand/70" />
-							</div>
-							<div>
-								<div class="flex flex-wrap items-center gap-3">
-									<h1 class="text-3xl font-bold tracking-tight text-text">
-										{contract.careName}
-									</h1>
-									<span
-										class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tracking-wide uppercase {meta.className}"
-									>
-										<meta.icon class="h-3.5 w-3.5" />
-										{meta.label}
-									</span>
-								</div>
-								<div class="mt-1 flex items-center gap-3">
-									<p class="text-sm font-semibold text-text-muted">
-										ID: <span class="font-mono text-xs">{contract.id.slice(0, 8)}</span>
-									</p>
-									<span class="h-1 w-1 rounded-full bg-border"></span>
-									<p class="text-sm font-medium text-text-muted capitalize">
-										{contract.careType}
-									</p>
-								</div>
-							</div>
-						</div>
-
-						<div class="flex flex-wrap gap-6 text-sm text-text-muted">
-							<div class="flex items-center gap-2">
-								<User class="h-4 w-4 text-text-subtle" />
-								<span class="font-semibold text-text"
-									>{contract.client.firstName} {contract.client.lastName}</span
+					<div class="space-y-6">
+						<div class="flex flex-wrap items-start justify-between gap-4">
+							<div class="flex items-center gap-4">
+								<div
+									class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 text-2xl font-bold text-zinc-700 shadow-inner ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:text-zinc-300 dark:ring-white/10"
 								>
-								<span class="text-text-subtle">({contract.client.fileNumber})</span>
-							</div>
-							<div class="flex items-center gap-2 border-l border-border pl-6">
-								<Clock class="h-4 w-4 text-text-subtle" />
-								<span>Created: {formatDate(contract.createdAt)}</span>
-							</div>
-							{#if contract.approvedAt}
-								<div class="flex items-center gap-2 border-l border-border pl-6">
-									<CheckCircle2 class="h-4 w-4 text-emerald-500" />
-									<span>Approved: {formatDate(contract.approvedAt)}</span>
+									<FileText class="h-8 w-8 text-brand/70" />
 								</div>
-							{/if}
+								<div>
+									<div class="flex flex-wrap items-center gap-3">
+										<h1 class="text-3xl font-bold tracking-tight text-text">
+											{contract.careName}
+										</h1>
+										<span
+											class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tracking-wide uppercase {meta.className}"
+										>
+											<meta.icon class="h-3.5 w-3.5" />
+											{meta.label}
+										</span>
+									</div>
+									<div class="mt-1 flex items-center gap-3">
+										<p class="text-sm font-semibold text-text-muted">
+											ID: <span class="font-mono text-xs">{contract.id.slice(0, 8)}</span>
+										</p>
+										<span class="h-1 w-1 rounded-full bg-border"></span>
+										<p class="text-sm font-medium text-text-muted capitalize">
+											{contract.careType}
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<div class="flex flex-wrap gap-6 text-sm text-text-muted">
+								<div class="flex items-center gap-2">
+									<User class="h-4 w-4 text-text-subtle" />
+									<span class="font-semibold text-text"
+										>{contract.client.firstName} {contract.client.lastName}</span
+									>
+									<span class="text-text-subtle">({contract.client.fileNumber})</span>
+								</div>
+								<div class="flex items-center gap-2 border-l border-border pl-6">
+									<Clock class="h-4 w-4 text-text-subtle" />
+									<span>Created: {formatDate(contract.createdAt)}</span>
+								</div>
+								{#if contract.approvedAt}
+									<div class="flex items-center gap-2 border-l border-border pl-6">
+										<CheckCircle2 class="h-4 w-4 text-emerald-500" />
+										<span>Approved: {formatDate(contract.approvedAt)}</span>
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 				</div>

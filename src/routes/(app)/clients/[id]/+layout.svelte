@@ -16,7 +16,7 @@
 					icon: LayoutDashboard
 				},
 				{
-					label: m.documents(),
+					label: 'Appointment Card',
 					href: `/clients/${clientId}/documents`,
 					icon: FileText
 				},

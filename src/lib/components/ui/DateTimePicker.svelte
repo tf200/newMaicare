@@ -62,12 +62,13 @@
 
 	let formattedValue = $derived(
 		value
-			? new Date(value).toLocaleString('en-US', {
+			? new Date(value).toLocaleString('en-GB', {
 					month: 'short',
 					day: 'numeric',
 					year: 'numeric',
 					hour: '2-digit',
-					minute: '2-digit'
+					minute: '2-digit',
+					hour12: false
 				})
 			: ''
 	);

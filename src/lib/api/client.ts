@@ -8,6 +8,11 @@ type FetchOptions = RequestInit & {
 	requiresAuth?: boolean;
 };
 
+export interface BlobResponse {
+	blob: Blob;
+	headers: Headers;
+}
+
 class ApiClient {
 	private baseUrl: string;
 	private refreshPromise: Promise<void> | null = null;
@@ -179,6 +184,89 @@ class ApiClient {
 
 	delete<T>(endpoint: string, options?: FetchOptions) {
 		return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+	}
+
+	async requestBlob(
+		endpoint: string,
+		options: FetchOptions = {},
+		hasRetried = false
+	): Promise<BlobResponse> {
+		const { requiresAuth = true, ...fetchOptions } = options;
+		const url = `${this.baseUrl}${endpoint}`;
+
+		try {
+			const response = await fetch(url, {
+				...fetchOptions,
+				headers: {
+					...this.getHeaders(requiresAuth),
+					...fetchOptions.headers
+				}
+			});
+
+			if (response.status === 401 && requiresAuth) {
+				if (browser) {
+					if (hasRetried) {
+						this.clearAuth();
+						await goto(resolve('/login'));
+						throw new Error('Unauthorized');
+					}
+
+					const refreshToken = localStorage.getItem('refresh_token');
+
+					if (refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null') {
+						if (!this.refreshPromise) {
+							this.refreshPromise = this.refreshAccessToken().finally(() => {
+								this.refreshPromise = null;
+							});
+						}
+
+						try {
+							await this.refreshPromise;
+							return this.requestBlob(endpoint, options, true);
+						} catch (error) {
+							this.clearAuth();
+							await goto(resolve('/login'));
+							throw new Error('Unauthorized');
+						}
+					}
+
+					this.clearAuth();
+					await goto(resolve('/login'));
+				}
+				throw new Error('Unauthorized');
+			}
+
+			if (!response.ok) {
+				const contentType = response.headers.get('content-type') ?? '';
+				let errorMessage = `API Error: ${response.statusText}`;
+
+				if (contentType.includes('application/json')) {
+					const payload = await response.json().catch(() => null);
+					if (
+						payload &&
+						typeof payload === 'object' &&
+						'message' in payload &&
+						typeof payload.message === 'string'
+					) {
+						errorMessage = payload.message;
+					}
+				}
+
+				throw new Error(errorMessage);
+			}
+
+			return {
+				blob: await response.blob(),
+				headers: response.headers
+			};
+		} catch (error) {
+			console.error('API Download Failed:', error);
+			throw error;
+		}
+	}
+
+	postBlob(endpoint: string, options?: FetchOptions) {
+		return this.requestBlob(endpoint, { ...options, method: 'POST' });
 	}
 }
 

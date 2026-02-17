@@ -3,12 +3,15 @@ import type {
 	ApiEnvelope,
 	ListClientsData,
 	ListClientsParams,
+	ListClientContractsResponse,
 	ListInCareClientsParams,
 	ListInCareClientsResponse,
 	GetClientResponse,
 	ListWaitingListClientsParams,
 	ListWaitingListClientsResponse,
 	PutClientInCareRequest,
+	GetAppointmentCardResponse,
+	UpdateAppointmentCardRequest,
 	PaginatedResponse
 } from '$lib/types/api';
 
@@ -85,4 +88,26 @@ export function listClients(params: ListClientsParams) {
 	const query = searchParams.toString();
 
 	return api.get<ApiEnvelope<ListClientsData>>(`/clients?${query}`);
+}
+
+export function listClientContracts(id: string, page: number, pageSize: number) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(page));
+	searchParams.set('page_size', String(pageSize));
+
+	return api.get<ApiEnvelope<PaginatedResponse<ListClientContractsResponse>>>(
+		`/clients/${id}/contracts?${searchParams.toString()}`
+	);
+}
+
+export function getClientAppointmentCard(id: string) {
+	return api.get<ApiEnvelope<GetAppointmentCardResponse>>(`/clients/${id}/appointment_cards`);
+}
+
+export function upsertClientAppointmentCard(id: string, payload: UpdateAppointmentCardRequest) {
+	return api.put<ApiEnvelope<unknown>>(`/clients/${id}/appointment_cards`, payload);
+}
+
+export function generateClientAppointmentCardDocument(id: string) {
+	return api.postBlob(`/clients/${id}/appointment_cards/generate_document`);
 }

@@ -12,6 +12,83 @@ export interface PaginatedResponse<T> {
 	results: T[];
 }
 
+export type EventKind = 'appointment' | 'reminder';
+
+export interface CreateEventReminderMinutesInput {
+	minutes_before: number;
+	remind_at?: never;
+}
+
+export interface CreateEventReminderAtInput {
+	minutes_before?: never;
+	remind_at: string;
+}
+
+export type CreateEventReminderInput = CreateEventReminderMinutesInput | CreateEventReminderAtInput;
+
+export interface CreateEventRequest {
+	kind: EventKind;
+	title?: string;
+	description?: string | null;
+	location?: string | null;
+	color?: string | null;
+	start_at: string;
+	end_at: string;
+	rrule?: string;
+	attendee_employee_ids?: string[];
+	attendee_client_ids?: string[];
+	reminders?: CreateEventReminderInput[];
+}
+
+export interface EventReminderResponse {
+	id: string;
+	minutes_before: number | null;
+	remind_at: string | null;
+}
+
+export interface CreateEventResponse {
+	id: string;
+	kind: EventKind;
+	status: string;
+	title: string;
+	description: string | null;
+	location: string | null;
+	color: string | null;
+	organizer_employee_id: string;
+	start_at: string;
+	end_at: string;
+	rrule: string | null;
+	recurring_event_id: string | null;
+	recurrence_id: string | null;
+	attendee_employee_ids: string[];
+	attendee_client_ids: string[];
+	reminders: EventReminderResponse[];
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ListEventsRequest {
+	start_at: string;
+	end_at: string;
+	employee_id?: string;
+}
+
+export interface EventOccurrenceResponse {
+	id: string;
+	master_event_id: string | null;
+	kind: EventKind;
+	title: string;
+	description: string | null;
+	location: string | null;
+	color: string | null;
+	start_at: string;
+	end_at: string;
+	recurrence_id: string | null;
+	is_recurring_instance: boolean;
+	attendee_employee_ids: string[];
+	attendee_client_ids: string[];
+}
+
 export interface OrganizationListItem {
 	id: string;
 	name: string;
@@ -680,6 +757,16 @@ export interface ListContractsParams {
 	end_date_to?: string;
 }
 
+export interface ListClientContractsResponse {
+	start_date: string;
+	end_date: string;
+	days_left: number;
+	care_name: string;
+	care_type: ContractCareType;
+	financing_act: ContractFinancingAct;
+	financing_option: ContractFinancingOption;
+}
+
 export interface ContractAttachment {
 	id: string;
 	name: string;
@@ -773,6 +860,60 @@ export interface CreateContractResponse {
 	attachments: ContractAttachment[];
 }
 
+export interface UpdateContractRequest {
+	type_id?: string;
+	start_date?: string;
+	end_date?: string;
+	reminder_period?: number;
+	VAT?: number;
+	price?: number;
+	price_time_unit?: ContractPriceTimeUnit;
+	hours?: number | null;
+	hours_type?: ContractHoursType | null;
+	care_name?: string;
+	sender_id?: string;
+	attachment_ids?: string[];
+	financing_act?: ContractFinancingAct;
+	financing_option?: ContractFinancingOption;
+}
+
+export interface UpdateContractResponse {
+	id: string;
+	type_id: string | null;
+	type_name: string | null;
+	status: ContractStatus;
+	approved_at: string | null;
+	start_date: string;
+	end_date: string;
+	reminder_period: number;
+	VAT: number | null;
+	price: number;
+	price_time_unit: ContractPriceTimeUnit;
+	hours: number | null;
+	hours_type: ContractHoursType | null;
+	care_name: string;
+	care_type: ContractCareType;
+	attachment_ids: string[];
+	attachments: ContractAttachment[];
+	financing_act: ContractFinancingAct;
+	financing_option: ContractFinancingOption;
+	departure_reason: string | null;
+	departure_report: string | null;
+	updated_at: string;
+	created_at: string;
+	client_id: string;
+	sender_id: string;
+}
+
+export interface UpdateContractStatusRequest {
+	status: ContractStatus;
+}
+
+export interface UpdateContractStatusResponse {
+	id: string;
+	status: ContractStatus;
+}
+
 export type ClientStatus =
 	| 'in_care'
 	| 'on_waiting_list'
@@ -814,6 +955,29 @@ export interface PutClientInCareRequest {
 	coordinator_employee_id: string;
 	placed_in_care_at?: string;
 	reason?: string;
+}
+
+export interface AppointmentCardSections {
+	general_information: string[];
+	important_contacts: string[];
+	household_info: string[];
+	organization_agreements: string[];
+	youth_officer_agreements: string[];
+	treatment_agreements: string[];
+	smoking_rules: string[];
+	work: string[];
+	school_internship: string[];
+	travel: string[];
+	leave: string[];
+}
+
+export interface UpdateAppointmentCardRequest extends AppointmentCardSections {}
+
+export interface GetAppointmentCardResponse extends AppointmentCardSections {
+	id: string;
+	client_id: string;
+	created_at: string;
+	updated_at: string;
 }
 
 export interface GetClientAddress {

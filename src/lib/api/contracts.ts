@@ -6,7 +6,11 @@ import type {
 	GetContractResponse,
 	ListContractsParams,
 	ListContractsResponse,
-	PaginatedResponse
+	PaginatedResponse,
+	UpdateContractRequest,
+	UpdateContractResponse,
+	UpdateContractStatusRequest,
+	UpdateContractStatusResponse
 } from '$lib/types/api';
 
 export function listContracts(params: ListContractsParams = {}) {
@@ -48,4 +52,12 @@ export function getContract(id: string) {
 
 export function createContract(payload: CreateContractRequest) {
 	return api.post<ApiEnvelope<CreateContractResponse>>('/contracts', payload);
+}
+
+export function updateContract(id: string, payload: UpdateContractRequest) {
+	return api.put<ApiEnvelope<UpdateContractResponse>>(`/contracts/${id}`, payload);
+}
+
+export function updateContractStatus(id: string, payload: UpdateContractStatusRequest) {
+	return api.put<ApiEnvelope<UpdateContractStatusResponse>>(`/contracts/${id}/status`, payload);
 }

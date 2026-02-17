@@ -1,52 +1,58 @@
+import { listClientContracts } from '$lib/api/clients';
+import type { ListClientContractsResponse } from '$lib/types/api';
 import type { PageLoad } from './$types';
-import type { ClientContract } from '$lib/types/contracts';
 
-export interface ContractsLoadResult {
-	contracts: ClientContract[];
+export interface ClientContractsLoadResult {
+	rows: ListClientContractsResponse[];
+	pagination: {
+		page: number;
+		pageSize: number;
+		count: number;
+	};
 	loadError: string | null;
 }
 
-export const load: PageLoad = async ({ params }) => {
-	const clientId = params.id;
+const toPositiveInt = (value: string | null, fallback: number) => {
+	if (!value) return fallback;
+	const parsed = Number.parseInt(value, 10);
+	if (Number.isNaN(parsed) || parsed < 1) return fallback;
+	return parsed;
+};
 
-	// Simulate API call
-	const fetchContracts = async (): Promise<ContractsLoadResult> => {
-		// Artificial delay
-		await new Promise((resolve) => setTimeout(resolve, 800));
+export const load: PageLoad = ({ params, url }) => {
+	const page = toPositiveInt(url.searchParams.get('page'), 1);
+	const requestedPageSize = toPositiveInt(url.searchParams.get('page_size'), 10);
+	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
 
-		const mockContracts: ClientContract[] = [
-			{
-				id: '1',
-				status: 'approved',
-				start_date: '2024-01-01',
-				end_date: '2024-12-31',
-				financing_act: 'WMO',
-				financing_option: 'ZIN',
-				care_type: 'accommodation',
-				summary: 'Regular long-term care contract for protected living.',
-				notes: 'Approved by municipality on Dec 15th.'
+	const contractsData: Promise<ClientContractsLoadResult> = listClientContracts(
+		params.id,
+		page,
+		pageSize
+	)
+		.then((response) => ({
+			rows: response.data.results,
+			pagination: {
+				page,
+				pageSize,
+				count: response.data.count
 			},
-			{
-				id: '2',
-				status: 'draft',
-				start_date: '2025-01-01',
-				end_date: '2025-12-31',
-				financing_act: 'WMO',
-				financing_option: 'ZIN',
-				care_type: 'accommodation',
-				summary: 'Renewal contract for the upcoming year.',
-				notes: 'Pending final signature from the client.'
-			}
-		];
-
-		return {
-			contracts: mockContracts,
 			loadError: null
-		};
-	};
+		}))
+		.catch((error) => ({
+			rows: [],
+			pagination: {
+				page,
+				pageSize,
+				count: 0
+			},
+			loadError: error instanceof Error ? error.message : 'Failed to load client contracts.'
+		}));
 
 	return {
-		clientId,
-		contractsData: fetchContracts()
+		initial: {
+			page,
+			pageSize
+		},
+		contractsData
 	};
 };

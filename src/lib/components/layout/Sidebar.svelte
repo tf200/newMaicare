@@ -5,6 +5,7 @@
 		LayoutDashboard,
 		Users,
 		UsersRound,
+		Calendar,
 		X,
 		HelpCircle,
 		ChevronDown,
@@ -32,6 +33,7 @@
 			permission: 'DASHBOARD.VIEW'
 		},
 		{ label: 'Clients', href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
+		{ label: 'Appointments', href: '/appointments', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
 		{
 			label: m.care_coordination(),
