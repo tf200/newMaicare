@@ -118,5 +118,7 @@
 	"finalized": "Finalized {date}",
 	"no_evaluations_found": "No evaluations found",
 	"no_drafts_found": "No drafts found",
-	"no_submitted_evaluations_found": "No submitted evaluations found"
+	"no_submitted_evaluations_found": "No submitted evaluations found",
+	"incidents": "Incidents",
+	"schedules": "Schedules"
 }

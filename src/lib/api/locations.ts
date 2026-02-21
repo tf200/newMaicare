@@ -1,10 +1,20 @@
 import { api } from '$lib/api/client';
-import type { PaginatedResponse, OrganizationLocation, ApiEnvelope } from '$lib/types/api';
+import type {
+	PaginatedResponse,
+	OrganizationLocation,
+	ApiEnvelope,
+	LocationScheduleDay
+} from '$lib/types/api';
 
 export interface ListLocationsParams {
 	page?: number;
 	pageSize?: number;
 	search?: string;
+}
+
+export interface GetLocationSchedulesParams {
+	startDate: string;
+	endDate: string;
 }
 
 export function listLocations(params: ListLocationsParams = {}) {
@@ -15,5 +25,15 @@ export function listLocations(params: ListLocationsParams = {}) {
 
 	return api.get<ApiEnvelope<PaginatedResponse<OrganizationLocation>>>(
 		`/locations?${query.toString()}`
+	);
+}
+
+export function getLocationSchedules(locationId: string, params: GetLocationSchedulesParams) {
+	const query = new URLSearchParams();
+	query.set('start_date', params.startDate);
+	query.set('end_date', params.endDate);
+
+	return api.get<ApiEnvelope<LocationScheduleDay[]>>(
+		`/locations/${locationId}/schedules?${query.toString()}`
 	);
 }

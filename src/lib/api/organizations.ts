@@ -9,7 +9,8 @@ import type {
 	OrganizationLocation,
 	PaginatedResponse,
 	UpdateOrganizationRequest,
-	UpdateLocationRequest
+	UpdateLocationRequest,
+	LocationShift
 } from '$lib/types/api';
 
 export interface ListOrganizationsParams {
@@ -93,4 +94,23 @@ export function getLocation(id: string) {
 
 export function updateLocation(id: string, payload: UpdateLocationRequest) {
 	return api.put<ApiEnvelope<OrganizationLocation>>(`/locations/${id}`, payload);
+}
+
+export function createLocationShift(
+	locationId: string,
+	payload: { shift: string; start_time: string; end_time: string }
+) {
+	return api.post<ApiEnvelope<LocationShift>>(`/locations/${locationId}/shifts`, payload);
+}
+
+export function updateLocationShift(
+	locationId: string,
+	shiftId: string,
+	payload: { shift: string; start_time: string; end_time: string }
+) {
+	return api.put<ApiEnvelope<LocationShift>>(`/locations/${locationId}/shifts/${shiftId}`, payload);
+}
+
+export function updateLocationShifts(id: string, shifts: LocationShift[]) {
+	return api.post<ApiEnvelope<OrganizationLocation>>(`/locations/${id}/shifts`, shifts);
 }

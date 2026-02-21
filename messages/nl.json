@@ -118,5 +118,7 @@
 	"finalized": "Afgerond op {date}",
 	"no_evaluations_found": "Geen evaluaties gevonden",
 	"no_drafts_found": "Geen concepten gevonden",
-	"no_submitted_evaluations_found": "Geen ingediende evaluaties gevonden"
+	"no_submitted_evaluations_found": "Geen ingediende evaluaties gevonden",
+	"incidents": "Incidenten",
+	"schedules": "Roosters"
 }

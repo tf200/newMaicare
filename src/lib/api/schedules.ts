@@ -4,3 +4,7 @@ import type { ApiEnvelope, CreateScheduleRequest, ScheduleResponseItem } from '$
 export function createSchedules(payload: CreateScheduleRequest) {
 	return api.post<ApiEnvelope<ScheduleResponseItem[]>>('/schedules', payload);
 }
+
+export function deleteSchedule(scheduleId: string) {
+	return api.delete<ApiEnvelope<null>>(`/schedules/${scheduleId}`);
+}

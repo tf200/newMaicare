@@ -1,0 +1,419 @@
+import type { ClientGender } from './common';
+import type { ContractCareType, ContractFinancingAct, ContractFinancingOption } from './contracts';
+import type { IntakeCareType, IntakeConclusionEnum } from './intake';
+
+export interface ListWaitingListClientsResponse {
+	id: string;
+	first_name: string;
+	last_name: string;
+	care_type: string | null;
+	bsn: string;
+	sender_name: string | null;
+	days_in_waitlist: number;
+	admission_type: 'crisis_admission' | 'regular_placement' | null;
+}
+
+export interface ListWaitingListClientsParams {
+	page: number;
+	pageSize: number;
+	search?: string;
+	placement?: string;
+	sortDays?: 'asc' | 'desc';
+}
+
+export type InCareClientStatus = 'in_care' | 'scheduled_in_care';
+
+export interface ListInCareClientsResponse {
+	id: string;
+	bsn: string | null;
+	first_name: string;
+	last_name: string;
+	coordinator_name: string | null;
+	location_name: string | null;
+	status: InCareClientStatus;
+	care_start_date: string | null;
+	days_in_care: number;
+	has_active_contract: boolean;
+}
+
+export interface ListInCareClientsParams {
+	page: number;
+	pageSize: number;
+	search?: string;
+	status?: InCareClientStatus[];
+	sortDaysInCare?: 'asc' | 'desc';
+}
+
+export type ClientStatus =
+	| 'in_care'
+	| 'on_waiting_list'
+	| 'scheduled_in_care'
+	| 'scheduled_out_of_care'
+	| 'out_of_care';
+
+export interface ListClientsResponse {
+	id: string;
+	first_name: string;
+	last_name: string;
+	bsn: string;
+	filenumber: string;
+	location_name: string | null;
+	care_type: string | null;
+	status: ClientStatus;
+	goals_count: number;
+	risk_count: number;
+	created_at: string;
+}
+
+export interface ListClientsParams {
+	status?: ClientStatus;
+	location_id?: string;
+	search?: string;
+	page: number;
+	pageSize: number;
+}
+
+export interface ListClientsData {
+	results: ListClientsResponse[];
+	total_count: number;
+	page: number;
+	page_size: number;
+}
+
+export interface PutClientInCareRequest {
+	care_start_date: string;
+	coordinator_employee_id: string;
+	placed_in_care_at?: string;
+	reason?: string;
+}
+
+export interface AppointmentCardSections {
+	general_information: string[];
+	important_contacts: string[];
+	household_info: string[];
+	organization_agreements: string[];
+	youth_officer_agreements: string[];
+	treatment_agreements: string[];
+	smoking_rules: string[];
+	work: string[];
+	school_internship: string[];
+	travel: string[];
+	leave: string[];
+}
+
+export interface UpdateAppointmentCardRequest extends AppointmentCardSections {}
+
+export interface GetAppointmentCardResponse extends AppointmentCardSections {
+	id: string;
+	client_id: string;
+	created_at: string;
+	updated_at: string;
+}
+
+export type DiagnosisStatus = 'suspected' | 'confirmed' | 'resolved' | 'ruled_out';
+
+export type DiagnosisSeverity = 'mild' | 'moderate' | 'severe' | 'unknown';
+
+export type MedicationAdminMode = 'self' | 'staff' | 'shared';
+
+export type MedicationOrderStatus = 'active' | 'paused' | 'stopped' | 'completed';
+
+export interface MedicationScheduleItem {
+	time: string;
+}
+
+export interface ClientDiagnosisResponse {
+	id: string;
+	client_id: string;
+	code_system: string;
+	code: string;
+	title: string | null;
+	description: string | null;
+	status: DiagnosisStatus;
+	severity: DiagnosisSeverity;
+	diagnosed_on: string | null;
+	resolved_on: string | null;
+	diagnosing_clinician: string | null;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ClientMedicationOrderResponse {
+	id: string;
+	client_id: string;
+	diagnosis_id: string | null;
+	medication_name: string;
+	dosage_text: string;
+	dose_amount: number | null;
+	dose_unit: string | null;
+	route: string | null;
+	frequency_text: string | null;
+	schedule: MedicationScheduleItem[];
+	is_prn: boolean;
+	prn_indication: string | null;
+	max_doses_per_24h: number | null;
+	start_date: string;
+	end_date: string | null;
+	status: string;
+	admin_mode: MedicationAdminMode;
+	responsible_employee_id: string | null;
+	responsible_employee_first_name: string | null;
+	responsible_employee_last_name: string | null;
+	is_critical: boolean;
+	notes: string | null;
+	source_attachment_uuid: string | null;
+	diagnosis_title: string | null;
+	diagnosis_code_system: string | null;
+	diagnosis_code: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface GetClientMedicalOverviewResponse {
+	diagnoses: ClientDiagnosisResponse[];
+	medication_orders: ClientMedicationOrderResponse[];
+}
+
+export interface CreateClientDiagnosisRequest {
+	code_system: string;
+	code: string;
+	title?: string | null;
+	description?: string | null;
+	status?: DiagnosisStatus | null;
+	severity?: DiagnosisSeverity | null;
+	diagnosed_on?: string | null;
+	resolved_on?: string | null;
+	diagnosing_clinician?: string | null;
+	notes?: string | null;
+}
+
+export interface UpdateClientDiagnosisRequest {
+	code_system?: string;
+	code?: string;
+	title?: string | null;
+	description?: string | null;
+	status?: DiagnosisStatus | null;
+	severity?: DiagnosisSeverity | null;
+	diagnosed_on?: string | null;
+	resolved_on?: string | null;
+	diagnosing_clinician?: string | null;
+	notes?: string | null;
+}
+
+export interface CreateClientMedicationOrderRequest {
+	diagnosis_id?: string | null;
+	medication_name: string;
+	dosage_text: string;
+	dose_amount?: number | null;
+	dose_unit?: string | null;
+	route?: string | null;
+	frequency_text?: string | null;
+	schedule?: MedicationScheduleItem[];
+	is_prn?: boolean;
+	prn_indication?: string | null;
+	max_doses_per_24h?: number | null;
+	start_date: string;
+	end_date?: string | null;
+	status?: MedicationOrderStatus | null;
+	admin_mode?: MedicationAdminMode | null;
+	responsible_employee_id?: string | null;
+	is_critical?: boolean;
+	notes?: string | null;
+	source_attachment_uuid?: string | null;
+}
+
+export interface UpdateClientMedicationOrderRequest {
+	diagnosis_id?: string | null;
+	medication_name?: string;
+	dosage_text?: string;
+	dose_amount?: number | null;
+	dose_unit?: string | null;
+	route?: string | null;
+	frequency_text?: string | null;
+	schedule?: MedicationScheduleItem[];
+	is_prn?: boolean;
+	prn_indication?: string | null;
+	max_doses_per_24h?: number | null;
+	start_date?: string;
+	end_date?: string | null;
+	status?: MedicationOrderStatus | null;
+	admin_mode?: MedicationAdminMode | null;
+	responsible_employee_id?: string | null;
+	is_critical?: boolean;
+	notes?: string | null;
+	source_attachment_uuid?: string | null;
+}
+
+export interface GetClientAddress {
+	street: string | null;
+	house_number: string | null;
+	house_number_addition: string | null;
+	postal_code: string | null;
+	city: string | null;
+}
+
+export interface GetClientLocation {
+	id: string | null;
+	name: string | null;
+}
+
+export interface GetClientSender {
+	name: string | null;
+	email_address: string | null;
+	phone_number: string | null;
+}
+
+export interface GetClientEmergencyContact {
+	id: string;
+	first_name: string;
+	last_name: string;
+	relationship: string;
+	phone_number: string | null;
+	email: string | null;
+}
+
+export interface GetClientDocuments {
+	existing: string[];
+	missing: string[];
+}
+
+export interface GetClientGoal {
+	title: string;
+	priority: 'high' | 'medium' | 'low';
+	topic_name: string | null;
+}
+
+export interface GetClientIntake {
+	self_sufficiency_score: number | null;
+	conclusion: IntakeConclusionEnum | null;
+	conclusion_notes: string | null;
+}
+
+export interface GetClientRisks {
+	flags: string[];
+	notes: string | null;
+}
+
+export interface GetClientCounts {
+	contracts: number;
+	incidents: number;
+	reports: number;
+	evaluations: number;
+	documents: number;
+	appointments: number;
+	upcoming_appointments_count?: number;
+	approved_contracts_count?: number;
+}
+
+export interface GetClientAlert {
+	code: string;
+	severity: 'info' | 'warning' | 'critical';
+	message: string;
+}
+
+export interface GetClientMeta {
+	waitlist_since: string | null;
+	last_updated_at: string | null;
+}
+
+export interface GetClientCareSchedule {
+	care_start_date: string | null;
+	placed_in_care_at: string | null;
+	days_until_start: number | null;
+	should_be_active_now: boolean;
+	next_evaluation_date: string | null;
+}
+
+export interface GetClientCoordinator {
+	employee_id: string | null;
+	first_name: string | null;
+	last_name: string | null;
+	start_date: string | null;
+}
+
+export interface GetClientStatusTimeline {
+	last_change_reason: string | null;
+	last_changed_at?: string | null;
+	last_status?: ClientStatus | null;
+}
+
+export interface GetClientCare {
+	care_start_date: string | null;
+	placed_in_care_at: string | null;
+	days_in_care: number;
+	evaluation_intervals_weeks: number;
+	last_evaluation_anchor_date: string | null;
+	next_evaluation_date: string | null;
+}
+
+export interface GetClientContractSummaryActiveContract {
+	id: string;
+	status: 'approved' | 'submitted' | 'draft' | 'rejected' | string;
+	start_date: string | null;
+	end_date: string | null;
+	financing_act: ContractFinancingAct | null;
+	financing_option: ContractFinancingOption | null;
+	care_type: ContractCareType | null;
+}
+
+export interface GetClientContractSummary {
+	has_active_approved_contract: boolean;
+	active_contract: GetClientContractSummaryActiveContract | null;
+	days_until_contract_end: number | null;
+}
+
+export interface GetClientEvaluationSummaryDraft {
+	id: string;
+	updated_at: string | null;
+}
+
+export interface GetClientEvaluationSummaryLastCompleted {
+	id: string;
+	submitted_at: string | null;
+	created_by_employee_id: string | null;
+	creator_name: string | null;
+}
+
+export interface GetClientEvaluationSummary {
+	next_evaluation_date: string | null;
+	days_left: number | null;
+	priority: 'critical' | 'normal' | null;
+	draft: GetClientEvaluationSummaryDraft | null;
+	last_completed: GetClientEvaluationSummaryLastCompleted | null;
+}
+
+export interface GetClientCore {
+	id: string;
+	first_name: string;
+	last_name: string;
+	bsn: string | number | null;
+	file_number: string | number | null;
+	gender: ClientGender | null;
+	date_of_birth: string | null;
+	age: number | null;
+	care_type: IntakeCareType | null;
+	address: GetClientAddress | null;
+	location: GetClientLocation | null;
+}
+
+export interface GetClientResponse {
+	schema_version: number;
+	status: ClientStatus;
+	client: GetClientCore;
+	care?: GetClientCare | null;
+	care_schedule?: GetClientCareSchedule | null;
+	sender: GetClientSender | null;
+	coordinator?: GetClientCoordinator | null;
+	contract_summary?: GetClientContractSummary | null;
+	evaluation_summary?: GetClientEvaluationSummary | null;
+	emergency_contacts: GetClientEmergencyContact[];
+	documents: GetClientDocuments;
+	goals: GetClientGoal[];
+	intake: GetClientIntake | null;
+	risks: GetClientRisks | null;
+	counts: GetClientCounts;
+	alerts: GetClientAlert[];
+	meta?: GetClientMeta;
+	status_timeline?: GetClientStatusTimeline | null;
+}

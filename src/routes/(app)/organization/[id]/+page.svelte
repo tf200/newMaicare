@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Building2, Pencil, Plus, Search, Users, Warehouse } from 'lucide-svelte';
+	import { Building2, Pencil, Plus, Search, Users, Warehouse, Clock } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import CreateLocationForm from '$lib/components/forms/CreateLocationForm.svelte';
 	import EditLocationForm from '$lib/components/forms/EditLocationForm.svelte';
+	import ManageShiftsForm from '$lib/components/forms/ManageShiftsForm.svelte';
 	import { getLocation } from '$lib/api/organizations';
 	import type { GetOrganizationResponse, OrganizationLocation } from '$lib/types/api';
 	import type {
@@ -42,6 +43,21 @@
 	let isEditLoading = $state(false);
 	let editLoadError = $state('');
 
+	const openEdit = async (id: string) => {
+		editLocation = null;
+		editLoadError = '';
+		showEditLocation = true;
+		isEditLoading = true;
+		try {
+			const response = await getLocation(id);
+			editLocation = response.data;
+		} catch (error) {
+			editLoadError = error instanceof Error ? error.message : 'Failed to load location.';
+		} finally {
+			isEditLoading = false;
+		}
+	};
+
 	onMount(() => {
 		searchTerm = appliedSearch;
 	});
@@ -65,19 +81,12 @@
 		updateQuery(1, trimmed);
 	};
 
-	const openEdit = async (id: string) => {
-		editLocation = null;
-		editLoadError = '';
-		showEditLocation = true;
-		isEditLoading = true;
-		try {
-			const response = await getLocation(id);
-			editLocation = response.data;
-		} catch (error) {
-			editLoadError = error instanceof Error ? error.message : 'Failed to load location.';
-		} finally {
-			isEditLoading = false;
-		}
+	let showManageShifts = $state(false);
+	let manageShiftsLocation = $state<OrganizationLocation | null>(null);
+
+	const openManageShifts = (location: OrganizationLocation) => {
+		manageShiftsLocation = location;
+		showManageShifts = true;
 	};
 
 	const columns: DataTableColumn[] = [
@@ -195,13 +204,22 @@
 {/snippet}
 
 {#snippet actionsCell(row: OrganizationLocation)}
-	<button
-		class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-		onclick={() => openEdit(row.id)}
-		title="Edit location"
-	>
-		<Pencil class="h-4 w-4" />
-	</button>
+	<div class="flex items-center justify-end gap-1">
+		<button
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			onclick={() => openManageShifts(row)}
+			title="Manage shifts"
+		>
+			<Clock class="h-4 w-4" />
+		</button>
+		<button
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			onclick={() => openEdit(row.id)}
+			title="Edit location"
+		>
+			<Pencil class="h-4 w-4" />
+		</button>
+	</div>
 {/snippet}
 
 <section class="space-y-8">
@@ -265,6 +283,16 @@
 						location={editLocation}
 						isFetching={isEditLoading}
 						loadErrorMessage={editLoadError}
+						onUpdated={() => invalidateAll()}
+					/>
+				{/key}
+			{/if}
+
+			{#if showManageShifts}
+				{#key manageShiftsLocation?.id ?? 'loading'}
+					<ManageShiftsForm
+						bind:open={showManageShifts}
+						location={manageShiftsLocation}
 						onUpdated={() => invalidateAll()}
 					/>
 				{/key}

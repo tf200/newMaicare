@@ -7,6 +7,8 @@ export interface CreateSchedulePresetRequest {
 	recurrence: ScheduleRecurrence;
 	location_shift_id: string;
 	shift_date: string;
+	start_datetime?: never;
+	end_datetime?: never;
 }
 
 export interface CreateScheduleCustomRequest {
@@ -16,6 +18,8 @@ export interface CreateScheduleCustomRequest {
 	recurrence: ScheduleRecurrence;
 	start_datetime: string;
 	end_datetime: string;
+	location_shift_id?: never;
+	shift_date?: never;
 }
 
 export type CreateScheduleRequest = CreateSchedulePresetRequest | CreateScheduleCustomRequest;

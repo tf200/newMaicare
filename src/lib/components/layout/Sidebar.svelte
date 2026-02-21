@@ -6,6 +6,7 @@
 		Users,
 		UsersRound,
 		Calendar,
+		CalendarDays,
 		X,
 		HelpCircle,
 		ChevronDown,
@@ -35,6 +36,7 @@
 		{ label: 'Clients', href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
 		{ label: 'Appointments', href: '/appointments', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
+		{ label: m.schedules(), href: '/schedules', icon: CalendarDays, permission: 'DASHBOARD.VIEW' },
 		{
 			label: m.care_coordination(),
 			icon: HeartHandshake,
@@ -62,6 +64,11 @@
 				{
 					label: m.evaluations(),
 					href: '/evaluations',
+					permission: 'CARE_COORDINATION.VIEW'
+				},
+				{
+					label: m.incidents(),
+					href: '/incidents',
 					permission: 'CARE_COORDINATION.VIEW'
 				}
 			]

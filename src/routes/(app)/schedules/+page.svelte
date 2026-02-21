@@ -9,7 +9,8 @@
 		ChevronRight,
 		Loader2,
 		Plus,
-		CheckCircle2
+		CheckCircle2,
+		X
 	} from 'lucide-svelte';
 	import { fly } from 'svelte/transition';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -17,9 +18,12 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import AssignEmployeesSheet from '$lib/components/schedules/AssignEmployeesSheet.svelte';
+	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { getLocationSchedules, listLocations } from '$lib/api/locations';
-	import { createSchedules } from '$lib/api/schedules';
+	import { createSchedules, deleteSchedule } from '$lib/api/schedules';
 	import type {
+		CreateScheduleCustomRequest,
+		CreateSchedulePresetRequest,
 		LocationScheduleDay,
 		LocationScheduleShiftItem,
 		LocationShift,
@@ -30,6 +34,7 @@
 	interface Employee {
 		id: string;
 		name: string;
+		scheduleId: string | null;
 	}
 
 	interface ShiftTemplate {
@@ -91,6 +96,12 @@
 	let currentShifts = $state<ScheduledShift[]>([]);
 	let scheduleFetchNonce = $state(0);
 	let scheduleRequestId = 0;
+	let employeesLoading = $state(false);
+	let employeesLoadError = $state<string | null>(null);
+	let locationEmployees = $state<Employee[]>([]);
+	let employeeSearchQuery = $state('');
+	let employeeFetchNonce = $state(0);
+	let employeeRequestId = 0;
 
 	// Assign Employees Side Sheet State
 	let assignSheetOpen = $state(false);
@@ -98,38 +109,47 @@
 	let assignSheetTemplateId = $state<string | null>(null);
 	let assignSuccessMessage = $state<string | null>(null);
 	let assignFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+	let deletingScheduleIds = $state<string[]>([]);
 
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	const SHIFT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+	const VALID_RECURRENCES: ReadonlySet<ScheduleRecurrence> = new Set([
+		'none',
+		'end_of_week',
+		'end_of_month'
+	]);
 
-	let availableEmployees = $derived.by(() => {
-		const map = new Map<string, Employee>();
-		for (const shift of currentShifts) {
-			for (const emp of shift.employees) {
-				map.set(emp.id, emp);
-			}
-		}
-
-		// Add mock extras if the list is empty or small
-		if (map.size < 5) {
-			map.set('mock-1', { id: 'mock-1', name: 'Alice Smith' });
-			map.set('mock-2', { id: 'mock-2', name: 'Bob Jones' });
-			map.set('mock-3', { id: 'mock-3', name: 'Charlie Brown' });
-			map.set('mock-4', { id: 'mock-4', name: 'Diana Prince' });
-			map.set('mock-5', { id: 'mock-5', name: 'Evan Wright' });
-		}
-
-		return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-	});
+	let availableEmployees = $derived(locationEmployees);
 
 	function openAssignSheet(date: string, templateId: string | null = null) {
 		assignSheetDate = date;
 		assignSheetTemplateId = templateId;
+		employeeSearchQuery = '';
 		assignSheetOpen = true;
 	}
 
 	function isUuid(value: string): boolean {
 		return UUID_PATTERN.test(value);
+	}
+
+	function isValidShiftDate(value: string): boolean {
+		if (!SHIFT_DATE_PATTERN.test(value)) {
+			return false;
+		}
+
+		const [year, month, day] = value.split('-').map(Number);
+		const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+		return (
+			parsedDate.getUTCFullYear() === year &&
+			parsedDate.getUTCMonth() === month - 1 &&
+			parsedDate.getUTCDate() === day
+		);
+	}
+
+	function parseDatetime(value: string): Date | null {
+		const parsedDate = new Date(value);
+		return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
 	}
 
 	function resetAssignFeedbackAfterDelay() {
@@ -154,51 +174,74 @@
 			throw new Error('Please select a valid location before assigning employees.');
 		}
 
-		if (!assignSheetDate || !SHIFT_DATE_PATTERN.test(assignSheetDate)) {
-			throw new Error('Selected date is invalid. Please re-open the assignment panel.');
+		if (!VALID_RECURRENCES.has(recurrence)) {
+			throw new Error('Selected recurrence is invalid. Please re-open the assignment panel.');
 		}
 
-		if (!isCustom && (!templateId || !isUuid(templateId))) {
-			throw new Error('This shift template is not yet synced. Please use a saved location shift.');
-		}
+		const normalizedEmployeeIds = employeeIds.map((id) => id.trim());
 
-		if (isCustom && (!startDatetime || !endDatetime)) {
-			throw new Error('Start and end times are required for custom shifts.');
-		}
-
-		const uniqueEmployeeIds = Array.from(
-			new Set(employeeIds.map((id) => id.trim()).filter(Boolean))
-		);
-		const validEmployeeIds = uniqueEmployeeIds.filter((id) => isUuid(id));
-
-		if (validEmployeeIds.length === 0) {
+		if (normalizedEmployeeIds.length === 0) {
 			throw new Error('Please select at least one valid employee.');
 		}
 
-		if (validEmployeeIds.length !== uniqueEmployeeIds.length) {
+		if (normalizedEmployeeIds.some((id) => !id || !isUuid(id))) {
 			throw new Error('One or more selected employees are invalid. Please reselect and try again.');
 		}
 
-		try {
-			if (isCustom) {
-				await createSchedules({
-					employee_ids: validEmployeeIds,
-					location_id: selectedLocationId,
-					is_custom: true,
-					recurrence,
-					start_datetime: new Date(startDatetime).toISOString(),
-					end_datetime: new Date(endDatetime).toISOString()
-				});
-			} else {
-				await createSchedules({
-					employee_ids: validEmployeeIds,
-					location_id: selectedLocationId,
-					is_custom: false,
-					recurrence,
-					location_shift_id: templateId,
-					shift_date: assignSheetDate
-				});
+		const lowerCaseEmployeeIds = normalizedEmployeeIds.map((id) => id.toLowerCase());
+		if (new Set(lowerCaseEmployeeIds).size !== lowerCaseEmployeeIds.length) {
+			throw new Error('Duplicate employees are not allowed in a single assignment.');
+		}
+
+		let payload: CreateScheduleCustomRequest | CreateSchedulePresetRequest;
+
+		if (isCustom) {
+			if (!startDatetime || !endDatetime) {
+				throw new Error('Start and end times are required for custom shifts.');
 			}
+
+			const parsedStartDatetime = parseDatetime(startDatetime);
+			const parsedEndDatetime = parseDatetime(endDatetime);
+
+			if (!parsedStartDatetime || !parsedEndDatetime) {
+				throw new Error('Start or end time is invalid. Please choose valid date-times.');
+			}
+
+			if (parsedStartDatetime >= parsedEndDatetime) {
+				throw new Error('End time must be after start time.');
+			}
+
+			payload = {
+				employee_ids: normalizedEmployeeIds,
+				location_id: selectedLocationId,
+				is_custom: true,
+				recurrence,
+				start_datetime: parsedStartDatetime.toISOString(),
+				end_datetime: parsedEndDatetime.toISOString()
+			};
+		} else {
+			if (!templateId || !isUuid(templateId)) {
+				throw new Error(
+					'This shift template is not yet synced. Please use a saved location shift.'
+				);
+			}
+
+			if (!assignSheetDate || !isValidShiftDate(assignSheetDate)) {
+				throw new Error('Selected date is invalid. Please re-open the assignment panel.');
+			}
+
+			payload = {
+				employee_ids: normalizedEmployeeIds,
+				location_id: selectedLocationId,
+				is_custom: false,
+				recurrence,
+				location_shift_id: templateId,
+				shift_date: assignSheetDate
+			};
+		}
+
+		try {
+			await createSchedules(payload);
 		} catch (error) {
 			throw new Error(
 				error instanceof Error && error.message
@@ -207,9 +250,37 @@
 			);
 		}
 
-		assignSuccessMessage = `Successfully assigned ${validEmployeeIds.length} employee(s).`;
+		assignSuccessMessage = `Successfully assigned ${normalizedEmployeeIds.length} employee(s).`;
 		resetAssignFeedbackAfterDelay();
 		retrySchedulesFetch();
+	}
+
+	async function handleUnassignEmployee(scheduleId: string) {
+		if (!scheduleId || !isUuid(scheduleId)) {
+			schedulesError = 'Unable to unassign this employee because the assignment id is invalid.';
+			return;
+		}
+
+		if (deletingScheduleIds.includes(scheduleId)) {
+			return;
+		}
+
+		deletingScheduleIds = [...deletingScheduleIds, scheduleId];
+
+		try {
+			await deleteSchedule(scheduleId);
+			assignSuccessMessage = 'Employee unassigned successfully.';
+			resetAssignFeedbackAfterDelay();
+			schedulesError = null;
+			retrySchedulesFetch();
+		} catch (error) {
+			schedulesError =
+				error instanceof Error && error.message
+					? error.message
+					: 'Unable to unassign employee right now. Please try again.';
+		} finally {
+			deletingScheduleIds = deletingScheduleIds.filter((id) => id !== scheduleId);
+		}
 	}
 
 	function parseDateOnly(dateText: string): Date {
@@ -341,6 +412,44 @@
 
 	function retrySchedulesFetch() {
 		scheduleFetchNonce += 1;
+	}
+
+	function retryEmployeeFetch() {
+		employeeFetchNonce += 1;
+	}
+
+	function handleEmployeeSearchQueryChange(query: string) {
+		employeeSearchQuery = query;
+	}
+
+	function mapEmployeeOption(employee: EmployeeListItem): Employee {
+		const firstName = employee.first_name?.trim() ?? '';
+		const lastName = employee.last_name?.trim() ?? '';
+		const name = `${firstName} ${lastName}`.trim() || 'Unknown employee';
+
+		return {
+			id: employee.id,
+			name,
+			scheduleId: null
+		};
+	}
+
+	async function fetchEmployees(searchQuery: string): Promise<Employee[]> {
+		const response = await listEmployees({
+			page: 1,
+			pageSize: 6,
+			search: searchQuery || undefined,
+			isArchived: false,
+			outOfService: false
+		});
+
+		const uniqueEmployeesById = new Map<string, Employee>();
+		for (const employee of response.data.results) {
+			if (!isUuid(employee.id)) continue;
+			uniqueEmployeesById.set(employee.id, mapEmployeeOption(employee));
+		}
+
+		return Array.from(uniqueEmployeesById.values());
 	}
 
 	let firstLocationId = $derived(data.locations[0]?.id ?? '');
@@ -546,13 +655,16 @@
 				}
 
 				const employeeName = `${shift.employee_first_name} ${shift.employee_last_name}`.trim();
-				const employeeId = shift.employee_id || `${shift.shift_id}-${employeeName}`;
+				const scheduleId = shift.schedule_id ?? null;
+				const employeeId =
+					shift.employee_id || scheduleId || `${day.date}-${templateId}-${employeeName}`;
 				if (!employeeId) continue;
 
 				if (!scheduledShift.employees.some((employee) => employee.id === employeeId)) {
 					scheduledShift.employees.push({
 						id: employeeId,
-						name: employeeName || 'Unknown employee'
+						name: employeeName || 'Unknown employee',
+						scheduleId
 					});
 				}
 			}
@@ -570,6 +682,50 @@
 			);
 		});
 	}
+
+	$effect(() => {
+		const locationId = selectedLocationId;
+		const sheetOpen = assignSheetOpen;
+		const searchQuery = employeeSearchQuery.trim();
+		const retryCount = employeeFetchNonce;
+
+		void retryCount;
+
+		if (!locationId) {
+			employeeRequestId += 1;
+			locationEmployees = [];
+			employeesLoadError = null;
+			employeesLoading = false;
+			return;
+		}
+
+		if (!sheetOpen) {
+			employeeRequestId += 1;
+			locationEmployees = [];
+			employeesLoadError = null;
+			employeesLoading = false;
+			return;
+		}
+
+		const requestId = ++employeeRequestId;
+		employeesLoading = true;
+		employeesLoadError = null;
+
+		fetchEmployees(searchQuery)
+			.then((employees) => {
+				if (requestId !== employeeRequestId) return;
+				locationEmployees = employees;
+			})
+			.catch((error) => {
+				if (requestId !== employeeRequestId) return;
+				locationEmployees = [];
+				employeesLoadError = error instanceof Error ? error.message : 'Failed to load employees.';
+			})
+			.finally(() => {
+				if (requestId !== employeeRequestId) return;
+				employeesLoading = false;
+			});
+	});
 
 	$effect(() => {
 		const locationId = selectedLocationId;
@@ -854,9 +1010,24 @@
 												{@const visibleEmployees = shift.employees.slice(0, 2)}
 												{#each visibleEmployees as employee (employee.id)}
 													<div
-														class="rounded-lg border px-2.5 py-1.5 text-xs font-semibold {template.colorClass}"
+														class="flex items-center justify-between gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold {template.colorClass}"
 													>
-														<span class="block truncate">{employee.name}</span>
+														<span class="block min-w-0 flex-1 truncate">{employee.name}</span>
+														{#if employee.scheduleId}
+															<button
+																type="button"
+																class="rounded p-0.5 opacity-70 transition hover:bg-black/10 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+																onclick={() => handleUnassignEmployee(employee.scheduleId!)}
+																disabled={deletingScheduleIds.includes(employee.scheduleId)}
+																aria-label="Unassign {employee.name}"
+															>
+																{#if deletingScheduleIds.includes(employee.scheduleId)}
+																	<Loader2 class="h-3 w-3 animate-spin" />
+																{:else}
+																	<X class="h-3 w-3" />
+																{/if}
+															</button>
+														{/if}
 													</div>
 												{/each}
 
@@ -1006,6 +1177,10 @@
 	{templates}
 	preselectedTemplateId={assignSheetTemplateId}
 	{availableEmployees}
+	{employeesLoading}
+	{employeesLoadError}
+	onRetryEmployees={retryEmployeeFetch}
+	onSearchQueryChange={handleEmployeeSearchQueryChange}
 	onAssign={handleAssign}
 />
 

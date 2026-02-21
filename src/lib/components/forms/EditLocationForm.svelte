@@ -4,7 +4,8 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
 	import { updateLocation } from '$lib/api/organizations';
-	import type { OrganizationLocation, UpdateLocationRequest } from '$lib/types/api';
+	import type { OrganizationLocation, UpdateLocationRequest, LocationShift } from '$lib/types/api';
+	import { Plus, Trash2 } from 'lucide-svelte';
 
 	interface Props {
 		open?: boolean;

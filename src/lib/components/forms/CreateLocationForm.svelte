@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { Plus, Trash2 } from 'lucide-svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { createOrganizationLocation } from '$lib/api/organizations';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
-	import type { CreateLocationRequest } from '$lib/types/api';
+	import type { CreateLocationRequest, LocationShift } from '$lib/types/api';
 
 	interface Props {
 		open?: boolean;

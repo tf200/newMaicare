@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { X, Clock, MapPin, Calendar, Moon, Search, Check } from 'lucide-svelte';
+	import { X, Clock, MapPin, Calendar, Moon, Search, Check, Loader2 } from 'lucide-svelte';
 	import { fly, fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
 
 	interface Employee {
 		id: string;
@@ -27,6 +28,10 @@
 		templates = [],
 		preselectedTemplateId = null,
 		availableEmployees = [],
+		employeesLoading = false,
+		employeesLoadError = null,
+		onRetryEmployees = undefined,
+		onSearchQueryChange = undefined,
 		onAssign
 	} = $props<{
 		open: boolean;
@@ -35,6 +40,10 @@
 		templates: ShiftTemplate[];
 		preselectedTemplateId?: string | null;
 		availableEmployees: Employee[];
+		employeesLoading?: boolean;
+		employeesLoadError?: string | null;
+		onRetryEmployees?: () => void;
+		onSearchQueryChange?: (query: string) => void;
 		onAssign: (
 			isCustom: boolean,
 			templateId: string,
@@ -71,8 +80,8 @@
 			submitError = null;
 
 			if (date) {
-				startDatetime = `${date}T08:00`;
-				endDatetime = `${date}T16:00`;
+				startDatetime = new Date(`${date}T08:00:00`).toISOString();
+				endDatetime = new Date(`${date}T16:00:00`).toISOString();
 			} else {
 				startDatetime = '';
 				endDatetime = '';
@@ -80,17 +89,16 @@
 		}
 	});
 
+	$effect(() => {
+		if (!open) return;
+		onSearchQueryChange?.(searchQuery);
+	});
+
 	let selectedTemplate = $derived(
 		templates.find((t: ShiftTemplate) => t.id === selectedTemplateId)
 	);
 	let templateOptions = $derived(
 		templates.map((t: ShiftTemplate) => ({ label: t.name, value: t.id }))
-	);
-
-	let filteredEmployees = $derived(
-		availableEmployees.filter((emp: Employee) =>
-			emp.name.toLowerCase().includes(searchQuery.toLowerCase())
-		)
 	);
 
 	function toggleEmployee(id: string) {
@@ -211,24 +219,8 @@
 
 				{#if isCustomMode}
 					<div class="bg-surface-subtle/30 space-y-4 rounded-xl border border-border/60 p-4">
-						<div class="space-y-1.5">
-							<label for="start-datetime" class="text-sm font-medium text-text">Start Time</label>
-							<input
-								id="start-datetime"
-								type="datetime-local"
-								bind:value={startDatetime}
-								class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label for="end-datetime" class="text-sm font-medium text-text">End Time</label>
-							<input
-								id="end-datetime"
-								type="datetime-local"
-								bind:value={endDatetime}
-								class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
-							/>
-						</div>
+						<DateTimePicker label="Start Time" bind:value={startDatetime} />
+						<DateTimePicker label="End Time" bind:value={endDatetime} />
 						{#if startDatetime && endDatetime && new Date(startDatetime) >= new Date(endDatetime)}
 							<p class="text-xs font-medium text-rose-500">End time must be after start time.</p>
 						{/if}
@@ -297,40 +289,54 @@
 				</div>
 
 				<div class="flex flex-col gap-2">
-					{#each filteredEmployees as employee (employee.id)}
-						<button
-							class="hover:bg-surface-subtle flex items-center justify-between rounded-xl border border-border/60 p-3 transition-colors {selectedEmployeeIds.includes(
-								employee.id
-							)
-								? 'border-brand/50 bg-brand/5'
-								: 'bg-surface'}"
-							onclick={() => toggleEmployee(employee.id)}
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-text"
-								>
-									{employee.name.charAt(0)}
-								</div>
-								<span class="text-sm font-medium text-text">{employee.name}</span>
-							</div>
-							<div
-								class="flex h-5 w-5 items-center justify-center rounded-full border {selectedEmployeeIds.includes(
+					{#if employeesLoadError}
+						<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+							<p>{employeesLoadError}</p>
+							{#if onRetryEmployees}
+								<Button variant="ghost" class="mt-2" onclick={onRetryEmployees}>Retry</Button>
+							{/if}
+						</div>
+					{:else if employeesLoading}
+						<div class="flex items-center justify-center gap-2 py-8 text-sm text-text-muted">
+							<Loader2 class="h-4 w-4 animate-spin" />
+							<span>Loading employees...</span>
+						</div>
+					{:else}
+						{#each availableEmployees as employee (employee.id)}
+							<button
+								class="hover:bg-surface-subtle flex items-center justify-between rounded-xl border border-border/60 p-3 transition-colors {selectedEmployeeIds.includes(
 									employee.id
 								)
-									? 'border-brand bg-brand text-white'
-									: 'border-border/60'}"
+									? 'border-brand/50 bg-brand/5'
+									: 'bg-surface'}"
+								onclick={() => toggleEmployee(employee.id)}
 							>
-								{#if selectedEmployeeIds.includes(employee.id)}
-									<Check class="h-3 w-3" />
-								{/if}
+								<div class="flex items-center gap-3">
+									<div
+										class="bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-text"
+									>
+										{employee.name.charAt(0)}
+									</div>
+									<span class="text-sm font-medium text-text">{employee.name}</span>
+								</div>
+								<div
+									class="flex h-5 w-5 items-center justify-center rounded-full border {selectedEmployeeIds.includes(
+										employee.id
+									)
+										? 'border-brand bg-brand text-white'
+										: 'border-border/60'}"
+								>
+									{#if selectedEmployeeIds.includes(employee.id)}
+										<Check class="h-3 w-3" />
+									{/if}
+								</div>
+							</button>
+						{:else}
+							<div class="py-8 text-center text-sm text-text-muted">
+								No employees found matching "{searchQuery}"
 							</div>
-						</button>
-					{:else}
-						<div class="py-8 text-center text-sm text-text-muted">
-							No employees found matching "{searchQuery}"
-						</div>
-					{/each}
+						{/each}
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -353,6 +359,7 @@
 						onclick={handleAssign}
 						disabled={(isCustomMode ? !startDatetime || !endDatetime : !selectedTemplateId) ||
 							selectedEmployeeIds.length === 0 ||
+							employeesLoading ||
 							!date ||
 							!locationName ||
 							isSubmitting}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { sidebarState } from '$lib/state/sidebar.svelte';
 	import { page } from '$app/state';
-	import { LayoutDashboard, FileText, ScrollText } from 'lucide-svelte';
+	import { HeartPulse, LayoutDashboard, FileText, ScrollText } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
@@ -14,6 +14,11 @@
 					label: m.overview(),
 					href: `/clients/${clientId}`,
 					icon: LayoutDashboard
+				},
+				{
+					label: 'Medical Dossier',
+					href: `/clients/${clientId}/medical`,
+					icon: HeartPulse
 				},
 				{
 					label: 'Appointment Card',

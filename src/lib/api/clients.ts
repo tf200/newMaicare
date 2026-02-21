@@ -12,7 +12,14 @@ import type {
 	PutClientInCareRequest,
 	GetAppointmentCardResponse,
 	UpdateAppointmentCardRequest,
-	PaginatedResponse
+	PaginatedResponse,
+	GetClientMedicalOverviewResponse,
+	CreateClientDiagnosisRequest,
+	UpdateClientDiagnosisRequest,
+	ClientDiagnosisResponse,
+	CreateClientMedicationOrderRequest,
+	ClientMedicationOrderResponse,
+	UpdateClientMedicationOrderRequest
 } from '$lib/types/api';
 
 export function listWaitingListClients(params: ListWaitingListClientsParams) {
@@ -110,4 +117,59 @@ export function upsertClientAppointmentCard(id: string, payload: UpdateAppointme
 
 export function generateClientAppointmentCardDocument(id: string) {
 	return api.postBlob(`/clients/${id}/appointment_cards/generate_document`);
+}
+
+export function getClientMedicalOverview(id: string) {
+	return api.get<ApiEnvelope<GetClientMedicalOverviewResponse>>(`/clients/${id}/medical/overview`);
+}
+
+export function createClientDiagnosis(id: string, payload: CreateClientDiagnosisRequest) {
+	return api.post<ApiEnvelope<ClientDiagnosisResponse>>(
+		`/clients/${id}/medical/diagnoses`,
+		payload
+	);
+}
+
+export function getClientDiagnosis(clientId: string, diagnosisId: string) {
+	return api.get<ApiEnvelope<ClientDiagnosisResponse>>(
+		`/clients/${clientId}/medical/diagnoses/${diagnosisId}`
+	);
+}
+
+export function updateClientDiagnosis(
+	clientId: string,
+	diagnosisId: string,
+	payload: UpdateClientDiagnosisRequest
+) {
+	return api.put<ApiEnvelope<ClientDiagnosisResponse>>(
+		`/clients/${clientId}/medical/diagnoses/${diagnosisId}`,
+		payload
+	);
+}
+
+export function createClientMedicationOrder(
+	id: string,
+	payload: CreateClientMedicationOrderRequest
+) {
+	return api.post<ApiEnvelope<ClientMedicationOrderResponse>>(
+		`/clients/${id}/medical/medication-orders`,
+		payload
+	);
+}
+
+export function getClientMedicationOrder(clientId: string, orderId: string) {
+	return api.get<ApiEnvelope<ClientMedicationOrderResponse>>(
+		`/clients/${clientId}/medical/medication-orders/${orderId}`
+	);
+}
+
+export function updateClientMedicationOrder(
+	clientId: string,
+	orderId: string,
+	payload: UpdateClientMedicationOrderRequest
+) {
+	return api.put<ApiEnvelope<ClientMedicationOrderResponse>>(
+		`/clients/${clientId}/medical/medication-orders/${orderId}`,
+		payload
+	);
 }
