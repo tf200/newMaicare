@@ -9,6 +9,7 @@
 		ChevronRight,
 		Loader2,
 		Plus,
+		Sparkles,
 		CheckCircle2,
 		X
 	} from 'lucide-svelte';
@@ -18,6 +19,7 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import AssignEmployeesSheet from '$lib/components/schedules/AssignEmployeesSheet.svelte';
+	import AutoGenerateScheduleModal from '$lib/components/schedules/AutoGenerateScheduleModal.svelte';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { getLocationSchedules, listLocations } from '$lib/api/locations';
 	import { createSchedules, deleteSchedule } from '$lib/api/schedules';
@@ -110,6 +112,7 @@
 	let assignSuccessMessage = $state<string | null>(null);
 	let assignFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
 	let deletingScheduleIds = $state<string[]>([]);
+	let autoGenerateModalOpen = $state(false);
 
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	const SHIFT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -294,6 +297,14 @@
 		return next;
 	}
 
+	function startOfISOWeek(base: Date): Date {
+		const date = new Date(base);
+		const day = date.getDay() || 7; // Sunday (0) -> 7
+		date.setDate(date.getDate() - (day - 1));
+		date.setHours(0, 0, 0, 0);
+		return date;
+	}
+
 	function formatDateKey(date: Date): string {
 		const year = date.getFullYear();
 		const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -380,6 +391,13 @@
 		return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 	}
 
+	function getISOWeekYear(d: Date): number {
+		const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+		const dayNum = date.getUTCDay() || 7;
+		date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+		return date.getUTCFullYear();
+	}
+
 	function formatDateRange(startDate: string, endDate: string): string {
 		if (!startDate || !endDate) return '';
 		const start = parseDateOnly(startDate);
@@ -416,6 +434,12 @@
 
 	function retryEmployeeFetch() {
 		employeeFetchNonce += 1;
+	}
+
+	function handleGeneratedScheduleSaved() {
+		assignSuccessMessage = 'Generated schedule saved successfully.';
+		resetAssignFeedbackAfterDelay();
+		retrySchedulesFetch();
 	}
 
 	function handleEmployeeSearchQueryChange(query: string) {
@@ -533,7 +557,7 @@
 
 	let weekStart = $derived.by(() => {
 		const base = data.baseDate ? parseDateOnly(data.baseDate) : new Date();
-		return addDays(base, weekOffset * 7);
+		return addDays(startOfISOWeek(base), weekOffset * 7);
 	});
 
 	let visibleDays = $derived.by(() => {
@@ -887,6 +911,7 @@
 					</button>
 					<span class="px-3 text-sm font-medium text-text">
 						W{String(getISOWeek(weekStart)).padStart(2, '0')}
+						{getISOWeekYear(weekStart)}
 					</span>
 					<button
 						type="button"
@@ -900,6 +925,16 @@
 				<Button variant="ghost" class="rounded-xl" onclick={() => (weekOffset = 0)}
 					>This Week</Button
 				>
+				<Button
+					class="rounded-xl"
+					onclick={() => {
+						autoGenerateModalOpen = true;
+					}}
+					disabled={!selectedLocationId}
+				>
+					<Sparkles class="h-4 w-4" />
+					Auto-generate
+				</Button>
 			{:else}
 				<div class="flex items-center rounded-xl border border-border/70 bg-surface p-1 shadow-sm">
 					<button
@@ -1009,25 +1044,29 @@
 											{#each cellShifts as shift (shift.id)}
 												{@const visibleEmployees = shift.employees.slice(0, 2)}
 												{#each visibleEmployees as employee (employee.id)}
-													<div
-														class="flex items-center justify-between gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold {template.colorClass}"
-													>
-														<span class="block min-w-0 flex-1 truncate">{employee.name}</span>
-														{#if employee.scheduleId}
-															<button
-																type="button"
-																class="rounded p-0.5 opacity-70 transition hover:bg-black/10 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-																onclick={() => handleUnassignEmployee(employee.scheduleId!)}
-																disabled={deletingScheduleIds.includes(employee.scheduleId)}
-																aria-label="Unassign {employee.name}"
+													<div class="group relative">
+														<div
+															class="flex w-full items-center justify-between gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold {template.colorClass}"
+														>
+															<span class="block min-w-0 flex-1 truncate text-left"
+																>{employee.name}</span
 															>
-																{#if deletingScheduleIds.includes(employee.scheduleId)}
-																	<Loader2 class="h-3 w-3 animate-spin" />
-																{:else}
-																	<X class="h-3 w-3" />
-																{/if}
-															</button>
-														{/if}
+															{#if employee.scheduleId}
+																<button
+																	type="button"
+																	class="flex items-center justify-center rounded-md p-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/10"
+																	onclick={() => void handleUnassignEmployee(employee.scheduleId!)}
+																	disabled={deletingScheduleIds.includes(employee.scheduleId)}
+																	aria-label="Remove {employee.name} from shift"
+																>
+																	{#if deletingScheduleIds.includes(employee.scheduleId)}
+																		<Loader2 class="h-3.5 w-3.5 animate-spin" />
+																	{:else}
+																		<X class="h-3.5 w-3.5" />
+																	{/if}
+																</button>
+															{/if}
+														</div>
 													</div>
 												{/each}
 
@@ -1182,6 +1221,16 @@
 	onRetryEmployees={retryEmployeeFetch}
 	onSearchQueryChange={handleEmployeeSearchQueryChange}
 	onAssign={handleAssign}
+/>
+
+<AutoGenerateScheduleModal
+	bind:open={autoGenerateModalOpen}
+	locationId={selectedLocationId}
+	locationName={selectedLocationDisplay}
+	week={getISOWeek(weekStart)}
+	year={getISOWeekYear(weekStart)}
+	weekStartDate={formatDateKey(weekStart)}
+	onSaved={handleGeneratedScheduleSaved}
 />
 
 {#if assignSuccessMessage}
