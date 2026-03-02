@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { locales, getLocale, localizeHref } from '$lib/paraglide/runtime';
+	import { locales, getLocale, localizeHref, setLocale } from '$lib/paraglide/runtime';
 	import { Globe, Check, ChevronDown } from 'lucide-svelte';
 	import { fly, fade } from 'svelte/transition';
 
@@ -26,6 +26,17 @@
 
 	function closeDropdown() {
 		isOpen = false;
+	}
+
+	function handleLocaleSwitch(event: MouseEvent, locale: string) {
+		event.preventDefault();
+		closeDropdown();
+
+		if (locale === currentLocale) {
+			return;
+		}
+
+		setLocale(locale as (typeof locales)[number]);
 	}
 
 	// Handle clicks outside and Escape key to close the dropdown
@@ -94,7 +105,7 @@
 						? 'bg-brand/10 text-brand'
 						: 'text-text-muted hover:bg-border/50 hover:text-text'}"
 					role="menuitem"
-					onclick={closeDropdown}
+					onclick={(event) => handleLocaleSwitch(event, locale)}
 				>
 					<div class="flex items-center gap-3">
 						<div

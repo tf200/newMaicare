@@ -117,6 +117,7 @@
 
 <div
 	class="block w-full"
+	role="presentation"
 	onmouseenter={show}
 	onmouseleave={hide}
 	onfocusin={show}

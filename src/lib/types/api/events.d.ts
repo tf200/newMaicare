@@ -74,3 +74,46 @@ export interface EventOccurrenceResponse {
 	attendee_employee_ids: string[];
 	attendee_client_ids: string[];
 }
+
+export type WorkApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface SetEventWorkApprovalRequest {
+	status: WorkApprovalStatus;
+	recurrence_id?: string | null;
+	rejection_reason?: string | null;
+}
+
+export interface IDName {
+	id: string;
+	name: string;
+}
+
+export interface ListWorkApprovalQueueRequest {
+	start_at: string;
+	end_at: string;
+	employee_ids?: string[];
+	only_ended?: boolean | null;
+	limit?: number;
+	offset?: number;
+}
+
+export interface WorkApprovalQueueItemResponse {
+	event_id: string;
+	recurrence_id: string | null;
+	start_at: string;
+	end_at: string;
+	organizer_employee: IDName;
+	attendee_employees: IDName[];
+	attendee_clients: IDName[];
+	work_approval_status: WorkApprovalStatus;
+	is_confirmed: boolean;
+	title: string;
+	description: string | null;
+	location: string | null;
+	created_at: string;
+}
+
+export interface ListWorkApprovalQueueResponse {
+	items: WorkApprovalQueueItemResponse[];
+	total: number;
+}

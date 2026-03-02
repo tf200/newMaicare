@@ -10,6 +10,7 @@
 		onchange,
 		error = undefined,
 		minDate = undefined,
+		compact = false,
 		id = `date-${Math.random().toString(36).substr(2, 9)}`
 	} = $props<{
 		label?: string;
@@ -17,6 +18,7 @@
 		onchange?: (value: string) => void;
 		error?: string;
 		minDate?: string;
+		compact?: boolean;
 		id?: string;
 	}>();
 
@@ -170,7 +172,9 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={() => (isOpen = !isOpen)}
-			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface {compact
+				? 'px-3 py-2.5'
+				: 'px-4 py-3.5'} text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
 		>
 			<CalendarIcon class="h-4 w-4 text-text-muted" />
 			{#if formattedValue}

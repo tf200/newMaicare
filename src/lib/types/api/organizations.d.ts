@@ -36,6 +36,11 @@ export interface OrganizationCounts {
 	organisation_name: string;
 }
 
+export interface GlobalOrganizationCounts {
+	total_locations: number;
+	total_capacity: number;
+}
+
 export interface LocationShift {
 	id?: string;
 	location_id?: string;

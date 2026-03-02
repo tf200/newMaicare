@@ -452,37 +452,73 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total Contracts
+			<div
+				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+			>
+				<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
+					<FileText class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{contractsData.stats.total}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Total Contracts
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+						{contractsData.stats.total}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">All matching records</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">All matching records</p>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Approved</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-					{contractsData.stats.approved}
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<CheckCircle2 class="h-32 w-32" />
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Current page</p>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Approved
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
+						{contractsData.stats.approved}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">Current page</p>
+				</div>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Draft</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">
-					{contractsData.stats.draft}
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Timer class="h-32 w-32" />
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Pending completion</p>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Draft</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">
+						{contractsData.stats.draft}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">Pending completion</p>
+				</div>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Expiring Soon
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Clock class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-					{contractsData.stats.expiringSoon}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Expiring Soon
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
+						{contractsData.stats.expiringSoon}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">Within 30 days</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Within 30 days</p>
 			</div>
 		</div>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -9,11 +10,13 @@
 	import { getClientDiagnosis, updateClientDiagnosis } from '$lib/api/clients';
 	import { Stethoscope } from 'lucide-svelte';
 	import type {
-		ClientDiagnosisResponse,
 		DiagnosisSeverity,
 		DiagnosisStatus,
 		UpdateClientDiagnosisRequest
 	} from '$lib/types/api';
+	import { DiagnosisSchema, type DiagnosisSchemaInput } from '$lib/schemas/diagnosis';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { trimToUndefined } from '$lib/utils/form-values';
 
 	interface Props {
 		clientId: string;
@@ -23,6 +26,96 @@
 	}
 
 	let { clientId, diagnosisId, open = $bindable(false), onUpdated }: Props = $props();
+
+	let isFetching = $state(false);
+	let errorMessage = $state('');
+	const formId = 'edit-diagnosis-form';
+
+	const { form, errors, enhance, delayed, reset } = superForm(
+		defaults(
+			{
+				code_system: 'ICD-10',
+				status: 'confirmed',
+				severity: 'unknown',
+				code: '',
+				title: '',
+				description: '',
+				diagnosed_on: '',
+				resolved_on: '',
+				diagnosing_clinician: '',
+				notes: ''
+			} as unknown as DiagnosisSchemaInput,
+			valibotClient(DiagnosisSchema)
+		),
+		{
+			validators: valibotClient(DiagnosisSchema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form }) => {
+				if (form.valid && diagnosisId) {
+					try {
+						const payload: UpdateClientDiagnosisRequest = {
+							code_system: form.data.code_system,
+							code: form.data.code.trim(),
+							title: trimToUndefined(form.data.title) ?? null,
+							description: trimToUndefined(form.data.description) ?? null,
+							status: form.data.status,
+							severity: form.data.severity,
+							diagnosed_on: toRfc3339Date(form.data.diagnosed_on),
+							resolved_on: toRfc3339Date(form.data.resolved_on),
+							diagnosing_clinician: trimToUndefined(form.data.diagnosing_clinician) ?? null,
+							notes: trimToUndefined(form.data.notes) ?? null
+						};
+
+						await updateClientDiagnosis(clientId, diagnosisId, payload);
+						open = false;
+						onUpdated?.();
+					} catch (error) {
+						errorMessage = error instanceof Error ? error.message : 'Failed to update diagnosis.';
+					}
+				}
+			}
+		}
+	);
+
+	const toRfc3339Date = (value: string | null | undefined) => {
+		if (!value) return null;
+		return `${value}T00:00:00Z`;
+	};
+
+	const toInputDate = (value: string | null) => {
+		if (!value) return '';
+		return value.slice(0, 10);
+	};
+
+	$effect(() => {
+		if (open && diagnosisId) {
+			isFetching = true;
+			getClientDiagnosis(clientId, diagnosisId)
+				.then((response) => {
+					const diagnosis = response.data;
+					const initialData: DiagnosisSchemaInput = {
+						code_system: diagnosis.code_system,
+						code: diagnosis.code,
+						title: diagnosis.title ?? '',
+						description: diagnosis.description ?? '',
+						status: diagnosis.status,
+						severity: diagnosis.severity,
+						diagnosed_on: toInputDate(diagnosis.diagnosed_on),
+						resolved_on: toInputDate(diagnosis.resolved_on),
+						diagnosing_clinician: diagnosis.diagnosing_clinician ?? '',
+						notes: diagnosis.notes ?? ''
+					};
+					reset({ data: initialData });
+				})
+				.catch((error) => {
+					errorMessage = error instanceof Error ? error.message : 'Failed to load diagnosis.';
+				})
+				.finally(() => {
+					isFetching = false;
+				});
+		}
+	});
 
 	const codeSystemOptions = [
 		{ label: 'ICD-10', value: 'ICD-10' },
@@ -76,153 +169,13 @@
 		}
 	];
 
-	let codeSystem = $state('ICD-10');
-	let code = $state('');
-	let title = $state('');
-	let description = $state('');
-	let status = $state<DiagnosisStatus>('confirmed');
-	let severity = $state<DiagnosisSeverity>('unknown');
-	let diagnosedOn = $state('');
-	let resolvedOn = $state('');
-	let diagnosingClinician = $state('');
-	let notes = $state('');
-	let errorMessage = $state('');
-	let isLoading = $state(false);
-	let isFetching = $state(false);
+	const showResolvedDate = $derived($form.status === 'resolved' || $form.status === 'ruled_out');
 
-	let fieldErrors = $state<{
-		code_system?: string;
-		code?: string;
-		resolved_on?: string;
-	}>({});
-
-	const showResolvedDate = $derived(status === 'resolved' || status === 'ruled_out');
-
-	const applyStatus = (nextStatus: DiagnosisStatus) => {
-		status = nextStatus;
-		if (nextStatus !== 'resolved' && nextStatus !== 'ruled_out') {
-			resolvedOn = '';
-			fieldErrors = {
-				...fieldErrors,
-				resolved_on: undefined
-			};
+	$effect(() => {
+		if (!showResolvedDate) {
+			$form.resolved_on = '';
 		}
-	};
-
-	const toNullable = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	};
-
-	const toRfc3339Date = (value: string) => {
-		if (!value) return null;
-		return `${value}T00:00:00Z`;
-	};
-
-	const toInputDate = (value: string | null) => {
-		if (!value) return '';
-		return value.slice(0, 10);
-	};
-
-	const isDiagnosisStatus = (value: string): value is DiagnosisStatus =>
-		statusOptions.some((option) => option.value === value);
-
-	const isDiagnosisSeverity = (value: string): value is DiagnosisSeverity =>
-		severityOptions.some((option) => option.value === value);
-
-	const populateForm = (diagnosis: ClientDiagnosisResponse) => {
-		codeSystem = diagnosis.code_system;
-		code = diagnosis.code;
-		title = diagnosis.title ?? '';
-		description = diagnosis.description ?? '';
-		status = isDiagnosisStatus(diagnosis.status) ? diagnosis.status : 'confirmed';
-		severity = isDiagnosisSeverity(diagnosis.severity) ? diagnosis.severity : 'unknown';
-		diagnosedOn = toInputDate(diagnosis.diagnosed_on);
-		resolvedOn = toInputDate(diagnosis.resolved_on);
-		diagnosingClinician = diagnosis.diagnosing_clinician ?? '';
-		notes = diagnosis.notes ?? '';
-		errorMessage = '';
-		fieldErrors = {};
-	};
-
-	const validate = () => {
-		const nextErrors: {
-			code_system?: string;
-			code?: string;
-			resolved_on?: string;
-		} = {};
-
-		if (!codeSystem.trim()) nextErrors.code_system = 'Code system is required.';
-		if (!code.trim()) nextErrors.code = 'Code is required.';
-
-		if (showResolvedDate && diagnosedOn && resolvedOn && resolvedOn < diagnosedOn) {
-			nextErrors.resolved_on = 'Resolved date cannot be before diagnosed date.';
-		}
-
-		fieldErrors = nextErrors;
-		return Object.keys(nextErrors).length === 0;
-	};
-
-	onMount(() => {
-		if (!diagnosisId) {
-			errorMessage = 'No diagnosis selected.';
-			return;
-		}
-
-		isFetching = true;
-
-		const loadDiagnosis = async () => {
-			try {
-				const response = await getClientDiagnosis(clientId, diagnosisId);
-				populateForm(response.data);
-			} catch (error) {
-				errorMessage = error instanceof Error ? error.message : 'Failed to load diagnosis.';
-			} finally {
-				isFetching = false;
-			}
-		};
-
-		void loadDiagnosis();
 	});
-
-	const handleCancel = () => {
-		open = false;
-	};
-
-	const handleUpdate = async () => {
-		errorMessage = '';
-		if (!diagnosisId) {
-			errorMessage = 'No diagnosis selected.';
-			return;
-		}
-
-		if (!validate()) return;
-
-		const payload: UpdateClientDiagnosisRequest = {
-			code_system: codeSystem,
-			code: code.trim(),
-			title: toNullable(title),
-			description: toNullable(description),
-			status,
-			severity,
-			diagnosed_on: toRfc3339Date(diagnosedOn),
-			resolved_on: toRfc3339Date(resolvedOn),
-			diagnosing_clinician: toNullable(diagnosingClinician),
-			notes: toNullable(notes)
-		};
-
-		isLoading = true;
-
-		try {
-			await updateClientDiagnosis(clientId, diagnosisId, payload);
-			open = false;
-			onUpdated?.();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to update diagnosis.';
-		} finally {
-			isLoading = false;
-		}
-	};
 
 	const badgeBase =
 		'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition-colors';
@@ -239,7 +192,7 @@
 			<p class="text-sm font-medium text-text-muted">Loading diagnosis...</p>
 		</div>
 	{:else}
-		<div class="space-y-6">
+		<form id={formId} use:enhance class="space-y-6">
 			<section class="space-y-4">
 				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
 					Classification
@@ -248,24 +201,36 @@
 					<Select
 						label="Code system"
 						options={codeSystemOptions}
-						bind:value={codeSystem}
-						error={fieldErrors.code_system}
+						bind:value={$form.code_system}
+						error={formatFormError($errors.code_system)}
 					/>
-					<Input label="Code" placeholder="F32.1" bind:value={code} error={fieldErrors.code} />
+					<Input
+						label="Code"
+						placeholder="F32.1"
+						bind:value={$form.code}
+						error={formatFormError($errors.code)}
+					/>
 				</div>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-					<Input label="Title" placeholder="Depressive episode, moderate" bind:value={title} />
+					<Input
+						label="Title"
+						placeholder="Depressive episode, moderate"
+						bind:value={$form.title}
+						error={formatFormError($errors.title)}
+					/>
 					<Input
 						label="Diagnosing clinician"
 						placeholder="Dr. A. Example"
-						bind:value={diagnosingClinician}
+						bind:value={$form.diagnosing_clinician}
+						error={formatFormError($errors.diagnosing_clinician)}
 					/>
 				</div>
 				<Textarea
 					label="Description"
 					placeholder="Client reports low mood and loss of interest."
 					rows={3}
-					bind:value={description}
+					bind:value={$form.description}
+					error={formatFormError($errors.description)}
 				/>
 			</section>
 
@@ -280,8 +245,8 @@
 							{#each statusOptions as option (option.value)}
 								<button
 									type="button"
-									onclick={() => applyStatus(option.value)}
-									class="{badgeBase} {status === option.value
+									onclick={() => ($form.status = option.value)}
+									class="{badgeBase} {$form.status === option.value
 										? option.activeClass
 										: 'border-border bg-surface text-text-muted hover:bg-border/30'}"
 								>
@@ -289,6 +254,9 @@
 								</button>
 							{/each}
 						</div>
+						{#if $errors.status}
+							<p class="ml-1 text-xs font-medium text-error">{formatFormError($errors.status)}</p>
+						{/if}
 					</div>
 
 					<div class="space-y-2">
@@ -297,8 +265,8 @@
 							{#each severityOptions as option (option.value)}
 								<button
 									type="button"
-									onclick={() => (severity = option.value)}
-									class="{badgeBase} {severity === option.value
+									onclick={() => ($form.severity = option.value)}
+									class="{badgeBase} {$form.severity === option.value
 										? option.activeClass
 										: 'border-border bg-surface text-text-muted hover:bg-border/30'}"
 								>
@@ -306,6 +274,9 @@
 								</button>
 							{/each}
 						</div>
+						{#if $errors.severity}
+							<p class="ml-1 text-xs font-medium text-error">{formatFormError($errors.severity)}</p>
+						{/if}
 					</div>
 				</div>
 			</section>
@@ -316,7 +287,11 @@
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 					<div class="space-y-1.5">
-						<DatePicker label="Diagnosed on" bind:value={diagnosedOn} />
+						<DatePicker
+							label="Diagnosed on"
+							bind:value={$form.diagnosed_on}
+							error={formatFormError($errors.diagnosed_on)}
+						/>
 						<p class="ml-1 text-xs text-text-subtle">Stored as date and serialized as RFC3339.</p>
 					</div>
 
@@ -324,8 +299,8 @@
 						<div class="space-y-1.5">
 							<DatePicker
 								label="Resolved on"
-								bind:value={resolvedOn}
-								error={fieldErrors.resolved_on}
+								bind:value={$form.resolved_on}
+								error={formatFormError($errors.resolved_on)}
 							/>
 							<p class="ml-1 text-xs text-text-subtle">
 								Use when diagnosis is resolved or ruled out.
@@ -343,7 +318,8 @@
 					label="Clinical notes"
 					placeholder="Monitor mood weekly."
 					rows={4}
-					bind:value={notes}
+					bind:value={$form.notes}
+					error={formatFormError($errors.notes)}
 				/>
 			</section>
 
@@ -352,15 +328,16 @@
 					{errorMessage}
 				</div>
 			{/if}
-		</div>
+			<button type="submit" class="hidden" aria-hidden="true"></button>
+		</form>
 	{/if}
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={isLoading || isFetching}
+			<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed || isFetching}
 				>Cancel</Button
 			>
-			<Button class="gap-2" onclick={handleUpdate} isLoading={isLoading || isFetching}>
+			<Button class="gap-2" form={formId} type="submit" isLoading={$delayed || isFetching}>
 				<Stethoscope class="h-4 w-4" />
 				Update diagnosis
 			</Button>

@@ -4,6 +4,7 @@ import type {
 	CreateOrganizationRequest,
 	CreateLocationRequest,
 	GetOrganizationResponse,
+	GlobalOrganizationCounts,
 	OrganizationListItem,
 	OrganizationCounts,
 	OrganizationLocation,
@@ -52,6 +53,10 @@ export function updateOrganization(id: string, payload: UpdateOrganizationReques
 
 export function getOrganizationCounts(id: string) {
 	return api.get<ApiEnvelope<OrganizationCounts>>(`/organisations/${id}/counts`);
+}
+
+export function getGlobalOrganizationCounts() {
+	return api.get<ApiEnvelope<GlobalOrganizationCounts>>('/organisations/count');
 }
 
 export interface ListOrganizationLocationsParams {

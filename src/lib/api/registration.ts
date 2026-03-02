@@ -6,7 +6,8 @@ import type {
 	ListRegistrationFormsResponse,
 	PaginatedResponse,
 	ProcessRegistrationRequest,
-	RegistrationRequest
+	RegistrationRequest,
+	UpdateRegistrationFormRequest
 } from '$lib/types/api';
 
 export async function submitRegistration(data: RegistrationRequest): Promise<void> {
@@ -20,7 +21,17 @@ export async function processRegistrationForm(
 	await api.post(`/registration_forms/${id}/process`, data);
 }
 
-export function listRegistrationForms(params: ListRegistrationFormsParams = {}) {
+export async function updateRegistrationForm(
+	id: string,
+	data: UpdateRegistrationFormRequest
+): Promise<void> {
+	await api.put(`/registration_forms/${id}`, data);
+}
+
+export function listRegistrationForms(
+	params: ListRegistrationFormsParams = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
 	const searchParams = new URLSearchParams();
 
 	if (params.page) {
@@ -66,7 +77,7 @@ export function listRegistrationForms(params: ListRegistrationFormsParams = {}) 
 	const query = searchParams.toString();
 	const endpoint = query ? `/registration_forms?${query}` : '/registration_forms';
 
-	return api.get<ApiEnvelope<PaginatedResponse<ListRegistrationFormsResponse>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<ListRegistrationFormsResponse>>>(endpoint, options);
 }
 
 export function getRegistrationForm(id: string) {

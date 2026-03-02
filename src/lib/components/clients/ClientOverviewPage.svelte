@@ -20,7 +20,11 @@
 		FileCheck,
 		Users
 	} from 'lucide-svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
+	import PutClientOutOfCareForm from '$lib/components/forms/PutClientOutOfCareForm.svelte';
 	import WhatNextCard from './WhatNextCard.svelte';
 	import AlertsCard from './AlertsCard.svelte';
 	import ProfileCard from './ProfileCard.svelte';
@@ -32,6 +36,17 @@
 
 	let { client, status }: Props = $props();
 	const isWaitlistClient = $derived(status === 'on_waiting_list');
+	const isInCareClient = $derived(status === 'in_care');
+	let showPutOutOfCareForm = $state(false);
+	let showCreateIncidentForm = $state(false);
+
+	const openPutOutOfCareForm = () => {
+		showPutOutOfCareForm = true;
+	};
+
+	const openCreateIncidentForm = () => {
+		showCreateIncidentForm = true;
+	};
 
 	// --- Helpers ---
 	const formatDate = (dateString?: string) => {
@@ -92,6 +107,18 @@
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			{#if !isWaitlistClient}
+				{#if isInCareClient}
+					<PermissionGuard permission="CLIENT.STATUS.UPDATE">
+						<button
+							type="button"
+							onclick={openPutOutOfCareForm}
+							class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-bold text-rose-700 shadow-sm transition hover:bg-rose-100"
+						>
+							<ShieldAlert class="h-4 w-4" />
+							Put Out of Care
+						</button>
+					</PermissionGuard>
+				{/if}
 				<button
 					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 				>
@@ -99,6 +126,8 @@
 					New progress report
 				</button>
 				<button
+					type="button"
+					onclick={openCreateIncidentForm}
 					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 				>
 					<ShieldAlert class="h-4 w-4" />
@@ -541,3 +570,18 @@
 		</div>
 	</div>
 </div>
+
+{#if isInCareClient}
+	<PutClientOutOfCareForm
+		bind:open={showPutOutOfCareForm}
+		clientId={client.id}
+		onSuccess={() => invalidateAll()}
+	/>
+{/if}
+
+<CreateIncidentForm
+	bind:open={showCreateIncidentForm}
+	preselectedClientId={client.id}
+	preselectedClientDisplay={`${client.firstName} ${client.lastName}`.trim()}
+	onCreated={() => invalidateAll()}
+/>

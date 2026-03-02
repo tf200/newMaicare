@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Building2, Pencil, Plus, Search, Users, Warehouse, Clock } from 'lucide-svelte';
+	import {
+		ArrowLeft,
+		Building2,
+		Pencil,
+		Plus,
+		Search,
+		Users,
+		Warehouse,
+		Clock
+	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
@@ -223,6 +232,16 @@
 {/snippet}
 
 <section class="space-y-8">
+	<div class="flex items-center">
+		<a
+			href="/organization"
+			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
+		>
+			<ArrowLeft class="h-4 w-4" />
+			Back to organizations
+		</a>
+	</div>
+
 	{#await organizationDataPromise}
 		<header
 			class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
@@ -247,11 +266,6 @@
 				></div>
 				<div class="relative flex flex-wrap items-start justify-between gap-6">
 					<div class="space-y-3">
-						<div class="flex items-center gap-2 text-xs font-semibold text-text-subtle">
-							<span>Organizations</span>
-							<span>/</span>
-							<span class="text-text-muted">{page.params.id}</span>
-						</div>
 						<div class="flex items-center gap-3">
 							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
 								<Building2 class="h-6 w-6 text-brand" />
@@ -313,55 +327,59 @@
 				{/if}
 
 				<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-						<div class="flex items-center justify-between">
+					<div
+						class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+					>
+						<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
+							<Warehouse class="h-32 w-32" />
+						</div>
+						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 								Locations
 							</div>
-							<span
-								class="flex h-9 w-9 items-center justify-center rounded-full bg-border/30 text-text-muted"
-							>
-								<Warehouse class="h-4 w-4" />
-							</span>
+							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+								{formatNumber(countsData.counts.location_count)}
+							</div>
+							<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
 						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{formatNumber(countsData.counts.location_count)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
 					</div>
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-						<div class="flex items-center justify-between">
+					<div
+						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
+					>
+						<div
+							class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+						>
+							<Users class="h-32 w-32" />
+						</div>
+						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 								Clients
 							</div>
-							<span
-								class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400"
+							<div
+								class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
 							>
-								<Users class="h-4 w-4" />
-							</span>
+								{formatNumber(countsData.counts.client_count)}
+							</div>
+							<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
 						</div>
-						<div
-							class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
-						>
-							{formatNumber(countsData.counts.client_count)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
 					</div>
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-						<div class="flex items-center justify-between">
+					<div
+						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
+					>
+						<div
+							class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+						>
+							<Users class="h-32 w-32" />
+						</div>
+						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 								Employees
 							</div>
-							<span
-								class="flex h-9 w-9 items-center justify-center rounded-full bg-success/10 text-success"
-							>
-								<Users class="h-4 w-4" />
-							</span>
+							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+								{formatNumber(countsData.counts.employee_count)}
+							</div>
+							<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>
 						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{formatNumber(countsData.counts.employee_count)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>
 					</div>
 				</section>
 			{/await}

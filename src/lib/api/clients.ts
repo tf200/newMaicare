@@ -10,6 +10,8 @@ import type {
 	ListWaitingListClientsParams,
 	ListWaitingListClientsResponse,
 	PutClientInCareRequest,
+	PutClientOutOfCareRequest,
+	PutClientOutOfCareResponse,
 	GetAppointmentCardResponse,
 	UpdateAppointmentCardRequest,
 	PaginatedResponse,
@@ -19,7 +21,14 @@ import type {
 	ClientDiagnosisResponse,
 	CreateClientMedicationOrderRequest,
 	ClientMedicationOrderResponse,
-	UpdateClientMedicationOrderRequest
+	UpdateClientMedicationOrderRequest,
+	ListProgressReportsParams,
+	ListProgressReportsResponse,
+	CreateProgressReportRequest,
+	ProgressReport,
+	GetProgressReportResponse,
+	UpdateProgressReportRequest,
+	UpdateProgressReportResponse
 } from '$lib/types/api';
 
 export function listWaitingListClients(params: ListWaitingListClientsParams) {
@@ -50,6 +59,13 @@ export function getClientById(id: string) {
 
 export function putClientInCare(id: string, payload: PutClientInCareRequest) {
 	return api.put<ApiEnvelope<unknown>>(`/clients/${id}/put-in-care`, payload);
+}
+
+export function putClientOutOfCare(id: string, payload: PutClientOutOfCareRequest) {
+	return api.put<ApiEnvelope<PutClientOutOfCareResponse>>(
+		`/clients/${id}/put-out-of-care`,
+		payload
+	);
 }
 
 export function listInCareClients(params: ListInCareClientsParams) {
@@ -172,4 +188,44 @@ export function updateClientMedicationOrder(
 		`/clients/${clientId}/medical/medication-orders/${orderId}`,
 		payload
 	);
+}
+
+export function listClientProgressReports(id: string, params: ListProgressReportsParams) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.page_size));
+
+	if (params.type) {
+		searchParams.set('type', params.type);
+	}
+
+	return api.get<ApiEnvelope<PaginatedResponse<ListProgressReportsResponse>>>(
+		`/clients/${id}/progress_reports?${searchParams.toString()}`
+	);
+}
+
+export function createClientProgressReport(id: string, payload: CreateProgressReportRequest) {
+	return api.post<ApiEnvelope<ProgressReport>>(`/clients/${id}/progress_reports`, payload);
+}
+
+export function getClientProgressReport(clientId: string, reportId: string, signal?: AbortSignal) {
+	return api.get<ApiEnvelope<GetProgressReportResponse>>(
+		`/clients/${clientId}/progress_reports/${reportId}`,
+		signal ? { signal } : undefined
+	);
+}
+
+export function updateClientProgressReport(
+	clientId: string,
+	reportId: string,
+	payload: UpdateProgressReportRequest
+) {
+	return api.put<ApiEnvelope<UpdateProgressReportResponse>>(
+		`/clients/${clientId}/progress_reports/${reportId}`,
+		payload
+	);
+}
+
+export function deleteClientProgressReport(clientId: string, reportId: string) {
+	return api.delete<ApiEnvelope<null>>(`/clients/${clientId}/progress_reports/${reportId}`);
 }

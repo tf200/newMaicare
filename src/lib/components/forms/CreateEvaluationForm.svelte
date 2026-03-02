@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -10,11 +12,17 @@
 		getGoalEvaluation
 	} from '$lib/api/evaluations';
 	import type {
+		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
-		EvaluationItemInput,
-		EvaluationProgress,
 		GoalEvaluationResponse
 	} from '$lib/types/api';
+	import {
+		EvaluationSchema,
+		type EvaluationInput,
+		type EvaluationSchemaInput
+	} from '$lib/schemas/evaluation';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { trimToUndefined } from '$lib/utils/form-values';
 
 	type Mode = 'create_new' | 'edit_draft' | 'view_only';
 
@@ -35,13 +43,74 @@
 	let bootstrap = $state<EvaluationBootstrapResponse | null>(null);
 	let evaluation = $state<GoalEvaluationResponse | null>(null);
 	let mode = $state<Mode>('create_new');
-	let overallNotes = $state('');
-	let goalItems = $state<Record<string, { progress: EvaluationProgress; notes: string }>>({});
-	let progressErrors = $state<Record<string, string>>({});
 	let formError = $state('');
 	let isLoading = $state(false);
-	let isSaving = $state(false);
-	let isSubmitting = $state(false);
+	const formId = 'create-evaluation-form';
+
+	const { form, errors, enhance, delayed, reset } = superForm(
+		defaults(
+			{
+				submit: false,
+				items: [],
+				overall_notes: ''
+			} as unknown as EvaluationSchemaInput,
+			valibotClient(EvaluationSchema)
+		),
+		{
+			validators: valibotClient(EvaluationSchema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form }) => {
+				if (form.valid && clientId) {
+					try {
+						const payload: CreateEvaluationRequest = {
+							overall_notes: trimToUndefined(form.data.overall_notes) ?? null,
+							submit: form.data.submit,
+							items: form.data.items.map((item) => ({
+								goal_id: item.goal_id,
+								progress: item.progress,
+								notes: trimToUndefined(item.notes) ?? null
+							}))
+						};
+
+						const response = await createEvaluation(clientId, payload);
+
+						evaluation = response.data;
+						mode =
+							response.data.status === 'completed' || response.data.status === 'archived'
+								? 'view_only'
+								: 'edit_draft';
+
+						// Update form with fresh data from server
+						const updatedData: EvaluationInput = {
+							overall_notes: response.data.overall_notes ?? '',
+							submit: false,
+							items: response.data.items.map((item) => ({
+								goal_id: item.goal_id,
+								progress: item.progress,
+								notes: item.notes ?? ''
+							}))
+						};
+						reset({ data: updatedData });
+						onSaved?.();
+
+						if (response.data.status === 'draft' && response.data.submit_error) {
+							formError = normalizeErrorMessage(response.data.submit_error);
+							return;
+						}
+
+						if (response.data.status === 'completed' || response.data.status === 'archived') {
+							open = false;
+						}
+					} catch (error) {
+						formError = normalizeErrorMessage(
+							error instanceof Error ? error.message : 'Failed to save evaluation.'
+						);
+					}
+				}
+			}
+		}
+	);
 
 	const progressOptions = [
 		{ value: 'no_progress', label: 'No progress' },
@@ -122,54 +191,12 @@
 		return message;
 	};
 
-	const trimOrNull = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	};
-
 	const isSameTimestamp = (left: string, right: string) =>
 		new Date(left).getTime() === new Date(right).getTime();
-
-	const buildItemsPayload = (): EvaluationItemInput[] =>
-		viewGoals.map((goal) => ({
-			goal_id: goal.goal_id,
-			progress: goalItems[goal.goal_id]?.progress ?? 'no_progress',
-			notes: trimOrNull(goalItems[goal.goal_id]?.notes ?? '')
-		}));
-
-	const initGoalItems = (payload: EvaluationBootstrapResponse) => {
-		const next: Record<string, { progress: EvaluationProgress; notes: string }> = {};
-		for (const goal of payload.active_goals) {
-			next[goal.goal_id] = {
-				progress: 'no_progress',
-				notes: ''
-			};
-		}
-		goalItems = next;
-	};
-
-	const initGoalItemsFromEvaluation = (payload: GoalEvaluationResponse) => {
-		const next: Record<string, { progress: EvaluationProgress; notes: string }> = {};
-		for (const goal of bootstrap?.active_goals ?? []) {
-			next[goal.goal_id] = {
-				progress: 'no_progress',
-				notes: ''
-			};
-		}
-		for (const item of payload.items) {
-			next[item.goal_id] = {
-				progress: item.progress,
-				notes: item.notes ?? ''
-			};
-		}
-		goalItems = next;
-	};
 
 	const loadByEvaluationId = async (id: string) => {
 		const response = await getGoalEvaluation(id);
 		evaluation = response.data;
-		overallNotes = response.data.overall_notes ?? '';
-		progressErrors = {};
 
 		if (response.data.status === 'draft') {
 			mode = 'edit_draft';
@@ -180,7 +207,16 @@
 			bootstrap = null;
 		}
 
-		initGoalItemsFromEvaluation(response.data);
+		const initialData: EvaluationInput = {
+			overall_notes: response.data.overall_notes ?? '',
+			submit: false,
+			items: response.data.items.map((item) => ({
+				goal_id: item.goal_id,
+				progress: item.progress,
+				notes: item.notes ?? ''
+			}))
+		};
+		reset({ data: initialData });
 	};
 
 	const loadBootstrap = async () => {
@@ -189,8 +225,6 @@
 		bootstrap = response.data;
 		evaluation = null;
 		mode = 'create_new';
-		overallNotes = '';
-		progressErrors = {};
 
 		if (
 			response.data.existing_draft?.id &&
@@ -204,7 +238,16 @@
 			return;
 		}
 
-		initGoalItems(response.data);
+		const initialData: EvaluationInput = {
+			overall_notes: '',
+			submit: false,
+			items: response.data.active_goals.map((goal) => ({
+				goal_id: goal.goal_id,
+				progress: 'no_progress',
+				notes: ''
+			}))
+		};
+		reset({ data: initialData });
 	};
 
 	$effect(() => {
@@ -230,77 +273,16 @@
 		}
 	});
 
-	const saveDraft = async () => {
-		if (isReadOnly || isSaving || isSubmitting) return;
-		isSaving = true;
-		formError = '';
-		try {
-			if (!clientId) {
-				throw new Error('Missing client for draft creation.');
-			}
-
-			const response = await createEvaluation(clientId, {
-				overall_notes: trimOrNull(overallNotes),
-				submit: false,
-				items: buildItemsPayload()
-			});
-
-			evaluation = response.data;
-			mode = 'edit_draft';
-			overallNotes = response.data.overall_notes ?? '';
-			progressErrors = {};
-			initGoalItemsFromEvaluation(response.data);
-			onSaved?.();
-		} catch (error) {
-			formError = normalizeErrorMessage(
-				error instanceof Error ? error.message : 'Failed to save evaluation draft.'
-			);
-		} finally {
-			isSaving = false;
-		}
+	const saveDraft = () => {
+		$form.submit = false;
+		const formEl = document.getElementById(formId) as HTMLFormElement | null;
+		if (formEl) formEl.requestSubmit();
 	};
 
-	const submitEvaluation = async () => {
-		if (isReadOnly || isSaving || isSubmitting) return;
-
-		isSubmitting = true;
-		formError = '';
-		try {
-			if (!clientId) {
-				throw new Error('Missing client for submission.');
-			}
-
-			const response = await createEvaluation(clientId, {
-				overall_notes: trimOrNull(overallNotes),
-				submit: true,
-				items: buildItemsPayload()
-			});
-
-			evaluation = response.data;
-			mode =
-				response.data.status === 'completed' || response.data.status === 'archived'
-					? 'view_only'
-					: 'edit_draft';
-			overallNotes = response.data.overall_notes ?? '';
-			progressErrors = {};
-			initGoalItemsFromEvaluation(response.data);
-			onSaved?.();
-
-			if (response.data.status === 'draft' && response.data.submit_error) {
-				formError = normalizeErrorMessage(response.data.submit_error);
-				return;
-			}
-
-			if (response.data.status === 'completed' || response.data.status === 'archived') {
-				open = false;
-			}
-		} catch (error) {
-			formError = normalizeErrorMessage(
-				error instanceof Error ? error.message : 'Failed to submit evaluation.'
-			);
-		} finally {
-			isSubmitting = false;
-		}
+	const submitEvaluation = () => {
+		$form.submit = true;
+		const formEl = document.getElementById(formId) as HTMLFormElement | null;
+		if (formEl) formEl.requestSubmit();
 	};
 </script>
 
@@ -314,7 +296,7 @@
 			Unable to load evaluation data.
 		</div>
 	{:else}
-		<div class="space-y-5">
+		<form id={formId} use:enhance class="space-y-5">
 			{#if formError}
 				<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error">
 					{formError}
@@ -404,11 +386,11 @@
 						label="Overall notes"
 						placeholder="Add summary notes for this evaluation..."
 						disabled={isReadOnly}
-						bind:value={overallNotes}
+						bind:value={$form.overall_notes}
 					/>
 
 					<div class="space-y-3">
-						{#each viewGoals as goal (goal.goal_id)}
+						{#each viewGoals as goal, index (goal.goal_id)}
 							<div class="rounded-xl border border-border p-3">
 								<div class="mb-3 flex flex-wrap items-start justify-between gap-2">
 									<div>
@@ -432,25 +414,22 @@
 											Progress
 										</p>
 										<p class="text-sm text-text">
-											{(goalItems[goal.goal_id]?.progress ?? 'no_progress').replace('_', ' ')}
+											{($form.items[index]?.progress ?? 'no_progress').replace('_', ' ')}
 										</p>
 									</div>
-									<Textarea
-										label="Notes"
-										disabled={true}
-										value={goalItems[goal.goal_id]?.notes ?? ''}
-									/>
-								{:else}
+									<Textarea label="Notes" disabled={true} value={$form.items[index]?.notes ?? ''} />
+								{:else if $form.items[index]}
 									<Select
 										label="Progress"
 										options={progressOptions}
-										bind:value={goalItems[goal.goal_id].progress}
-										error={progressErrors[goal.goal_id]}
+										bind:value={$form.items[index].progress}
+										error={formatFormError($errors.items?.[index]?.progress)}
 									/>
 									<Textarea
 										label="Notes"
 										placeholder="Optional notes for this goal..."
-										bind:value={goalItems[goal.goal_id].notes}
+										bind:value={$form.items[index].notes}
+										error={formatFormError($errors.items?.[index]?.notes)}
 									/>
 								{/if}
 
@@ -472,7 +451,8 @@
 					</div>
 				</section>
 			</div>
-		</div>
+			<button type="submit" class="hidden" aria-hidden="true"></button>
+		</form>
 	{/if}
 
 	{#snippet footer()}
@@ -487,17 +467,17 @@
 					Submit saves first; if completion is blocked it remains a draft.
 				</div>
 				<div class="flex gap-2">
-					<Button variant="ghost" onclick={() => (open = false)} disabled={isSaving || isSubmitting}
-						>Cancel</Button
-					>
+					<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}>Cancel</Button>
 					<Button
 						variant="secondary"
 						onclick={saveDraft}
-						isLoading={isSaving}
-						disabled={isSubmitting}>Save Draft</Button
+						isLoading={$delayed && !$form.submit}
+						disabled={$delayed && $form.submit}>Save Draft</Button
 					>
-					<Button onclick={submitEvaluation} isLoading={isSubmitting} disabled={isSaving}
-						>Submit</Button
+					<Button
+						onclick={submitEvaluation}
+						isLoading={$delayed && $form.submit}
+						disabled={$delayed && !$form.submit}>Submit</Button
 					>
 				</div>
 			</div>

@@ -6,6 +6,7 @@ import type { ApiEnvelope, RefreshTokenData } from '$lib/types/api';
 
 type FetchOptions = RequestInit & {
 	requiresAuth?: boolean;
+	fetchFn?: typeof fetch;
 };
 
 export interface BlobResponse {
@@ -76,11 +77,11 @@ class ApiClient {
 	}
 
 	async request<T>(endpoint: string, options: FetchOptions = {}, hasRetried = false): Promise<T> {
-		const { requiresAuth = true, ...fetchOptions } = options;
+		const { requiresAuth = true, fetchFn = fetch, ...fetchOptions } = options;
 		const url = `${this.baseUrl}${endpoint}`;
 
 		try {
-			const response = await fetch(url, {
+			const response = await fetchFn(url, {
 				...fetchOptions,
 				headers: {
 					...this.getHeaders(requiresAuth),
@@ -191,11 +192,11 @@ class ApiClient {
 		options: FetchOptions = {},
 		hasRetried = false
 	): Promise<BlobResponse> {
-		const { requiresAuth = true, ...fetchOptions } = options;
+		const { requiresAuth = true, fetchFn = fetch, ...fetchOptions } = options;
 		const url = `${this.baseUrl}${endpoint}`;
 
 		try {
-			const response = await fetch(url, {
+			const response = await fetchFn(url, {
 				...fetchOptions,
 				headers: {
 					...this.getHeaders(requiresAuth),

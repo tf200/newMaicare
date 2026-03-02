@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { sidebarState } from '$lib/state/sidebar.svelte';
 	import { page } from '$app/state';
-	import { HeartPulse, LayoutDashboard, FileText, ScrollText } from 'lucide-svelte';
+	import {
+		HeartPulse,
+		LayoutDashboard,
+		FileBarChart,
+		ScrollText,
+		Target,
+		CalendarCheck
+	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	let { children } = $props();
+	let { data, children } = $props();
 
 	$effect(() => {
 		const clientId = page.params.id;
@@ -23,17 +30,17 @@
 				{
 					label: 'Appointment Card',
 					href: `/clients/${clientId}/documents`,
-					icon: FileText
+					icon: CalendarCheck
 				},
 				{
 					label: 'Goals',
 					href: `/clients/${clientId}/goals`,
-					icon: FileText
+					icon: Target
 				},
 				{
 					label: 'Reports',
 					href: `/clients/${clientId}/reports`,
-					icon: FileText
+					icon: FileBarChart
 				},
 				{
 					label: 'Contracts',
@@ -41,7 +48,8 @@
 					icon: ScrollText
 				}
 			],
-			'Client Details'
+			data.clientName,
+			data.clientInitials
 		);
 
 		return () => {

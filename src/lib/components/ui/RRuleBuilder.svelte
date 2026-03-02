@@ -21,16 +21,16 @@
 		return parts;
 	}
 
-	let parsed = $derived(parseRRule(rrule));
+	const initialParsed = parseRRule(rrule);
 
 	// RRULE state
 	let isRecurring = $state(!!rrule);
-	let freq = $state(parsed?.FREQ || 'WEEKLY');
-	let interval = $state(parseInt(parsed?.INTERVAL || '1', 10));
-	let byDay = $state(parsed?.BYDAY?.split(',') || ['MO']);
-	let until = $state(parsed?.UNTIL || '');
-	let count = $state(parseInt(parsed?.COUNT || '0', 10));
-	let endType = $state(parsed?.UNTIL ? 'until' : parsed?.COUNT ? 'count' : 'never');
+	let freq = $state(initialParsed?.FREQ || 'WEEKLY');
+	let interval = $state(parseInt(initialParsed?.INTERVAL || '1', 10));
+	let byDay = $state(initialParsed?.BYDAY?.split(',') || ['MO']);
+	let until = $state(initialParsed?.UNTIL || '');
+	let count = $state(parseInt(initialParsed?.COUNT || '0', 10));
+	let endType = $state(initialParsed?.UNTIL ? 'until' : initialParsed?.COUNT ? 'count' : 'never');
 
 	const freqOptions = [
 		{ label: 'Daily', value: 'DAILY' },
@@ -109,7 +109,7 @@
 
 			{#if freq === 'WEEKLY'}
 				<div>
-					<label class="mb-2 block text-sm font-semibold text-text-muted">Repeat on</label>
+					<p class="mb-2 block text-sm font-semibold text-text-muted">Repeat on</p>
 					<div class="flex flex-wrap gap-2">
 						{#each dayOptions as day}
 							<button
@@ -129,7 +129,7 @@
 			{/if}
 
 			<div>
-				<label class="mb-2 block text-sm font-semibold text-text-muted">End</label>
+				<p class="mb-2 block text-sm font-semibold text-text-muted">End</p>
 				<div class="flex flex-col gap-3">
 					<label class="flex items-center gap-2">
 						<input

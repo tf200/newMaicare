@@ -1,11 +1,15 @@
 <script lang="ts">
-	import { Plus, Trash2 } from 'lucide-svelte';
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { createOrganizationLocation } from '$lib/api/organizations';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
-	import type { CreateLocationRequest, LocationShift } from '$lib/types/api';
+	import type { CreateLocationRequest } from '$lib/types/api';
+	import { LocationSchema, type LocationSchemaInput } from '$lib/schemas/location';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { trimToUndefined } from '$lib/utils/form-values';
 
 	interface Props {
 		open?: boolean;
@@ -15,51 +19,61 @@
 
 	let { open = $bindable(false), organizationId, onCreated }: Props = $props();
 
-	let name = $state('');
-	let street = $state('');
-	let houseNumber = $state('');
-	let houseNumberAddition = $state('');
-	let postalCode = $state('');
-	let city = $state('');
-	let capacity = $state('');
 	let errorMessage = $state('');
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
-	let isLoading = $state(false);
-	let fieldErrors = $state<{
-		name?: string;
-		street?: string;
-		houseNumber?: string;
-		postalCode?: string;
-		city?: string;
-		capacity?: string;
-	}>({});
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	const formId = 'create-location-form';
+	const toOptionalInt = (value: string | number | undefined): number | undefined => {
+		if (typeof value === 'number') {
+			return Number.isFinite(value) ? value : undefined;
+		}
 
-	const resetForm = () => {
-		name = '';
-		street = '';
-		houseNumber = '';
-		houseNumberAddition = '';
-		postalCode = '';
-		city = '';
-		capacity = '';
-		errorMessage = '';
-		lookupMessage = '';
-		fieldErrors = {};
-	};
+		const normalized = value?.trim();
+		if (!normalized) return undefined;
 
-	const toOptionalString = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : undefined;
-	};
-
-	const toOptionalNumber = (value: string) => {
-		const trimmed = value.trim();
-		if (!trimmed) return undefined;
-		const parsed = Number.parseInt(trimmed, 10);
+		const parsed = Number.parseInt(normalized, 10);
 		return Number.isFinite(parsed) ? parsed : undefined;
 	};
+
+	const { form, errors, enhance, delayed, reset } = superForm(
+		defaults(
+			{
+				name: '',
+				postal_code: '',
+				house_number: '',
+				street: '',
+				city: ''
+			} as unknown as LocationSchemaInput,
+			valibotClient(LocationSchema)
+		),
+		{
+			validators: valibotClient(LocationSchema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form }) => {
+				if (form.valid) {
+					try {
+						const payload: CreateLocationRequest = {
+							name: form.data.name.trim(),
+							street: form.data.street.trim(),
+							house_number: form.data.house_number.trim(),
+							postal_code: formatPostalCode(form.data.postal_code).trim(),
+							city: form.data.city.trim(),
+							house_number_addition: trimToUndefined(form.data.house_number_addition),
+							capacity: toOptionalInt(form.data.capacity)
+						};
+						await createOrganizationLocation(organizationId, payload);
+						reset();
+						open = false;
+						onCreated?.();
+					} catch (error) {
+						errorMessage = error instanceof Error ? error.message : 'Failed to create location.';
+					}
+				}
+			}
+		}
+	);
 
 	const normalizePostalCode = (value: string) => value.replace(/\s+/g, '').toUpperCase().trim();
 
@@ -71,32 +85,8 @@
 
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
 
-	const validate = () => {
-		const nextErrors: {
-			name?: string;
-			street?: string;
-			houseNumber?: string;
-			postalCode?: string;
-			city?: string;
-			capacity?: string;
-		} = {};
-		if (!name.trim()) nextErrors.name = 'Name is required.';
-		if (!street.trim()) nextErrors.street = 'Street is required.';
-		if (!houseNumber.trim()) nextErrors.houseNumber = 'House number is required.';
-		if (!postalCode.trim()) nextErrors.postalCode = 'Postal code is required.';
-		if (!city.trim()) nextErrors.city = 'City is required.';
-		if (capacity.trim()) {
-			const parsed = Number.parseInt(capacity.trim(), 10);
-			if (!Number.isFinite(parsed) || parsed < 0) {
-				nextErrors.capacity = 'Capacity must be 0 or greater.';
-			}
-		}
-		fieldErrors = nextErrors;
-		return Object.keys(nextErrors).length === 0;
-	};
-
 	const handleCancel = () => {
-		resetForm();
+		reset();
 		open = false;
 	};
 
@@ -110,8 +100,8 @@
 				lookupMessage = 'Address not found. Please fill street and city manually.';
 				return;
 			}
-			street = result.street;
-			city = result.city;
+			$form.street = result.street;
+			$form.city = result.city;
 		} catch (error) {
 			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
 		} finally {
@@ -127,31 +117,6 @@
 			void runLookup(postcodeValue, numberValue);
 		}, 400);
 	};
-
-	async function handleSubmit() {
-		errorMessage = '';
-		if (!validate()) return;
-		isLoading = true;
-		try {
-			const payload: CreateLocationRequest = {
-				name: name.trim(),
-				street: street.trim(),
-				house_number: houseNumber.trim(),
-				house_number_addition: toOptionalString(houseNumberAddition),
-				postal_code: formatPostalCode(postalCode).trim(),
-				city: city.trim(),
-				capacity: toOptionalNumber(capacity)
-			};
-			await createOrganizationLocation(organizationId, payload);
-			resetForm();
-			open = false;
-			onCreated?.();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to create location.';
-		} finally {
-			isLoading = false;
-		}
-	}
 </script>
 
 <Modal
@@ -159,48 +124,61 @@
 	title="Create location"
 	description="Add a new care location to this organization."
 >
-	<div class="space-y-5">
+	<form id={formId} use:enhance class="space-y-5">
 		<Input
 			label="Location name"
 			placeholder="Main campus"
-			bind:value={name}
-			error={fieldErrors.name}
+			bind:value={$form.name}
+			error={formatFormError($errors.name)}
 		/>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 			<Input
 				label="Postal Code"
 				placeholder="1234 AB"
-				bind:value={postalCode}
-				error={fieldErrors.postalCode}
+				bind:value={$form.postal_code}
+				error={formatFormError($errors.postal_code)}
 				oninput={() => {
-					scheduleLookup(postalCode, houseNumber);
+					if ($form.postal_code && $form.house_number) {
+						scheduleLookup($form.postal_code, $form.house_number);
+					}
 				}}
 				onblur={() => {
-					postalCode = formatPostalCode(postalCode);
-					scheduleLookup(postalCode, houseNumber);
+					if ($form.postal_code) {
+						$form.postal_code = formatPostalCode($form.postal_code);
+						if ($form.house_number) {
+							scheduleLookup($form.postal_code, $form.house_number);
+						}
+					}
 				}}
 			/>
 			<Input
 				label="House Number"
 				placeholder="10"
-				bind:value={houseNumber}
-				error={fieldErrors.houseNumber}
+				bind:value={$form.house_number}
+				error={formatFormError($errors.house_number)}
 				oninput={() => {
-					scheduleLookup(postalCode, houseNumber);
+					if ($form.postal_code && $form.house_number) {
+						scheduleLookup($form.postal_code, $form.house_number);
+					}
 				}}
 			/>
-			<Input label="Addition (optional)" placeholder="A" bind:value={houseNumberAddition} />
+			<Input label="Addition (optional)" placeholder="A" bind:value={$form.house_number_addition} />
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
 				label="Street"
 				placeholder="Main Street"
-				bind:value={street}
-				error={fieldErrors.street}
+				bind:value={$form.street}
+				error={formatFormError($errors.street)}
 			/>
-			<Input label="City" placeholder="Amsterdam" bind:value={city} error={fieldErrors.city} />
+			<Input
+				label="City"
+				placeholder="Amsterdam"
+				bind:value={$form.city}
+				error={formatFormError($errors.city)}
+			/>
 		</div>
 
 		{#if isLookupLoading}
@@ -218,8 +196,8 @@
 			type="number"
 			min="0"
 			step="1"
-			bind:value={capacity}
-			error={fieldErrors.capacity}
+			bind:value={$form.capacity}
+			error={formatFormError($errors.capacity)}
 		/>
 
 		{#if errorMessage}
@@ -227,12 +205,14 @@
 				{errorMessage}
 			</div>
 		{/if}
-	</div>
+
+		<button type="submit" class="hidden" aria-hidden="true"></button>
+	</form>
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel}>Cancel</Button>
-			<Button onclick={handleSubmit} {isLoading}>Create location</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button form={formId} type="submit" isLoading={$delayed}>Create location</Button>
 		</div>
 	{/snippet}
 </Modal>

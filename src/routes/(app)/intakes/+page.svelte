@@ -38,13 +38,6 @@
 	const pageSize = $derived.by(() => initial.pageSize);
 
 	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
-	let searchTerm = $state('');
-
-	$effect(() => {
-		if (searchTerm !== appliedSearch) {
-			searchTerm = appliedSearch;
-		}
-	});
 
 	const defaultFilters: IntakeFilters = {
 		search: '',
@@ -188,8 +181,8 @@
 		setFilters({ ...filters, status: newStatus });
 	};
 
-	const applySearch = () => {
-		setFilters({ ...filters, search: searchTerm.trim() });
+	const applySearch = (value: string) => {
+		setFilters({ ...filters, search: value.trim() });
 	};
 </script>
 
@@ -206,12 +199,14 @@
 			<input
 				type="text"
 				placeholder="Search intakes..."
-				bind:value={searchTerm}
+				value={appliedSearch}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
-					if (event.key === 'Enter') applySearch();
+					if (event.key === 'Enter') {
+						applySearch((event.currentTarget as HTMLInputElement).value);
+					}
 				}}
-				onblur={applySearch}
+				onblur={(event) => applySearch((event.currentTarget as HTMLInputElement).value)}
 			/>
 		</div>
 
@@ -345,7 +340,7 @@
 
 	{#await intakesDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each [1, 2, 3] as _}
+			{#each [1, 2, 3] as _ (_)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
@@ -382,32 +377,57 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total Intakes
+			<div
+				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+			>
+				<div class="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-5">
+					<ClipboardList class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{intakesData.stats.total}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Total Intakes
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+						{intakesData.stats.total}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.all()}</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.all()}</p>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Completed Assessments
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Search class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-					{intakesData.stats.completed}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Further Investigation
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-500 sm:text-3xl">
+						{intakesData.stats.furtherInvestigation}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">Requires review</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Pending Assessments
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Clock class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
-					{intakesData.stats.pending}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Without Goals
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
+						{intakesData.stats.withoutGoals}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">Needs goal definition</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
 			</div>
 		</div>
 

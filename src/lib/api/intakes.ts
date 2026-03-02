@@ -6,12 +6,14 @@ import type {
 	GetIntakeFormResponse,
 	GenerateGoalsResponse,
 	CreateIntakeFormGoalsRequest,
+	IntakeFormsTotalsResponse,
 	ListIntakeFormsParams,
 	ListIntakeFormsResponse,
 	PaginatedResponse,
 	PromoteIntakeResponse,
 	UpdateIntakeConclusionRequest,
-	UpdateIntakeConclusionResponse
+	UpdateIntakeConclusionResponse,
+	UpdateIntakeRequest
 } from '$lib/types/api';
 
 export function listIntakeForms(params: ListIntakeFormsParams = {}) {
@@ -39,6 +41,10 @@ export function listIntakeForms(params: ListIntakeFormsParams = {}) {
 	return api.get<ApiEnvelope<PaginatedResponse<ListIntakeFormsResponse>>>(endpoint);
 }
 
+export function getIntakeFormsTotals() {
+	return api.get<ApiEnvelope<IntakeFormsTotalsResponse>>('/intake_forms/totals');
+}
+
 export const intakes = {
 	create: (data: CreateIntakeRequest) => {
 		return api.post<ApiEnvelope<IntakeFormResponse>>('/intake_forms', data);
@@ -54,7 +60,9 @@ export const intakes = {
 	getById: (id: string) => {
 		return api.get<ApiEnvelope<GetIntakeFormResponse>>(`/intake_forms/${id}`);
 	},
-
+	update: (id: string, data: UpdateIntakeRequest) => {
+		return api.patch<ApiEnvelope<IntakeFormResponse>>(`/intake_forms/${id}`, data);
+	},
 	updateGoals: (id: string, data: CreateIntakeFormGoalsRequest) => {
 		return api.put<ApiEnvelope<GetIntakeFormResponse>>(`/intake_forms/${id}/goals`, data);
 	},

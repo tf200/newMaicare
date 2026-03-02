@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import { Plus } from 'lucide-svelte';
 	import { createIncident, updateIncident } from '$lib/api/incidents';
 	import { listClients } from '$lib/api/clients';
@@ -13,6 +15,7 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { formatFormError } from '$lib/utils/form-errors';
 	import type {
 		CreateIncidentInformedParty,
 		CreateIncidentRequest,
@@ -31,55 +34,112 @@
 		IncidentSeverity,
 		IncidentType
 	} from '$lib/types/incidents';
+	import { IncidentSchema, type IncidentInput } from '$lib/schemas/incident';
 
 	let {
 		open = $bindable(false),
 		incidentId = null,
 		initialIncident = null,
+		preselectedClientId = null,
+		preselectedClientDisplay = '',
 		onCreated
 	} = $props<{
 		open?: boolean;
 		incidentId?: string | null;
 		initialIncident?: IncidentDetail | null;
+		preselectedClientId?: string | null;
+		preselectedClientDisplay?: string;
 		onCreated?: () => void;
 	}>();
 
-	const createInitialForm = () => ({
-		client_id: '',
-		employee_id: '',
-		location_id: '',
-		reporter_involvement: '' as '' | IncidentReporterInvolvement,
-		informed_parties: [] as CreateIncidentInformedParty[],
-		occurred_at: new Date().toISOString(),
-		incident_type: '' as '' | IncidentType,
-		severity_of_incident: '' as '' | IncidentSeverity,
-		incident_explanation: '',
-		recurrence_risk: '' as '' | IncidentRecurrenceRisk,
-		incident_prevent_steps: '',
-		incident_taken_measures: '',
-		cause_categories: [] as IncidentCauseCategory[],
-		cause_explanation: '',
-		physical_injury: '' as '' | IncidentPhysicalInjury,
-		physical_injury_desc: '',
-		psychological_damage: '',
-		psychological_damage_desc: '',
-		needed_consultation: '' as '' | IncidentNeededConsultation,
-		follow_up_actions: [] as IncidentFollowUpAction[],
-		follow_up_notes: '',
-		is_employee_absent: false,
-		additional_details: '',
-		emails: ''
-	});
-
-	let formData = $state(createInitialForm());
-	let errors = $state<Record<string, string>>({});
-	let isLoading = $state(false);
 	let errorMessage = $state('');
 	let clientDisplay = $state('');
 	let employeeDisplay = $state('');
 	let locationDisplay = $state('');
+	const formId = 'create-incident-form';
 
 	const isEditMode = $derived(Boolean(incidentId));
+
+	const { form, errors, enhance, delayed, reset } = superForm(
+		defaults(
+			{
+				client_id: '',
+				employee_id: '',
+				location_id: '',
+				reporter_involvement: '',
+				informed_parties: [],
+				incident_type: '',
+				severity_of_incident: '',
+				recurrence_risk: '',
+				physical_injury: '',
+				needed_consultation: '',
+				cause_categories: [],
+				follow_up_actions: [],
+				occurred_at: new Date().toISOString(),
+				incident_explanation: '',
+				incident_prevent_steps: '',
+				incident_taken_measures: '',
+				cause_explanation: '',
+				physical_injury_desc: '',
+				psychological_damage: '',
+				psychological_damage_desc: '',
+				follow_up_notes: '',
+				additional_details: '',
+				is_employee_absent: false,
+				emails: ''
+			} as unknown as IncidentInput,
+			valibotClient(IncidentSchema)
+		),
+		{
+			validators: valibotClient(IncidentSchema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form }) => {
+				if (form.valid) {
+					try {
+						const payload: CreateIncidentRequest = {
+							...form.data,
+							employee_id: form.data.employee_id || undefined,
+							location_id: form.data.location_id || undefined,
+							incident_explanation: form.data.incident_explanation || null,
+							incident_prevent_steps: form.data.incident_prevent_steps || null,
+							incident_taken_measures: form.data.incident_taken_measures || null,
+							cause_explanation: form.data.cause_explanation || null,
+							physical_injury_desc: form.data.physical_injury_desc || null,
+							psychological_damage: form.data.psychological_damage || undefined,
+							psychological_damage_desc: form.data.psychological_damage_desc || null,
+							follow_up_notes: form.data.follow_up_notes || null,
+							additional_details: form.data.additional_details || null,
+							informed_parties:
+								form.data.informed_parties.length > 0
+									? (form.data.informed_parties as CreateIncidentInformedParty[])
+									: undefined,
+							cause_categories:
+								form.data.cause_categories.length > 0
+									? (form.data.cause_categories as IncidentCauseCategory[])
+									: undefined,
+							follow_up_actions:
+								form.data.follow_up_actions.length > 0
+									? (form.data.follow_up_actions as IncidentFollowUpAction[])
+									: undefined,
+							emails: parseEmails(form.data.emails)
+						};
+
+						if (isEditMode && incidentId) {
+							await updateIncident(incidentId, payload);
+						} else {
+							await createIncident(form.data.client_id, payload);
+						}
+						onCreated?.();
+						reset();
+						open = false;
+					} catch (error) {
+						errorMessage = error instanceof Error ? error.message : 'Failed to save incident';
+					}
+				}
+			}
+		}
+	);
 
 	const reporterOptions: Array<{ value: IncidentReporterInvolvement; label: string }> = [
 		{ value: 'directly_involved', label: 'Directly involved' },
@@ -157,33 +217,13 @@
 		{ value: 'other', label: 'Other' }
 	];
 
-	const toNull = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	};
-
-	const toUndefined = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : undefined;
-	};
-
-	const parseEmails = (value: string) =>
-		Array.from(
-			new Set(
-				value
-					.split(/[\n,;]+/)
-					.map((email) => email.trim())
-					.filter((email) => email.length > 0)
-			)
-		);
-
 	const toEditableInformedParty = (value: InformedParty): CreateIncidentInformedParty | null => {
 		if (value === 'care_coordinator') return 'manager';
 		if (value === 'parents_guardians') return 'family';
 		return null;
 	};
 
-	const toFormFromIncident = (incident: IncidentDetail) => ({
+	const toFormFromIncident = (incident: IncidentDetail): IncidentInput => ({
 		client_id: incident.clientId,
 		employee_id: incident.employeeId ?? '',
 		location_id: incident.locationId ?? '',
@@ -212,113 +252,42 @@
 		emails: (incident.emails ?? []).join(', ')
 	});
 
-	const validate = () => {
-		const nextErrors: Record<string, string> = {};
-
-		if (!formData.client_id) nextErrors.client_id = 'Client is required';
-		if (!formData.reporter_involvement)
-			nextErrors.reporter_involvement = 'Reporter involvement is required';
-		if (!formData.incident_type) nextErrors.incident_type = 'Incident type is required';
-		if (!formData.severity_of_incident) nextErrors.severity_of_incident = 'Severity is required';
-		if (!formData.recurrence_risk) nextErrors.recurrence_risk = 'Recurrence risk is required';
-		if (!formData.physical_injury) nextErrors.physical_injury = 'Physical injury is required';
-		if (!formData.needed_consultation)
-			nextErrors.needed_consultation = 'Needed consultation is required';
-
-		const emails = parseEmails(formData.emails);
-		const invalidEmail = emails.find((email) => !/^\S+@\S+\.\S+$/.test(email));
-		if (invalidEmail) {
-			nextErrors.emails = `Invalid email: ${invalidEmail}`;
-		}
-
-		errors = nextErrors;
-		return Object.keys(nextErrors).length === 0;
-	};
-
-	const resetForm = () => {
-		formData = createInitialForm();
-		errors = {};
-		errorMessage = '';
-		clientDisplay = '';
-		employeeDisplay = '';
-		locationDisplay = '';
-	};
-
-	$effect(() => {
-		if (!open) return;
-		if (!isEditMode || !initialIncident) {
-			if (!incidentId) {
-				resetForm();
-			}
-			return;
-		}
-
-		formData = toFormFromIncident(initialIncident);
-		clientDisplay = `${initialIncident.clientFirstName} ${initialIncident.clientLastName}`.trim();
-		employeeDisplay =
-			`${initialIncident.employeeFirstName} ${initialIncident.employeeLastName}`.trim();
-		locationDisplay = initialIncident.locationName;
-		errors = {};
-		errorMessage = '';
-	});
+	const parseEmails = (value: string): string[] =>
+		value
+			.split(/[\n,;]+/)
+			.map((email) => email.trim())
+			.filter((email) => email.length > 0);
 
 	const handleCancel = () => {
-		if (isLoading) return;
-		resetForm();
+		reset();
 		open = false;
 	};
 
-	const handleSubmit = async () => {
-		if (isLoading) return;
-		errorMessage = '';
-		if (!validate()) return;
+	let wasOpen = $state(false);
 
-		const payload: CreateIncidentRequest = {
-			client_id: formData.client_id,
-			employee_id: toUndefined(formData.employee_id),
-			location_id: toUndefined(formData.location_id),
-			reporter_involvement: formData.reporter_involvement as IncidentReporterInvolvement,
-			informed_parties:
-				formData.informed_parties.length > 0 ? [...formData.informed_parties] : undefined,
-			occurred_at: formData.occurred_at || new Date().toISOString(),
-			incident_type: formData.incident_type as IncidentType,
-			severity_of_incident: formData.severity_of_incident as IncidentSeverity,
-			incident_explanation: toNull(formData.incident_explanation),
-			recurrence_risk: formData.recurrence_risk as IncidentRecurrenceRisk,
-			incident_prevent_steps: toNull(formData.incident_prevent_steps),
-			incident_taken_measures: toNull(formData.incident_taken_measures),
-			cause_categories:
-				formData.cause_categories.length > 0 ? [...formData.cause_categories] : undefined,
-			cause_explanation: toNull(formData.cause_explanation),
-			physical_injury: formData.physical_injury as IncidentPhysicalInjury,
-			physical_injury_desc: toNull(formData.physical_injury_desc),
-			psychological_damage: toUndefined(formData.psychological_damage),
-			psychological_damage_desc: toNull(formData.psychological_damage_desc),
-			needed_consultation: formData.needed_consultation as IncidentNeededConsultation,
-			follow_up_actions:
-				formData.follow_up_actions.length > 0 ? [...formData.follow_up_actions] : undefined,
-			follow_up_notes: toNull(formData.follow_up_notes),
-			is_employee_absent: formData.is_employee_absent,
-			additional_details: toNull(formData.additional_details),
-			emails: parseEmails(formData.emails)
-		};
-
-		isLoading = true;
-		try {
-			if (isEditMode && incidentId) {
-				await updateIncident(incidentId, payload);
+	$effect(() => {
+		if (open && !wasOpen) {
+			if (!isEditMode || !initialIncident) {
+				if (!incidentId) {
+					reset();
+					if (preselectedClientId) {
+						$form.client_id = preselectedClientId;
+						clientDisplay = preselectedClientDisplay;
+					}
+				}
 			} else {
-				await createIncident(formData.client_id, payload);
+				const initialData = toFormFromIncident(initialIncident);
+				reset({ data: initialData });
+				clientDisplay =
+					`${initialIncident.clientFirstName} ${initialIncident.clientLastName}`.trim();
+				employeeDisplay =
+					`${initialIncident.employeeFirstName} ${initialIncident.employeeLastName}`.trim();
+				locationDisplay = initialIncident.locationName;
+				errorMessage = '';
 			}
-			onCreated?.();
-			resetForm();
-			open = false;
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to save incident';
-		} finally {
-			isLoading = false;
 		}
-	};
+		wasOpen = open;
+	});
 
 	const loadClients = async (query: string) => {
 		const res = await listClients({ page: 1, pageSize: 50, search: query });
@@ -365,7 +334,7 @@
 		: 'Register a new incident and capture all required follow-up details.'}
 	size="4xl"
 >
-	<div class="space-y-6">
+	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
 			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
 				{errorMessage}
@@ -380,9 +349,9 @@
 				<SearchSelect
 					label="Client"
 					loadOptions={loadClients}
-					bind:value={formData.client_id}
+					bind:value={$form.client_id}
 					bind:displayValue={clientDisplay}
-					error={errors.client_id}
+					error={formatFormError($errors.client_id)}
 					item={clientItem}
 					labelFn={(client) => `${client.first_name} ${client.last_name}`}
 					valueFn={(client) => client.id}
@@ -392,7 +361,7 @@
 				<SearchSelect
 					label="Employee"
 					loadOptions={loadEmployees}
-					bind:value={formData.employee_id}
+					bind:value={$form.employee_id}
 					bind:displayValue={employeeDisplay}
 					item={employeeItem}
 					labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
@@ -402,41 +371,41 @@
 				<SearchSelect
 					label="Location"
 					loadOptions={loadLocations}
-					bind:value={formData.location_id}
+					bind:value={$form.location_id}
 					bind:displayValue={locationDisplay}
 					item={locationItem}
 					labelFn={(location) => location.name}
 					valueFn={(location) => location.id}
 					placeholder="Search for a location..."
 				/>
-				<DateTimePicker label="Occurred at" bind:value={formData.occurred_at} />
+				<DateTimePicker label="Occurred at" bind:value={$form.occurred_at} />
 				<Select
 					label="Reporter involvement"
-					bind:value={formData.reporter_involvement}
+					bind:value={$form.reporter_involvement}
 					options={reporterOptions}
 					placeholder="Select involvement..."
-					error={errors.reporter_involvement}
+					error={formatFormError($errors.reporter_involvement)}
 				/>
 				<Select
 					label="Incident type"
-					bind:value={formData.incident_type}
+					bind:value={$form.incident_type}
 					options={incidentTypeOptions}
 					placeholder="Select incident type..."
-					error={errors.incident_type}
+					error={formatFormError($errors.incident_type)}
 				/>
 				<Select
 					label="Severity"
-					bind:value={formData.severity_of_incident}
+					bind:value={$form.severity_of_incident}
 					options={severityOptions}
 					placeholder="Select severity..."
-					error={errors.severity_of_incident}
+					error={formatFormError($errors.severity_of_incident)}
 				/>
 				<Select
 					label="Recurrence risk"
-					bind:value={formData.recurrence_risk}
+					bind:value={$form.recurrence_risk}
 					options={recurrenceRiskOptions}
 					placeholder="Select risk..."
-					error={errors.recurrence_risk}
+					error={formatFormError($errors.recurrence_risk)}
 				/>
 			</div>
 		</section>
@@ -448,27 +417,27 @@
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Select
 					label="Physical injury"
-					bind:value={formData.physical_injury}
+					bind:value={$form.physical_injury}
 					options={physicalInjuryOptions}
 					placeholder="Select injury status..."
-					error={errors.physical_injury}
+					error={formatFormError($errors.physical_injury)}
 				/>
 				<Select
 					label="Needed consultation"
-					bind:value={formData.needed_consultation}
+					bind:value={$form.needed_consultation}
 					options={neededConsultationOptions}
 					placeholder="Select consultation..."
-					error={errors.needed_consultation}
+					error={formatFormError($errors.needed_consultation)}
 				/>
 				<MultiSelect
 					label="Informed parties"
-					bind:value={formData.informed_parties}
+					bind:value={$form.informed_parties}
 					options={informedPartyOptions}
 					placeholder="Select informed parties..."
 				/>
 				<MultiSelect
 					label="Cause categories"
-					bind:value={formData.cause_categories}
+					bind:value={$form.cause_categories}
 					options={causeCategoryOptions}
 					placeholder="Select cause categories..."
 				/>
@@ -478,30 +447,30 @@
 				label="Incident explanation"
 				placeholder="Describe what happened in detail..."
 				rows={4}
-				bind:value={formData.incident_explanation}
+				bind:value={$form.incident_explanation}
 			/>
 			<Textarea
 				label="Cause explanation"
 				placeholder="Describe root causes and context..."
 				rows={3}
-				bind:value={formData.cause_explanation}
+				bind:value={$form.cause_explanation}
 			/>
 			<Textarea
 				label="Physical injury details"
 				placeholder="Add injury details if applicable..."
 				rows={3}
-				bind:value={formData.physical_injury_desc}
+				bind:value={$form.physical_injury_desc}
 			/>
 			<Input
 				label="Psychological damage"
 				placeholder="e.g. unrest"
-				bind:value={formData.psychological_damage}
+				bind:value={$form.psychological_damage}
 			/>
 			<Textarea
 				label="Psychological damage details"
 				placeholder="Add mental impact details if applicable..."
 				rows={3}
-				bind:value={formData.psychological_damage_desc}
+				bind:value={$form.psychological_damage_desc}
 			/>
 		</section>
 
@@ -512,14 +481,14 @@
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<MultiSelect
 					label="Follow-up actions"
-					bind:value={formData.follow_up_actions}
+					bind:value={$form.follow_up_actions}
 					options={followUpActionOptions}
 					placeholder="Select follow-up actions..."
 				/>
 				<div class="rounded-xl border border-border bg-surface/50 p-4">
 					<Checkbox
 						label="Employee absent due to incident"
-						bind:checked={formData.is_employee_absent}
+						bind:checked={$form.is_employee_absent}
 					/>
 				</div>
 			</div>
@@ -528,42 +497,43 @@
 				label="Prevention steps"
 				placeholder="What can prevent this from recurring?"
 				rows={3}
-				bind:value={formData.incident_prevent_steps}
+				bind:value={$form.incident_prevent_steps}
 			/>
 			<Textarea
 				label="Taken measures"
 				placeholder="Which direct measures were taken?"
 				rows={3}
-				bind:value={formData.incident_taken_measures}
+				bind:value={$form.incident_taken_measures}
 			/>
 			<Textarea
 				label="Follow-up notes"
 				placeholder="Any additional notes for follow-up..."
 				rows={3}
-				bind:value={formData.follow_up_notes}
+				bind:value={$form.follow_up_notes}
 			/>
 			<Textarea
 				label="Additional details"
 				placeholder="Other relevant details..."
 				rows={3}
-				bind:value={formData.additional_details}
+				bind:value={$form.additional_details}
 			/>
 			<Textarea
 				label="Notification emails"
 				placeholder="name@domain.com, another@domain.com"
 				rows={3}
-				bind:value={formData.emails}
-				error={errors.emails}
+				bind:value={$form.emails}
+				error={formatFormError($errors.emails)}
 			/>
 		</section>
-	</div>
+		<button type="submit" class="hidden" aria-hidden="true"></button>
+	</form>
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={isLoading}>Cancel</Button>
-			<Button variant="secondary" class="gap-2" onclick={handleSubmit} {isLoading}>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Plus class="h-4 w-4" />
-				{isLoading
+				{$delayed
 					? isEditMode
 						? 'Updating incident...'
 						: 'Creating incident...'

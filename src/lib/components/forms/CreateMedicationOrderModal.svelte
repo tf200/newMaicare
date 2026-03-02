@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import { createClientMedicationOrder } from '$lib/api/clients';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -18,6 +20,9 @@
 		MedicationOrderStatus,
 		MedicationScheduleItem
 	} from '$lib/types/api';
+	import { MedicationOrderSchema, type MedicationOrderSchemaInput } from '$lib/schemas/medication';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { trimToUndefined } from '$lib/utils/form-values';
 
 	interface Props {
 		clientId: string;
@@ -27,6 +32,151 @@
 	}
 
 	let { clientId, diagnoses = [], open = $bindable(false), onCreated }: Props = $props();
+
+	let responsibleEmployeeName = $state('');
+	let uploadedAttachment = $state<{ id: string; name: string } | null>(null);
+	let currentUploadFileId = $state<string | null>(null);
+	let uploadKey = $state(0);
+	let errorMessage = $state('');
+
+	// Local schedule string for the textarea
+	let scheduleInput = $state('');
+	const formId = `create-medication-order-${Math.random().toString(36).slice(2, 9)}`;
+
+	const submitForm = () => {
+		const formEl = document.getElementById(formId);
+		if (formEl instanceof HTMLFormElement) formEl.requestSubmit();
+	};
+
+	const toOptionalNumber = (value: string | number | undefined): number | undefined => {
+		if (typeof value === 'number') {
+			return Number.isFinite(value) ? value : undefined;
+		}
+
+		const normalized = value?.replace(',', '.').trim();
+		if (!normalized) return undefined;
+
+		const parsed = Number.parseFloat(normalized);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	};
+
+	const toOptionalInt = (value: string | number | undefined): number | undefined => {
+		if (typeof value === 'number') {
+			return Number.isFinite(value) ? value : undefined;
+		}
+
+		const normalized = value?.trim();
+		if (!normalized) return undefined;
+
+		const parsed = Number.parseInt(normalized, 10);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	};
+
+	const toScheduleItems = (value: unknown): MedicationScheduleItem[] | null => {
+		if (!Array.isArray(value)) return null;
+
+		const normalized = value
+			.map((item) => {
+				if (typeof item === 'string') {
+					const time = item.trim();
+					return time ? { time } : null;
+				}
+
+				if (typeof item === 'object' && item !== null && 'time' in item) {
+					const timeValue = (item as { time?: unknown }).time;
+					if (typeof timeValue !== 'string') return null;
+					const time = timeValue.trim();
+					return time ? { time } : null;
+				}
+
+				return null;
+			})
+			.filter((item): item is MedicationScheduleItem => item !== null);
+
+		return normalized;
+	};
+
+	const { form, errors, enhance, delayed, reset } = superForm(
+		defaults(
+			{
+				status: 'active',
+				admin_mode: 'self',
+				diagnosis_id: '',
+				medication_name: '',
+				dosage_text: '',
+				route: '',
+				dose_amount: null,
+				dose_unit: '',
+				frequency_text: '',
+				start_date: '',
+				end_date: '',
+				schedule: [],
+				is_prn: false,
+				prn_indication: '',
+				max_doses_per_24h: null,
+				responsible_employee_id: '',
+				notes: '',
+				source_attachment_uuid: '',
+				is_critical: false
+			} as unknown as MedicationOrderSchemaInput,
+			valibotClient(MedicationOrderSchema)
+		),
+		{
+			validators: valibotClient(MedicationOrderSchema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form }) => {
+				if (form.valid) {
+					try {
+						const payload: CreateClientMedicationOrderRequest = {
+							diagnosis_id: trimToUndefined(form.data.diagnosis_id) ?? null,
+							medication_name: form.data.medication_name.trim(),
+							dosage_text: form.data.dosage_text.trim(),
+							dose_amount: toOptionalNumber(form.data.dose_amount) ?? null,
+							dose_unit: trimToUndefined(form.data.dose_unit) ?? null,
+							route: trimToUndefined(form.data.route) ?? null,
+							frequency_text: trimToUndefined(form.data.frequency_text) ?? null,
+							schedule: form.data.schedule,
+							is_prn: form.data.is_prn,
+							prn_indication: trimToUndefined(form.data.prn_indication) ?? null,
+							max_doses_per_24h: toOptionalInt(form.data.max_doses_per_24h) ?? null,
+							start_date: toRfc3339Date(form.data.start_date) ?? '',
+							end_date: toRfc3339Date(form.data.end_date),
+							status: form.data.status,
+							admin_mode: form.data.admin_mode,
+							responsible_employee_id: trimToUndefined(form.data.responsible_employee_id) ?? null,
+							is_critical: form.data.is_critical,
+							notes: trimToUndefined(form.data.notes) ?? null,
+							source_attachment_uuid: trimToUndefined(form.data.source_attachment_uuid) ?? null
+						};
+
+						await createClientMedicationOrder(clientId, payload);
+						reset();
+						scheduleInput = '';
+						uploadedAttachment = null;
+						open = false;
+						onCreated?.();
+					} catch (error) {
+						errorMessage =
+							error instanceof Error ? error.message : 'Failed to create medication order.';
+					}
+				}
+			}
+		}
+	);
+
+	// Sync local scheduleInput with $form.schedule
+	$effect(() => {
+		try {
+			const parsed = JSON.parse(scheduleInput);
+			const nextSchedule = toScheduleItems(parsed);
+			if (nextSchedule) {
+				$form.schedule = nextSchedule;
+			}
+		} catch {
+			// Silently wait for valid JSON
+		}
+	});
 
 	const statusOptions: Array<{ label: string; value: MedicationOrderStatus }> = [
 		{ label: 'Active', value: 'active' },
@@ -85,143 +235,42 @@
 		}))
 	]);
 
-	let diagnosisId = $state('');
-	let medicationName = $state('');
-	let dosageText = $state('');
-	let doseAmount = $state<number | undefined>(undefined);
-	let doseUnit = $state('');
-	let route = $state('');
-	let frequencyText = $state('');
-	let scheduleInput = $state('');
-	let isPrn = $state(false);
-	let prnIndication = $state('');
-	let maxDosesPer24h = $state<number | undefined>(undefined);
-	let startDate = $state('');
-	let endDate = $state('');
-	let status = $state<MedicationOrderStatus>('active');
-	let adminMode = $state<MedicationAdminMode>('self');
-	let responsibleEmployeeId = $state('');
-	let responsibleEmployeeName = $state('');
-	let isCritical = $state(false);
-	let notes = $state('');
-	let sourceAttachmentUuid = $state('');
-	let uploadedAttachment = $state<{ id: string; name: string } | null>(null);
-	let currentUploadFileId = $state<string | null>(null);
-	let uploadKey = $state(0);
-
-	let isLoading = $state(false);
-	let errorMessage = $state('');
-	let fieldErrors = $state<{
-		medication_name?: string;
-		dosage_text?: string;
-		schedule?: string;
-		prn_indication?: string;
-		max_doses_per_24h?: string;
-		start_date?: string;
-		end_date?: string;
-		responsible_employee_id?: string;
-	}>({});
-
 	const badgeBase =
 		'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold tracking-wide uppercase transition-colors';
 
-	const showResponsibleEmployee = $derived(adminMode !== 'self');
+	const showResponsibleEmployee = $derived($form.admin_mode !== 'self');
 
 	$effect(() => {
 		if (!showResponsibleEmployee) {
-			responsibleEmployeeId = '';
-			responsibleEmployeeName = '';
-			fieldErrors.responsible_employee_id = undefined;
+			if ($form.responsible_employee_id !== '') $form.responsible_employee_id = '';
+			if (responsibleEmployeeName !== '') responsibleEmployeeName = '';
 		}
 	});
 
 	$effect(() => {
-		if (!isPrn) {
-			prnIndication = '';
-			maxDosesPer24h = undefined;
-			fieldErrors.prn_indication = undefined;
-			fieldErrors.max_doses_per_24h = undefined;
+		if (!$form.is_prn) {
+			if ($form.prn_indication !== '') $form.prn_indication = '';
+			if ($form.max_doses_per_24h !== undefined) $form.max_doses_per_24h = undefined;
 		}
 	});
 
-	const resetForm = () => {
-		diagnosisId = '';
-		medicationName = '';
-		dosageText = '';
-		doseAmount = undefined;
-		doseUnit = '';
-		route = '';
-		frequencyText = '';
-		scheduleInput = '';
-		isPrn = false;
-		prnIndication = '';
-		maxDosesPer24h = undefined;
-		startDate = '';
-		endDate = '';
-		status = 'active';
-		adminMode = 'self';
-		responsibleEmployeeId = '';
-		responsibleEmployeeName = '';
-		isCritical = false;
-		notes = '';
-		sourceAttachmentUuid = '';
-		uploadedAttachment = null;
-		currentUploadFileId = null;
-		uploadKey = 0;
-		isLoading = false;
-		errorMessage = '';
-		fieldErrors = {};
-	};
-
 	const handleAttachmentUploaded = (fileId: string, fileName: string) => {
-		sourceAttachmentUuid = fileId;
+		$form.source_attachment_uuid = fileId;
 		uploadedAttachment = { id: fileId, name: fileName };
 		currentUploadFileId = null;
 		uploadKey += 1;
 	};
 
 	const clearAttachment = () => {
-		sourceAttachmentUuid = '';
+		$form.source_attachment_uuid = '';
 		uploadedAttachment = null;
 		currentUploadFileId = null;
 		uploadKey += 1;
 	};
 
-	const toNullable = (value: string) => {
-		const trimmed = value.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	};
-
-	const toNumberOrNull = (value: number | null | undefined) => {
-		if (value === null || value === undefined) return null;
-		return Number.isFinite(value) ? value : null;
-	};
-
-	const toRfc3339Date = (value: string) => {
+	const toRfc3339Date = (value: string | null | undefined) => {
 		if (!value) return null;
 		return `${value}T00:00:00Z`;
-	};
-
-	const parseSchedule = (): MedicationScheduleItem[] | null => {
-		if (!scheduleInput.trim()) return [];
-
-		try {
-			const parsed = JSON.parse(scheduleInput) as unknown;
-			if (!Array.isArray(parsed)) return null;
-
-			const normalized = parsed
-				.map((entry) => {
-					if (!entry || typeof entry !== 'object') return null;
-					const maybeTime = (entry as { time?: unknown }).time;
-					if (typeof maybeTime !== 'string' || !maybeTime.trim()) return null;
-					return { time: maybeTime.trim() };
-				})
-				.filter((entry): entry is MedicationScheduleItem => entry !== null);
-
-			return normalized;
-		} catch {
-			return null;
-		}
 	};
 
 	const loadEmployeeOptions = async (query: string): Promise<EmployeeListItem[]> => {
@@ -235,97 +284,6 @@
 
 		return response.data.results;
 	};
-
-	const validate = () => {
-		const nextErrors: {
-			medication_name?: string;
-			dosage_text?: string;
-			schedule?: string;
-			prn_indication?: string;
-			max_doses_per_24h?: string;
-			start_date?: string;
-			end_date?: string;
-			responsible_employee_id?: string;
-		} = {};
-
-		if (!medicationName.trim()) nextErrors.medication_name = 'Medication name is required.';
-		if (!dosageText.trim()) nextErrors.dosage_text = 'Dosage text is required.';
-		if (!startDate) nextErrors.start_date = 'Start date is required.';
-
-		if (endDate && startDate && endDate < startDate) {
-			nextErrors.end_date = 'End date cannot be before start date.';
-		}
-
-		if (showResponsibleEmployee && !responsibleEmployeeId.trim()) {
-			nextErrors.responsible_employee_id =
-				'Responsible employee is required for staff/shared admin mode.';
-		}
-
-		if (isPrn && !prnIndication.trim()) {
-			nextErrors.prn_indication = 'PRN indication is required when medication is PRN.';
-		}
-
-		if (isPrn && maxDosesPer24h !== null && maxDosesPer24h !== undefined) {
-			if (!Number.isInteger(maxDosesPer24h) || maxDosesPer24h <= 0) {
-				nextErrors.max_doses_per_24h = 'Max doses per 24h must be a positive integer.';
-			}
-		}
-
-		if (scheduleInput.trim() && parseSchedule() === null) {
-			nextErrors.schedule = 'Schedule must be a JSON array like [{"time":"08:00"}].';
-		}
-
-		fieldErrors = nextErrors;
-		return Object.keys(nextErrors).length === 0;
-	};
-
-	const handleCancel = () => {
-		resetForm();
-		open = false;
-	};
-
-	const handleCreate = async () => {
-		errorMessage = '';
-		if (!validate()) return;
-
-		const parsedSchedule = parseSchedule();
-		if (parsedSchedule === null) return;
-
-		const payload: CreateClientMedicationOrderRequest = {
-			diagnosis_id: toNullable(diagnosisId),
-			medication_name: medicationName.trim(),
-			dosage_text: dosageText.trim(),
-			dose_amount: toNumberOrNull(doseAmount),
-			dose_unit: toNullable(doseUnit),
-			route: toNullable(route),
-			frequency_text: toNullable(frequencyText),
-			schedule: parsedSchedule,
-			is_prn: isPrn,
-			prn_indication: toNullable(prnIndication),
-			max_doses_per_24h: toNumberOrNull(maxDosesPer24h),
-			start_date: toRfc3339Date(startDate) ?? '',
-			end_date: toRfc3339Date(endDate),
-			status,
-			admin_mode: adminMode,
-			responsible_employee_id: toNullable(responsibleEmployeeId),
-			is_critical: isCritical,
-			notes: toNullable(notes),
-			source_attachment_uuid: toNullable(sourceAttachmentUuid)
-		};
-
-		isLoading = true;
-
-		try {
-			await createClientMedicationOrder(clientId, payload);
-			resetForm();
-			open = false;
-			onCreated?.();
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to create medication order.';
-		} finally {
-			isLoading = false;
-		}
-	};
 </script>
 
 <Modal
@@ -334,7 +292,7 @@
 	description="Record medication details, administration mode, and safeguards for this client."
 	size="xl"
 >
-	<div class="space-y-6">
+	<form id={formId} use:enhance class="space-y-6">
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
 				Medication identity
@@ -343,23 +301,24 @@
 				<Input
 					label="Medication name"
 					placeholder="Sertraline"
-					bind:value={medicationName}
-					error={fieldErrors.medication_name}
+					bind:value={$form.medication_name}
+					error={formatFormError($errors.medication_name)}
 				/>
 				<Select
 					label="Route"
 					options={routeOptions}
-					bind:value={route}
+					bind:value={$form.route}
 					placeholder="Select route"
+					error={formatFormError($errors.route)}
 				/>
 			</div>
 			<Input
 				label="Dosage text"
 				placeholder="50 mg once daily in the morning"
-				bind:value={dosageText}
-				error={fieldErrors.dosage_text}
+				bind:value={$form.dosage_text}
+				error={formatFormError($errors.dosage_text)}
 			/>
-			<Checkbox label="Mark as critical medication" bind:checked={isCritical} />
+			<Checkbox label="Mark as critical medication" bind:checked={$form.is_critical} />
 		</section>
 
 		<section class="space-y-4">
@@ -367,44 +326,56 @@
 				Dosing and schedule
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-				<Input label="Dose amount" type="number" step="0.01" bind:value={doseAmount} />
+				<Input
+					label="Dose amount"
+					type="number"
+					step="0.01"
+					bind:value={$form.dose_amount}
+					error={formatFormError($errors.dose_amount)}
+				/>
 				<Select
 					label="Dose unit"
 					options={doseUnitOptions}
-					bind:value={doseUnit}
+					bind:value={$form.dose_unit}
 					placeholder="Select unit"
+					error={formatFormError($errors.dose_unit)}
 				/>
-				<Input label="Frequency text" placeholder="Once daily" bind:value={frequencyText} />
+				<Input
+					label="Frequency text"
+					placeholder="Once daily"
+					bind:value={$form.frequency_text}
+					error={formatFormError($errors.frequency_text)}
+				/>
 			</div>
 
 			<Textarea
 				label="Structured schedule (JSON)"
-				placeholder="JSON array with time entries"
+				placeholder={`[{"time":"08:00"}]`}
 				rows={3}
 				bind:value={scheduleInput}
-				error={fieldErrors.schedule}
+				error={formatFormError($errors.schedule)}
 			/>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<Checkbox label="PRN (as needed)" bind:checked={isPrn} />
-				{#if isPrn}
+				<Checkbox label="PRN (as needed)" bind:checked={$form.is_prn} />
+				{#if $form.is_prn}
 					<Input
 						label="Max doses per 24h"
 						type="number"
 						step="1"
-						bind:value={maxDosesPer24h}
-						error={fieldErrors.max_doses_per_24h}
+						bind:value={$form.max_doses_per_24h}
+						error={formatFormError($errors.max_doses_per_24h)}
 					/>
 				{/if}
 			</div>
 
-			{#if isPrn}
+			{#if $form.is_prn}
 				<Textarea
 					label="PRN indication"
 					placeholder="Acute panic symptoms"
 					rows={2}
-					bind:value={prnIndication}
-					error={fieldErrors.prn_indication}
+					bind:value={$form.prn_indication}
+					error={formatFormError($errors.prn_indication)}
 				/>
 			{/if}
 		</section>
@@ -420,8 +391,8 @@
 					{#each adminModeOptions as option (option.value)}
 						<button
 							type="button"
-							onclick={() => (adminMode = option.value)}
-							class="{badgeBase} {adminMode === option.value
+							onclick={() => ($form.admin_mode = option.value)}
+							class="{badgeBase} {$form.admin_mode === option.value
 								? option.activeClass
 								: 'border-border bg-surface text-text-muted hover:bg-border/30'}"
 						>
@@ -429,19 +400,22 @@
 						</button>
 					{/each}
 				</div>
+				{#if $errors.admin_mode}
+					<p class="ml-1 text-xs font-medium text-error">{formatFormError($errors.admin_mode)}</p>
+				{/if}
 			</div>
 
 			{#if showResponsibleEmployee}
 				<SearchSelect
 					label="Responsible employee"
-					bind:value={responsibleEmployeeId}
+					bind:value={$form.responsible_employee_id}
 					bind:displayValue={responsibleEmployeeName}
 					loadOptions={loadEmployeeOptions}
 					labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 					valueFn={(employee) => employee.id}
 					placeholder="Search employee"
 					searchPlaceholder="Search employees..."
-					error={fieldErrors.responsible_employee_id}
+					error={formatFormError($errors.responsible_employee_id)}
 				/>
 			{/if}
 
@@ -449,10 +423,16 @@
 				<Select
 					label="Linked diagnosis"
 					options={diagnosisOptions}
-					bind:value={diagnosisId}
+					bind:value={$form.diagnosis_id}
 					placeholder="Select diagnosis"
+					error={formatFormError($errors.diagnosis_id)}
 				/>
-				<Select label="Order status" options={statusOptions} bind:value={status} />
+				<Select
+					label="Order status"
+					options={statusOptions}
+					bind:value={$form.status}
+					error={formatFormError($errors.status)}
+				/>
 			</div>
 		</section>
 
@@ -462,8 +442,16 @@
 			</h3>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<DatePicker label="Start date" bind:value={startDate} error={fieldErrors.start_date} />
-				<DatePicker label="End date" bind:value={endDate} error={fieldErrors.end_date} />
+				<DatePicker
+					label="Start date"
+					bind:value={$form.start_date}
+					error={formatFormError($errors.start_date)}
+				/>
+				<DatePicker
+					label="End date"
+					bind:value={$form.end_date}
+					error={formatFormError($errors.end_date)}
+				/>
 			</div>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -490,14 +478,14 @@
 										<Paperclip class="h-4 w-4 text-text-subtle" />
 										<span class="font-medium">{uploadedAttachment.name}</span>
 									</div>
-									<Button
-										variant="ghost"
-										class="h-8 w-8 px-0 text-text-subtle hover:text-error"
+									<button
+										type="button"
+										class="rounded p-1 text-text-subtle transition-colors hover:bg-error/10 hover:text-error"
 										onclick={clearAttachment}
 										title="Remove attachment"
 									>
 										<Trash2 class="h-4 w-4" />
-									</Button>
+									</button>
 								</div>
 							</div>
 						{/if}
@@ -510,7 +498,8 @@
 					label="Notes"
 					placeholder="Take with food if nausea occurs."
 					rows={3}
-					bind:value={notes}
+					bind:value={$form.notes}
+					error={formatFormError($errors.notes)}
 				/>
 			</div>
 		</section>
@@ -520,12 +509,20 @@
 				{errorMessage}
 			</div>
 		{/if}
-	</div>
+		<button type="submit" class="hidden" aria-hidden="true"></button>
+	</form>
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={isLoading}>Cancel</Button>
-			<Button class="gap-2" onclick={handleCreate} {isLoading}>
+			<Button
+				variant="ghost"
+				onclick={() => {
+					reset();
+					open = false;
+				}}
+				disabled={$delayed}>Cancel</Button
+			>
+			<Button class="gap-2" type="button" onclick={submitForm} isLoading={$delayed}>
 				<Pill class="h-4 w-4" />
 				Create medication
 			</Button>

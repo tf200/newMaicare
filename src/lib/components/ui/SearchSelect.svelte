@@ -21,6 +21,7 @@
 		compact = false,
 		item,
 		loadOptions,
+		onchange,
 		labelFn = (opt: Option) => String(opt?.label ?? ''),
 		valueFn = (opt: Option) => String(opt?.value ?? '')
 	} = $props<{
@@ -36,6 +37,7 @@
 		compact?: boolean;
 		item?: Snippet<[Option]>;
 		loadOptions: (query: string) => Promise<Option[]>;
+		onchange?: (value: string) => void;
 		labelFn?: (opt: Option) => string;
 		valueFn?: (opt: Option) => string;
 	}>();
@@ -101,6 +103,7 @@
 		displayValue = labelFn(opt);
 		isOpen = false;
 		searchQuery = '';
+		onchange?.(value);
 	}
 
 	function clear(e: Event) {
@@ -109,6 +112,7 @@
 		displayValue = '';
 		searchQuery = '';
 		fetchOptions('');
+		onchange?.('');
 	}
 
 	function handleOutsideClick(node: HTMLElement) {
@@ -143,13 +147,12 @@
 			{id}
 			bind:this={triggerEl}
 			type="button"
-			role="button"
 			tabindex={disabled ? -1 : 0}
 			onclick={toggle}
 			onkeydown={handleKeydown}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 {compact
-				? 'h-9'
-				: 'py-2.5'} text-sm text-text transition-all {disabled
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface {compact
+				? 'px-3 py-2.5'
+				: 'px-4 py-3.5'} text-sm text-text transition-all {disabled
 				? 'cursor-not-allowed opacity-60'
 				: 'hover:bg-surface/80'} {error ? 'border-error' : ''}"
 			aria-expanded={isOpen}
@@ -158,14 +161,16 @@
 			<span class="truncate">{selectedLabel}</span>
 			<div class="flex items-center gap-2">
 				{#if value && !disabled}
-					<button
-						type="button"
+					<div
+						role="button"
+						tabindex="0"
 						onclick={clear}
-						class="text-text-muted hover:text-text"
+						onkeydown={(e) => e.key === 'Enter' && clear(e)}
+						class="text-text-muted hover:text-text cursor-pointer"
 						aria-label="Clear selection"
 					>
 						<X class="h-4 w-4" />
-					</button>
+					</div>
 				{/if}
 				<ChevronsUpDown class="h-4 w-4 shrink-0 opacity-50" />
 			</div>

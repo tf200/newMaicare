@@ -45,6 +45,7 @@
 	"status": "Status",
 	"submitted": "Submitted",
 	"view_registration": "View registration",
+	"back": "Back",
 	"back_to_registrations": "Back to registrations",
 	"bsn": "BSN",
 	"submitted_at": "Submitted: {date}",
@@ -120,5 +121,8 @@
 	"no_drafts_found": "No drafts found",
 	"no_submitted_evaluations_found": "No submitted evaluations found",
 	"incidents": "Incidents",
-	"schedules": "Schedules"
+	"schedules": "Schedules",
+	"finances": "Finances",
+	"invoices": "Invoices",
+	"invoices_description": "Manage billing, payments, and invoice status."
 }

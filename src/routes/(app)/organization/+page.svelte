@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Building2, Eye, Pencil, Plus, Search } from 'lucide-svelte';
+	import { Building2, Eye, Pencil, Plus, Search, MapPin, Users } from 'lucide-svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -10,7 +10,7 @@
 	import EditOrganizationForm from '$lib/components/forms/EditOrganizationForm.svelte';
 	import { getOrganization } from '$lib/api/organizations';
 	import type { GetOrganizationResponse } from '$lib/types/api';
-	import type { OrganizationLoadResult } from './+page';
+	import type { OrganizationCountsLoadResult, OrganizationLoadResult } from './+page';
 
 	let { data } = $props<{
 		data: {
@@ -20,6 +20,7 @@
 				filters: { name: string };
 			};
 			organizationsData: Promise<OrganizationLoadResult>;
+			countsData: Promise<OrganizationCountsLoadResult>;
 		};
 	}>();
 	type OrganizationRow = OrganizationLoadResult['organisations'][number];
@@ -41,6 +42,7 @@
 	];
 
 	const organizationsDataPromise = $derived.by(() => data.organizationsData);
+	const countsDataPromise = $derived.by(() => data.countsData);
 	const currentPage = $derived.by(() => data.initial.page);
 	const pageSize = $derived.by(() => data.initial.pageSize);
 	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
@@ -289,49 +291,84 @@
 		/>
 	{:then organizationsData}
 		{@const organisations = organizationsData.organisations}
-		{@const totalLocations = organisations.reduce(
-			(total: number, org: OrganizationRow) => total + org.locationCount,
-			0
-		)}
-		{@const withRegistration = organisations.filter(
-			(org: OrganizationRow) => Boolean(org.kvkNumber) || Boolean(org.btwNumber)
-		).length}
 
 		{#if organizationsData.loadError}
 			<InlineErrorBanner message={organizationsData.loadError} onRetry={() => invalidateAll()} />
 		{/if}
 
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total orgs
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{organizationsData.pagination.count}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
+		{#await countsDataPromise}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				{#each [1, 2, 3] as _}
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+					</div>
+				{/each}
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Locations
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-					{totalLocations}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Registration
-				</div>
+		{:then countsData}
+			{#if countsData.loadError}
+				<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
+			{/if}
+
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				<div
-					class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
 				>
-					{withRegistration}
+					<div class="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-5">
+						<Building2 class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Total Organizations
+						</div>
+						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+							{organizationsData.pagination.count}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
+					</div>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW on file</p>
+
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<MapPin class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Total Locations
+						</div>
+						<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
+							{countsData.counts.totalLocations}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
+					</div>
+				</div>
+
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-emerald-600 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Users class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Total Capacity
+						</div>
+						<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
+							{countsData.counts.totalCapacity}
+						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">
+							Available places across locations
+						</p>
+					</div>
+				</div>
 			</div>
-		</div>
+		{/await}
 
 		<DataTable
 			{columns}

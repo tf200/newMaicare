@@ -12,6 +12,7 @@
 		value = $bindable([]),
 		placeholder = 'Select items...',
 		error = undefined,
+		disabled = false,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`
 	} = $props<{
 		label?: string;
@@ -19,6 +20,7 @@
 		value?: string[];
 		placeholder?: string;
 		error?: string;
+		disabled?: boolean;
 		id?: string;
 	}>();
 
@@ -26,29 +28,29 @@
 	let search = $state('');
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
+let filteredOptions = $derived(
+	options.filter((opt: Option) => opt.label.toLowerCase().includes(search.toLowerCase()))
+);
 
-	let filteredOptions = $derived(
-		options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase()))
-	);
+let selectedLabels = $derived(options.filter((opt: Option) => value.includes(opt.value)));
 
-	let selectedLabels = $derived(options.filter((opt) => value.includes(opt.value)));
+function toggle() {
+	if (disabled) return;
+	isOpen = !isOpen;
+}
 
-	function toggle() {
-		isOpen = !isOpen;
+function select(val: string) {
+	if (value.includes(val)) {
+		value = value.filter((v: string) => v !== val);
+	} else {
+		value = [...value, val];
 	}
+}
 
-	function select(val: string) {
-		if (value.includes(val)) {
-			value = value.filter((v) => v !== val);
-		} else {
-			value = [...value, val];
-		}
-	}
-
-	function remove(val: string, e: Event) {
-		e.stopPropagation();
-		value = value.filter((v) => v !== val);
-	}
+function remove(val: string, e: Event) {
+	e.stopPropagation();
+	value = value.filter((v: string) => v !== val);
+}
 
 	function handleOutsideClick(node: HTMLElement) {
 		const handleClick = (e: MouseEvent) => {
@@ -79,7 +81,7 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text transition-all hover:bg-surface/80 {error
+			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text transition-all hover:bg-surface/80 {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}

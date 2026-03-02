@@ -152,6 +152,7 @@
 					<button
 						type="button"
 						onclick={removeFile}
+						aria-label="Remove file"
 						class="text-text-muted transition-colors hover:text-error"
 					>
 						<svg

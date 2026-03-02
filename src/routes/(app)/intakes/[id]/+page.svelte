@@ -15,12 +15,15 @@
 		Info,
 		Building2,
 		PenLine,
-		Clock
+		Clock,
+		Lock
 	} from 'lucide-svelte';
 	import { untrack } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 	import GoalAssessmentModal from '$lib/components/intake/GoalAssessmentModal.svelte';
 	import IntakeConclusionModal from '$lib/components/intake/IntakeConclusionModal.svelte';
+	import EditIntakeModal from '$lib/components/intake/EditIntakeModal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { intakes } from '$lib/api/intakes';
 	import type { PageData } from './$types';
 	import type { CreateIntakeFormGoalsRequest, UpdateIntakeConclusionRequest } from '$lib/types/api';
@@ -30,6 +33,7 @@
 	let intake = $state(untrack(() => data.intake));
 	let isGoalModalOpen = $state(false);
 	let isConclusionModalOpen = $state(false);
+	let isEditModalOpen = $state(false);
 	let isPromoting = $state(false);
 	let actionSuccess = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
@@ -40,13 +44,35 @@
 	const canPromoteToClient = $derived.by(
 		() => intake.intake_conclusion === 'suitable' && !intake.has_client
 	);
+	const canEditGoals = $derived(!intake.has_client);
+	const canEditIntake = $derived(!intake.has_client);
 
 	// Sync state if data changes
 	$effect(() => {
 		intake = data.intake;
 	});
 
+	const handleSaveIntake = async () => {
+		try {
+			actionError = null;
+			actionSuccess = null;
+			const refreshed = await intakes.getById(intake.id);
+			intake = refreshed.data;
+			actionSuccess = 'Intake form updated successfully.';
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : 'Failed to refresh intake data.';
+			console.error('Failed to refresh intake data:', err);
+		}
+	};
+
 	const handleSaveGoals = async (requestData: CreateIntakeFormGoalsRequest) => {
+		if (!canEditGoals) {
+			actionSuccess = null;
+			actionError = 'Goals can no longer be updated after this intake is converted to a client.';
+			isGoalModalOpen = false;
+			return;
+		}
+
 		try {
 			actionError = null;
 			actionSuccess = null;
@@ -120,7 +146,7 @@
 
 <!-- Header -->
 <div class="space-y-6">
-	<div class="flex items-center justify-between">
+	<div class="flex flex-wrap items-center justify-between gap-3">
 		<a
 			href="/intakes"
 			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
@@ -128,6 +154,16 @@
 			<ArrowLeft class="h-4 w-4" />
 			Back to Intakes
 		</a>
+
+		{#if canEditIntake}
+			<button
+				onclick={() => (isEditModalOpen = true)}
+				class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-strong hover:shadow-lg hover:shadow-brand/30"
+			>
+				<PenLine class="h-4 w-4" />
+				Edit intake form
+			</button>
+		{/if}
 	</div>
 
 	<!-- Main Header -->
@@ -232,13 +268,21 @@
 								<p class="text-xs text-text-subtle">Maturity matrix levels and action plan</p>
 							</div>
 						</div>
-						<button
-							onclick={() => (isGoalModalOpen = true)}
-							class="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-1.5 text-xs font-bold text-text shadow-sm hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-						>
-							<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span>
-							{intake.intake_goals_assigned.length > 0 ? 'Edit Goals' : 'Add Goals'}
-						</button>
+						{#if !canEditGoals}
+							<div class="flex items-center gap-2 text-[10px] font-bold text-text-subtle uppercase">
+								<Lock class="h-3.5 w-3.5" />
+								<span>Goals Locked (Converted)</span>
+							</div>
+						{:else}
+							<Button
+								variant="secondary"
+								onclick={() => (isGoalModalOpen = true)}
+								class="h-9 px-3 text-xs"
+							>
+								<span class="h-1.5 w-1.5 rounded-full bg-white/40"></span>
+								{intake.intake_goals_assigned.length > 0 ? 'Edit Goals' : 'Add Goals'}
+							</Button>
+						{/if}
 					</div>
 				</div>
 
@@ -318,13 +362,23 @@
 								This client has not been assessed yet. Please complete the maturity matrix and
 								define initial goals.
 							</p>
-							<button
-								onclick={() => (isGoalModalOpen = true)}
-								class="mt-6 inline-flex items-center gap-2 rounded-xl bg-secondary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-secondary/25 transition-all hover:scale-[1.02] hover:bg-orange-600 active:scale-[0.98]"
-							>
-								<Plus class="h-5 w-5" />
-								Start Assessment
-							</button>
+							{#if !canEditGoals}
+								<div
+									class="mt-6 flex items-center gap-2 rounded-xl bg-zinc-100 px-6 py-3 text-sm font-bold text-text-subtle dark:bg-zinc-800"
+								>
+									<Lock class="h-5 w-5" />
+									Goals Locked (Converted)
+								</div>
+							{:else}
+								<Button
+									variant="secondary"
+									onclick={() => (isGoalModalOpen = true)}
+									class="mt-6 px-6 py-3"
+								>
+									<Plus class="h-5 w-5" />
+									Start Assessment
+								</Button>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -581,3 +635,5 @@
 	onSave={handleUpdateConclusion}
 	onCancel={() => (isConclusionModalOpen = false)}
 />
+
+<EditIntakeModal bind:open={isEditModalOpen} {intake} onSave={handleSaveIntake} />

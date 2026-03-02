@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listOrganizations } from '$lib/api/organizations';
+import { getGlobalOrganizationCounts, listOrganizations } from '$lib/api/organizations';
 import type { OrganizationListItem } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
@@ -20,6 +20,14 @@ export interface OrganizationRow {
 export interface OrganizationLoadResult {
 	organisations: OrganizationRow[];
 	pagination: PaginationState<{ name: string }>;
+	loadError: string | null;
+}
+
+export interface OrganizationCountsLoadResult {
+	counts: {
+		totalLocations: number;
+		totalCapacity: number;
+	};
 	loadError: string | null;
 }
 
@@ -83,6 +91,25 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
+	const countsData: Promise<OrganizationCountsLoadResult> = getGlobalOrganizationCounts()
+		.then((response) => ({
+			counts: {
+				totalLocations: response.data.total_locations,
+				totalCapacity: response.data.total_capacity
+			},
+			loadError: null
+		}))
+		.catch(
+			(error): OrganizationCountsLoadResult => ({
+				counts: {
+					totalLocations: 0,
+					totalCapacity: 0
+				},
+				loadError:
+					error instanceof Error ? error.message : 'Failed to load global organization counts.'
+			})
+		);
+
 	return {
 		initial: {
 			page,
@@ -91,6 +118,7 @@ export const load: PageLoad = ({ url }) => {
 				name
 			}
 		},
-		organizationsData
+		organizationsData,
+		countsData
 	};
 };

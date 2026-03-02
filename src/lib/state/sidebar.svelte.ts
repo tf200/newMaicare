@@ -9,6 +9,7 @@ export interface NavItem {
 export interface SidebarConfig {
 	items: NavItem[];
 	title?: string;
+	initials?: string;
 }
 
 class SidebarState {
@@ -18,8 +19,8 @@ class SidebarState {
 		return this.#scopedConfig;
 	}
 
-	setScopedSidebar(items: NavItem[], title?: string) {
-		this.#scopedConfig = { items, title };
+	setScopedSidebar(items: NavItem[], title?: string, initials?: string) {
+		this.#scopedConfig = { items, title, initials };
 	}
 
 	clearScopedSidebar() {

@@ -113,6 +113,20 @@ export interface ProcessRegistrationRequest {
 	proposed_dates: string[];
 }
 
+export interface UpdateRegistrationFormRequest extends Partial<
+	Omit<
+		RegistrationRequest,
+		| 'document_referral'
+		| 'document_education_report'
+		| 'document_psychiatric_report'
+		| 'document_diagnosis'
+		| 'document_safety_plan'
+		| 'document_id_copy'
+	>
+> {
+	client_gender?: ClientGender | 'unknown';
+}
+
 export interface ListRegistrationFormsResponse {
 	id: string;
 	client_first_name: string;
@@ -176,6 +190,11 @@ export interface ListIntakeFormsParams {
 	search?: string;
 	status?: IntakeConclusionEnum;
 	sortOrder?: 'asc' | 'desc';
+}
+
+export interface IntakeFormsTotalsResponse {
+	further_investigation_total: number;
+	without_goals_total: number;
 }
 
 export interface IntakeFormLocationDetails {
@@ -274,6 +293,22 @@ export interface CreateIntakeRequest {
 	assigned_location_id?: string;
 	risk_assessment?: string;
 	intake_conclusion: IntakeConclusionEnum;
+	intake_conclusion_notes?: string;
+	signature?: string;
+}
+
+export interface UpdateIntakeRequest {
+	date_of_intake?: string;
+	care_type?: IntakeCareType;
+	intake_participants?: IntakeParticipantsEnum[];
+	family_situation?: string;
+	psychological_state?: string;
+	self_sufficiency?: number;
+	evaluation_interval_weeks?: number;
+	sender_id?: string;
+	assigned_location_id?: string;
+	risk_assessment?: string;
+	intake_conclusion?: IntakeConclusionEnum;
 	intake_conclusion_notes?: string;
 	signature?: string;
 }

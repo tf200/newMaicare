@@ -50,7 +50,7 @@ const parseBoolean = (value: string | null) => {
 	return undefined;
 };
 
-export const load: PageLoad = ({ url }) => {
+export const load: PageLoad = ({ url, fetch }) => {
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const status = (url.searchParams.get('status') ?? '') as RegistrationFilters['status'];
@@ -70,21 +70,24 @@ export const load: PageLoad = ({ url }) => {
 		riskDayNightRhythm: parseBoolean(url.searchParams.get('risk_day_night_rhythm'))
 	};
 
-	const registrationsData: Promise<RegistrationsLoadResult> = listRegistrationForms({
-		page,
-		pageSize,
-		status: status === '' ? undefined : status,
-		search: filters.search,
-		riskAggressiveBehavior: filters.riskAggressiveBehavior,
-		riskSuicidalSelfharm: filters.riskSuicidalSelfharm,
-		riskSubstanceAbuse: filters.riskSubstanceAbuse,
-		riskPsychiatricIssues: filters.riskPsychiatricIssues,
-		riskCriminalHistory: filters.riskCriminalHistory,
-		riskFlightBehavior: filters.riskFlightBehavior,
-		riskWeaponPossession: filters.riskWeaponPossession,
-		riskSexualBehavior: filters.riskSexualBehavior,
-		riskDayNightRhythm: filters.riskDayNightRhythm
-	})
+	const registrationsData: Promise<RegistrationsLoadResult> = listRegistrationForms(
+		{
+			page,
+			pageSize,
+			status: status === '' ? undefined : status,
+			search: filters.search,
+			riskAggressiveBehavior: filters.riskAggressiveBehavior,
+			riskSuicidalSelfharm: filters.riskSuicidalSelfharm,
+			riskSubstanceAbuse: filters.riskSubstanceAbuse,
+			riskPsychiatricIssues: filters.riskPsychiatricIssues,
+			riskCriminalHistory: filters.riskCriminalHistory,
+			riskFlightBehavior: filters.riskFlightBehavior,
+			riskWeaponPossession: filters.riskWeaponPossession,
+			riskSexualBehavior: filters.riskSexualBehavior,
+			riskDayNightRhythm: filters.riskDayNightRhythm
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 

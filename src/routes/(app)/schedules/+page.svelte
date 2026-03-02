@@ -10,10 +10,9 @@
 		Loader2,
 		Plus,
 		Sparkles,
-		CheckCircle2,
 		X
 	} from 'lucide-svelte';
-	import { fly } from 'svelte/transition';
+	import Toast from '$lib/components/ui/Toast.svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
@@ -109,8 +108,8 @@
 	let assignSheetOpen = $state(false);
 	let assignSheetDate = $state('');
 	let assignSheetTemplateId = $state<string | null>(null);
-	let assignSuccessMessage = $state<string | null>(null);
-	let assignFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 	let deletingScheduleIds = $state<string[]>([]);
 	let autoGenerateModalOpen = $state(false);
 
@@ -155,13 +154,13 @@
 		return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
 	}
 
-	function resetAssignFeedbackAfterDelay() {
-		if (assignFeedbackTimeout) {
-			clearTimeout(assignFeedbackTimeout);
+	function resetToastAfterDelay() {
+		if (toastTimeout) {
+			clearTimeout(toastTimeout);
 		}
 
-		assignFeedbackTimeout = setTimeout(() => {
-			assignSuccessMessage = null;
+		toastTimeout = setTimeout(() => {
+			toast = null;
 		}, 4000);
 	}
 
@@ -253,14 +252,20 @@
 			);
 		}
 
-		assignSuccessMessage = `Successfully assigned ${normalizedEmployeeIds.length} employee(s).`;
-		resetAssignFeedbackAfterDelay();
+		toast = {
+			message: `Successfully assigned ${normalizedEmployeeIds.length} employee(s).`,
+			type: 'success'
+		};
+		resetToastAfterDelay();
 		retrySchedulesFetch();
 	}
 
 	async function handleUnassignEmployee(scheduleId: string) {
 		if (!scheduleId || !isUuid(scheduleId)) {
-			schedulesError = 'Unable to unassign this employee because the assignment id is invalid.';
+			const message = 'Unable to unassign this employee because the assignment id is invalid.';
+			toast = { message, type: 'warning' };
+			resetToastAfterDelay();
+			schedulesError = message;
 			return;
 		}
 
@@ -272,15 +277,18 @@
 
 		try {
 			await deleteSchedule(scheduleId);
-			assignSuccessMessage = 'Employee unassigned successfully.';
-			resetAssignFeedbackAfterDelay();
+			toast = { message: 'Employee unassigned successfully.', type: 'success' };
+			resetToastAfterDelay();
 			schedulesError = null;
 			retrySchedulesFetch();
 		} catch (error) {
-			schedulesError =
+			const message =
 				error instanceof Error && error.message
 					? error.message
 					: 'Unable to unassign employee right now. Please try again.';
+			toast = { message, type: 'error' };
+			resetToastAfterDelay();
+			schedulesError = message;
 		} finally {
 			deletingScheduleIds = deletingScheduleIds.filter((id) => id !== scheduleId);
 		}
@@ -437,8 +445,8 @@
 	}
 
 	function handleGeneratedScheduleSaved() {
-		assignSuccessMessage = 'Generated schedule saved successfully.';
-		resetAssignFeedbackAfterDelay();
+		toast = { message: 'Generated schedule saved successfully.', type: 'success' };
+		resetToastAfterDelay();
 		retrySchedulesFetch();
 	}
 
@@ -1233,12 +1241,8 @@
 	onSaved={handleGeneratedScheduleSaved}
 />
 
-{#if assignSuccessMessage}
-	<div
-		class="fixed right-6 bottom-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800 shadow-xl dark:border-emerald-800 dark:bg-emerald-950/90 dark:text-emerald-400"
-		transition:fly={{ y: 20, duration: 300 }}
-	>
-		<CheckCircle2 class="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
-		{assignSuccessMessage}
-	</div>
-{/if}
+<Toast
+	message={toast?.message ?? null}
+	type={toast?.type ?? 'success'}
+	onClose={() => (toast = null)}
+/>

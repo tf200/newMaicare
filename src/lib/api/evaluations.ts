@@ -10,7 +10,10 @@ import type {
 	CreateEvaluationRequest,
 	CreateEvaluationResponse,
 	UpdateEvaluationDraftRequest,
-	GoalEvaluationResponse
+	GoalEvaluationResponse,
+	ClientGoalsOverviewResponse,
+	ListClientSubmittedEvaluationsResponse,
+	GoalEvaluationHistoryEntry
 } from '$lib/types/api';
 
 export function listUpcomingEvaluations(params: ListEvaluationsParams) {
@@ -69,4 +72,32 @@ export function submitEvaluationDraft(evaluationId: string) {
 
 export function getGoalEvaluation(evaluationId: string) {
 	return api.get<ApiEnvelope<GoalEvaluationResponse>>(`/evaluations/${evaluationId}`);
+}
+
+export function getClientGoals(clientId: string) {
+	return api.get<ApiEnvelope<ClientGoalsOverviewResponse>>(`/clients/${clientId}/goals`);
+}
+
+export function listClientSubmittedEvaluations(clientId: string, params: ListEvaluationsParams) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.pageSize));
+
+	return api.get<ApiEnvelope<PaginatedResponse<ListClientSubmittedEvaluationsResponse>>>(
+		`/clients/${clientId}/evaluations/submitted?${searchParams.toString()}`
+	);
+}
+
+export function listGoalEvaluationHistory(
+	clientId: string,
+	goalId: string,
+	params: ListEvaluationsParams
+) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.pageSize));
+
+	return api.get<ApiEnvelope<PaginatedResponse<GoalEvaluationHistoryEntry>>>(
+		`/clients/${clientId}/goals/${goalId}/history?${searchParams.toString()}`
+	);
 }

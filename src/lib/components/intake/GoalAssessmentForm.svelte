@@ -9,7 +9,7 @@
 
 	interface Props {
 		goals: IntakeGoalTopic[];
-		onGoalsChange: (goals: IntakeGoalTopic[]) => void;
+		onGoalsChange?: (goals: IntakeGoalTopic[]) => void;
 	}
 
 	let { goals = $bindable([]), onGoalsChange }: Props = $props();

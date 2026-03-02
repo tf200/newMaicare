@@ -26,6 +26,11 @@
 			"method": ["POST"]
 		},
 		{
+			"name": "APPOINTMENT.WORK_APPROVAL.UPDATE",
+			"resource": "/events/work_approval",
+			"method": ["PUT"]
+		},
+		{
 			"name": "APPOINTMENT_CARD.CREATE",
 			"resource": "/appointment_cards",
 			"method": ["POST"]

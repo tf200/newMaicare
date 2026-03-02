@@ -45,6 +45,7 @@
 	"status": "Status",
 	"submitted": "Ingediend",
 	"view_registration": "Registratie bekijken",
+	"back": "Terug",
 	"back_to_registrations": "Terug naar registraties",
 	"bsn": "BSN",
 	"submitted_at": "Ingediend: {date}",
@@ -120,5 +121,8 @@
 	"no_drafts_found": "Geen concepten gevonden",
 	"no_submitted_evaluations_found": "Geen ingediende evaluaties gevonden",
 	"incidents": "Incidenten",
-	"schedules": "Roosters"
+	"schedules": "Roosters",
+	"finances": "Financiën",
+	"invoices": "Facturen",
+	"invoices_description": "Beheer facturering, betalingen en factuurstatus."
 }

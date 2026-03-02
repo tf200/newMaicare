@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { X, Clock, MapPin, Calendar, Moon, Search, Check, Loader2 } from 'lucide-svelte';
-	import { fly, fade } from 'svelte/transition';
+	import { Clock, MapPin, Calendar, Moon, Search, Check, Loader2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
+	import Sheet from '$lib/components/ui/Sheet.svelte';
 
 	interface Employee {
 		id: string;
@@ -157,218 +157,183 @@
 	}
 </script>
 
-{#if open}
-	<div
-		class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity"
-		transition:fade={{ duration: 200 }}
-		onclick={() => (open = false)}
-		onkeydown={(e) => e.key === 'Escape' && (open = false)}
-		role="button"
-		tabindex="0"
-		aria-label="Close modal"
-	></div>
+<Sheet bind:open title="Assign Employees">
+	<!-- Context Section -->
+	<div class="mb-8 space-y-4">
+		<div class="flex items-center gap-3 text-sm text-text-muted">
+			<MapPin class="h-4 w-4" />
+			<span class="font-medium">{locationName}</span>
+		</div>
+		<div class="flex items-center gap-3 text-sm text-text-muted">
+			<Calendar class="h-4 w-4" />
+			<span class="font-medium">{date}</span>
+		</div>
 
-	<div
-		class="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-surface shadow-2xl sm:max-w-md"
-		transition:fly={{ x: 100, duration: 300 }}
-	>
-		<!-- Header -->
-		<div class="flex items-center justify-between border-b border-border/60 px-6 py-4">
-			<h2 class="text-lg font-bold text-text">Assign Employees</h2>
+		<!-- Mode Selector -->
+		<div class="bg-surface-subtle flex rounded-xl border border-border/60 p-1">
 			<button
-				class="hover:bg-surface-subtle rounded-full p-2 text-text-muted transition-colors hover:text-text"
-				onclick={() => (open = false)}
-				aria-label="Close"
+				class="flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all {isCustomMode
+					? 'text-text-muted hover:text-text'
+					: 'bg-surface text-text shadow-sm'}"
+				onclick={() => (isCustomMode = false)}
 			>
-				<X class="h-5 w-5" />
+				Preset Shift
+			</button>
+			<button
+				class="flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all {isCustomMode
+					? 'bg-surface text-text shadow-sm'
+					: 'text-text-muted hover:text-text'}"
+				onclick={() => (isCustomMode = true)}
+			>
+				Custom Time
 			</button>
 		</div>
 
-		<!-- Content -->
-		<div class="flex-1 overflow-y-auto px-6 py-6">
-			<!-- Context Section -->
-			<div class="mb-8 space-y-4">
-				<div class="flex items-center gap-3 text-sm text-text-muted">
-					<MapPin class="h-4 w-4" />
-					<span class="font-medium">{locationName}</span>
-				</div>
-				<div class="flex items-center gap-3 text-sm text-text-muted">
-					<Calendar class="h-4 w-4" />
-					<span class="font-medium">{date}</span>
-				</div>
-
-				<!-- Mode Selector -->
-				<div class="bg-surface-subtle flex rounded-xl border border-border/60 p-1">
-					<button
-						class="flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all {isCustomMode
-							? 'text-text-muted hover:text-text'
-							: 'bg-surface text-text shadow-sm'}"
-						onclick={() => (isCustomMode = false)}
-					>
-						Preset Shift
-					</button>
-					<button
-						class="flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all {isCustomMode
-							? 'bg-surface text-text shadow-sm'
-							: 'text-text-muted hover:text-text'}"
-						onclick={() => (isCustomMode = true)}
-					>
-						Custom Time
-					</button>
-				</div>
-
-				{#if isCustomMode}
-					<div class="bg-surface-subtle/30 space-y-4 rounded-xl border border-border/60 p-4">
-						<DateTimePicker label="Start Time" bind:value={startDatetime} />
-						<DateTimePicker label="End Time" bind:value={endDatetime} />
-						{#if startDatetime && endDatetime && new Date(startDatetime) >= new Date(endDatetime)}
-							<p class="text-xs font-medium text-rose-500">End time must be after start time.</p>
-						{/if}
-					</div>
-				{:else}
-					<div class="mt-4">
-						<Select
-							label="Shift Template"
-							options={templateOptions}
-							bind:value={selectedTemplateId}
-							placeholder="Select a template..."
-						/>
-					</div>
-
-					{#if selectedTemplate}
-						<div
-							class="bg-surface-subtle/50 mt-3 flex items-center justify-between rounded-xl border border-border/60 p-4"
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="h-4 w-4 rounded-full {selectedTemplate.colorClass.split(
-										' '
-									)[0]} border {selectedTemplate.colorClass.split(' ')[2]}"
-								></div>
-								<div>
-									<div class="font-semibold text-text">{selectedTemplate.name}</div>
-									<div class="flex items-center gap-1.5 text-xs text-text-muted">
-										<Clock class="h-3.5 w-3.5" />
-										<span>{selectedTemplate.startTime} - {selectedTemplate.endTime}</span>
-									</div>
-								</div>
-							</div>
-							{#if selectedTemplate.isCrossMidnight}
-								<div
-									class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
-								>
-									<Moon class="h-3 w-3" />
-									<span>+1d</span>
-								</div>
-							{/if}
-						</div>
-					{/if}
+		{#if isCustomMode}
+			<div class="bg-surface-subtle/30 space-y-4 rounded-xl border border-border/60 p-4">
+				<DateTimePicker label="Start Time" bind:value={startDatetime} />
+				<DateTimePicker label="End Time" bind:value={endDatetime} />
+				{#if startDatetime && endDatetime && new Date(startDatetime) >= new Date(endDatetime)}
+					<p class="text-xs font-medium text-rose-500">End time must be after start time.</p>
 				{/if}
-
-				<div class="mt-4">
-					<Select
-						label="Repeat Shift"
-						options={recurrenceOptions}
-						bind:value={selectedRecurrence}
-					/>
-				</div>
+			</div>
+		{:else}
+			<div class="mt-4">
+				<Select
+					label="Shift Template"
+					options={templateOptions}
+					bind:value={selectedTemplateId}
+					placeholder="Select a template..."
+				/>
 			</div>
 
-			<!-- Employee Selection -->
-			<div class="space-y-4">
-				<h3 class="text-sm font-semibold text-text-muted">Select Employees</h3>
-
-				<div class="relative">
-					<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-muted" />
-					<input
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search employees..."
-						class="w-full rounded-xl border border-border bg-surface py-2.5 pr-4 pl-10 text-sm text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
-					/>
-				</div>
-
-				<div class="flex flex-col gap-2">
-					{#if employeesLoadError}
-						<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-							<p>{employeesLoadError}</p>
-							{#if onRetryEmployees}
-								<Button variant="ghost" class="mt-2" onclick={onRetryEmployees}>Retry</Button>
-							{/if}
-						</div>
-					{:else if employeesLoading}
-						<div class="flex items-center justify-center gap-2 py-8 text-sm text-text-muted">
-							<Loader2 class="h-4 w-4 animate-spin" />
-							<span>Loading employees...</span>
-						</div>
-					{:else}
-						{#each availableEmployees as employee (employee.id)}
-							<button
-								class="hover:bg-surface-subtle flex items-center justify-between rounded-xl border border-border/60 p-3 transition-colors {selectedEmployeeIds.includes(
-									employee.id
-								)
-									? 'border-brand/50 bg-brand/5'
-									: 'bg-surface'}"
-								onclick={() => toggleEmployee(employee.id)}
-							>
-								<div class="flex items-center gap-3">
-									<div
-										class="bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-text"
-									>
-										{employee.name.charAt(0)}
-									</div>
-									<span class="text-sm font-medium text-text">{employee.name}</span>
-								</div>
-								<div
-									class="flex h-5 w-5 items-center justify-center rounded-full border {selectedEmployeeIds.includes(
-										employee.id
-									)
-										? 'border-brand bg-brand text-white'
-										: 'border-border/60'}"
-								>
-									{#if selectedEmployeeIds.includes(employee.id)}
-										<Check class="h-3 w-3" />
-									{/if}
-								</div>
-							</button>
-						{:else}
-							<div class="py-8 text-center text-sm text-text-muted">
-								No employees found matching "{searchQuery}"
+			{#if selectedTemplate}
+				<div
+					class="bg-surface-subtle/50 mt-3 flex items-center justify-between rounded-xl border border-border/60 p-4"
+				>
+					<div class="flex items-center gap-3">
+						<div
+							class="h-4 w-4 rounded-full {selectedTemplate.colorClass.split(
+								' '
+							)[0]} border {selectedTemplate.colorClass.split(' ')[2]}"
+						></div>
+						<div>
+							<div class="font-semibold text-text">{selectedTemplate.name}</div>
+							<div class="flex items-center gap-1.5 text-xs text-text-muted">
+								<Clock class="h-3.5 w-3.5" />
+								<span>{selectedTemplate.startTime} - {selectedTemplate.endTime}</span>
 							</div>
-						{/each}
+						</div>
+					</div>
+					{#if selectedTemplate.isCrossMidnight}
+						<div
+							class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
+						>
+							<Moon class="h-3 w-3" />
+							<span>+1d</span>
+						</div>
 					{/if}
 				</div>
-			</div>
-		</div>
-
-		<!-- Footer -->
-		<div class="border-t border-border/60 bg-surface px-6 py-4">
-			{#if submitError}
-				<p class="mb-3 text-sm font-medium text-rose-600 dark:text-rose-400">{submitError}</p>
 			{/if}
-			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium text-text-muted">
-					{selectedEmployeeIds.length} selected
-				</span>
-				<div class="flex gap-3">
-					<Button variant="ghost" onclick={() => (open = false)} disabled={isSubmitting}>
-						Cancel
-					</Button>
-					<Button
-						variant="primary"
-						onclick={handleAssign}
-						disabled={(isCustomMode ? !startDatetime || !endDatetime : !selectedTemplateId) ||
-							selectedEmployeeIds.length === 0 ||
-							employeesLoading ||
-							!date ||
-							!locationName ||
-							isSubmitting}
-						isLoading={isSubmitting}
-					>
-						Assign
-					</Button>
-				</div>
-			</div>
+		{/if}
+
+		<div class="mt-4">
+			<Select label="Repeat Shift" options={recurrenceOptions} bind:value={selectedRecurrence} />
 		</div>
 	</div>
-{/if}
+
+	<!-- Employee Selection -->
+	<div class="space-y-4">
+		<h3 class="text-sm font-semibold text-text-muted">Select Employees</h3>
+
+		<div class="relative">
+			<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-muted" />
+			<input
+				type="text"
+				bind:value={searchQuery}
+				placeholder="Search employees..."
+				class="w-full rounded-xl border border-border bg-surface py-2.5 pr-4 pl-10 text-sm text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
+			/>
+		</div>
+
+		<div class="flex flex-col gap-2">
+			{#if employeesLoadError}
+				<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+					<p>{employeesLoadError}</p>
+					{#if onRetryEmployees}
+						<Button variant="ghost" class="mt-2" onclick={onRetryEmployees}>Retry</Button>
+					{/if}
+				</div>
+			{:else if employeesLoading}
+				<div class="flex items-center justify-center gap-2 py-8 text-sm text-text-muted">
+					<Loader2 class="h-4 w-4 animate-spin" />
+					<span>Loading employees...</span>
+				</div>
+			{:else}
+				{#each availableEmployees as employee (employee.id)}
+					<button
+						class="hover:bg-surface-subtle flex items-center justify-between rounded-xl border border-border/60 p-3 transition-colors {selectedEmployeeIds.includes(
+							employee.id
+						)
+							? 'border-brand/50 bg-brand/5'
+							: 'bg-surface'}"
+						onclick={() => toggleEmployee(employee.id)}
+					>
+						<div class="flex items-center gap-3">
+							<div
+								class="bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-text"
+							>
+								{employee.name.charAt(0)}
+							</div>
+							<span class="text-sm font-medium text-text">{employee.name}</span>
+						</div>
+						<div
+							class="flex h-5 w-5 items-center justify-center rounded-full border {selectedEmployeeIds.includes(
+								employee.id
+							)
+								? 'border-brand bg-brand text-white'
+								: 'border-border/60'}"
+						>
+							{#if selectedEmployeeIds.includes(employee.id)}
+								<Check class="h-3 w-3" />
+							{/if}
+						</div>
+					</button>
+				{:else}
+					<div class="py-8 text-center text-sm text-text-muted">
+						No employees found matching "{searchQuery}"
+					</div>
+				{/each}
+			{/if}
+		</div>
+	</div>
+
+	{#snippet footer()}
+		{#if submitError}
+			<p class="mb-3 text-sm font-medium text-rose-600 dark:text-rose-400">{submitError}</p>
+		{/if}
+		<div class="flex items-center justify-between">
+			<span class="text-sm font-medium text-text-muted">
+				{selectedEmployeeIds.length} selected
+			</span>
+			<div class="flex gap-3">
+				<Button variant="ghost" onclick={() => (open = false)} disabled={isSubmitting}>
+					Cancel
+				</Button>
+				<Button
+					variant="primary"
+					onclick={handleAssign}
+					disabled={(isCustomMode ? !startDatetime || !endDatetime : !selectedTemplateId) ||
+						selectedEmployeeIds.length === 0 ||
+						employeesLoading ||
+						!date ||
+						!locationName ||
+						isSubmitting}
+					isLoading={isSubmitting}
+				>
+					Assign
+				</Button>
+			</div>
+		</div>
+	{/snippet}
+</Sheet>

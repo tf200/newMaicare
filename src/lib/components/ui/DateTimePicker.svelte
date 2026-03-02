@@ -17,11 +17,12 @@
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
 	// Parse the initial value or default to now
-	let viewDate = $state(value ? new Date(value) : new Date());
+	const initialDate = value ? new Date(value) : new Date();
+	let viewDate = $state(initialDate);
 
 	// Keep track of time separately to persist it when changing dates
-	let selectedHour = $state(viewDate.getHours());
-	let selectedMinute = $state(viewDate.getMinutes());
+	let selectedHour = $state(initialDate.getHours());
+	let selectedMinute = $state(initialDate.getMinutes());
 
 	let view = $state<View>('days');
 

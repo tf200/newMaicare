@@ -201,58 +201,80 @@
 	{:then incidentsData}
 		{@const stats = incidentsData.stats}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
+			<div
+				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+			>
+				<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
+					<Activity class="h-32 w-32" />
+				</div>
+				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						Total Incidents
 					</div>
-					<Activity class="h-4 w-4 text-text-subtle" />
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{stats.total}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">Registered in system</p>
 				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.total}
-				</div>
-				<p class="mt-1 text-xs font-medium text-text-muted">Registered in system</p>
 			</div>
 
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<BadgeAlert class="h-32 w-32" />
+				</div>
+				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						Serious/Fatal
 					</div>
-					<BadgeAlert class="h-4 w-4 text-rose-500" />
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{stats.seriousOrFatal}
+					</div>
+					<p class="mt-1 text-xs font-medium font-semibold text-rose-600">
+						Requires immediate attention
+					</p>
 				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.seriousOrFatal}
-				</div>
-				<p class="mt-1 text-xs font-medium font-semibold text-rose-600">
-					Requires immediate attention
-				</p>
 			</div>
 
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Clock class="h-32 w-32" />
+				</div>
+				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						Pending Confirmation
 					</div>
-					<Clock class="h-4 w-4 text-orange-500" />
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{stats.pendingConfirmation}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">Awaiting supervisor review</p>
 				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.pendingConfirmation}
-				</div>
-				<p class="mt-1 text-xs font-medium text-text-muted">Awaiting supervisor review</p>
 			</div>
 
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Calendar class="h-32 w-32" />
+				</div>
+				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						This Month
 					</div>
-					<Calendar class="h-4 w-4 text-brand" />
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{stats.thisMonth}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">Current billing period</p>
 				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.thisMonth}
-				</div>
-				<p class="mt-1 text-xs font-medium text-text-muted">Current billing period</p>
 			</div>
 		</div>
 	{/await}

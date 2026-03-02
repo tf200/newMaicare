@@ -192,7 +192,7 @@
 		try {
 			const requestData = {
 				assessments: goals.map((g) => ({
-					maturity_matrix_id: g.topic_id,
+					topic_id: g.topic_id,
 					current_level: g.current_level,
 					proposed_goals: g.proposed_goals,
 					notes: g.notes

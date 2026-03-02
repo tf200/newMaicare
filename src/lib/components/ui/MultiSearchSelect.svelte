@@ -114,7 +114,7 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text transition-all hover:bg-surface/80 {error
+			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text transition-all hover:bg-surface/80 {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}

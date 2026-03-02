@@ -678,6 +678,8 @@
 								{@const slotKey = buildSlotKey(day.date, template.shift_id)}
 								{@const slot = getSlot(day.date, template.shift_id)}
 								<div
+									role="region"
+									aria-label={`Dropzone for ${template.name} on ${day.dayName} ${day.dayNumber}`}
 									class="min-h-[110px] border-r border-b border-border/60 bg-surface p-2"
 									ondragover={(event) => event.preventDefault()}
 									ondrop={(event) => onDropToSlot(event, slotKey)}

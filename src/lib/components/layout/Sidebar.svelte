@@ -7,10 +7,14 @@
 		UsersRound,
 		Calendar,
 		CalendarDays,
+		ClipboardCheck,
 		X,
 		HelpCircle,
 		ChevronDown,
-		HeartHandshake
+		HeartHandshake,
+		ArrowLeft,
+		CircleUser,
+		BadgeEuro
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -34,7 +38,13 @@
 			permission: 'DASHBOARD.VIEW'
 		},
 		{ label: 'Clients', href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
-		{ label: 'Appointments', href: '/appointments', icon: Calendar, permission: 'DASHBOARD.VIEW' },
+		{ label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
+		{
+			label: 'Appointments',
+			href: '/appointments',
+			icon: ClipboardCheck,
+			permission: 'DASHBOARD.VIEW'
+		},
 		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
 		{ label: m.schedules(), href: '/schedules', icon: CalendarDays, permission: 'DASHBOARD.VIEW' },
 		{
@@ -70,6 +80,18 @@
 					label: m.incidents(),
 					href: '/incidents',
 					permission: 'CARE_COORDINATION.VIEW'
+				}
+			]
+		},
+		{
+			label: m.finances?.() || 'Finances',
+			icon: BadgeEuro,
+			permission: 'FINANCE.VIEW',
+			children: [
+				{
+					label: m.invoices?.() || 'Invoices',
+					href: '/finances/invoices',
+					permission: 'INVOICE.VIEW'
 				}
 			]
 		}
@@ -167,7 +189,52 @@
 
 	<!-- Navigation -->
 	<div class="flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
-		{#if title && !collapsed}
+		{#if sidebarState.scopedConfig}
+			<div class="mb-6 space-y-4 px-2" transition:slide={{ duration: 300 }}>
+				<!-- Back Button -->
+				<button
+					onclick={() => {
+						sidebarState.clearScopedSidebar();
+						goto('/clients');
+					}}
+					class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-text-muted transition-all hover:bg-border/30 hover:text-text active:scale-95"
+					class:justify-center={collapsed}
+				>
+					<ArrowLeft class="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+					{#if !collapsed}
+						<span class="tracking-widest uppercase">{m.back()}</span>
+					{/if}
+				</button>
+
+				<!-- Client Info Card -->
+				<div
+					class="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-2 transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+					class:p-1={collapsed}
+					class:justify-center={collapsed}
+				>
+					<div
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand/20 to-brand/5 text-sm font-bold text-brand shadow-inner ring-1 ring-brand/10 transition-transform duration-300"
+					>
+						{sidebarState.scopedConfig.initials || 'CP'}
+					</div>
+					{#if !collapsed}
+						<div class="flex flex-1 flex-col overflow-hidden">
+							<span
+								class="mb-1 text-[10px] leading-none font-bold tracking-widest text-text-muted uppercase"
+							>
+								{m.client()}
+							</span>
+							<span class="truncate text-sm font-bold text-text">
+								{title || 'Client Profile'}
+							</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Separator -->
+			<div class="mx-3 mb-6 border-b border-border/50"></div>
+		{:else if title && !collapsed}
 			<div class="mb-4 px-3" transition:slide={{ duration: 300 }}>
 				<h2 class="text-xs font-semibold tracking-wider text-text-muted uppercase">
 					{title}

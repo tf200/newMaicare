@@ -133,3 +133,41 @@ export interface GoalEvaluationResponse {
 }
 
 export type CreateEvaluationResponse = GoalEvaluationResponse;
+
+export interface ClientGoalsItemResponse {
+	id: string;
+	topic_name: string;
+	title: string;
+	priority: 'low' | 'medium' | 'high';
+	last_evaluation_progress: EvaluationProgress | null;
+}
+
+export interface ClientGoalsOverviewResponse {
+	goals?: ClientGoalsItemResponse[];
+	active_goals?: ClientGoalsItemResponse[];
+	next_evaluation_date: string | null;
+	my_draft_evaluation_id: string | null;
+	is_responsible_employee: boolean;
+}
+
+export interface ListClientSubmittedEvaluationsResponse {
+	evaluation_id: string;
+	evaluation_date: string;
+	submitted_at: string;
+	filled_goals_count: number;
+	total_goals_count: number;
+	created_by_employee_id: string | null;
+	creator_name: string | null;
+}
+
+export interface GoalEvaluationHistoryEntry {
+	evaluation_id: string;
+	evaluation_date: string;
+	submitted_at: string;
+	progress: EvaluationProgress;
+	notes: string | null;
+	created_by_employee_id: string | null;
+	creator_name: string | null;
+	period_start: string | null;
+	period_end: string | null;
+}

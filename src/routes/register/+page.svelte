@@ -10,6 +10,7 @@
 	import { Plus, Trash2 } from 'lucide-svelte';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
 	import { submitRegistration } from '$lib/api/registration';
+	import type { ClientGender, EducationLevel } from '$lib/types/api';
 
 	// Form State
 	let form = $state({
@@ -17,7 +18,7 @@
 		client_first_name: '',
 		client_last_name: '',
 		client_bsn_number: '',
-		client_gender: '',
+		client_gender: '' as ClientGender,
 		client_date_of_birth: '',
 		client_nationality: '',
 		client_phone_number: '',
@@ -57,7 +58,7 @@
 		education_mentor_email: '',
 		education_currently_enrolled: false,
 		education_additional_notes: '',
-		education_level: '',
+		education_level: '' as EducationLevel,
 
 		// Work
 		work_current_employer: '',
@@ -553,7 +554,7 @@
 							<div class="grid gap-6 md:grid-cols-2">
 								<div class="space-y-2">
 									<div class="flex items-center justify-between">
-										<label class="ml-1 text-sm font-semibold text-text-muted">Client Goals</label>
+										<span class="ml-1 text-sm font-semibold text-text-muted">Client Goals</span>
 										<Button variant="ghost" onclick={addGoal} class="h-8 gap-1 text-xs">
 											<Plus class="h-3.5 w-3.5" /> Add Goal
 										</Button>
@@ -569,7 +570,7 @@
 													{#if form.client_goals.length > 1}
 														<button
 															onclick={() => removeGoal(index)}
-															class="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-colors hover:bg-error/10 hover:text-error"
+															class="flex h-12.5 w-12.5 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-colors hover:bg-error/10 hover:text-error"
 														>
 															<Trash2 class="h-4 w-4" />
 														</button>

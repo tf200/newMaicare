@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listIntakeForms } from '$lib/api/intakes';
+import { getIntakeFormsTotals, listIntakeForms } from '$lib/api/intakes';
 import type {
 	AssignedLocationAddress,
 	IntakeConclusionEnum,
@@ -33,8 +33,8 @@ export interface IntakesLoadResult {
 	intakes: IntakeRow[];
 	stats: {
 		total: number;
-		completed: number;
-		pending: number;
+		furtherInvestigation: number;
+		withoutGoals: number;
 	};
 	pagination: PaginationState<IntakeFilters>;
 	loadError: string | null;
@@ -83,6 +83,12 @@ export const load: PageLoad = ({ url }) => {
 	const search = url.searchParams.get('search') ?? '';
 	const normalizedSearch = search.trim();
 	const status = (url.searchParams.get('status') ?? '') as IntakeFilters['status'];
+	const totalsPromise = getIntakeFormsTotals()
+		.then((response) => response.data)
+		.catch(() => ({
+			further_investigation_total: 0,
+			without_goals_total: 0
+		}));
 
 	const intakesData: Promise<IntakesLoadResult> = listIntakeForms({
 		page,
@@ -90,18 +96,17 @@ export const load: PageLoad = ({ url }) => {
 		search: normalizedSearch || undefined,
 		status: status === '' ? undefined : status
 	})
-		.then((response) => {
+		.then(async (response) => {
+			const totals = await totalsPromise;
 			const { count, page_size, results, next, previous } = response.data;
 			const mapped = results.map(mapIntake);
-			const completedCount = mapped.filter((row) => row.goalAssessmentStatus === 'done').length;
-			const pendingCount = mapped.length - completedCount;
 
 			return {
 				intakes: mapped,
 				stats: {
 					total: count,
-					completed: completedCount,
-					pending: pendingCount
+					furtherInvestigation: totals.further_investigation_total,
+					withoutGoals: totals.without_goals_total
 				},
 				pagination: {
 					count,
@@ -123,8 +128,8 @@ export const load: PageLoad = ({ url }) => {
 				intakes: [],
 				stats: {
 					total: 0,
-					completed: 0,
-					pending: 0
+					furtherInvestigation: 0,
+					withoutGoals: 0
 				},
 				pagination: {
 					count: 0,

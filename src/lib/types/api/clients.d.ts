@@ -87,6 +87,29 @@ export interface PutClientInCareRequest {
 	reason?: string;
 }
 
+export type ClientDischargeReason =
+	| 'treatment_completed'
+	| 'terminated_by_mutual_agreement'
+	| 'terminated_by_client'
+	| 'terminated_by_provider'
+	| 'terminated_due_to_external_factors'
+	| 'other';
+
+export interface PutClientOutOfCareRequest {
+	discharge_date: string;
+	discharge_reason: ClientDischargeReason;
+	final_evaluation?: string;
+	reason?: string;
+}
+
+export interface PutClientOutOfCareResponse {
+	id: string;
+	status: 'scheduled_out_of_care' | 'out_of_care';
+	discharge_date: string;
+	discharge_reason: ClientDischargeReason;
+	final_evaluation: string | null;
+}
+
 export interface AppointmentCardSections {
 	general_information: string[];
 	important_contacts: string[];
@@ -416,4 +439,107 @@ export interface GetClientResponse {
 	alerts: GetClientAlert[];
 	meta?: GetClientMeta;
 	status_timeline?: GetClientStatusTimeline | null;
+}
+
+export type ProgressReportType =
+	| 'morning_report'
+	| 'evening_report'
+	| 'night_report'
+	| 'shift_report'
+	| 'one_to_one_report'
+	| 'process_report'
+	| 'contact_journal'
+	| 'other';
+
+export type EmotionalState =
+	| 'normal'
+	| 'excited'
+	| 'happy'
+	| 'sad'
+	| 'angry'
+	| 'anxious'
+	| 'depressed';
+
+export interface ProgressReport {
+	id: string;
+	client_id: string;
+	date: string;
+	title: string | null;
+	report_text: string;
+	employee_id: string | null;
+	type: ProgressReportType;
+	emotional_state: EmotionalState;
+	created_at: string;
+	employee_first_name: string;
+	employee_last_name: string;
+	employee_profile_picture?: string | null;
+}
+
+export interface GetProgressReportResponse {
+	id: string;
+	client_id: string;
+	date: string;
+	title: string | null;
+	report_text: string;
+	employee_id: string | null;
+	type: ProgressReportType;
+	emotional_state: EmotionalState;
+	created_at: string;
+	employee_first_name: string;
+	employee_last_name: string;
+	employee_profile_picture: string | null;
+}
+
+export interface CreateProgressReportRequest {
+	employee_id?: string | null;
+	title?: string | null;
+	date: string;
+	report_text: string;
+	type: ProgressReportType;
+	emotional_state: EmotionalState;
+}
+
+export interface UpdateProgressReportRequest {
+	client_id: string;
+	employee_id?: string | null;
+	title?: string | null;
+	date: string;
+	report_text?: string | null;
+	type?: ProgressReportType | null;
+	emotional_state?: EmotionalState | null;
+}
+
+export interface UpdateProgressReportResponse {
+	id: string;
+	client_id: string;
+	date: string;
+	title: string | null;
+	report_text: string;
+	employee_id: string | null;
+	type: ProgressReportType;
+	emotional_state: EmotionalState;
+	created_at: string;
+	employee_first_name: string;
+	employee_last_name: string;
+	employee_profile_picture: string | null;
+}
+
+export interface ListProgressReportsResponse {
+	id: string;
+	client_id: string;
+	date: string;
+	title: string | null;
+	employee_id: string | null;
+	type: ProgressReportType;
+	emotional_state: EmotionalState;
+	created_at: string;
+	employee_first_name: string;
+	employee_last_name: string;
+	employee_profile_picture: string | null;
+}
+
+export interface ListProgressReportsParams {
+	page: number;
+	page_size: number;
+	type?: ProgressReportType;
 }

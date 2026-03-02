@@ -261,73 +261,81 @@
 
 			<!-- KPI Cards -->
 			<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-					<div class="flex items-center justify-between">
+				<div
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+				>
+					<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
+						<Banknote class="h-32 w-32" />
+					</div>
+					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
 							>Price</span
 						>
-						<div class="rounded-full bg-brand/10 p-2 text-brand">
-							<Banknote class="h-4 w-4" />
+						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+							{formatCurrency(contract.price)}
 						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Per {contract.priceTimeUnit}</p>
 					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{formatCurrency(contract.price)}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">
-						Per {contract.priceTimeUnit}
-					</p>
 				</div>
 
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-					<div class="flex items-center justify-between">
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-blue-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-blue-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Calendar class="h-32 w-32" />
+					</div>
+					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
 							>Period</span
 						>
-						<div class="rounded-full bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400">
-							<Calendar class="h-4 w-4" />
+						<div class="mt-2 text-xl font-bold tracking-tight text-text sm:text-2xl">
+							{formatDate(contract.startDate)} — {formatDate(contract.endDate)}
 						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Effective dates</p>
 					</div>
-					<div class="mt-2 text-xl font-bold tracking-tight text-text sm:text-2xl">
-						{formatDate(contract.startDate)} — {formatDate(contract.endDate)}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Effective dates</p>
 				</div>
 
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-					<div class="flex items-center justify-between">
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-cyan-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-cyan-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Wallet class="h-32 w-32" />
+					</div>
+					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
 							>Financing</span
 						>
-						<div class="rounded-full bg-cyan-500/10 p-2 text-cyan-700 dark:text-cyan-400">
-							<Wallet class="h-4 w-4" />
+						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+							{contract.financingAct}
 						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">via {contract.financingOption}</p>
 					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{contract.financingAct}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">
-						via {contract.financingOption}
-					</p>
 				</div>
 
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-					<div class="flex items-center justify-between">
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Info class="h-32 w-32" />
+					</div>
+					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
 							>Reminders & VAT</span
 						>
-						<div class="rounded-full bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
-							<Info class="h-4 w-4" />
+						<div class="mt-2 flex items-baseline gap-2">
+							<span class="text-2xl font-bold tracking-tight text-text sm:text-3xl">
+								{contract.reminderPeriod ?? '—'}
+							</span>
+							<span class="text-sm font-semibold text-text-muted">({contract.vat}%)</span>
 						</div>
+						<p class="mt-2 text-xs font-medium text-text-muted">Notice period and VAT rate</p>
 					</div>
-					<div class="mt-2 flex items-baseline gap-2">
-						<span class="text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{contract.reminderPeriod ?? '—'}
-						</span>
-						<span class="text-sm font-semibold text-text-muted">
-							({contract.vat}%)
-						</span>
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Notice period and VAT rate</p>
 				</div>
 			</section>
 
