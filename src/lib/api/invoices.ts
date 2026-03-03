@@ -4,6 +4,8 @@ import type {
 	ListInvoicesResponse,
 	InvoicesFilters,
 	GetInvoiceByIDResponse,
+	CreateInvoiceRequest,
+	CreateInvoiceResponse,
 	GenerateInvoicePDFResponse,
 	CreditInvoiceResponse,
 	InvoicePayment,
@@ -24,6 +26,10 @@ export function generateInvoicePdf(id: string) {
 
 export function creditInvoice(id: string) {
 	return api.post<ApiEnvelope<CreditInvoiceResponse>>(`/invoices/${id}/credit`, {});
+}
+
+export function createInvoice(payload: CreateInvoiceRequest) {
+	return api.post<ApiEnvelope<CreateInvoiceResponse>>('/invoices', payload);
 }
 
 export function listInvoicePayments(

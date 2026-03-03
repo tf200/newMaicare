@@ -44,6 +44,7 @@ export interface ListContractsParams {
 }
 
 export interface ListClientContractsResponse {
+	id: string;
 	start_date: string;
 	end_date: string;
 	days_left: number;

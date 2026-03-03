@@ -111,6 +111,33 @@ export interface GetInvoiceByIDResponse {
 	payment_completion_prc: number;
 }
 
+export interface CreateInvoiceLineRequest {
+	line_type: 'contract' | 'manual' | 'adjustment';
+	contract_id: string | null;
+	service_type: string;
+	description: string;
+	period_start: string;
+	period_end: string;
+	quantity: number;
+	unit: string;
+	unit_price: number;
+	vat_rate: number;
+}
+
+export interface CreateInvoiceRequest {
+	client_id: string;
+	invoice_type: InvoiceType;
+	issue_date: string;
+	due_date: string;
+	lines: CreateInvoiceLineRequest[];
+	extra_content: Record<string, unknown>;
+}
+
+export interface CreateInvoiceResponse {
+	id: string;
+	invoice_number?: string;
+}
+
 export type InvoicePaymentMethod =
 	| 'bank_transfer'
 	| 'credit_card'
