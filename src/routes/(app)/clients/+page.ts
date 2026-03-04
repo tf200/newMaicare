@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listClients } from '$lib/api/clients';
+import { getClientStatusCounts, listClients } from '$lib/api/clients';
 import type { ClientStatus } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
@@ -32,6 +32,15 @@ export interface ClientsLoadResult {
 	loadError: string | null;
 }
 
+export interface ClientStatusCountsLoadResult {
+	counts: {
+		clientsInOrScheduledInCare: number;
+		clientsOnWaitingList: number;
+		clientsOutOrScheduledOutOfCare: number;
+	};
+	loadError: string | null;
+}
+
 const allowedStatus = new Set<ClientStatus>([
 	'in_care',
 	'on_waiting_list',
@@ -61,7 +70,20 @@ export const load: PageLoad = ({ url }) => {
 		location_id: locationId || undefined
 	})
 		.then((response) => {
-			const { results, total_count, page: responsePage, page_size } = response.data;
+			const {
+				results,
+				total_count,
+				count,
+				page: responsePage,
+				page_size
+			} = response.data as {
+				results: typeof response.data.results;
+				total_count?: number;
+				count?: number;
+				page?: number;
+				page_size?: number;
+			};
+			const totalCount = total_count ?? count ?? 0;
 
 			const rows: ClientsRow[] = results.map((item) => ({
 				id: item.id,
@@ -80,15 +102,15 @@ export const load: PageLoad = ({ url }) => {
 			const currentPage = responsePage || page;
 			const effectivePageSize = page_size || pageSize;
 			const hasPrevious = currentPage > 1;
-			const hasNext = currentPage * effectivePageSize < total_count;
+			const hasNext = currentPage * effectivePageSize < totalCount;
 
 			return {
 				rows,
 				stats: {
-					total: total_count
+					total: totalCount
 				},
 				pagination: {
-					count: total_count,
+					count: totalCount,
 					page: currentPage,
 					pageSize: effectivePageSize,
 					next: hasNext ? 'true' : null,
@@ -126,6 +148,26 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
+	const countsData: Promise<ClientStatusCountsLoadResult> = getClientStatusCounts()
+		.then((response) => ({
+			counts: {
+				clientsInOrScheduledInCare: response.data.clients_in_or_scheduled_in_care,
+				clientsOnWaitingList: response.data.clients_on_waiting_list,
+				clientsOutOrScheduledOutOfCare: response.data.clients_out_or_scheduled_out_of_care
+			},
+			loadError: null
+		}))
+		.catch(
+			(error): ClientStatusCountsLoadResult => ({
+				counts: {
+					clientsInOrScheduledInCare: 0,
+					clientsOnWaitingList: 0,
+					clientsOutOrScheduledOutOfCare: 0
+				},
+				loadError: error instanceof Error ? error.message : 'Failed to load client status counts.'
+			})
+		);
+
 	return {
 		initial: {
 			page,
@@ -136,6 +178,7 @@ export const load: PageLoad = ({ url }) => {
 				locationId
 			}
 		},
-		clientsData
+		clientsData,
+		countsData
 	};
 };

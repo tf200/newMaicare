@@ -7,6 +7,8 @@
 	} from '$lib/api/clients';
 	import {
 		FileText,
+		ArrowLeft,
+		ChevronRight,
 		Search,
 		Plus,
 		Eye,
@@ -47,6 +49,7 @@
 		data: {
 			reports: ListProgressReportsResponse[];
 			clientId: string;
+			clientName?: string;
 		};
 	}>();
 
@@ -402,6 +405,18 @@
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
+				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+					<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+						<ArrowLeft class="h-4 w-4" />
+						Clients
+					</a>
+					<ChevronRight class="h-4 w-4" />
+					<a href={`/clients/${data.clientId}`} class="transition-colors hover:text-text">
+						{data.clientName ?? 'Client Detail'}
+					</a>
+					<ChevronRight class="h-4 w-4" />
+					<span class="text-text">Progress Reports</span>
+				</nav>
 				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<FileText class="h-5 w-5" />

@@ -1,5 +1,6 @@
 import { api } from '$lib/api/client';
 import type { ApiEnvelope, PaginatedResponse } from '$lib/types/api';
+import type { EmployeeProfileDetailsResponse } from '$lib/types/api';
 
 export type EmployeeContractType = 'loondienst' | 'ZZP' | 'none';
 
@@ -96,4 +97,8 @@ export function listEmployees(params: ListEmployeesParams = {}) {
 
 export function createEmployee(payload: CreateEmployeeRequest) {
 	return api.post<ApiEnvelope<CreateEmployeeResponse>>('/employees', payload);
+}
+
+export function getEmployeeProfileDetails() {
+	return api.get<ApiEnvelope<EmployeeProfileDetailsResponse>>('/employees/profile/details');
 }

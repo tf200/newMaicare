@@ -9,6 +9,7 @@
 		Mail,
 		Clock,
 		ArrowLeft,
+		ChevronRight,
 		MapPin,
 		Briefcase,
 		HeartPulse,
@@ -378,13 +379,14 @@
 <div class="space-y-6">
 	<!-- Breadcrumb / Actions -->
 	<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-		<a
-			href="/registrations"
-			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
-		>
-			<ArrowLeft class="h-4 w-4" />
-			{m.back_to_registrations()}
-		</a>
+		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+			<a href="/registrations" class="flex items-center gap-1 transition-colors hover:text-text">
+				<ArrowLeft class="h-4 w-4" />
+				Registrations
+			</a>
+			<ChevronRight class="h-4 w-4" />
+			<span class="text-text">Registration Detail</span>
+		</nav>
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			{#if !isEditing}

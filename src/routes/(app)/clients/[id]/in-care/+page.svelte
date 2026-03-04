@@ -22,5 +22,9 @@
 	{#if inCareClientData.loadError}
 		<InlineErrorBanner message={inCareClientData.loadError} onRetry={() => invalidateAll()} />
 	{/if}
-	<ClientOverviewPage client={inCareClientData.client} status="in_care" />
+	<ClientOverviewPage
+		client={inCareClientData.client}
+		status="in_care"
+		breadcrumbSectionLabel="In Care"
+	/>
 {/await}

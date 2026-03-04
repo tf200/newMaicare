@@ -9,6 +9,8 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import type { UpdateAppointmentCardRequest } from '$lib/types/api';
 	import {
+		ArrowLeft,
+		ChevronRight,
 		Briefcase,
 		BusFront,
 		ClipboardList,
@@ -45,6 +47,7 @@
 	let { data } = $props<{
 		data: {
 			appointmentCardData: Promise<AppointmentCardLoadResult>;
+			clientName?: string;
 		};
 	}>();
 
@@ -260,6 +263,21 @@
 			<div class="relative space-y-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div class="space-y-2">
+						<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+							<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+								<ArrowLeft class="h-4 w-4" />
+								Clients
+							</a>
+							<ChevronRight class="h-4 w-4" />
+							<a
+								href={`/clients/${appointmentCard.client_id}`}
+								class="transition-colors hover:text-text"
+							>
+								{data.clientName ?? 'Client Detail'}
+							</a>
+							<ChevronRight class="h-4 w-4" />
+							<span class="text-text">Appointment Card</span>
+						</nav>
 						<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 							<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 								<ClipboardList class="h-5 w-5" />

@@ -22,5 +22,9 @@
 	{#if waitlistClientData.loadError}
 		<InlineErrorBanner message={waitlistClientData.loadError} onRetry={() => invalidateAll()} />
 	{/if}
-	<ClientOverviewPage client={waitlistClientData.client} status="on_waiting_list" />
+	<ClientOverviewPage
+		client={waitlistClientData.client}
+		status="on_waiting_list"
+		breadcrumbSectionLabel="On Waiting List"
+	/>
 {/await}

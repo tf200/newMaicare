@@ -80,6 +80,12 @@ export interface ListClientsData {
 	page_size: number;
 }
 
+export interface ClientStatusCountsResponse {
+	clients_in_or_scheduled_in_care: number;
+	clients_on_waiting_list: number;
+	clients_out_or_scheduled_out_of_care: number;
+}
+
 export interface PutClientInCareRequest {
 	care_start_date: string;
 	coordinator_employee_id: string;

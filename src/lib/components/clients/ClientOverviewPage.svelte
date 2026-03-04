@@ -11,6 +11,7 @@
 		Clock,
 		Phone,
 		Mail,
+		ArrowLeft,
 		ChevronRight,
 		ExternalLink,
 		MessageSquare,
@@ -32,11 +33,15 @@
 	interface Props {
 		client: ClientOverviewData;
 		status: ClientOverviewStatus;
+		breadcrumbSectionLabel?: string;
 	}
 
-	let { client, status }: Props = $props();
+	let { client, status, breadcrumbSectionLabel }: Props = $props();
 	const isWaitlistClient = $derived(status === 'on_waiting_list');
 	const isInCareClient = $derived(status === 'in_care');
+	const clientDisplayName = $derived(
+		`${client.firstName} ${client.lastName}`.trim() || 'Client Detail'
+	);
 	let showPutOutOfCareForm = $state(false);
 	let showCreateIncidentForm = $state(false);
 
@@ -100,9 +105,16 @@
 	<!-- Breadcrumbs & Actions -->
 	<div class="flex items-center justify-between">
 		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-			<a href="/in-care" class="transition-colors hover:text-text">Clients</a>
+			<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+				<ArrowLeft class="h-4 w-4" />
+				Clients
+			</a>
 			<ChevronRight class="h-4 w-4" />
-			<span class="text-text">{client.firstName} {client.lastName}</span>
+			<span class="text-text">{clientDisplayName}</span>
+			{#if breadcrumbSectionLabel}
+				<ChevronRight class="h-4 w-4" />
+				<span class="text-text">{breadcrumbSectionLabel}</span>
+			{/if}
 		</nav>
 
 		<div class="flex flex-wrap items-center justify-end gap-2">

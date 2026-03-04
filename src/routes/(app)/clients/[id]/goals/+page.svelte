@@ -3,6 +3,8 @@
 	import { page } from '$app/state';
 	import {
 		Target,
+		ArrowLeft,
+		ChevronRight,
 		CalendarClock,
 		Activity,
 		Plus,
@@ -203,6 +205,18 @@
 
 			<div class="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-2">
+					<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+						<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+							<ArrowLeft class="h-4 w-4" />
+							Clients
+						</a>
+						<ChevronRight class="h-4 w-4" />
+						<a href={`/clients/${page.params.id}`} class="transition-colors hover:text-text">
+							{data.clientName ?? 'Client Detail'}
+						</a>
+						<ChevronRight class="h-4 w-4" />
+						<span class="text-text">Goals &amp; Evaluations</span>
+					</nav>
 					<div
 						class="flex items-center gap-3 text-sm font-semibold text-teal-600 dark:text-teal-400"
 					>

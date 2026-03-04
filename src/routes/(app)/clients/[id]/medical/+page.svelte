@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { ClipboardList, HeartPulse, Plus, Eye, Pencil } from 'lucide-svelte';
+	import {
+		ClipboardList,
+		HeartPulse,
+		Plus,
+		Eye,
+		Pencil,
+		ArrowLeft,
+		ChevronRight
+	} from 'lucide-svelte';
 	import CreateDiagnosisModal from '$lib/components/forms/CreateDiagnosisModal.svelte';
 	import CreateMedicationOrderModal from '$lib/components/forms/CreateMedicationOrderModal.svelte';
 	import EditDiagnosisModal from '$lib/components/forms/EditDiagnosisModal.svelte';
@@ -21,6 +29,7 @@
 	let { data } = $props<{
 		data: {
 			medicalOverviewData: Promise<ClientMedicalOverviewLoadResult>;
+			clientName?: string;
 		};
 	}>();
 
@@ -356,6 +365,18 @@
 			></div>
 			<div class="relative space-y-2">
 				<div class="space-y-2">
+					<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+						<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+							<ArrowLeft class="h-4 w-4" />
+							Clients
+						</a>
+						<ChevronRight class="h-4 w-4" />
+						<a href={`/clients/${page.params.id}`} class="transition-colors hover:text-text">
+							{data.clientName ?? 'Client Detail'}
+						</a>
+						<ChevronRight class="h-4 w-4" />
+						<span class="text-text">Medical</span>
+					</nav>
 					<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 							<HeartPulse class="h-5 w-5" />

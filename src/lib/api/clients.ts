@@ -2,6 +2,7 @@ import { api } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	ListClientsData,
+	ClientStatusCountsResponse,
 	ListClientsParams,
 	ListClientContractsResponse,
 	ListInCareClientsParams,
@@ -111,6 +112,10 @@ export function listClients(params: ListClientsParams) {
 	const query = searchParams.toString();
 
 	return api.get<ApiEnvelope<ListClientsData>>(`/clients?${query}`);
+}
+
+export function getClientStatusCounts() {
+	return api.get<ApiEnvelope<ClientStatusCountsResponse>>('/clients/status-counts');
 }
 
 export function listClientContracts(id: string, page: number, pageSize: number) {

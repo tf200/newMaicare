@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ArrowLeft,
+		ChevronRight,
 		Calendar,
 		User,
 		Activity,
@@ -147,13 +148,14 @@
 <!-- Header -->
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<a
-			href="/intakes"
-			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
-		>
-			<ArrowLeft class="h-4 w-4" />
-			Back to Intakes
-		</a>
+		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+			<a href="/intakes" class="flex items-center gap-1 transition-colors hover:text-text">
+				<ArrowLeft class="h-4 w-4" />
+				Intakes
+			</a>
+			<ChevronRight class="h-4 w-4" />
+			<span class="text-text">Intake Detail</span>
+		</nav>
 
 		{#if canEditIntake}
 			<button

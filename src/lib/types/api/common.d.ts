@@ -61,6 +61,23 @@ export interface TwoFactorRequest {
 	validation_code: string;
 }
 
+export interface Setup2faRequest {
+	current_password: string;
+}
+
+export interface Setup2faResponse {
+	qr_code_base64: string;
+	secret: string;
+}
+
+export interface Enable2faRequest {
+	validation_code: string;
+}
+
+export interface Enable2faResponse {
+	recovery_codes: string[];
+}
+
 export type FormStatus = 'pending' | 'processed';
 
 export type ClientGender = 'male' | 'female' | 'other';

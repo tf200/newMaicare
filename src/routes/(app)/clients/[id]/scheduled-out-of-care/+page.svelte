@@ -25,5 +25,9 @@
 			onRetry={() => invalidateAll()}
 		/>
 	{/if}
-	<ClientOverviewPage client={scheduledOutOfCareClientData.client} status="scheduled_out_of_care" />
+	<ClientOverviewPage
+		client={scheduledOutOfCareClientData.client}
+		status="scheduled_out_of_care"
+		breadcrumbSectionLabel="Scheduled Out of Care"
+	/>
 {/await}

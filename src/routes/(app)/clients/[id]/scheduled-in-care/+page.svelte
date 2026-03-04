@@ -22,5 +22,9 @@
 	{#if scheduledClientData.loadError}
 		<InlineErrorBanner message={scheduledClientData.loadError} onRetry={() => invalidateAll()} />
 	{/if}
-	<ClientOverviewPage client={scheduledClientData.client} status="scheduled_in_care" />
+	<ClientOverviewPage
+		client={scheduledClientData.client}
+		status="scheduled_in_care"
+		breadcrumbSectionLabel="Scheduled In Care"
+	/>
 {/await}

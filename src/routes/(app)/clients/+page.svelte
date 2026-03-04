@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { UsersRound, Search, Eye, MapPin, Target, AlertTriangle, Building2 } from 'lucide-svelte';
+	import {
+		UsersRound,
+		Search,
+		Eye,
+		MapPin,
+		Target,
+		AlertTriangle,
+		Building2,
+		Activity,
+		Clock
+	} from 'lucide-svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
@@ -8,7 +18,12 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import { listLocations } from '$lib/api/locations';
 	import type { ClientStatus } from '$lib/types/api';
-	import type { ClientsFilters, ClientsLoadResult, ClientsRow } from './+page';
+	import type {
+		ClientsFilters,
+		ClientsLoadResult,
+		ClientsRow,
+		ClientStatusCountsLoadResult
+	} from './+page';
 
 	let { data } = $props<{
 		data: {
@@ -18,10 +33,12 @@
 				filters: ClientsFilters;
 			};
 			clientsData: Promise<ClientsLoadResult>;
+			countsData: Promise<ClientStatusCountsLoadResult>;
 		};
 	}>();
 
 	const clientsDataPromise = $derived(data.clientsData);
+	const countsDataPromise = $derived(data.countsData);
 	const initial = $derived(data.initial);
 	const currentPage = $derived(initial.page);
 	const pageSize = $derived(initial.pageSize);
@@ -350,10 +367,12 @@
 
 	{#await clientsDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-				<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
-				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-			</div>
+			{#each [1, 2, 3, 4] as i (i)}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
 
 		<DataTable
@@ -386,16 +405,95 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total Clients
+			<div
+				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+			>
+				<div class="absolute -right-4 -bottom-4 text-brand opacity-[0.03]">
+					<Activity class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{clientsData.stats.total}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						Total Clients
+					</div>
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{clientsData.stats.total}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">{m.client()}</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
 			</div>
+
+			{#await countsDataPromise}
+				{#each [1, 2, 3] as i (i)}
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
+					</div>
+				{/each}
+			{:then countsData}
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<UsersRound class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							In/Scheduled In Care
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.clientsInOrScheduledInCare}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Active and upcoming care</p>
+					</div>
+				</div>
+
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Clock class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Waiting List
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.clientsOnWaitingList}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Awaiting placement</p>
+					</div>
+				</div>
+
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-slate-500/30"
+				>
+					<div
+						class="absolute -right-4 -bottom-4 text-slate-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Building2 class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Out/Scheduled Out
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.clientsOutOrScheduledOutOfCare}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Discharged or planned out</p>
+					</div>
+				</div>
+			{/await}
 		</div>
+
+		{#await countsDataPromise then countsData}
+			{#if countsData.loadError}
+				<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
+			{/if}
+		{/await}
 
 		<DataTable
 			{columns}
