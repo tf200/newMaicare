@@ -112,6 +112,12 @@ export interface ListIncidentsParams {
 	search?: string;
 }
 
+export interface IncidentCountsResponse {
+	serious_fatal_count: number;
+	pending_confirmation_count: number;
+	past_24h_count: number;
+}
+
 export type CreateIncidentInformedParty = 'family' | 'manager';
 
 export interface CreateIncidentRequest {

@@ -2,6 +2,7 @@ import { api } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateIncidentRequest,
+	IncidentCountsResponse,
 	IncidentDetailResponse,
 	IncidentListItemResponse,
 	ListIncidentsParams,
@@ -30,6 +31,10 @@ export function listIncidents(params: ListIncidentsParams) {
 
 export function getIncident(incidentId: string) {
 	return api.get<ApiEnvelope<IncidentDetailResponse>>(`/incidents/${incidentId}`);
+}
+
+export function getIncidentCounts() {
+	return api.get<ApiEnvelope<IncidentCountsResponse>>('/incidents/counts');
 }
 
 export function confirmIncident(incidentId: string) {

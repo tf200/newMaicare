@@ -1,6 +1,6 @@
-import { listIncidents } from '$lib/api/incidents';
+import { getIncidentCounts, listIncidents } from '$lib/api/incidents';
 import type { IncidentListItemResponse } from '$lib/types/api';
-import type { Incident, IncidentStats } from '$lib/types/incidents';
+import type { Incident } from '$lib/types/incidents';
 import type { PaginationState } from '$lib/types/ui';
 import type { PageLoad } from './$types';
 
@@ -11,8 +11,16 @@ export interface IncidentFilters {
 
 export interface IncidentsLoadResult {
 	incidents: Incident[];
-	stats: IncidentStats;
 	pagination: PaginationState<IncidentFilters>;
+	loadError: string | null;
+}
+
+export interface IncidentCountsLoadResult {
+	counts: {
+		seriousFatal: number;
+		pendingConfirmation: number;
+		past24h: number;
+	};
 	loadError: string | null;
 }
 
@@ -52,21 +60,6 @@ export const load: PageLoad = ({ url }) => {
 
 			return {
 				incidents,
-				stats: {
-					total: count,
-					pendingConfirmation: incidents.filter((item) => !item.isConfirmed).length,
-					seriousOrFatal: incidents.filter(
-						(item) => item.severity === 'serious' || item.severity === 'fatal'
-					).length,
-					thisMonth: incidents.filter((item) => {
-						const occurredAt = new Date(item.occurredAt);
-						const now = new Date();
-						return (
-							occurredAt.getFullYear() === now.getFullYear() &&
-							occurredAt.getMonth() === now.getMonth()
-						);
-					}).length
-				},
 				pagination: {
 					count,
 					page,
@@ -85,12 +78,6 @@ export const load: PageLoad = ({ url }) => {
 			const message = error instanceof Error ? error.message : 'Failed to load incidents.';
 			return {
 				incidents: [],
-				stats: {
-					total: 0,
-					pendingConfirmation: 0,
-					seriousOrFatal: 0,
-					thisMonth: 0
-				},
 				pagination: {
 					count: 0,
 					page,
@@ -106,6 +93,26 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
+	const countsData: Promise<IncidentCountsLoadResult> = getIncidentCounts()
+		.then((response) => ({
+			counts: {
+				seriousFatal: response.data.serious_fatal_count,
+				pendingConfirmation: response.data.pending_confirmation_count,
+				past24h: response.data.past_24h_count
+			},
+			loadError: null
+		}))
+		.catch(
+			(error): IncidentCountsLoadResult => ({
+				counts: {
+					seriousFatal: 0,
+					pendingConfirmation: 0,
+					past24h: 0
+				},
+				loadError: error instanceof Error ? error.message : 'Failed to load incident counts.'
+			})
+		);
+
 	return {
 		initial: {
 			page,
@@ -115,6 +122,7 @@ export const load: PageLoad = ({ url }) => {
 				search: normalizedSearch
 			}
 		},
-		incidentsData
+		incidentsData,
+		countsData
 	};
 };

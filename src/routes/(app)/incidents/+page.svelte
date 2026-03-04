@@ -24,6 +24,7 @@
 	let { data } = $props<{ data: PageData }>();
 
 	const incidentsDataPromise = $derived(data.incidentsData);
+	const countsDataPromise = $derived(data.countsData);
 	let currentPage = $state(1);
 	let pageSize = $state(10);
 	let confirmedFilter = $state<'' | 'true' | 'false'>('');
@@ -199,7 +200,7 @@
 			{/each}
 		</div>
 	{:then incidentsData}
-		{@const stats = incidentsData.stats}
+		{@const totalIncidents = incidentsData.pagination.count}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 			<div
 				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
@@ -212,71 +213,87 @@
 						Total Incidents
 					</div>
 					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{stats.total}
+						{totalIncidents}
 					</div>
 					<p class="mt-1 text-xs font-medium text-text-muted">Registered in system</p>
 				</div>
 			</div>
 
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
-			>
+			{#await countsDataPromise}
+				{#each [1, 2, 3] as i (i)}
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
+					</div>
+				{/each}
+			{:then countsData}
 				<div
-					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
 				>
-					<BadgeAlert class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Serious/Fatal
+					<div
+						class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<BadgeAlert class="h-32 w-32" />
 					</div>
-					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{stats.seriousOrFatal}
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Serious/Fatal
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.seriousFatal}
+						</div>
+						<p class="mt-1 text-xs font-medium font-semibold text-rose-600">
+							Requires immediate attention
+						</p>
 					</div>
-					<p class="mt-1 text-xs font-medium font-semibold text-rose-600">
-						Requires immediate attention
-					</p>
 				</div>
-			</div>
 
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
-			>
 				<div
-					class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
 				>
-					<Clock class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Pending Confirmation
+					<div
+						class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Clock class="h-32 w-32" />
 					</div>
-					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{stats.pendingConfirmation}
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Pending Confirmation
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.pendingConfirmation}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Awaiting supervisor review</p>
 					</div>
-					<p class="mt-1 text-xs font-medium text-text-muted">Awaiting supervisor review</p>
 				</div>
-			</div>
 
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
-			>
 				<div
-					class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
 				>
-					<Calendar class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						This Month
+					<div
+						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+					>
+						<Calendar class="h-32 w-32" />
 					</div>
-					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{stats.thisMonth}
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Past 24 Hours
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{countsData.counts.past24h}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Incidents in the last day</p>
 					</div>
-					<p class="mt-1 text-xs font-medium text-text-muted">Current billing period</p>
 				</div>
-			</div>
+			{/await}
 		</div>
+		{#await countsDataPromise then countsData}
+			{#if countsData.loadError}
+				<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+					{countsData.loadError}
+				</div>
+			{/if}
+		{/await}
 	{/await}
 
 	<!-- Data Table Section -->
