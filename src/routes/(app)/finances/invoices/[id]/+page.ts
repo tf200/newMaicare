@@ -43,10 +43,17 @@ export interface InvoiceDetailView {
 	senderKvkNumber: string | null;
 	senderBtwNumber: string | null;
 	paymentCompletionPrc: number;
+	lockedAt: string | null;
+	warningCount: number;
 	lines: InvoiceLine[];
 	updatedAt: string;
 	createdAt: string;
 	payments: InvoicePaymentView[];
+	hasCompletedPayments: boolean;
+	canEditMeta: boolean;
+	canEditLines: boolean;
+	lineUpdateMode: 'appointment_linked' | 'non_linked';
+	lineEditBlockReason: string | null;
 }
 
 export interface InvoiceDetailLoadResult {
@@ -107,6 +114,17 @@ const extractPayments = (
 	return Array.isArray(data.results) ? data.results : [];
 };
 
+const isLikelyAppointmentLinkedInvoice = (lines: InvoiceLine[]) => {
+	if (lines.length === 0) return false;
+
+	return lines.every(
+		(line) =>
+			line.line_type === 'contract' &&
+			line.service_type === 'ambulante' &&
+			(line.unit === 'hour' || line.unit === 'minute')
+	);
+};
+
 export const load: PageLoad = async ({ params, depends }) => {
 	depends(`invoice:detail:${params.id}`);
 	depends(`invoice:payments:${params.id}`);
@@ -127,6 +145,26 @@ export const load: PageLoad = async ({ params, depends }) => {
 		.then(([invoiceResponse, paymentsResult]): InvoiceDetailLoadResult => {
 			const raw = invoiceResponse.data;
 			const payments = extractPayments(paymentsResult.response?.data).map(mapInvoicePayment);
+			const lines = raw.lines as InvoiceLine[];
+			const hasCompletedPayments = payments.some((payment) => payment.status === 'completed');
+			const isLocked = Boolean(raw.locked_at);
+			const lineEditBlockReason =
+				raw.source === 'imported'
+					? 'Imported invoices do not allow line edits.'
+					: raw.invoice_type === 'credit_note'
+						? 'Credit notes do not allow line edits.'
+						: raw.status === 'canceled'
+							? 'Canceled invoices do not allow line edits.'
+							: isLocked
+								? 'This invoice is locked and cannot update lines.'
+								: hasCompletedPayments
+									? 'Invoices with completed payments do not allow line edits.'
+									: null;
+			const canEditLines = lineEditBlockReason === null;
+			const canEditMeta = raw.status !== 'canceled';
+			const lineUpdateMode = isLikelyAppointmentLinkedInvoice(lines)
+				? 'appointment_linked'
+				: 'non_linked';
 
 			return {
 				invoice: {
@@ -153,10 +191,17 @@ export const load: PageLoad = async ({ params, depends }) => {
 					senderKvkNumber: raw.sender_kvknumber,
 					senderBtwNumber: raw.sender_btwnumber,
 					paymentCompletionPrc: raw.payment_completion_prc,
-					lines: raw.lines as InvoiceLine[],
+					lockedAt: raw.locked_at ?? null,
+					warningCount: raw.warning_count ?? 0,
+					lines,
 					updatedAt: raw.updated_at,
 					createdAt: raw.created_at,
-					payments
+					payments,
+					hasCompletedPayments,
+					canEditMeta,
+					canEditLines,
+					lineUpdateMode,
+					lineEditBlockReason
 				},
 				loadError: null,
 				paymentsLoadError: paymentsResult.error

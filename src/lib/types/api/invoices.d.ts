@@ -98,6 +98,8 @@ export interface GetInvoiceByIDResponse {
 	gross_total_amount: number;
 	pdf_attachment_id: string | null;
 	extra_content?: Record<string, any>;
+	locked_at?: string | null;
+	warning_count?: number;
 	client_id: string;
 	sender_id: string;
 	lines: InvoiceLine[];
@@ -136,6 +138,33 @@ export interface CreateInvoiceRequest {
 export interface CreateInvoiceResponse {
 	id: string;
 	invoice_number?: string;
+}
+
+export interface UpdateInvoiceLineRequest {
+	line_type: 'contract' | 'manual' | 'adjustment';
+	contract_id: string | null;
+	service_type: string;
+	description: string;
+	period_start: string;
+	period_end: string;
+	quantity: number;
+	unit: string;
+	unit_price: number;
+	vat_rate: number;
+}
+
+export interface UpdateInvoiceRequest {
+	issue_date?: string;
+	due_date?: string;
+	extra_content?: Record<string, unknown>;
+	status?: InvoiceStatus;
+	warning_count?: number;
+	locked_at?: string;
+	lines?: UpdateInvoiceLineRequest[];
+}
+
+export interface UpdateInvoiceResponse {
+	id: string;
 }
 
 export type InvoicePaymentMethod =

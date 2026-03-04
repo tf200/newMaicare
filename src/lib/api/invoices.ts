@@ -6,6 +6,8 @@ import type {
 	GetInvoiceByIDResponse,
 	CreateInvoiceRequest,
 	CreateInvoiceResponse,
+	UpdateInvoiceRequest,
+	UpdateInvoiceResponse,
 	GenerateInvoicePDFResponse,
 	CreditInvoiceResponse,
 	InvoicePayment,
@@ -30,6 +32,10 @@ export function creditInvoice(id: string) {
 
 export function createInvoice(payload: CreateInvoiceRequest) {
 	return api.post<ApiEnvelope<CreateInvoiceResponse>>('/invoices', payload);
+}
+
+export function updateInvoice(id: string, payload: UpdateInvoiceRequest) {
+	return api.put<ApiEnvelope<UpdateInvoiceResponse>>(`/invoices/${id}`, payload);
 }
 
 export function listInvoicePayments(

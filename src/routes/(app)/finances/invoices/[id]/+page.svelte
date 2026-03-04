@@ -18,16 +18,27 @@
 		ArrowRightLeft,
 		FileWarning,
 		BadgeEuro,
-		SquarePen
+		SquarePen,
+		Save,
+		Pencil,
+		Plus,
+		Trash2,
+		Lock
 	} from 'lucide-svelte';
 	import type { InvoiceDetailLoadResult, InvoicePaymentView } from './+page';
-	import { creditInvoice, generateInvoicePdf } from '$lib/api/invoices';
+	import { creditInvoice, generateInvoicePdf, updateInvoice } from '$lib/api/invoices';
+	import { listClientContracts } from '$lib/api/clients';
 	import AddInvoicePaymentSheet from '$lib/components/forms/AddInvoicePaymentSheet.svelte';
 	import EditInvoicePaymentSheet from '$lib/components/forms/EditInvoicePaymentSheet.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { ListClientContractsResponse } from '$lib/types/api/contracts';
+	import type { UpdateInvoiceRequest, UpdateInvoiceLineRequest } from '$lib/types/api/invoices';
 
 	let { data } = $props<{
 		data: {
@@ -44,6 +55,62 @@
 	let isEditPaymentSheetOpen = $state(false);
 	let selectedPayment = $state<InvoicePaymentView | null>(null);
 	let editSheetKey = $state(0);
+	let isEditMode = $state(false);
+	let isSavingInvoice = $state(false);
+	let saveInvoiceError = $state<string | null>(null);
+	let showLineValidationErrors = $state(false);
+	let draftIssueDate = $state('');
+	let draftDueDate = $state('');
+	let draftStatus = $state('concept');
+	let draftWarningCount = $state(0);
+	let draftLines = $state<DraftLine[]>([]);
+	let contractOptions = $state<Array<{ value: string; label: string }>>([]);
+	let contractsLoadError = $state<string | null>(null);
+	let isLoadingContracts = $state(false);
+	let originalLineOrder = $state<string[]>([]);
+
+	interface DraftLine {
+		id: string;
+		line_type: 'contract' | 'manual' | 'adjustment';
+		contract_id: string;
+		service_type: string;
+		description: string;
+		period_start: string;
+		period_end: string;
+		quantity: number;
+		unit: string;
+		unit_price: number;
+		vat_rate: number;
+	}
+
+	const invoiceStatuses = [
+		{ value: 'concept', label: 'Concept' },
+		{ value: 'outstanding', label: 'Outstanding' },
+		{ value: 'partially_paid', label: 'Partially Paid' },
+		{ value: 'paid', label: 'Paid' },
+		{ value: 'expired', label: 'Expired' },
+		{ value: 'overpaid', label: 'Overpaid' },
+		{ value: 'imported', label: 'Imported' },
+		{ value: 'canceled', label: 'Canceled' }
+	];
+
+	const lineTypeOptions = [
+		{ value: 'contract', label: 'Contract' },
+		{ value: 'manual', label: 'Manual' },
+		{ value: 'adjustment', label: 'Adjustment' }
+	];
+
+	const unitOptions = [
+		{ value: 'item', label: 'Item' },
+		{ value: 'hour', label: 'Hour' },
+		{ value: 'day', label: 'Day' },
+		{ value: 'minute', label: 'Minute' }
+	];
+
+	const serviceTypeOptions = [
+		{ value: 'ambulante', label: 'Ambulante' },
+		{ value: 'accommodation', label: 'Accommodation' }
+	];
 
 	const statusMeta = {
 		paid: {
@@ -145,6 +212,213 @@
 	const calculateBalance = (gross: number, prc: number) => {
 		return Math.max(0, gross - gross * (prc / 100));
 	};
+
+	const toDateInputValue = (value: string | null | undefined) => {
+		if (!value) return '';
+		return new Date(value).toISOString().split('T')[0];
+	};
+
+	const toRFC3339 = (value: string) => {
+		if (!value) return '';
+		return `${value}T00:00:00Z`;
+	};
+
+	const lineNet = (line: DraftLine) => Number(line.quantity) * Number(line.unit_price);
+	const lineVat = (line: DraftLine) => lineNet(line) * (Number(line.vat_rate) / 100);
+	const lineGross = (line: DraftLine) => lineNet(line) + lineVat(line);
+
+	const draftTotals = $derived.by(() => {
+		let net = 0;
+		let vat = 0;
+		let gross = 0;
+
+		for (const line of draftLines) {
+			net += lineNet(line);
+			vat += lineVat(line);
+			gross += lineGross(line);
+		}
+
+		return { net, vat, gross };
+	});
+
+	const lineValidationErrors = $derived.by(() => {
+		const errors: Record<string, string> = {};
+		for (const line of draftLines) {
+			if (line.line_type === 'contract' && !line.contract_id) {
+				errors[line.id] = 'Please select a contract for this line.';
+			}
+		}
+		return errors;
+	});
+
+	function toDraftLine(line: any): DraftLine {
+		const periodStart = toDateInputValue(line.period_start);
+		const periodEnd = toDateInputValue(line.period_end) || periodStart;
+
+		return {
+			id: line.id,
+			line_type: line.line_type,
+			contract_id: line.contract_id ?? '',
+			service_type: line.service_type,
+			description: line.description,
+			period_start: periodStart,
+			period_end: periodEnd,
+			quantity: Number(line.quantity),
+			unit: line.unit,
+			unit_price: Number(line.unit_price),
+			vat_rate: Number(line.vat_rate)
+		};
+	}
+
+	function createEmptyDraftLine(): DraftLine {
+		return {
+			id: crypto.randomUUID(),
+			line_type: 'manual',
+			contract_id: '',
+			service_type: 'ambulante',
+			description: '',
+			period_start: draftIssueDate,
+			period_end: draftDueDate,
+			quantity: 1,
+			unit: 'hour',
+			unit_price: 0,
+			vat_rate: 21
+		};
+	}
+
+	function addDraftLine() {
+		draftLines = [...draftLines, createEmptyDraftLine()];
+	}
+
+	function removeDraftLine(id: string) {
+		draftLines = draftLines.filter((line) => line.id !== id);
+	}
+
+	async function loadContractOptions(clientId: string) {
+		contractsLoadError = null;
+		isLoadingContracts = true;
+		try {
+			const res = await listClientContracts(clientId, 1, 100);
+			contractOptions = (res.data.results ?? []).map((contract: ListClientContractsResponse) => ({
+				value: contract.id,
+				label: contract.care_name
+			}));
+		} catch (error) {
+			contractOptions = [];
+			contractsLoadError = error instanceof Error ? error.message : 'Failed to load contracts.';
+		} finally {
+			isLoadingContracts = false;
+		}
+	}
+
+	function enterEditMode(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
+		saveInvoiceError = null;
+		showLineValidationErrors = false;
+		draftIssueDate = toDateInputValue(invoice.issueDate);
+		draftDueDate = toDateInputValue(invoice.dueDate);
+		draftStatus = invoice.status;
+		draftWarningCount = invoice.warningCount;
+		draftLines = invoice.lines.map(toDraftLine);
+		originalLineOrder = invoice.lines.map((line) => line.id);
+		isEditMode = true;
+		void loadContractOptions(invoice.clientId);
+	}
+
+	function cancelEditMode(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
+		enterEditMode(invoice);
+		isEditMode = false;
+		saveInvoiceError = null;
+	}
+
+	function toUpdateLinePayload(line: DraftLine): UpdateInvoiceLineRequest {
+		const normalizedPeriodStart = line.period_start || draftIssueDate;
+		const normalizedPeriodEnd = line.period_end || normalizedPeriodStart || draftDueDate;
+
+		return {
+			line_type: line.line_type,
+			contract_id: line.line_type === 'contract' ? line.contract_id || null : null,
+			service_type: line.service_type,
+			description: line.description,
+			period_start: toRFC3339(normalizedPeriodStart),
+			period_end: toRFC3339(normalizedPeriodEnd),
+			quantity: Number(line.quantity),
+			unit: line.unit,
+			unit_price: Number(line.unit_price),
+			vat_rate: Number(line.vat_rate)
+		};
+	}
+
+	function buildUpdatePayload() {
+		const payload: UpdateInvoiceRequest = {
+			issue_date: toRFC3339(draftIssueDate),
+			due_date: toRFC3339(draftDueDate),
+			status: draftStatus as UpdateInvoiceRequest['status'],
+			warning_count: Number(draftWarningCount),
+			extra_content: {},
+			lines: draftLines.map(toUpdateLinePayload)
+		};
+
+		return payload;
+	}
+
+	async function handleSaveInvoice(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
+		if (isSavingInvoice) return;
+		saveInvoiceError = null;
+		showLineValidationErrors = true;
+
+		if (Object.keys(lineValidationErrors).length > 0) {
+			saveInvoiceError = 'Fix the highlighted line fields before saving.';
+			return;
+		}
+
+		if (invoice.lineUpdateMode === 'appointment_linked') {
+			if (draftLines.length !== invoice.lines.length) {
+				saveInvoiceError = 'Appointment-linked invoices require the same number of lines.';
+				return;
+			}
+
+			const currentOrder = draftLines.map((line) => line.id);
+			if (JSON.stringify(currentOrder) !== JSON.stringify(originalLineOrder)) {
+				saveInvoiceError = 'Appointment-linked invoices require the original line order.';
+				return;
+			}
+
+			for (let i = 0; i < draftLines.length; i += 1) {
+				const currentLine = draftLines[i];
+				const originalLine = invoice.lines[i];
+				if (
+					currentLine.line_type !== originalLine.line_type ||
+					(currentLine.contract_id || null) !== (originalLine.contract_id ?? null) ||
+					currentLine.service_type !== originalLine.service_type
+				) {
+					saveInvoiceError =
+						'Appointment-linked lines cannot change line type, contract, or service type.';
+					return;
+				}
+			}
+		}
+
+		const payload: UpdateInvoiceRequest = buildUpdatePayload();
+
+		if (!invoice.canEditLines) {
+			delete payload.lines;
+		}
+		if (payload.lines && payload.lines.length === 0) {
+			saveInvoiceError = 'At least one line is required when updating lines.';
+			return;
+		}
+
+		isSavingInvoice = true;
+		try {
+			await updateInvoice(invoice.id, payload);
+			isEditMode = false;
+			await invalidateAll();
+		} catch (error) {
+			saveInvoiceError = error instanceof Error ? error.message : 'Failed to update invoice.';
+		} finally {
+			isSavingInvoice = false;
+		}
+	}
 
 	let expandedPaymentIds = new SvelteSet<string>();
 
@@ -248,10 +522,34 @@
 			<!-- Actions -->
 			<div class="flex items-center justify-end">
 				<div class="flex flex-wrap items-center gap-2">
-					<Button variant="ghost" class="h-9 gap-2 px-4 ring-1 ring-border">
-						<FileText class="h-4 w-4" />
-						Edit Invoice Details
-					</Button>
+					{#if isEditMode}
+						<Button
+							variant="ghost"
+							class="h-9 gap-2 px-4 ring-1 ring-border"
+							onclick={() => cancelEditMode(invoice)}
+							disabled={isSavingInvoice}
+						>
+							Cancel Edit
+						</Button>
+						<Button
+							class="h-9 gap-2 px-4 shadow-md shadow-brand/20"
+							onclick={() => handleSaveInvoice(invoice)}
+							isLoading={isSavingInvoice}
+						>
+							<Save class="h-4 w-4" />
+							Save Changes
+						</Button>
+					{:else}
+						<Button
+							variant="ghost"
+							class="h-9 gap-2 px-4 ring-1 ring-border"
+							onclick={() => enterEditMode(invoice)}
+							disabled={!invoice.canEditMeta && !invoice.canEditLines}
+						>
+							<Pencil class="h-4 w-4" />
+							Edit Invoice Details
+						</Button>
+					{/if}
 					{#if invoice.invoiceType !== 'credit_note'}
 						<Button
 							variant="destructive"
@@ -284,6 +582,16 @@
 					message={creditInvoiceError}
 					onRetry={() => handleCreditInvoice(invoice.id)}
 				/>
+			{/if}
+			{#if isEditMode && saveInvoiceError}
+				<InlineErrorBanner message={saveInvoiceError} />
+			{/if}
+			{#if !isEditMode && invoice.lineEditBlockReason}
+				<div
+					class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+				>
+					{invoice.lineEditBlockReason}
+				</div>
 			{/if}
 
 			{@const meta = statusMeta[invoice.status as keyof typeof statusMeta] || statusMeta.concept}
@@ -512,90 +820,279 @@
 							</div>
 						</div>
 
-						<!-- Invoice Lines -->
-						<div class="mb-6 flex items-center gap-2">
-							<h2 class="text-lg font-bold text-text">Service Breakdown</h2>
-							{#if invoice.periodStart}
-								<span
-									class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-text-muted dark:bg-zinc-800"
-								>
-									Period: {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd) ||
-										'Ongoing'}
-								</span>
-							{/if}
-						</div>
+						{#if isEditMode}
+							<section class="mb-6 space-y-5 rounded-2xl border border-border bg-zinc-50/40 p-5">
+								<div class="flex items-center justify-between">
+									<h2 class="text-base font-bold text-text">Edit Invoice Details</h2>
+									{#if invoice.lineUpdateMode === 'appointment_linked'}
+										<span
+											class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700"
+										>
+											<Lock class="h-3 w-3" />
+											Appointment-linked line rules
+										</span>
+									{/if}
+								</div>
 
-						<div
-							class="overflow-x-auto rounded-xl border border-border ring-1 ring-black/5 dark:ring-white/5"
-						>
-							<table class="w-full text-left text-sm">
-								<thead
-									class="bg-zinc-50/50 text-xs font-bold text-text-subtle uppercase dark:bg-zinc-900/50"
-								>
-									<tr class="border-b border-border">
-										<th class="px-4 py-3 font-semibold">Description</th>
-										<th class="px-4 py-3 font-semibold">Qty</th>
-										<th class="px-4 py-3 font-semibold">Unit Price</th>
-										<th class="px-4 py-3 font-semibold">Net Amt</th>
-										<th class="px-4 py-3 font-semibold">VAT %</th>
-										<th class="px-4 py-3 text-right font-semibold">Gross Amt</th>
-										<th class="w-10 px-4 py-3 text-center"><span class="sr-only">Contract</span></th
-										>
-									</tr>
-								</thead>
-								<tbody class="divide-y divide-border/50 bg-white dark:bg-zinc-900">
-									{#each invoice.lines as line (line.id)}
-										<tr
-											class="group/row transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50"
-										>
-											<td class="px-4 py-3">
-												<p class="font-medium text-text">{line.description}</p>
-												<div class="mt-1 flex items-center gap-2 text-[11px] text-text-muted">
-													<span class="capitalize">{line.service_type}</span>
-													{#if line.period_start}
-														<span class="inline-block h-1 w-1 rounded-full bg-border"></span>
-														<span
-															>{formatDate(line.period_start)} - {formatDate(line.period_end) ||
-																'...'}</span
-														>
-													{/if}
+								<div class="grid gap-4 sm:grid-cols-2">
+									<div class={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}>
+										<DatePicker label="Issue Date" bind:value={draftIssueDate} />
+									</div>
+									<div class={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}>
+										<DatePicker label="Due Date" bind:value={draftDueDate} />
+									</div>
+									<Select
+										label="Status"
+										options={invoiceStatuses}
+										bind:value={draftStatus}
+										className={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}
+									/>
+									<Input
+										label="Warning Count"
+										type="number"
+										bind:value={draftWarningCount}
+										disabled={!invoice.canEditMeta}
+									/>
+								</div>
+								{#if contractsLoadError}
+									<p class="text-xs font-medium text-rose-600">{contractsLoadError}</p>
+								{/if}
+
+								<div class="flex items-center justify-between">
+									<h3 class="text-sm font-bold text-text">Invoice Lines</h3>
+									<Button
+										variant="ghost"
+										class="h-8 gap-2 text-xs ring-1 ring-border"
+										onclick={addDraftLine}
+										disabled={!invoice.canEditLines ||
+											invoice.lineUpdateMode === 'appointment_linked' ||
+											isLoadingContracts}
+									>
+										<Plus class="h-3.5 w-3.5" />
+										Add Line
+									</Button>
+								</div>
+
+								<div class="space-y-4">
+									{#each draftLines as line, index (line.id)}
+										<div class="rounded-2xl border border-border bg-surface p-4">
+											<div class="mb-4 flex items-center justify-between">
+												<p class="text-xs font-bold tracking-wide text-text-subtle uppercase">
+													Line #{index + 1}
+												</p>
+												<Button
+													variant="ghost"
+													class="h-7 w-7 !p-0 text-rose-600"
+													onclick={() => removeDraftLine(line.id)}
+													disabled={!invoice.canEditLines ||
+														invoice.lineUpdateMode === 'appointment_linked'}
+												>
+													<Trash2 class="h-4 w-4" />
+												</Button>
+											</div>
+
+											<div class="grid gap-4 sm:grid-cols-12">
+												<div class="sm:col-span-3">
+													<Select
+														label="Line Type"
+														options={lineTypeOptions}
+														bind:value={line.line_type}
+														className={!invoice.canEditLines ||
+														invoice.lineUpdateMode === 'appointment_linked'
+															? 'pointer-events-none opacity-60'
+															: ''}
+													/>
 												</div>
-											</td>
-											<td class="px-4 py-3 text-text">
-												{line.quantity} <span class="text-xs text-text-muted">{line.unit}</span>
-											</td>
-											<td class="px-4 py-3 text-text"
-												>{formatCurrency(line.unit_price, invoice.currency)}</td
-											>
-											<td class="px-4 py-3 text-text"
-												>{formatCurrency(line.net_amount, invoice.currency)}</td
-											>
-											<td class="px-4 py-3 text-text">{line.vat_rate}%</td>
-											<td class="px-4 py-3 text-right font-semibold text-text"
-												>{formatCurrency(line.gross_amount, invoice.currency)}</td
-											>
-											<td class="px-4 py-3">
-												{#if line.contract_id}
-													<a
-														href={resolve(`/contracts/${line.contract_id}`)}
-														class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand transition-all hover:bg-brand hover:text-white"
-														title="View Contract"
-													>
-														<FileText class="h-4 w-4" />
-													</a>
+												{#if line.line_type === 'contract'}
+													<div class="sm:col-span-5">
+														<Select
+															label="Contract"
+															options={contractOptions}
+															bind:value={line.contract_id}
+															className={!invoice.canEditLines ||
+															invoice.lineUpdateMode === 'appointment_linked' ||
+															contractOptions.length === 0
+																? 'pointer-events-none opacity-60'
+																: ''}
+														/>
+														{#if showLineValidationErrors && lineValidationErrors[line.id]}
+															<p class="mt-1 text-xs font-medium text-rose-600">
+																{lineValidationErrors[line.id]}
+															</p>
+														{/if}
+													</div>
+													<div class="sm:col-span-4">
+														<Input
+															label="Description"
+															bind:value={line.description}
+															disabled={!invoice.canEditLines}
+														/>
+													</div>
+												{:else}
+													<div class="sm:col-span-3">
+														<Select
+															label="Service Type"
+															options={serviceTypeOptions}
+															bind:value={line.service_type}
+															className={!invoice.canEditLines ||
+															invoice.lineUpdateMode === 'appointment_linked'
+																? 'pointer-events-none opacity-60'
+																: ''}
+														/>
+													</div>
+													<div class="sm:col-span-6">
+														<Input
+															label="Description"
+															bind:value={line.description}
+															disabled={!invoice.canEditLines}
+														/>
+													</div>
 												{/if}
-											</td>
-										</tr>
-									{:else}
-										<tr>
-											<td colspan="7" class="px-4 py-8 text-center text-text-muted">
-												No invoice lines found.
-											</td>
-										</tr>
+
+												<div class="sm:col-span-3">
+													<Input
+														label="Quantity"
+														type="number"
+														bind:value={line.quantity}
+														disabled={!invoice.canEditLines}
+													/>
+												</div>
+												<div class="sm:col-span-3">
+													<Select
+														label="Unit"
+														options={unitOptions}
+														bind:value={line.unit}
+														className={!invoice.canEditLines
+															? 'opacity-60 pointer-events-none'
+															: ''}
+													/>
+												</div>
+												<div class="sm:col-span-3">
+													<Input
+														label="Unit Price"
+														type="number"
+														bind:value={line.unit_price}
+														disabled={!invoice.canEditLines}
+													/>
+												</div>
+												<div class="sm:col-span-3">
+													<Input
+														label="VAT %"
+														type="number"
+														bind:value={line.vat_rate}
+														disabled={!invoice.canEditLines}
+													/>
+												</div>
+												<div class="sm:col-span-6">
+													<div
+														class={!invoice.canEditLines ? 'pointer-events-none opacity-60' : ''}
+													>
+														<DatePicker label="Period Start" bind:value={line.period_start} />
+													</div>
+												</div>
+												<div class="sm:col-span-6">
+													<div
+														class={!invoice.canEditLines ? 'pointer-events-none opacity-60' : ''}
+													>
+														<DatePicker label="Period End" bind:value={line.period_end} />
+													</div>
+												</div>
+											</div>
+											<div class="mt-4 flex justify-end text-sm font-semibold text-text">
+												Line Gross: {formatCurrency(lineGross(line), invoice.currency)}
+											</div>
+										</div>
 									{/each}
-								</tbody>
-							</table>
-						</div>
+								</div>
+							</section>
+						{:else}
+							<!-- Invoice Lines -->
+							<div class="mb-6 flex items-center gap-2">
+								<h2 class="text-lg font-bold text-text">Service Breakdown</h2>
+								{#if invoice.periodStart}
+									<span
+										class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-text-muted dark:bg-zinc-800"
+									>
+										Period: {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd) ||
+											'Ongoing'}
+									</span>
+								{/if}
+							</div>
+
+							<div
+								class="overflow-x-auto rounded-xl border border-border ring-1 ring-black/5 dark:ring-white/5"
+							>
+								<table class="w-full text-left text-sm">
+									<thead
+										class="bg-zinc-50/50 text-xs font-bold text-text-subtle uppercase dark:bg-zinc-900/50"
+									>
+										<tr class="border-b border-border">
+											<th class="px-4 py-3 font-semibold">Description</th>
+											<th class="px-4 py-3 font-semibold">Qty</th>
+											<th class="px-4 py-3 font-semibold">Unit Price</th>
+											<th class="px-4 py-3 font-semibold">Net Amt</th>
+											<th class="px-4 py-3 font-semibold">VAT %</th>
+											<th class="px-4 py-3 text-right font-semibold">Gross Amt</th>
+											<th class="w-10 px-4 py-3 text-center"
+												><span class="sr-only">Contract</span></th
+											>
+										</tr>
+									</thead>
+									<tbody class="divide-y divide-border/50 bg-white dark:bg-zinc-900">
+										{#each invoice.lines as line (line.id)}
+											<tr
+												class="group/row transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50"
+											>
+												<td class="px-4 py-3">
+													<p class="font-medium text-text">{line.description}</p>
+													<div class="mt-1 flex items-center gap-2 text-[11px] text-text-muted">
+														<span class="capitalize">{line.service_type}</span>
+														{#if line.period_start}
+															<span class="inline-block h-1 w-1 rounded-full bg-border"></span>
+															<span
+																>{formatDate(line.period_start)} - {formatDate(line.period_end) ||
+																	'...'}</span
+															>
+														{/if}
+													</div>
+												</td>
+												<td class="px-4 py-3 text-text"
+													>{line.quantity}
+													<span class="text-xs text-text-muted">{line.unit}</span></td
+												>
+												<td class="px-4 py-3 text-text"
+													>{formatCurrency(line.unit_price, invoice.currency)}</td
+												>
+												<td class="px-4 py-3 text-text"
+													>{formatCurrency(line.net_amount, invoice.currency)}</td
+												>
+												<td class="px-4 py-3 text-text">{line.vat_rate}%</td>
+												<td class="px-4 py-3 text-right font-semibold text-text"
+													>{formatCurrency(line.gross_amount, invoice.currency)}</td
+												>
+												<td class="px-4 py-3">
+													{#if line.contract_id}
+														<a
+															href={resolve(`/contracts/${line.contract_id}`)}
+															class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand transition-all hover:bg-brand hover:text-white"
+															title="View Contract"
+														>
+															<FileText class="h-4 w-4" />
+														</a>
+													{/if}
+												</td>
+											</tr>
+										{:else}
+											<tr>
+												<td colspan="7" class="px-4 py-8 text-center text-text-muted"
+													>No invoice lines found.</td
+												>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						{/if}
 
 						<!-- Totals Summary -->
 						<div class="mt-6 flex flex-col items-end">
@@ -603,19 +1100,28 @@
 								<div class="flex justify-between text-sm">
 									<span class="text-text-muted">Subtotal (Pre-VAT)</span>
 									<span class="font-medium text-text"
-										>{formatCurrency(invoice.netTotalAmount, invoice.currency)}</span
+										>{formatCurrency(
+											isEditMode ? draftTotals.net : invoice.netTotalAmount,
+											invoice.currency
+										)}</span
 									>
 								</div>
 								<div class="flex justify-between border-b border-border/50 pb-4 text-sm">
 									<span class="text-text-muted">VAT Total</span>
 									<span class="font-medium text-text"
-										>{formatCurrency(invoice.vatTotalAmount, invoice.currency)}</span
+										>{formatCurrency(
+											isEditMode ? draftTotals.vat : invoice.vatTotalAmount,
+											invoice.currency
+										)}</span
 									>
 								</div>
 								<div class="flex justify-between pt-1 text-base font-bold">
 									<span class="text-text">Total (Gross)</span>
 									<span class="text-brand"
-										>{formatCurrency(invoice.grossTotalAmount, invoice.currency)}</span
+										>{formatCurrency(
+											isEditMode ? draftTotals.gross : invoice.grossTotalAmount,
+											invoice.currency
+										)}</span
 									>
 								</div>
 								<div class="mt-1 flex justify-between border-t border-border/50 pt-3 text-sm">
