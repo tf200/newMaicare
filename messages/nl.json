@@ -26,6 +26,8 @@
 	"organization": "Organisatie",
 	"senders": "Opdrachtgevers",
 	"toggle_theme": "Thema wisselen",
+	"settings": "Instellingen",
+	"logout": "Uitloggen",
 	"registrations": "Registraties",
 	"care_registrations": "Zorgaanmeldingen",
 	"registrations_description": "Volg binnenkomende zorgaanmeldingsformulieren, risicosignalen en indieningsstatus.",

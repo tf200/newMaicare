@@ -18,3 +18,7 @@ export function requestVerify2fa(payload: TwoFactorRequest) {
 export function requestEmployeeProfile() {
 	return api.get<ApiEnvelope<EmployeeProfile>>('/employees/profile');
 }
+
+export function requestLogout() {
+	return api.request<ApiEnvelope<null>>('/auth/logout', { method: 'POST' });
+}

@@ -1,6 +1,21 @@
 <script lang="ts">
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
+	import { setWebSocketState } from '$lib/api/ws.svelte';
+	import { getAuthState } from '$lib/state/auth.svelte';
+
+	const auth = getAuthState();
+	const ws = setWebSocketState();
+
+	$effect(() => {
+		if (auth.isAuthenticated) {
+			ws.connect();
+		} else {
+			ws.disconnect();
+		}
+	});
+
+	$effect(() => () => ws.destroy());
 
 	let isSidebarCollapsed = $state(false);
 	let isSidebarMobileOpen = $state(false);

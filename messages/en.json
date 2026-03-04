@@ -26,6 +26,8 @@
 	"organization": "Organization",
 	"senders": "Senders",
 	"toggle_theme": "Toggle theme",
+	"settings": "Settings",
+	"logout": "Logout",
 	"registrations": "Registrations",
 	"care_registrations": "Care registrations",
 	"registrations_description": "Track incoming care coordination forms, risk signals, and submission status.",

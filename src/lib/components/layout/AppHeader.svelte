@@ -1,8 +1,23 @@
 <script lang="ts">
-	import { Bell, ChevronRight, Moon, PanelLeft, Plus, Search, Sun } from 'lucide-svelte';
+	import {
+		Bell,
+		ChevronRight,
+		Moon,
+		PanelLeft,
+		Plus,
+		Search,
+		Sun,
+		User,
+		LogOut,
+		Settings
+	} from 'lucide-svelte';
 	import LanguageSwitcher from '$lib/components/ui/LanguageSwitcher.svelte';
+	import Dropdown from '$lib/components/ui/Dropdown.svelte';
+	import DropdownItem from '$lib/components/ui/DropdownItem.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { goto } from '$app/navigation';
+	import { localizeHref } from '$lib/paraglide/runtime';
 
 	interface Props {
 		title?: string;
@@ -19,6 +34,11 @@
 	}: Props = $props();
 
 	const auth = getAuthState();
+
+	const handleLogout = async () => {
+		await auth.logout();
+		await goto(localizeHref('/login'));
+	};
 
 	const displayName = $derived.by(() => {
 		const user = auth.user;
@@ -151,22 +171,42 @@
 				</button>
 				<LanguageSwitcher />
 
-				<button
-					class="group flex items-center gap-2 rounded-full p-0.5 transition-[box-shadow,transform] duration-300 hover:ring-4 hover:ring-border/50 focus-visible:ring-4 focus-visible:ring-brand/15 focus-visible:outline-none active:scale-95 motion-reduce:transition-none"
-					aria-label={m.profile()}
-				>
-					<div
-						class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-teal-400 to-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
-					>
-						{displayInitials}
-					</div>
-					<div class="hidden flex-col items-start text-left sm:flex">
-						<span class="text-xs leading-none font-bold text-text"
-							>{displayName || m.dashboard()}</span
+				<Dropdown align="right" width="w-64">
+					{#snippet trigger()}
+						<div
+							class="group flex items-center gap-2 rounded-full p-0.5 transition-[box-shadow,transform] duration-300 hover:ring-4 hover:ring-border/50 focus-visible:ring-4 focus-visible:ring-brand/15 focus-visible:outline-none active:scale-95 motion-reduce:transition-none"
+							aria-label={m.profile()}
 						>
-						<span class="text-[10px] font-medium text-text-muted">{displaySubtitle}</span>
-					</div>
-				</button>
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-teal-400 to-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
+							>
+								{displayInitials}
+							</div>
+							<div class="hidden flex-col items-start text-left sm:flex">
+								<span class="text-xs leading-none font-bold text-text"
+									>{displayName || m.dashboard()}</span
+								>
+								<span class="text-[10px] font-medium text-text-muted">{displaySubtitle}</span>
+							</div>
+						</div>
+					{/snippet}
+
+					{#snippet content()}
+						<div class="mb-1 border-b border-border/50 px-3 py-2">
+							<p class="text-xs font-bold text-text">{displayName || m.dashboard()}</p>
+							<p class="truncate text-[10px] text-text-muted">{displaySubtitle}</p>
+						</div>
+						<DropdownItem label={m.profile()} icon={User} href={localizeHref('/profile')} />
+						<DropdownItem label={m.settings()} icon={Settings} href={localizeHref('/settings')} />
+						<div class="my-1 h-px bg-border/50"></div>
+						<DropdownItem
+							label={m.logout()}
+							icon={LogOut}
+							variant="destructive"
+							onclick={handleLogout}
+						/>
+					{/snippet}
+				</Dropdown>
 			</div>
 		</div>
 	</div>

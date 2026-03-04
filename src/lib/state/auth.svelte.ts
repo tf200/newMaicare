@@ -1,6 +1,11 @@
 import { getContext, setContext } from 'svelte';
 import type { AuthTokenData, AuthRequest, EmployeeProfile } from '$lib/types/api';
-import { requestAuthToken, requestEmployeeProfile, requestVerify2fa } from '$lib/api/auth';
+import {
+	requestAuthToken,
+	requestEmployeeProfile,
+	requestLogout,
+	requestVerify2fa
+} from '$lib/api/auth';
 
 const AUTH_KEY = Symbol('AUTH');
 
@@ -60,7 +65,7 @@ export interface AuthContext {
 	hasPermission: (permission: string) => boolean;
 	hasAnyPermission: (permissions: string[]) => boolean;
 	hasAllPermissions: (permissions: string[]) => boolean;
-	logout: () => void;
+	logout: () => Promise<void>;
 }
 
 export class AuthState {
@@ -191,7 +196,7 @@ export class AuthState {
 		return permissions.every((permission) => this.hasPermission(permission));
 	};
 
-	logout() {
+	private clearSession() {
 		this.user = null;
 		this.accessToken = null;
 		this.refreshToken = null;
@@ -203,6 +208,18 @@ export class AuthState {
 			localStorage.removeItem('temp_token');
 			localStorage.removeItem('requires_2fa');
 			localStorage.removeItem('user');
+		}
+	}
+
+	async logout() {
+		try {
+			if (this.accessToken) {
+				await requestLogout();
+			}
+		} catch (error) {
+			console.error('Logout API request failed', error);
+		} finally {
+			this.clearSession();
 		}
 	}
 }
