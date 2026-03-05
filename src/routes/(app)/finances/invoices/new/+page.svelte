@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import {
 		Plus,
 		Trash2,
@@ -32,39 +34,39 @@
 	import type { ListClientContractsResponse } from '$lib/types/api/contracts';
 	import type { CreateInvoiceRequest, InvoiceStatus, InvoiceType } from '$lib/types/api/invoices';
 
-	const INVOICE_TYPES = [
-		{ value: 'standard', label: 'Standard Invoice' },
-		{ value: 'credit_note', label: 'Credit Note' }
-	];
+	const INVOICE_TYPES = $derived([
+		{ value: 'standard', label: m.standard() },
+		{ value: 'credit_note', label: m.credit_note() }
+	]);
 
-	const INVOICE_STATUSES = [
-		{ value: 'concept', label: 'Concept' },
-		{ value: 'outstanding', label: 'Outstanding' },
-		{ value: 'partially_paid', label: 'Partially Paid' },
-		{ value: 'paid', label: 'Paid' },
-		{ value: 'expired', label: 'Expired' },
-		{ value: 'overpaid', label: 'Overpaid' },
-		{ value: 'imported', label: 'Imported' },
-		{ value: 'canceled', label: 'Canceled' }
-	];
+	const INVOICE_STATUSES = $derived([
+		{ value: 'concept', label: m.concept() },
+		{ value: 'outstanding', label: m.outstanding_status() },
+		{ value: 'partially_paid', label: m.partially_paid() },
+		{ value: 'paid', label: m.paid() },
+		{ value: 'expired', label: m.expired() },
+		{ value: 'overpaid', label: m.overpaid() },
+		{ value: 'imported', label: m.imported_status() },
+		{ value: 'canceled', label: m.canceled() }
+	]);
 
-	const LINE_TYPES = [
-		{ value: 'contract', label: 'Contract' },
-		{ value: 'manual', label: 'Manual' },
-		{ value: 'adjustment', label: 'Adjustment' }
-	];
+	const LINE_TYPES = $derived([
+		{ value: 'contract', label: m.contract_type_label() },
+		{ value: 'manual', label: m.manual() },
+		{ value: 'adjustment', label: m.adjustment() }
+	]);
 
-	const SERVICE_TYPES = [
-		{ value: 'ambulante', label: 'Ambulante' },
-		{ value: 'accommodation', label: 'Accommodation' }
-	];
+	const SERVICE_TYPES = $derived([
+		{ value: 'ambulante', label: m.ambulante() },
+		{ value: 'accommodation', label: m.accommodation() }
+	]);
 
-	const UNIT_OPTIONS = [
-		{ value: 'item', label: 'Item' },
-		{ value: 'hour', label: 'Hour' },
-		{ value: 'day', label: 'Day' },
-		{ value: 'minute', label: 'Minute' }
-	];
+	const UNIT_OPTIONS = $derived([
+		{ value: 'item', label: m.item() },
+		{ value: 'hour', label: m.hour() },
+		{ value: 'day', label: m.day() },
+		{ value: 'minute', label: m.minute() }
+	]);
 
 	// Form State
 	let clientId = $state<string>('');
@@ -153,7 +155,7 @@
 
 		for (const line of lines) {
 			if (line.line_type === 'contract' && !line.contract_id) {
-				errors[line.id] = 'Please select a contract for this line.';
+				errors[line.id] = m.select_contract_for_line();
 			}
 		}
 
@@ -193,8 +195,10 @@
 		lines = lines.map((l) => (l.id === id ? { ...l, isSaved: !l.isSaved } : l));
 	}
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatCurrency = (amount: number, currencyCode: string = 'EUR') => {
-		return new Intl.NumberFormat('nl-NL', {
+		return new Intl.NumberFormat(resolveLocale(), {
 			style: 'currency',
 			currency: currencyCode
 		}).format(amount);
@@ -211,7 +215,7 @@
 			const res = await listClients({ search: query, page: 1, pageSize: 50 });
 			return res.data.results;
 		} catch (error) {
-			clientsLoadError = error instanceof Error ? error.message : 'Failed to load clients.';
+			clientsLoadError = error instanceof Error ? error.message : m.failed_load_clients();
 			return [];
 		}
 	}
@@ -232,7 +236,7 @@
 			clientContracts = res.data.results;
 		} catch (error) {
 			contractsLoadError =
-				error instanceof Error ? error.message : 'Failed to load contracts for this client.';
+				error instanceof Error ? error.message : m.failed_load_client_contracts();
 		}
 	}
 
@@ -254,7 +258,7 @@
 		showLineValidationErrors = true;
 
 		if (hasLineValidationErrors) {
-			submitError = 'Fix the highlighted contract line fields before creating the invoice.';
+			submitError = m.fix_contract_line_fields();
 			return;
 		}
 
@@ -286,13 +290,13 @@
 			const createdInvoiceId = response.data.id;
 
 			if (createdInvoiceId) {
-				goto(resolve(`/finances/invoices/${createdInvoiceId}`));
+				goto(resolve('/(app)/finances/invoices/[id]', { id: createdInvoiceId }));
 				return;
 			}
 
-			goto(resolve('/finances/invoices'));
+			goto(resolve('/(app)/finances/invoices'));
 		} catch (error) {
-			submitError = error instanceof Error ? error.message : 'Failed to create draft invoice.';
+			submitError = error instanceof Error ? error.message : m.failed_create_draft_invoice();
 		} finally {
 			isSubmitting = false;
 		}
@@ -300,16 +304,16 @@
 </script>
 
 <svelte:head>
-	<title>Create Invoice | MaiCare</title>
+	<title>{m.draft_new_invoice()} | MaiCare</title>
 </svelte:head>
 
 {#snippet clientItem(option: ListClientsResponse)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{option.first_name} {option.last_name}</span>
 		<div class="flex items-center gap-2 text-xs text-text-muted">
-			<span>BSN: {option.bsn}</span>
+			<span>{m.bsn()}: {option.bsn}</span>
 			<span class="h-1 w-1 rounded-full bg-border"></span>
-			<span>File: {option.filenumber}</span>
+			<span>{m.fn_prefix()} {option.filenumber}</span>
 		</div>
 	</div>
 {/snippet}
@@ -322,7 +326,7 @@
 			<span class="h-1 w-1 rounded-full bg-border"></span>
 			<span>{option.financing_option}</span>
 			<span class="h-1 w-1 rounded-full bg-border"></span>
-			<span>{new Date(option.start_date).toLocaleDateString('nl-NL')}</span>
+			<span>{new Date(option.start_date).toLocaleDateString(resolveLocale())}</span>
 		</div>
 	</div>
 {/snippet}
@@ -345,15 +349,15 @@
 					<ArrowLeft class="h-5 w-5" />
 				</Button>
 				<div>
-					<h1 class="text-2xl font-bold tracking-tight text-text">Draft New Invoice</h1>
-					<p class="text-sm font-medium text-text-muted">Manually construct an invoice document.</p>
+					<h1 class="text-2xl font-bold tracking-tight text-text">{m.draft_new_invoice()}</h1>
+					<p class="text-sm font-medium text-text-muted">{m.manually_construct_invoice()}</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
 				<Button
 					variant="ghost"
 					class="h-10 gap-2 px-4 ring-1 ring-border transition-all hover:bg-rose-500/10 hover:text-rose-600 hover:ring-rose-500/20 active:scale-95"
-					>Discard</Button
+					>{m.discard()}</Button
 				>
 				<Button
 					class="h-10 gap-2 px-6 shadow-md shadow-brand/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/30 active:translate-y-0 active:scale-95"
@@ -362,7 +366,7 @@
 					disabled={!canCreateInvoice}
 				>
 					<Save class="h-4 w-4" />
-					Save Draft
+					{m.save_draft()}
 				</Button>
 			</div>
 		</div>
@@ -378,7 +382,7 @@
 				<div class="border-b border-brand/10 bg-linear-to-r from-brand/5 to-transparent px-6 py-4">
 					<h2 class="flex items-center gap-2 text-sm font-bold tracking-wider text-brand uppercase">
 						<Receipt class="h-4 w-4" />
-						Invoice Metadata
+						{m.invoice_metadata()}
 					</h2>
 				</div>
 				<div class="p-6">
@@ -390,26 +394,26 @@
 					{/if}
 					<div class="grid gap-6 sm:grid-cols-2">
 						<SearchSelect
-							label="Client *"
+							label="{m.client()} *"
 							bind:value={clientId}
 							bind:displayValue={clientDisplayValue}
-							placeholder="Select a client..."
-							searchPlaceholder="Search clients..."
+							placeholder={m.choose_client()}
+							searchPlaceholder={m.search_clients()}
 							loadOptions={loadClientOptions}
 							onchange={handleClientChange}
 							item={clientItem}
 							labelFn={(client: ListClientsResponse) => `${client.first_name} ${client.last_name}`}
 							valueFn={(client: ListClientsResponse) => client.id}
 						/>
-						<Select label="Invoice Type" options={INVOICE_TYPES} bind:value={invoiceType} />
-						<Select label="Initial Status" options={INVOICE_STATUSES} bind:value={status} />
+						<Select label={m.invoice_type()} options={INVOICE_TYPES} bind:value={invoiceType} />
+						<Select label={m.initial_status()} options={INVOICE_STATUSES} bind:value={status} />
 						<Input
-							label="Billing Timezone"
+							label={m.billing_timezone()}
 							bind:value={billingTimezone}
-							placeholder="Europe/Amsterdam"
+							placeholder={m.billing_timezone_placeholder()}
 						/>
-						<DatePicker label="Issue Date" bind:value={issueDate} />
-						<DatePicker label="Due Date" bind:value={dueDate} />
+						<DatePicker label={m.issue_date()} bind:value={issueDate} />
+						<DatePicker label={m.due_date_label()} bind:value={dueDate} />
 					</div>
 				</div>
 			</section>
@@ -425,7 +429,7 @@
 						class="flex items-center gap-2 text-sm font-bold tracking-wider text-amber-600 uppercase dark:text-amber-500"
 					>
 						<FileText class="h-4 w-4" />
-						Invoice Lines
+						{m.invoice_lines()}
 					</h2>
 					<Button
 						variant="ghost"
@@ -433,7 +437,7 @@
 						onclick={addLine}
 					>
 						<Plus class="h-3.5 w-3.5" />
-						Add Line
+						{m.add_line()}
 					</Button>
 				</div>
 
@@ -443,14 +447,15 @@
 							class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 text-center"
 						>
 							<Calculator class="mb-3 h-8 w-8 text-text-subtle opacity-50" />
-							<p class="text-sm font-medium text-text">No lines added yet.</p>
-							<p class="mt-1 text-xs text-text-muted">Add at least one line to calculate totals.</p>
+							<p class="text-sm font-medium text-text">{m.no_lines_added()}</p>
+							<p class="mt-1 text-xs text-text-muted">{m.add_lines_to_calculate()}</p>
 							<Button
 								variant="ghost"
 								class="mt-4 h-8 gap-2 text-xs ring-1 ring-border"
 								onclick={addLine}
 							>
-								<Plus class="h-3 w-3" /> Add First Line
+								<Plus class="h-3 w-3" />
+								{m.add_first_line()}
 							</Button>
 						</div>
 					{:else}
@@ -474,12 +479,12 @@
 									>
 										<div class="flex items-center gap-3">
 											<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-												>Line #{i + 1}</span
+												>{m.line_number({ number: i + 1 })}</span
 											>
 											{#if line.isSaved}
 												<span
 													class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 ring-1 ring-emerald-500/20 ring-inset dark:text-emerald-400"
-													>Saved</span
+													>{m.saved_label()}</span
 												>
 											{/if}
 										</div>
@@ -491,13 +496,13 @@
 													onclick={() => toggleLineSave(line.id)}
 												>
 													<Pencil class="h-3.5 w-3.5" />
-													Edit
+													{m.edit()}
 												</Button>
 											{/if}
 											<button
 												class="rounded-lg p-1 text-text-subtle transition-all hover:bg-rose-500/10 hover:text-rose-500"
 												onclick={() => removeLine(line.id)}
-												aria-label="Remove line"
+												aria-label={m.remove_line_label()}
 											>
 												<Trash2 class="h-4 w-4" />
 											</button>
@@ -511,8 +516,8 @@
 												<p class="text-sm font-medium text-text">
 													{line.line_type === 'contract'
 														? clientContracts.find((c) => c.id === line.contract_id)?.care_name ||
-															'Selected Contract'
-														: line.description || 'No description'}
+															m.selected_contract()
+														: line.description || m.no_description()}
 												</p>
 												<div class="flex flex-wrap items-center gap-3 text-xs text-text-muted">
 													<span class="flex items-center gap-1">
@@ -523,24 +528,26 @@
 													</span>
 													{#if line.line_type !== 'contract'}
 														<span class="flex items-center gap-1">
-															<span class="text-text-subtle">Service:</span>
+															<span class="text-text-subtle">{m.service_label()}</span>
 															{SERVICE_TYPES.find((t) => t.value === line.service_type)?.label}
 														</span>
 													{/if}
 													<span class="flex items-center gap-1">
-														<span class="text-text-subtle">Qty:</span>
+														<span class="text-text-subtle">{m.qty_label()}</span>
 														{line.quantity}
 														{line.unit}
 													</span>
 													<span class="flex items-center gap-1">
-														<span class="text-text-subtle">Rate:</span>
+														<span class="text-text-subtle">{m.rate_label()}</span>
 														{formatCurrency(line.unit_price, currency)}
 													</span>
 												</div>
 												{#if line.period_start || line.period_end}
 													<p class="mt-2 flex items-center gap-1.5 text-xs text-text-subtle">
 														<CalendarIcon class="h-3.5 w-3.5" />
-														{line.period_start || '...'} to {line.period_end || '...'}
+														{line.period_start || m.not_available_short()}
+														{m.to()}
+														{line.period_end || m.not_available_short()}
 													</p>
 												{/if}
 											</div>
@@ -554,7 +561,7 @@
 													)}
 												</p>
 												<p class="text-[10px] tracking-wider text-text-muted uppercase">
-													Gross ({line.vat_rate}% VAT)
+													{m.gross_total()} ({line.vat_rate}% VAT)
 												</p>
 											</div>
 										</div>
@@ -562,20 +569,16 @@
 										<!-- Edit View -->
 										<div class="grid gap-4 sm:grid-cols-12">
 											<div class="sm:col-span-3">
-												<Select
-													label="Line Type"
-													options={LINE_TYPES}
-													bind:value={line.line_type}
-												/>
+												<Select label={m.type()} options={LINE_TYPES} bind:value={line.line_type} />
 											</div>
 											{#if line.line_type === 'contract'}
 												<div class="sm:col-span-9">
 													<SearchSelect
-														label="Contract"
+														label={m.contract_type_label()}
 														placeholder={clientId
-															? 'Select contract...'
-															: 'Select a client first...'}
-														searchPlaceholder="Search contracts..."
+															? m.select_contract_placeholder()
+															: m.select_client_first_placeholder()}
+														searchPlaceholder={m.search_contracts_placeholder()}
 														disabled={!clientId}
 														loadOptions={loadContractOptions}
 														item={contractItem}
@@ -589,40 +592,40 @@
 														</p>
 													{/if}
 													<p class="mt-1 text-[10px] text-text-muted">
-														Service type is determined by the selected contract.
+														{m.service_type_determined_by_contract()}
 													</p>
 												</div>
 											{:else}
 												<div class="sm:col-span-3">
 													<Select
-														label="Service Type"
+														label={m.service_type_label()}
 														options={SERVICE_TYPES}
 														bind:value={line.service_type}
 													/>
 												</div>
 												<div class="sm:col-span-6">
 													<Input
-														label="Description"
+														label={m.description()}
 														bind:value={line.description}
-														placeholder="Description of service..."
+														placeholder={m.placeholder_service_description()}
 													/>
 												</div>
 											{/if}
 
 											<div class="sm:col-span-3">
 												<Input
-													label="Quantity"
+													label={m.qty_col()}
 													type="number"
 													step="0.01"
 													bind:value={line.quantity}
 												/>
 											</div>
 											<div class="sm:col-span-3">
-												<Select label="Unit" options={UNIT_OPTIONS} bind:value={line.unit} />
+												<Select label={m.unit()} options={UNIT_OPTIONS} bind:value={line.unit} />
 											</div>
 											<div class="sm:col-span-3">
 												<Input
-													label="Unit Price"
+													label={m.unit_price()}
 													type="number"
 													step="0.01"
 													bind:value={line.unit_price}
@@ -630,7 +633,7 @@
 											</div>
 											<div class="sm:col-span-3">
 												<Input
-													label="VAT Rate (%)"
+													label={m.vat_percent()}
 													type="number"
 													step="0.1"
 													bind:value={line.vat_rate}
@@ -639,12 +642,12 @@
 
 											<div class="sm:col-span-6">
 												<DatePicker
-													label="Period Start (Optional)"
+													label={m.period_start_optional()}
 													bind:value={line.period_start}
 												/>
 											</div>
 											<div class="sm:col-span-6">
-												<DatePicker label="Period End (Optional)" bind:value={line.period_end} />
+												<DatePicker label={m.period_end_optional()} bind:value={line.period_end} />
 											</div>
 										</div>
 
@@ -656,7 +659,7 @@
 													<p
 														class="text-[10px] font-bold tracking-wider text-text-subtle uppercase"
 													>
-														Net Amount
+														{m.net_amount_label()}
 													</p>
 													<p class="font-medium text-text">
 														{formatCurrency(line.quantity * line.unit_price, currency)}
@@ -666,7 +669,7 @@
 													<p
 														class="text-[10px] font-bold tracking-wider text-text-subtle uppercase"
 													>
-														VAT
+														{m.vat_amount()}
 													</p>
 													<p class="font-medium text-text">
 														{formatCurrency(
@@ -677,7 +680,7 @@
 												</div>
 												<div class="text-left">
 													<p class="text-[10px] font-bold tracking-wider text-brand uppercase">
-														Gross
+														{m.gross_total()}
 													</p>
 													<p class="font-bold text-text">
 														{formatCurrency(
@@ -693,7 +696,7 @@
 												onclick={() => toggleLineSave(line.id)}
 											>
 												<Check class="h-3.5 w-3.5" />
-												Save Line
+												{m.save_line()}
 											</Button>
 										</div>
 									{/if}
@@ -715,16 +718,16 @@
 					class="mb-4 flex items-center gap-2 text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-500"
 				>
 					<Banknote class="h-4 w-4" />
-					Invoice Totals
+					{m.invoice_totals()}
 				</h3>
 
 				<div class="space-y-4">
 					<div class="flex justify-between text-sm">
-						<span class="text-text-muted">Subtotal (Pre-VAT)</span>
+						<span class="text-text-muted">{m.subtotal_pre_vat()}</span>
 						<span class="font-medium text-text">{formatCurrency(totals.net, currency)}</span>
 					</div>
 					<div class="flex justify-between text-sm">
-						<span class="text-text-muted">VAT Total</span>
+						<span class="text-text-muted">{m.vat_total()}</span>
 						<span class="font-medium text-text">{formatCurrency(totals.vat, currency)}</span>
 					</div>
 
@@ -733,7 +736,7 @@
 					<div
 						class="-mx-3 flex items-center justify-between rounded-xl bg-linear-to-br from-emerald-500/10 to-emerald-500/5 p-4 shadow-xs ring-1 ring-emerald-500/20 ring-inset"
 					>
-						<span class="text-base font-bold text-text">Total (Gross)</span>
+						<span class="text-base font-bold text-text">{m.total_gross()}</span>
 						<span class="text-xl font-bold text-emerald-600 dark:text-emerald-400"
 							>{formatCurrency(totals.gross, currency)}</span
 						>
@@ -747,11 +750,11 @@
 						onclick={handleCreateDraftInvoice}
 						isLoading={isSubmitting}
 					>
-						Create Draft Invoice
+						{m.create_draft_invoice()}
 					</Button>
 					{#if !clientId}
 						<p class="mt-2 text-center text-xs font-medium text-amber-600 dark:text-amber-500">
-							Client is required
+							{m.client_is_required()}
 						</p>
 					{/if}
 					{#if submitError}
@@ -767,12 +770,12 @@
 						class="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-text-subtle uppercase"
 					>
 						<FileText class="h-3.5 w-3.5" />
-						Tips
+						{m.tips()}
 					</h4>
 					<ul class="list-disc space-y-2 pl-4 text-xs text-text-muted">
-						<li>Save each line to lock its values before creating the invoice.</li>
-						<li>Contract lines automatically determine the service type.</li>
-						<li>All monetary values are fixed to EUR.</li>
+						<li>{m.save_each_line_tip()}</li>
+						<li>{m.contract_lines_tip()}</li>
+						<li>{m.eur_tip()}</li>
 					</ul>
 				</div>
 			</section>

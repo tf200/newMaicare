@@ -3,6 +3,7 @@
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
 
 	type Option = any;
 
@@ -21,8 +22,8 @@
 	let {
 		label,
 		value = $bindable<string[]>([]),
-		placeholder = 'Select items...',
-		searchPlaceholder = 'Search...',
+		placeholder = undefined,
+		searchPlaceholder = undefined,
 		error = undefined,
 		id = `multi-search-${Math.random().toString(36).substr(2, 9)}`,
 		loadOptions,
@@ -37,6 +38,8 @@
 	let searchInput = $state<HTMLInputElement>();
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
+	let resolvedPlaceholder = $derived(placeholder ?? m.select_items_placeholder());
+	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
 
 	let selectedOptions = $derived(options.filter((opt) => value.includes(valueFn(opt))));
 
@@ -120,7 +123,7 @@
 			aria-expanded={isOpen}
 		>
 			{#if value.length === 0}
-				<span class="text-text-subtle">{placeholder}</span>
+				<span class="text-text-subtle">{resolvedPlaceholder}</span>
 			{:else}
 				{#each selectedOptions as item (valueFn(item))}
 					<span
@@ -162,7 +165,7 @@
 							type="text"
 							value={searchQuery}
 							oninput={handleSearch}
-							placeholder={searchPlaceholder}
+							placeholder={resolvedSearchPlaceholder}
 							class="bg-background w-full rounded-lg py-2 pr-4 pl-9 text-sm outline-none placeholder:text-text-muted focus:ring-2 focus:ring-brand/20"
 						/>
 					</div>
@@ -171,10 +174,13 @@
 				<div class="max-h-48 overflow-y-auto p-1">
 					{#if isLoading}
 						<div class="flex items-center justify-center p-4 text-text-muted">
-							<Loader2 class="mr-2 h-4 w-4 animate-spin" /> Loading...
+							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+							{m.loading()}...
 						</div>
 					{:else if options.length === 0}
-						<div class="p-3 text-center text-sm text-text-muted">No results found</div>
+						<div class="p-3 text-center text-sm text-text-muted">
+							{m.no_results_found()}
+						</div>
 					{:else}
 						{#each options as option (valueFn(option))}
 							<button

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fade, fly } from 'svelte/transition';
 	import { X } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
 	type SheetSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
@@ -54,7 +55,7 @@
 			role="button"
 			tabindex="-1"
 			onkeydown={() => {}}
-			aria-label="Close sheet"
+			aria-label={m.close()}
 		></div>
 
 		<!-- Content -->
@@ -78,7 +79,7 @@
 				<button
 					onclick={close}
 					class="hover:bg-surface-subtle rounded-full p-2 text-text-muted transition-colors hover:text-text"
-					aria-label="Close"
+					aria-label={m.close()}
 				>
 					<X class="h-5 w-5" />
 				</button>

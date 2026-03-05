@@ -17,6 +17,7 @@
 	} from '$lib/types/api';
 	import { DiagnosisSchema, type DiagnosisSchemaInput } from '$lib/schemas/diagnosis';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		clientId: string;
@@ -70,7 +71,7 @@
 						open = false;
 						onCreated?.();
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to create diagnosis.';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_diagnosis();
 					}
 				}
 			}
@@ -78,30 +79,30 @@
 	);
 
 	const codeSystemOptions = [
-		{ label: 'ICD-10', value: 'ICD-10' },
-		{ label: 'DSM-5', value: 'DSM-5' },
-		{ label: 'SNOMED', value: 'SNOMED' }
+		{ label: m.icd_10(), value: 'ICD-10' },
+		{ label: m.dsm_5(), value: 'DSM-5' },
+		{ label: m.snomed(), value: 'SNOMED' }
 	];
 
 	const statusOptions: Array<{ value: DiagnosisStatus; label: string; activeClass: string }> = [
 		{
 			value: 'confirmed',
-			label: 'Confirmed',
+			label: m.confirmed(),
 			activeClass: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700'
 		},
 		{
 			value: 'suspected',
-			label: 'Suspected',
+			label: m.suspected(),
 			activeClass: 'border-amber-500/20 bg-amber-500/10 text-amber-700'
 		},
 		{
 			value: 'resolved',
-			label: 'Resolved',
+			label: m.resolved(),
 			activeClass: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-700'
 		},
 		{
 			value: 'ruled_out',
-			label: 'Ruled out',
+			label: m.ruled_out(),
 			activeClass: 'border-rose-500/20 bg-rose-500/10 text-rose-700'
 		}
 	];
@@ -109,22 +110,22 @@
 	const severityOptions: Array<{ value: DiagnosisSeverity; label: string; activeClass: string }> = [
 		{
 			value: 'unknown',
-			label: 'Unknown',
+			label: m.unknown(),
 			activeClass: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-700'
 		},
 		{
 			value: 'mild',
-			label: 'Mild',
+			label: m.mild(),
 			activeClass: 'border-sky-500/20 bg-sky-500/10 text-sky-700'
 		},
 		{
 			value: 'moderate',
-			label: 'Moderate',
+			label: m.moderate(),
 			activeClass: 'border-amber-500/20 bg-amber-500/10 text-amber-700'
 		},
 		{
 			value: 'severe',
-			label: 'Severe',
+			label: m.severe(),
 			activeClass: 'border-rose-500/20 bg-rose-500/10 text-rose-700'
 		}
 	];
@@ -148,46 +149,46 @@
 
 <Modal
 	bind:open
-	title="Create Diagnosis"
-	description="Capture clinical classification, status, and timeline before saving to the medical dossier."
+	title={m.create_diagnosis()}
+	description={m.create_diagnosis_description()}
 	size="xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Classification
+				{m.classification()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Select
-					label="Code system"
+					label={m.code_system()}
 					options={codeSystemOptions}
 					bind:value={$form.code_system}
 					error={formatFormError($errors.code_system)}
 				/>
 				<Input
-					label="Code"
-					placeholder="F32.1"
+					label={m.code()}
+					placeholder={m.placeholder_diagnosis_code()}
 					bind:value={$form.code}
 					error={formatFormError($errors.code)}
 				/>
 			</div>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Title"
-					placeholder="Depressive episode, moderate"
+					label={m.title()}
+					placeholder={m.placeholder_diagnosis_title()}
 					bind:value={$form.title}
 					error={formatFormError($errors.title)}
 				/>
 				<Input
-					label="Diagnosing clinician"
-					placeholder="Dr. A. Example"
+					label={m.diagnosing_clinician()}
+					placeholder={m.placeholder_diagnosing_clinician()}
 					bind:value={$form.diagnosing_clinician}
 					error={formatFormError($errors.diagnosing_clinician)}
 				/>
 			</div>
 			<Textarea
-				label="Description"
-				placeholder="Client reports low mood and loss of interest."
+				label={m.description()}
+				placeholder={m.placeholder_diagnosis_description()}
 				rows={3}
 				bind:value={$form.description}
 				error={formatFormError($errors.description)}
@@ -196,11 +197,11 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Clinical status
+				{m.clinical_status()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<div class="space-y-2">
-					<p class="ml-1 text-sm font-semibold text-text-muted">Status</p>
+					<p class="ml-1 text-sm font-semibold text-text-muted">{m.status()}</p>
 					<div class="flex flex-wrap gap-2">
 						{#each statusOptions as option (option.value)}
 							<button
@@ -220,7 +221,7 @@
 				</div>
 
 				<div class="space-y-2">
-					<p class="ml-1 text-sm font-semibold text-text-muted">Severity</p>
+					<p class="ml-1 text-sm font-semibold text-text-muted">{m.severity()}</p>
 					<div class="flex flex-wrap gap-2">
 						{#each severityOptions as option (option.value)}
 							<button
@@ -243,27 +244,27 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Timeline
+				{m.timeline()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<div class="space-y-1.5">
 					<DatePicker
-						label="Diagnosed on"
+						label={m.diagnosed_on()}
 						bind:value={$form.diagnosed_on}
 						error={formatFormError($errors.diagnosed_on)}
 					/>
-					<p class="ml-1 text-xs text-text-subtle">Stored as date and serialized as RFC3339.</p>
+					<p class="ml-1 text-xs text-text-subtle">{m.diagnosis_date_hint()}</p>
 				</div>
 
 				{#if showResolvedDate}
 					<div class="space-y-1.5">
 						<DatePicker
-							label="Resolved on"
+							label={m.resolved_on()}
 							bind:value={$form.resolved_on}
 							error={formatFormError($errors.resolved_on)}
 						/>
 						<p class="ml-1 text-xs text-text-subtle">
-							Use when diagnosis is resolved or ruled out.
+							{m.resolved_on_hint()}
 						</p>
 					</div>
 				{/if}
@@ -272,11 +273,11 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Notes
+				{m.notes_label()}
 			</h3>
 			<Textarea
-				label="Clinical notes"
-				placeholder="Monitor mood weekly."
+				label={m.clinical_notes()}
+				placeholder={m.placeholder_clinical_notes()}
 				rows={4}
 				bind:value={$form.notes}
 				error={formatFormError($errors.notes)}
@@ -299,11 +300,11 @@
 					reset();
 					open = false;
 				}}
-				disabled={$delayed}>Cancel</Button
+				disabled={$delayed}>{m.cancel()}</Button
 			>
 			<Button class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Stethoscope class="h-4 w-4" />
-				Create diagnosis
+				{m.create_diagnosis()}
 			</Button>
 		</div>
 	{/snippet}

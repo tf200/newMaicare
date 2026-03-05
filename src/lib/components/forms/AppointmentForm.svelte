@@ -77,24 +77,28 @@
 	);
 
 	const kindOptions = [
-		{ label: 'Appointment', value: 'appointment' },
-		{ label: 'Reminder', value: 'reminder' }
+		{ label: m.appointment_label(), value: 'appointment' },
+		{ label: m.reminder_label(), value: 'reminder' }
 	];
 
 	const colorOptions = [
-		{ value: '#1D4ED8', label: 'Blue' },
-		{ value: '#059669', label: 'Green' },
-		{ value: '#DC2626', label: 'Red' }
+		{ value: '#1D4ED8', label: m.color_blue() },
+		{ value: '#059669', label: m.color_green() },
+		{ value: '#DC2626', label: m.color_red() }
 	];
 
 	const reminderOptions = [
-		{ label: 'None', value: '0' },
-		{ label: '5 minutes before', value: '5' },
-		{ label: '15 minutes before', value: '15' },
-		{ label: '30 minutes before', value: '30' },
-		{ label: '1 hour before', value: '60' },
-		{ label: '1 day before', value: '1440' }
+		{ label: m.none(), value: '0' },
+		{ label: m.reminder_minutes_before({ minutes: 5 }), value: '5' },
+		{ label: m.reminder_minutes_before({ minutes: 15 }), value: '15' },
+		{ label: m.reminder_minutes_before({ minutes: 30 }), value: '30' },
+		{ label: m.reminder_hour_before(), value: '60' },
+		{ label: m.reminder_day_before(), value: '1440' }
 	];
+
+	const kindLabel = $derived.by(() =>
+		$form.kind === 'appointment' ? m.appointment_label() : m.reminder_label()
+	);
 
 	// Load employees with search
 	async function loadEmployees(query: string) {
@@ -133,7 +137,7 @@
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 		<!-- Kind -->
 		<Select
-			label="Type"
+			label={m.type()}
 			options={kindOptions}
 			bind:value={$form.kind}
 			error={($errors.kind as string[] | undefined)?.join('\n')}
@@ -141,8 +145,9 @@
 
 		<!-- Color -->
 		<div>
-			<label for="color-input" class="mb-2 block text-sm font-semibold text-text-muted">Color</label
-			>
+			<label for="color-input" class="mb-2 block text-sm font-semibold text-text-muted">
+				{m.color()}
+			</label>
 			<div class="flex flex-wrap items-center gap-2">
 				{#each colorOptions as colorOpt}
 					<button
@@ -168,8 +173,8 @@
 					style={!colorOptions.some((opt) => opt.value === $form.color)
 						? `background-color: ${$form.color}; border-style: solid; border-color: ${$form.color}`
 						: ''}
-					aria-label="Select custom color"
-					title="Custom color"
+					aria-label={m.select_custom_color()}
+					title={m.custom_color()}
 				>
 					<span class="text-lg font-bold">+</span>
 				</button>
@@ -191,9 +196,9 @@
 		<!-- Title -->
 		<div class="md:col-span-2">
 			<Input
-				label="Title"
+				label={m.title()}
 				bind:value={$form.title}
-				placeholder="e.g. Weekly Check-in"
+				placeholder={m.appointment_title_placeholder()}
 				error={formatFormError($errors.title)}
 				required
 			/>
@@ -202,24 +207,28 @@
 		<!-- Description -->
 		<div class="md:col-span-2">
 			<Textarea
-				label="Description"
+				label={m.description()}
 				bind:value={$form.description}
-				placeholder="Add more details about this appointment..."
+				placeholder={m.appointment_description_placeholder()}
 				rows={3}
 				error={formatFormError($errors.description)}
 			/>
 		</div>
 
 		<!-- Start/End -->
-		<DateTimePicker label="Start" bind:value={$form.start} error={formatFormError($errors.start)} />
-		<DateTimePicker label="End" bind:value={$form.end} error={formatFormError($errors.end)} />
+		<DateTimePicker
+			label={m.start()}
+			bind:value={$form.start}
+			error={formatFormError($errors.start)}
+		/>
+		<DateTimePicker label={m.end()} bind:value={$form.end} error={formatFormError($errors.end)} />
 
 		<!-- Location -->
 		<div class="md:col-span-2">
 			<Input
-				label="Location"
+				label={m.location()}
 				bind:value={$form.location}
-				placeholder="Physical address or meeting link"
+				placeholder={m.appointment_location_placeholder()}
 				error={formatFormError($errors.location)}
 			/>
 		</div>
@@ -235,39 +244,38 @@
 		<!-- Attendees -->
 		<div class="md:col-span-2">
 			<MultiSearchSelect
-				label="Involved Employees"
+				label={m.involved_employees()}
 				loadOptions={loadEmployees}
 				bind:value={$form.attendeeEmployeeIds}
-				placeholder="Search and select employees..."
-				searchPlaceholder="Search employees..."
+				placeholder={m.search_select_employees_placeholder()}
+				searchPlaceholder={m.search_employees()}
 				error={($errors.attendeeEmployeeIds as string[] | undefined)?.join('\n')}
 			/>
 		</div>
 
 		<div class="md:col-span-2">
 			<MultiSearchSelect
-				label="Involved Clients"
+				label={m.involved_clients()}
 				loadOptions={loadClients}
 				bind:value={$form.attendeeClientIds}
-				placeholder="Search and select clients..."
-				searchPlaceholder="Search clients..."
+				placeholder={m.search_select_clients_placeholder()}
+				searchPlaceholder={m.search_clients()}
 				error={($errors.attendeeClientIds as string[] | undefined)?.join('\n')}
 			/>
 		</div>
 
 		<!-- Reminder -->
 		<div class="md:col-span-2">
-			<Select label="Reminder" options={reminderOptions} bind:value={selectedReminder} />
+			<Select label={m.reminder()} options={reminderOptions} bind:value={selectedReminder} />
 		</div>
 	</div>
 
 	<div class="mt-4 flex justify-end gap-3">
 		<Button variant="secondary" onclick={onCancel} type="button" disabled={loading || $delayed}
-			>Cancel</Button
+			>{m.cancel()}</Button
 		>
 		<Button variant="primary" type="submit" isLoading={loading || $delayed}>
-			{appointment.id ? 'Update' : 'Create'}
-			{$form.kind === 'appointment' ? 'Appointment' : 'Reminder'}
+			{appointment.id ? `${m.update()} ${kindLabel}` : `${m.create()} ${kindLabel}`}
 		</Button>
 	</div>
 </form>

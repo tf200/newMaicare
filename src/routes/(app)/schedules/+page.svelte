@@ -22,6 +22,8 @@
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { getLocationSchedules, listLocations } from '$lib/api/locations';
 	import { createSchedules, deleteSchedule } from '$lib/api/schedules';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import type {
 		CreateScheduleCustomRequest,
 		CreateSchedulePresetRequest,
@@ -91,6 +93,15 @@
 	let viewMode = $state<'weekly' | 'monthly'>('weekly');
 	let weekOffset = $state(0);
 	let monthOffset = $state(0);
+	const weekdaysShort = [
+		m.weekday_mon_short(),
+		m.weekday_tue_short(),
+		m.weekday_wed_short(),
+		m.weekday_thu_short(),
+		m.weekday_fri_short(),
+		m.weekday_sat_short(),
+		m.weekday_sun_short()
+	];
 
 	let schedulesLoading = $state(false);
 	let schedulesError = $state<string | null>(null);
@@ -853,7 +864,7 @@
 				<CalendarDays class="h-6 w-6" />
 			</div>
 			<div>
-				<h1 class="text-xl font-bold tracking-tight text-text">Schedules Management</h1>
+				<h1 class="text-xl font-bold tracking-tight text-text">{m.schedules_management()}</h1>
 				<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-muted">
 					<SearchSelect
 						bind:value={selectedLocationId}
@@ -862,8 +873,8 @@
 						labelFn={(location) => location.name}
 						valueFn={(location) => location.id}
 						item={locationOption}
-						placeholder="Select location"
-						searchPlaceholder="Search locations..."
+						placeholder={m.select_location()}
+						searchPlaceholder={m.search_locations()}
 						compact
 						className="w-[230px]"
 					/>
@@ -877,7 +888,7 @@
 							class="bg-surface-subtle inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium"
 						>
 							<Loader2 class="h-3.5 w-3.5 animate-spin" />
-							Loading
+							{m.loading()}
 						</span>
 					{/if}
 				</div>
@@ -894,7 +905,7 @@
 						: 'text-text-muted hover:text-text'}"
 					onclick={() => (viewMode = 'weekly')}
 				>
-					Weekly
+					{m.weekly()}
 				</button>
 				<button
 					class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors {viewMode ===
@@ -903,7 +914,7 @@
 						: 'text-text-muted hover:text-text'}"
 					onclick={() => (viewMode = 'monthly')}
 				>
-					Monthly
+					{m.monthly()}
 				</button>
 			</div>
 
@@ -913,7 +924,7 @@
 						type="button"
 						class="hover:bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
 						onclick={() => (weekOffset -= 1)}
-						aria-label="Previous week"
+						aria-label={m.previous_week()}
 					>
 						<ChevronLeft class="h-4 w-4" />
 					</button>
@@ -925,13 +936,13 @@
 						type="button"
 						class="hover:bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
 						onclick={() => (weekOffset += 1)}
-						aria-label="Next week"
+						aria-label={m.next_week()}
 					>
 						<ChevronRight class="h-4 w-4" />
 					</button>
 				</div>
 				<Button variant="ghost" class="rounded-xl" onclick={() => (weekOffset = 0)}
-					>This Week</Button
+					>{m.this_week()}</Button
 				>
 				<Button
 					class="rounded-xl"
@@ -941,7 +952,7 @@
 					disabled={!selectedLocationId}
 				>
 					<Sparkles class="h-4 w-4" />
-					Auto-generate
+					{m.auto_generate()}
 				</Button>
 			{:else}
 				<div class="flex items-center rounded-xl border border-border/70 bg-surface p-1 shadow-sm">
@@ -949,24 +960,27 @@
 						type="button"
 						class="hover:bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
 						onclick={() => (monthOffset -= 1)}
-						aria-label="Previous month"
+						aria-label={m.previous_month()}
 					>
 						<ChevronLeft class="h-4 w-4" />
 					</button>
 					<span class="min-w-[120px] px-3 text-center text-sm font-medium text-text">
-						{currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+						{currentMonthDate.toLocaleDateString(getLocale(), {
+							month: 'long',
+							year: 'numeric'
+						})}
 					</span>
 					<button
 						type="button"
 						class="hover:bg-surface-subtle flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
 						onclick={() => (monthOffset += 1)}
-						aria-label="Next month"
+						aria-label={m.next_month()}
 					>
 						<ChevronRight class="h-4 w-4" />
 					</button>
 				</div>
 				<Button variant="ghost" class="rounded-xl" onclick={() => (monthOffset = 0)}
-					>This Month</Button
+					>{m.this_month()}</Button
 				>
 			{/if}
 		</div>
@@ -976,7 +990,7 @@
 		{#if schedulesError}
 			<div class="mb-4">
 				<InlineErrorBanner
-					title="Unable to load schedules"
+					title={m.unable_to_load_schedules()}
 					message={schedulesError}
 					onRetry={retrySchedulesFetch}
 				/>
@@ -985,13 +999,13 @@
 
 		{#if data.locationsLoadError}
 			<div class="mb-4">
-				<InlineErrorBanner title="Unable to load locations" message={data.locationsLoadError} />
+				<InlineErrorBanner title={m.unable_to_load_locations()} message={data.locationsLoadError} />
 			</div>
 		{/if}
 
 		{#if !selectedLocationId}
 			<div class="rounded-2xl border border-border/70 bg-surface p-5 text-sm text-text-muted">
-				No location selected. Choose a location to view schedules.
+				{m.no_location_selected()}
 			</div>
 		{:else if viewMode === 'weekly'}
 			<div class="min-w-[980px] overflow-hidden rounded-3xl border border-border/70 bg-surface">
@@ -999,7 +1013,7 @@
 					<div
 						class="bg-surface-subtle/80 flex items-end border-r border-b border-border/60 p-4 text-xs font-semibold tracking-wider text-text-muted uppercase"
 					>
-						Shift Template
+						{m.shift_template()}
 					</div>
 
 					{#each visibleDays as day (day.date)}
@@ -1015,7 +1029,7 @@
 						<div
 							class="col-span-8 flex items-center justify-center border-r border-b border-border/60 bg-surface px-4 py-10 text-sm text-text-muted"
 						>
-							No shift templates found for this location.
+							{m.no_shift_templates()}
 						</div>
 					{:else}
 						{#each templates as template (template.id)}
@@ -1037,7 +1051,7 @@
 										class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
 									>
 										<Moon class="h-3 w-3" />
-										<span>Cross-midnight (+1d)</span>
+										<span>{m.cross_midnight()}</span>
 									</div>
 								{/if}
 							</div>
@@ -1065,7 +1079,7 @@
 																	class="flex items-center justify-center rounded-md p-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 hover:bg-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/10"
 																	onclick={() => void handleUnassignEmployee(employee.scheduleId!)}
 																	disabled={deletingScheduleIds.includes(employee.scheduleId)}
-																	aria-label="Remove {employee.name} from shift"
+																	aria-label={m.remove_employee_from_shift({ name: employee.name })}
 																>
 																	{#if deletingScheduleIds.includes(employee.scheduleId)}
 																		<Loader2 class="h-3.5 w-3.5 animate-spin" />
@@ -1089,7 +1103,7 @@
 														<div
 															class="inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-xs font-medium text-text-muted"
 														>
-															+{shift.employees.length - 2} more
+															{m.more_count({ count: shift.employees.length - 2 })}
 														</div>
 													</Tooltip>
 												{/if}
@@ -1098,7 +1112,10 @@
 										<button
 											type="button"
 											class="flex w-full items-center justify-center rounded-lg border border-dashed border-transparent py-1.5 text-text-muted/30 transition-all group-hover/cell:text-text-muted/60 hover:!border-brand/30 hover:!bg-brand/5 hover:!text-brand"
-											aria-label="Add employee to {template.name} on {day.date}"
+											aria-label={m.add_employee_to_shift({
+												name: template.name,
+												date: day.date
+											})}
 											onclick={() => openAssignSheet(day.date, template.id)}
 										>
 											<Plus class="h-4 w-4" />
@@ -1107,7 +1124,10 @@
 										<button
 											type="button"
 											class="flex h-full min-h-[104px] w-full items-center justify-center rounded-xl border border-dashed border-transparent text-text-muted/20 transition-all group-hover/cell:text-text-muted/50 hover:!border-brand/30 hover:!bg-brand/5 hover:!text-brand"
-											aria-label="Add employee to {template.name} on {day.date}"
+											aria-label={m.add_employee_to_shift({
+												name: template.name,
+												date: day.date
+											})}
 											onclick={() => openAssignSheet(day.date, template.id)}
 										>
 											<Plus class="h-6 w-6" />
@@ -1124,7 +1144,7 @@
 				class="flex h-full min-h-[600px] min-w-[700px] flex-col overflow-hidden rounded-3xl border border-border/70 bg-surface sm:h-auto"
 			>
 				<div class="bg-surface-subtle/80 hidden grid-cols-7 border-b border-border/60 sm:grid">
-					{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as d (d)}
+					{#each weekdaysShort as d (d)}
 						<div
 							class="p-3 text-center text-[11px] font-semibold tracking-wider text-text-muted uppercase"
 						>
@@ -1157,7 +1177,7 @@
 								</div>
 								<button
 									class="bg-surface-subtle rounded-md p-1.5 text-text-muted transition-opacity group-hover/day:opacity-100 hover:bg-brand/10 hover:text-brand sm:bg-transparent sm:p-1 sm:opacity-0"
-									aria-label="Add shift on {day.date}"
+									aria-label={m.add_shift_on_date({ date: day.date })}
 									onclick={() => openAssignSheet(day.date, null)}
 								>
 									<Plus class="h-4 w-4" />
@@ -1190,7 +1210,7 @@
 								{/each}
 								{#if dayShifts.length > 3}
 									<div class="px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-										+{dayShifts.length - 3} more
+										{m.more_count({ count: dayShifts.length - 3 })}
 									</div>
 								{/if}
 							</div>
@@ -1205,13 +1225,13 @@
 		>
 			<div class="flex items-center gap-2 font-medium text-text">
 				<AlertCircle class="h-4 w-4" />
-				<span>Legend & Rules</span>
+				<span>{m.legend_rules()}</span>
 			</div>
 			<div
 				class="bg-surface-subtle flex items-center gap-2 rounded-lg border border-border/60 px-2.5 py-1.5"
 			>
 				<Moon class="h-3.5 w-3.5 text-indigo-500" />
-				<span>Cross-midnight shifts belong to their start date (Logical Date).</span>
+				<span>{m.cross_midnight_rule()}</span>
 			</div>
 		</div>
 	</div>

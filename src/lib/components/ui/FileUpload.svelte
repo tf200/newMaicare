@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { uploadManager } from '$lib/state/upload.svelte';
 	import { fade } from 'svelte/transition';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		label?: string;
@@ -96,8 +97,8 @@
 						/>
 					</svg>
 				</div>
-				<span class="text-sm font-medium">Click to upload</span>
-				<span class="text-xs">Max size 10MB</span>
+				<span class="text-sm font-medium">{m.click_to_upload()}</span>
+				<span class="text-xs">{m.max_size_10mb()}</span>
 			</button>
 		{:else}
 			<div class="flex w-full flex-col gap-3">
@@ -139,11 +140,11 @@
 							{#if activeUpload}
 								<span class="text-xs text-text-muted">
 									{#if activeUpload.status === 'uploading'}
-										Uploading... {activeUpload.progress}%
+										{m.uploading()}... {activeUpload.progress}%
 									{:else if activeUpload.status === 'completed'}
-										Ready
+										{m.ready()}
 									{:else if activeUpload.status === 'error'}
-										<span class="text-error">Upload failed</span>
+										<span class="text-error">{m.upload_failed()}</span>
 									{/if}
 								</span>
 							{/if}
@@ -152,7 +153,7 @@
 					<button
 						type="button"
 						onclick={removeFile}
-						aria-label="Remove file"
+						aria-label={m.remove_file()}
 						class="text-text-muted transition-colors hover:text-error"
 					>
 						<svg

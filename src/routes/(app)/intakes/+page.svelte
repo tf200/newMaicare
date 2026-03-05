@@ -187,7 +187,7 @@
 </script>
 
 <svelte:head>
-	<title>Intake | MaiCare</title>
+	<title>{m.intake_page_title()}</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -198,7 +198,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search intakes..."
+				placeholder={m.search_intakes_placeholder()}
 				value={appliedSearch}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -215,7 +215,7 @@
 			groups={filterGroups}
 			onUpdate={handleFilterUpdate}
 			onClear={() => setFilters({ ...filters, status: '' })}
-			title="Filter by status"
+			title={m.filter_by_status()}
 			buttonLabel="Status"
 		/>
 	</div>
@@ -308,7 +308,7 @@
 		<button
 			onclick={() => goto(`/intakes/${row.id}`)}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View intake"
+			title={m.view_intake()}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
@@ -408,7 +408,7 @@
 					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-500 sm:text-3xl">
 						{intakesData.stats.furtherInvestigation}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Requires review</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.requires_review()}</p>
 				</div>
 			</div>
 			<div
@@ -426,7 +426,7 @@
 					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
 						{intakesData.stats.withoutGoals}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Needs goal definition</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.needs_goal_definition()}</p>
 				</div>
 			</div>
 		</div>

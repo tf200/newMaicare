@@ -13,6 +13,7 @@
 	import { putClientInCare } from '$lib/api/clients';
 	import type { PutClientInCareRequest } from '$lib/types/api';
 	import { PutClientInCareSchema, type PutClientInCareSchemaInput } from '$lib/schemas/client-care';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -55,7 +56,7 @@
 						open = false;
 						onSuccess?.();
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to put client in care.';
+						errorMessage = error instanceof Error ? error.message : m.failed_put_client_in_care();
 					}
 				}
 			}
@@ -82,35 +83,35 @@
 
 <Modal
 	bind:open
-	title="Put Client In Care"
-	description="Move this client from waiting list to care lifecycle and assign the main coordinator."
+	title={m.put_client_in_care()}
+	description={m.put_client_in_care_description()}
 	class="max-w-xl"
 >
 	<form id={formId} use:enhance class="space-y-5">
 		<DatePicker
-			label="Care Start Date"
+			label={m.care_start_date()}
 			bind:value={$form.care_start_date}
 			error={formatFormError($errors.care_start_date)}
 		/>
 
 		<SearchSelect
-			label="Main Coordinator"
+			label={m.main_coordinator()}
 			bind:value={$form.coordinator_employee_id}
 			bind:displayValue={coordinatorName}
 			error={formatFormError($errors.coordinator_employee_id)}
 			loadOptions={loadCoordinatorOptions}
 			labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 			valueFn={(employee) => employee.id}
-			placeholder="Select coordinator..."
-			searchPlaceholder="Search employees..."
+			placeholder={m.select_coordinator()}
+			searchPlaceholder={m.search_employees()}
 		/>
 
-		<DateTimePicker label="Placed In Care At (Optional)" bind:value={$form.placed_in_care_at} />
+		<DateTimePicker label={m.placed_in_care_at_optional()} bind:value={$form.placed_in_care_at} />
 
 		<Textarea
-			label="Reason (Optional)"
+			label={m.reason_optional()}
 			bind:value={$form.reason}
-			placeholder="e.g. approved in intake review"
+			placeholder={m.placeholder_care_reason()}
 			rows={3}
 		/>
 
@@ -124,8 +125,8 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>Put In Care</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed}>{m.put_in_care()}</Button>
 		</div>
 	{/snippet}
 </Modal>

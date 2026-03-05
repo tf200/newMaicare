@@ -103,7 +103,7 @@
 			<button
 				onclick={() => onOpenSidebar?.()}
 				class="inline-flex items-center justify-center rounded-2xl border border-border/60 bg-glass-surface p-2 text-text-muted shadow-sm backdrop-blur-xl transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none motion-reduce:transition-none dark:focus-visible:ring-offset-zinc-900"
-				aria-label="Toggle navigation"
+				aria-label={m.toggle_navigation()}
 			>
 				<PanelLeft class="h-4 w-4" />
 			</button>

@@ -19,6 +19,7 @@
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { localizeHref, deLocalizeUrl } from '$lib/paraglide/runtime';
 	import { slide } from 'svelte/transition';
 	import { sidebarState } from '$lib/state/sidebar.svelte';
 
@@ -37,10 +38,10 @@
 			icon: LayoutDashboard,
 			permission: 'DASHBOARD.VIEW'
 		},
-		{ label: 'Clients', href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
-		{ label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
+		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
+		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{
-			label: 'Appointments',
+			label: m.appointments(),
 			href: '/appointments',
 			icon: ClipboardCheck,
 			permission: 'DASHBOARD.VIEW'
@@ -84,12 +85,12 @@
 			]
 		},
 		{
-			label: m.finances?.() || 'Finances',
+			label: m.finances(),
 			icon: BadgeEuro,
 			permission: 'FINANCE.VIEW',
 			children: [
 				{
-					label: m.invoices?.() || 'Invoices',
+					label: m.invoices(),
 					href: '/finances/invoices',
 					permission: 'INVOICE.VIEW'
 				}
@@ -122,7 +123,7 @@
 	const inactiveItem = 'text-text-muted hover:bg-border/50 hover:text-text';
 
 	const isActive = (href: string) => {
-		const path = page.url.pathname;
+		const path = deLocalizeUrl(page.url).pathname;
 		return path === href || path.startsWith(`${href}/`);
 	};
 
@@ -157,7 +158,7 @@
 	<!-- Header -->
 	<div class="flex h-16 items-center justify-between px-4">
 		<button
-			onclick={() => goto('/dashboard')}
+			onclick={() => goto(localizeHref('/dashboard'))}
 			class="group flex items-center gap-3 overflow-hidden outline-none"
 		>
 			<!-- Logo Icon -->
@@ -195,7 +196,7 @@
 				<button
 					onclick={() => {
 						sidebarState.clearScopedSidebar();
-						goto('/clients');
+						goto(localizeHref('/clients'));
 					}}
 					class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-text-muted transition-all hover:bg-border/30 hover:text-text active:scale-95"
 					class:justify-center={collapsed}
@@ -225,7 +226,7 @@
 								{m.client()}
 							</span>
 							<span class="truncate text-sm font-bold text-text">
-								{title || 'Client Profile'}
+								{title || m.client_profile()}
 							</span>
 						</div>
 					{/if}
@@ -255,7 +256,7 @@
 									if (hasChildren) {
 										toggleExpand(item.label);
 									} else if (item.href) {
-										goto(item.href);
+										goto(localizeHref(item.href));
 									}
 								}}
 								class="{baseItem} {active ? activeItem : inactiveItem}"
@@ -292,7 +293,7 @@
 									<PermissionGuard permission={child.permission}>
 										{@const childActive = isActive(child.href)}
 										<button
-											onclick={() => goto(child.href)}
+											onclick={() => goto(localizeHref(child.href))}
 											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
 											{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>

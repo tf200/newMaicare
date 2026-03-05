@@ -16,6 +16,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { formatFormError } from '$lib/utils/form-errors';
+	import { m } from '$lib/paraglide/messages';
 	import type {
 		CreateIncidentInformedParty,
 		CreateIncidentRequest,
@@ -134,7 +135,7 @@
 						reset();
 						open = false;
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to save incident';
+						errorMessage = error instanceof Error ? error.message : m.failed_save_incident();
 					}
 				}
 			}
@@ -142,79 +143,79 @@
 	);
 
 	const reporterOptions: Array<{ value: IncidentReporterInvolvement; label: string }> = [
-		{ value: 'directly_involved', label: 'Directly involved' },
-		{ value: 'witness', label: 'Witness' },
-		{ value: 'found_afterwards', label: 'Found afterwards' },
-		{ value: 'alarmed', label: 'Alarmed' }
+		{ value: 'directly_involved', label: m.directly_involved() },
+		{ value: 'witness', label: m.witness() },
+		{ value: 'found_afterwards', label: m.found_afterwards() },
+		{ value: 'alarmed', label: m.alarmed() }
 	];
 
 	const informedPartyOptions: Array<{ value: CreateIncidentInformedParty; label: string }> = [
-		{ value: 'family', label: 'Family' },
-		{ value: 'manager', label: 'Manager' }
+		{ value: 'family', label: m.family() },
+		{ value: 'manager', label: m.manager() }
 	];
 
 	const severityOptions: Array<{ value: IncidentSeverity; label: string }> = [
-		{ value: 'near_incident', label: 'Near incident' },
-		{ value: 'less_serious', label: 'Less serious' },
-		{ value: 'serious', label: 'Serious' },
-		{ value: 'fatal', label: 'Fatal' }
+		{ value: 'near_incident', label: m.near_incident() },
+		{ value: 'less_serious', label: m.less_serious() },
+		{ value: 'serious', label: m.serious() },
+		{ value: 'fatal', label: m.fatal() }
 	];
 
 	const incidentTypeOptions: Array<{ value: IncidentType; label: string }> = [
-		{ value: 'passing_away', label: 'Passing away' },
-		{ value: 'self_harm', label: 'Self harm' },
-		{ value: 'violence', label: 'Violence' },
-		{ value: 'fire_water_damage', label: 'Fire / water damage' },
-		{ value: 'accident', label: 'Accident' },
-		{ value: 'client_absence', label: 'Client absence' },
-		{ value: 'medicines', label: 'Medicines' },
-		{ value: 'organization', label: 'Organization' },
-		{ value: 'use_prohibited_substances', label: 'Use prohibited substances' },
-		{ value: 'other', label: 'Other' }
+		{ value: 'passing_away', label: m.passing_away() },
+		{ value: 'self_harm', label: m.self_harm() },
+		{ value: 'violence', label: m.violence() },
+		{ value: 'fire_water_damage', label: m.fire_water_damage() },
+		{ value: 'accident', label: m.accident() },
+		{ value: 'client_absence', label: m.client_absence() },
+		{ value: 'medicines', label: m.medicines() },
+		{ value: 'organization', label: m.organization() },
+		{ value: 'use_prohibited_substances', label: m.use_prohibited_substances() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const recurrenceRiskOptions: Array<{ value: IncidentRecurrenceRisk; label: string }> = [
-		{ value: 'very_low', label: 'Very low' },
-		{ value: 'means', label: 'Medium' },
-		{ value: 'high', label: 'High' },
-		{ value: 'very_high', label: 'Very high' }
+		{ value: 'very_low', label: m.very_low() },
+		{ value: 'means', label: m.medium() },
+		{ value: 'high', label: m.high() },
+		{ value: 'very_high', label: m.very_high() }
 	];
 
 	const causeCategoryOptions: Array<{ value: IncidentCauseCategory; label: string }> = [
-		{ value: 'internal_personal', label: 'Internal / personal' },
-		{ value: 'external_environmental', label: 'External / environmental' },
-		{ value: 'organizational', label: 'Organizational' },
-		{ value: 'technical', label: 'Technical' },
-		{ value: 'employee_related', label: 'Employee related' },
-		{ value: 'client_related', label: 'Client related' },
-		{ value: 'other', label: 'Other' }
+		{ value: 'internal_personal', label: m.internal_personal() },
+		{ value: 'external_environmental', label: m.external_environmental() },
+		{ value: 'organizational', label: m.organizational() },
+		{ value: 'technical', label: m.technical() },
+		{ value: 'employee_related', label: m.employee_related() },
+		{ value: 'client_related', label: m.client_related() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const physicalInjuryOptions: Array<{ value: IncidentPhysicalInjury; label: string }> = [
-		{ value: 'no_injuries', label: 'No injuries' },
-		{ value: 'not_noticeable_yet', label: 'Not noticeable yet' },
-		{ value: 'bruising_swelling', label: 'Bruising / swelling' },
-		{ value: 'skin_injury', label: 'Skin injury' },
-		{ value: 'broken_bones', label: 'Broken bones' },
-		{ value: 'shortness_of_breath', label: 'Shortness of breath' },
-		{ value: 'death', label: 'Death' },
-		{ value: 'other', label: 'Other' }
+		{ value: 'no_injuries', label: m.no_injuries() },
+		{ value: 'not_noticeable_yet', label: m.not_noticeable_yet() },
+		{ value: 'bruising_swelling', label: m.bruising_swelling() },
+		{ value: 'skin_injury', label: m.skin_injury() },
+		{ value: 'broken_bones', label: m.broken_bones() },
+		{ value: 'shortness_of_breath', label: m.shortness_of_breath() },
+		{ value: 'death', label: m.death() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const neededConsultationOptions: Array<{ value: IncidentNeededConsultation; label: string }> = [
-		{ value: 'no', label: 'No' },
-		{ value: 'not_clear', label: 'Not clear' },
-		{ value: 'hospitalization', label: 'Hospitalization' },
-		{ value: 'consult_gp', label: 'Consult GP' }
+		{ value: 'no', label: m.no() },
+		{ value: 'not_clear', label: m.not_clear() },
+		{ value: 'hospitalization', label: m.hospitalization() },
+		{ value: 'consult_gp', label: m.consult_gp() }
 	];
 
 	const followUpActionOptions: Array<{ value: IncidentFollowUpAction; label: string }> = [
-		{ value: 'medical_check', label: 'Medical check' },
-		{ value: 'family_contact', label: 'Family contact' },
-		{ value: 'internal_review', label: 'Internal review' },
-		{ value: 'official_report', label: 'Official report' },
-		{ value: 'notify_inspectorate', label: 'Notify inspectorate' },
-		{ value: 'other', label: 'Other' }
+		{ value: 'medical_check', label: m.medical_check() },
+		{ value: 'family_contact', label: m.family_contact() },
+		{ value: 'internal_review', label: m.internal_review() },
+		{ value: 'official_report', label: m.official_report() },
+		{ value: 'notify_inspectorate', label: m.notify_inspectorate() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const toEditableInformedParty = (value: InformedParty): CreateIncidentInformedParty | null => {
@@ -308,14 +309,14 @@
 {#snippet clientItem(client: ListClientsResponse)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{client.first_name} {client.last_name}</span>
-		<span class="text-xs text-text-muted">BSN: {client.bsn}</span>
+		<span class="text-xs text-text-muted">{m.bsn()}: {client.bsn}</span>
 	</div>
 {/snippet}
 
 {#snippet employeeItem(employee: EmployeeListItem)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{employee.first_name} {employee.last_name}</span>
-		<span class="text-xs text-text-muted">BSN: {employee.bsn}</span>
+		<span class="text-xs text-text-muted">{m.bsn()}: {employee.bsn}</span>
 	</div>
 {/snippet}
 
@@ -328,10 +329,8 @@
 
 <Modal
 	bind:open
-	title={isEditMode ? 'Edit Incident' : 'Create Incident'}
-	description={isEditMode
-		? 'Update incident details and keep reporting data in sync.'
-		: 'Register a new incident and capture all required follow-up details.'}
+	title={isEditMode ? m.edit_incident() : m.create_incident()}
+	description={isEditMode ? m.update_incident_description() : m.create_incident_description()}
 	size="4xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
@@ -343,11 +342,11 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Core Details
+				{m.core_details()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<SearchSelect
-					label="Client"
+					label={m.client()}
 					loadOptions={loadClients}
 					bind:value={$form.client_id}
 					bind:displayValue={clientDisplay}
@@ -355,56 +354,56 @@
 					item={clientItem}
 					labelFn={(client) => `${client.first_name} ${client.last_name}`}
 					valueFn={(client) => client.id}
-					placeholder="Search for a client..."
+					placeholder={m.search_client_placeholder()}
 					disabled={isEditMode}
 				/>
 				<SearchSelect
-					label="Employee"
+					label={m.employee()}
 					loadOptions={loadEmployees}
 					bind:value={$form.employee_id}
 					bind:displayValue={employeeDisplay}
 					item={employeeItem}
 					labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 					valueFn={(employee) => employee.id}
-					placeholder="Search for an employee..."
+					placeholder={m.search_employee_placeholder()}
 				/>
 				<SearchSelect
-					label="Location"
+					label={m.location()}
 					loadOptions={loadLocations}
 					bind:value={$form.location_id}
 					bind:displayValue={locationDisplay}
 					item={locationItem}
 					labelFn={(location) => location.name}
 					valueFn={(location) => location.id}
-					placeholder="Search for a location..."
+					placeholder={m.search_location_placeholder()}
 				/>
-				<DateTimePicker label="Occurred at" bind:value={$form.occurred_at} />
+				<DateTimePicker label={m.occurred_at()} bind:value={$form.occurred_at} />
 				<Select
-					label="Reporter involvement"
+					label={m.reporter_involvement()}
 					bind:value={$form.reporter_involvement}
 					options={reporterOptions}
-					placeholder="Select involvement..."
+					placeholder={m.select_involvement()}
 					error={formatFormError($errors.reporter_involvement)}
 				/>
 				<Select
-					label="Incident type"
+					label={m.incident_type()}
 					bind:value={$form.incident_type}
 					options={incidentTypeOptions}
-					placeholder="Select incident type..."
+					placeholder={m.select_incident_type()}
 					error={formatFormError($errors.incident_type)}
 				/>
 				<Select
-					label="Severity"
+					label={m.severity()}
 					bind:value={$form.severity_of_incident}
 					options={severityOptions}
-					placeholder="Select severity..."
+					placeholder={m.select_severity()}
 					error={formatFormError($errors.severity_of_incident)}
 				/>
 				<Select
-					label="Recurrence risk"
+					label={m.recurrence_risk()}
 					bind:value={$form.recurrence_risk}
 					options={recurrenceRiskOptions}
-					placeholder="Select risk..."
+					placeholder={m.select_recurrence_risk()}
 					error={formatFormError($errors.recurrence_risk)}
 				/>
 			</div>
@@ -412,63 +411,63 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Impact & Cause
+				{m.impact_cause()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Select
-					label="Physical injury"
+					label={m.physical_injury()}
 					bind:value={$form.physical_injury}
 					options={physicalInjuryOptions}
-					placeholder="Select injury status..."
+					placeholder={m.select_injury_status()}
 					error={formatFormError($errors.physical_injury)}
 				/>
 				<Select
-					label="Needed consultation"
+					label={m.consultation_needed()}
 					bind:value={$form.needed_consultation}
 					options={neededConsultationOptions}
-					placeholder="Select consultation..."
+					placeholder={m.select_consultation()}
 					error={formatFormError($errors.needed_consultation)}
 				/>
 				<MultiSelect
-					label="Informed parties"
+					label={m.informed_parties()}
 					bind:value={$form.informed_parties}
 					options={informedPartyOptions}
-					placeholder="Select informed parties..."
+					placeholder={m.select_informed_parties()}
 				/>
 				<MultiSelect
-					label="Cause categories"
+					label={m.cause_categories()}
 					bind:value={$form.cause_categories}
 					options={causeCategoryOptions}
-					placeholder="Select cause categories..."
+					placeholder={m.select_cause_categories()}
 				/>
 			</div>
 
 			<Textarea
-				label="Incident explanation"
-				placeholder="Describe what happened in detail..."
+				label={m.incident_explanation()}
+				placeholder={m.placeholder_incident_explanation()}
 				rows={4}
 				bind:value={$form.incident_explanation}
 			/>
 			<Textarea
-				label="Cause explanation"
-				placeholder="Describe root causes and context..."
+				label={m.cause_explanation()}
+				placeholder={m.placeholder_cause_explanation()}
 				rows={3}
 				bind:value={$form.cause_explanation}
 			/>
 			<Textarea
-				label="Physical injury details"
-				placeholder="Add injury details if applicable..."
+				label={m.physical_injury_details()}
+				placeholder={m.placeholder_physical_injury_details()}
 				rows={3}
 				bind:value={$form.physical_injury_desc}
 			/>
 			<Input
-				label="Psychological damage"
-				placeholder="e.g. unrest"
+				label={m.psychological_damage()}
+				placeholder={m.placeholder_psychological_damage()}
 				bind:value={$form.psychological_damage}
 			/>
 			<Textarea
-				label="Psychological damage details"
-				placeholder="Add mental impact details if applicable..."
+				label={m.psychological_damage_details()}
+				placeholder={m.placeholder_psychological_damage_details()}
 				rows={3}
 				bind:value={$form.psychological_damage_desc}
 			/>
@@ -476,50 +475,47 @@
 
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Follow-up
+				{m.follow_up()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<MultiSelect
-					label="Follow-up actions"
+					label={m.follow_up_actions()}
 					bind:value={$form.follow_up_actions}
 					options={followUpActionOptions}
-					placeholder="Select follow-up actions..."
+					placeholder={m.select_follow_up_actions()}
 				/>
 				<div class="rounded-xl border border-border bg-surface/50 p-4">
-					<Checkbox
-						label="Employee absent due to incident"
-						bind:checked={$form.is_employee_absent}
-					/>
+					<Checkbox label={m.employee_absent_incident()} bind:checked={$form.is_employee_absent} />
 				</div>
 			</div>
 
 			<Textarea
-				label="Prevention steps"
-				placeholder="What can prevent this from recurring?"
+				label={m.prevention_steps()}
+				placeholder={m.placeholder_prevention_steps()}
 				rows={3}
 				bind:value={$form.incident_prevent_steps}
 			/>
 			<Textarea
-				label="Taken measures"
-				placeholder="Which direct measures were taken?"
+				label={m.taken_measures()}
+				placeholder={m.placeholder_taken_measures()}
 				rows={3}
 				bind:value={$form.incident_taken_measures}
 			/>
 			<Textarea
-				label="Follow-up notes"
-				placeholder="Any additional notes for follow-up..."
+				label={m.follow_up_notes()}
+				placeholder={m.placeholder_follow_up_notes()}
 				rows={3}
 				bind:value={$form.follow_up_notes}
 			/>
 			<Textarea
-				label="Additional details"
-				placeholder="Other relevant details..."
+				label={m.additional_details()}
+				placeholder={m.placeholder_additional_details()}
 				rows={3}
 				bind:value={$form.additional_details}
 			/>
 			<Textarea
-				label="Notification emails"
-				placeholder="name@domain.com, another@domain.com"
+				label={m.notification_emails()}
+				placeholder={m.placeholder_notification_emails()}
 				rows={3}
 				bind:value={$form.emails}
 				error={formatFormError($errors.emails)}
@@ -530,16 +526,16 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
 			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Plus class="h-4 w-4" />
 				{$delayed
 					? isEditMode
-						? 'Updating incident...'
-						: 'Creating incident...'
+						? m.updating_incident()
+						: m.creating_incident()
 					: isEditMode
-						? 'Update incident'
-						: 'Create incident'}
+						? m.update_incident()
+						: m.create_incident_action()}
 			</Button>
 		</div>
 	{/snippet}

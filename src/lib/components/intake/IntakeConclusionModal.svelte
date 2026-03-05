@@ -2,6 +2,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type Decision = 'accept' | 'refuse';
 
@@ -47,14 +48,14 @@
 
 <Modal
 	bind:open
-	title="Process intake"
-	description="Choose the final decision before this intake can move forward."
+	title={m.process_intake()}
+	description={m.process_intake_modal_description()}
 	size="md"
 >
 	{#snippet footer()}
 		<div class="flex w-full items-center justify-end gap-2">
-			<Button variant="ghost" onclick={handleCancel}>Cancel</Button>
-			<Button onclick={handleSubmit} isLoading={isSaving}>Save decision</Button>
+			<Button variant="ghost" onclick={handleCancel}>{m.cancel()}</Button>
+			<Button onclick={handleSubmit} isLoading={isSaving}>{m.save_decision()}</Button>
 		</div>
 	{/snippet}
 
@@ -67,8 +68,8 @@
 					? 'border-emerald-500 bg-emerald-500/5'
 					: 'border-border bg-surface hover:bg-border/20'}"
 			>
-				<p class="text-sm font-bold text-text">Accept</p>
-				<p class="mt-1 text-xs text-text-muted">Set intake conclusion to suitable.</p>
+				<p class="text-sm font-bold text-text">{m.decision_accept()}</p>
+				<p class="mt-1 text-xs text-text-muted">{m.decision_accept_description()}</p>
 			</button>
 			<button
 				type="button"
@@ -77,15 +78,15 @@
 					? 'border-rose-500 bg-rose-500/5'
 					: 'border-border bg-surface hover:bg-border/20'}"
 			>
-				<p class="text-sm font-bold text-text">Refuse</p>
-				<p class="mt-1 text-xs text-text-muted">Set intake conclusion to unsuitable.</p>
+				<p class="text-sm font-bold text-text">{m.decision_refuse()}</p>
+				<p class="mt-1 text-xs text-text-muted">{m.decision_refuse_description()}</p>
 			</button>
 		</div>
 
 		<Textarea
-			label="Decision notes (optional)"
+			label={m.decision_notes_optional()}
 			bind:value={notes}
-			placeholder="Explain why this intake is accepted or refused..."
+			placeholder={m.decision_notes_placeholder()}
 			rows={4}
 		/>
 	</div>

@@ -15,6 +15,7 @@
 	import { listSenders } from '$lib/api/senders';
 	import type { ListClientsResponse, SenderListItem, CreateContractRequest } from '$lib/types/api';
 	import { ContractSchema, type ContractInput } from '$lib/schemas/contract';
+	import { m } from '$lib/paraglide/messages';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -58,7 +59,7 @@
 						onCreated?.();
 						open = false;
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to create contract';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_contract();
 					}
 				}
 			}
@@ -67,38 +68,38 @@
 
 	// Options
 	const careTypeOptions = [
-		{ value: 'ambulante', label: 'Ambulante' },
-		{ value: 'accommodation', label: 'Accommodation' }
+		{ value: 'ambulante', label: m.ambulante() },
+		{ value: 'accommodation', label: m.accommodation() }
 	];
 
 	const financingActOptions = [
-		{ value: 'WMO', label: 'WMO' },
-		{ value: 'ZVW', label: 'ZVW' },
-		{ value: 'WLZ', label: 'WLZ' },
-		{ value: 'JW', label: 'JW' },
-		{ value: 'WPG', label: 'WPG' }
+		{ value: 'WMO', label: m.wmo() },
+		{ value: 'ZVW', label: m.zvw() },
+		{ value: 'WLZ', label: m.wlz() },
+		{ value: 'JW', label: m.jw() },
+		{ value: 'WPG', label: m.wpg() }
 	];
 
 	const financingOptionOptions = [
-		{ value: 'ZIN', label: 'ZIN (Zorg in Natura)' },
-		{ value: 'PGB', label: 'PGB (Persoonsgebonden Budget)' }
+		{ value: 'ZIN', label: m.zin() },
+		{ value: 'PGB', label: m.pgb() }
 	];
 
 	const hoursTypeOptions = [
-		{ value: 'weekly', label: 'Weekly' },
-		{ value: 'all_period', label: 'All Period' }
+		{ value: 'weekly', label: m.weekly() },
+		{ value: 'all_period', label: m.all_period() }
 	];
 
 	const timeUnitOptions = $derived.by<TimeUnitOption[]>(() => {
 		if ($form.care_type === 'ambulante') {
 			return [
-				{ value: 'minute', label: 'Minute' },
-				{ value: 'hourly', label: 'Hourly' }
+				{ value: 'minute', label: m.minute() },
+				{ value: 'hourly', label: m.hourly() }
 			];
 		} else if ($form.care_type === 'accommodation') {
 			return [
-				{ value: 'daily', label: 'Daily' },
-				{ value: 'weekly', label: 'Weekly' }
+				{ value: 'daily', label: m.daily() },
+				{ value: 'weekly', label: m.weekly() }
 			];
 		}
 		return [];
@@ -133,7 +134,7 @@
 
 		uploadedAttachments = [
 			...uploadedAttachments,
-			{ id: fileId, name: `Attachment ${uploadedAttachments.length + 1}` }
+			{ id: fileId, name: m.attachment_number({ number: uploadedAttachments.length + 1 }) }
 		];
 		currentUploadFileId = null;
 		uploadKey += 1;
@@ -164,9 +165,9 @@
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{option.first_name} {option.last_name}</span>
 		<div class="flex items-center gap-2 text-xs text-text-muted">
-			<span>BSN: {option.bsn}</span>
+			<span>{m.bsn()}: {option.bsn}</span>
 			<span class="h-1 w-1 rounded-full bg-border"></span>
-			<span>File: {option.filenumber}</span>
+			<span>{m.file_number_label()}: {option.filenumber}</span>
 		</div>
 	</div>
 {/snippet}
@@ -186,8 +187,8 @@
 
 <Modal
 	bind:open
-	title="Create New Contract"
-	description="Define care terms, financial details, and periods for a client contract."
+	title={m.create_new_contract()}
+	description={m.create_new_contract_description()}
 	size="4xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
@@ -200,28 +201,28 @@
 		<!-- Section: Parties -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Parties
+				{m.parties()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<SearchSelect
-					label="Client"
+					label={m.client()}
 					loadOptions={loadClients}
 					bind:value={$form.client_id}
 					error={formatFormError($errors.client_id)}
 					item={clientItem}
 					labelFn={(client) => `${client.first_name} ${client.last_name}`}
 					valueFn={(client) => client.id}
-					placeholder="Search for a client..."
+					placeholder={m.search_client_placeholder()}
 				/>
 				<SearchSelect
-					label="Sender"
+					label={m.sender()}
 					loadOptions={loadSenders}
 					bind:value={$form.sender_id}
 					error={formatFormError($errors.sender_id)}
 					item={senderItem}
 					labelFn={(sender) => sender.name}
 					valueFn={(sender) => sender.id}
-					placeholder="Search for a sender..."
+					placeholder={m.search_sender_placeholder()}
 				/>
 			</div>
 		</section>
@@ -229,36 +230,36 @@
 		<!-- Section: Care & Terms -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Care & Terms
+				{m.care_terms()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Care Name"
-					placeholder="e.g. Individual Support"
+					label={m.care_name()}
+					placeholder={m.placeholder_care_name()}
 					bind:value={$form.care_name}
 					error={formatFormError($errors.care_name)}
 					required
 				/>
 				<Select
-					label="Care Type"
+					label={m.care_type()}
 					bind:value={$form.care_type}
 					options={careTypeOptions}
-					placeholder="Select care type..."
+					placeholder={m.select_care_type()}
 					error={formatFormError($errors.care_type)}
 				/>
 				<DatePicker
-					label="Start Date"
+					label={m.start_date()}
 					bind:value={$form.start_date}
 					error={formatFormError($errors.start_date)}
 				/>
 				<DatePicker
-					label="End Date"
+					label={m.end_date()}
 					bind:value={$form.end_date}
 					error={formatFormError($errors.end_date)}
 				/>
 				<Input
-					label="Type ID (Optional)"
-					placeholder="UUID"
+					label={m.type_id_optional()}
+					placeholder={m.placeholder_uuid()}
 					bind:value={$form.type_id}
 					error={formatFormError($errors.type_id)}
 				/>
@@ -268,28 +269,28 @@
 		<!-- Section: Financials -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Financials
+				{m.financials()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
 				<Input
-					label="Price"
+					label={m.price()}
 					type="number"
-					placeholder="0.00"
+					placeholder={m.placeholder_amount_zero()}
 					bind:value={$form.price}
 					error={formatFormError($errors.price)}
 					required
 				/>
 				<Select
-					label="Time Unit"
+					label={m.time_unit()}
 					bind:value={$form.price_time_unit}
 					options={timeUnitOptions}
-					placeholder="Select unit..."
+					placeholder={m.select_unit()}
 					error={formatFormError($errors.price_time_unit)}
 				/>
 				<Input
-					label="VAT % (Optional)"
+					label={m.vat_percent_optional()}
 					type="number"
-					placeholder="21"
+					placeholder={m.placeholder_vat_percent()}
 					bind:value={$form.VAT}
 					error={formatFormError($errors.VAT)}
 				/>
@@ -298,33 +299,33 @@
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				{#if $form.care_type === 'ambulante'}
 					<Input
-						label="Hours"
+						label={m.hours()}
 						type="number"
-						placeholder="40"
+						placeholder={m.placeholder_hours()}
 						bind:value={$form.hours}
 						error={formatFormError($errors.hours)}
 						required
 					/>
 					<Select
-						label="Hours Type"
+						label={m.hours_type()}
 						bind:value={$form.hours_type}
 						options={hoursTypeOptions}
-						placeholder="Select hours type..."
+						placeholder={m.select_hours_type()}
 						error={formatFormError($errors.hours_type)}
 					/>
 				{/if}
 				<Select
-					label="Financing Act"
+					label={m.financing_act()}
 					bind:value={$form.financing_act}
 					options={financingActOptions}
-					placeholder="Select act..."
+					placeholder={m.select_financing_act()}
 					error={formatFormError($errors.financing_act)}
 				/>
 				<Select
-					label="Financing Option"
+					label={m.financing_option()}
 					bind:value={$form.financing_option}
 					options={financingOptionOptions}
-					placeholder="Select option..."
+					placeholder={m.select_financing_option()}
 					error={formatFormError($errors.financing_option)}
 				/>
 			</div>
@@ -333,18 +334,18 @@
 		<!-- Section: Optional Settings -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Optional Settings
+				{m.optional_settings()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Reminder Period (Days)"
+					label={m.reminder_period_days()}
 					type="number"
-					placeholder="30"
+					placeholder={m.placeholder_reminder_days()}
 					bind:value={$form.reminder_period}
 					error={formatFormError($errors.reminder_period)}
 				/>
 				<div class="space-y-3">
-					<div class="ml-1 text-sm font-semibold text-text-muted">Attachments</div>
+					<div class="ml-1 text-sm font-semibold text-text-muted">{m.attachments()}</div>
 					<div class="space-y-4 rounded-2xl border border-border bg-surface/60 p-4">
 						{#key uploadKey}
 							<FileUpload
@@ -359,7 +360,7 @@
 								class="space-y-2 rounded-xl border border-border/60 bg-zinc-50/70 p-3 dark:bg-zinc-900/30"
 							>
 								<p class="text-xs font-bold tracking-wide text-text-subtle uppercase">
-									Uploaded files ({uploadedAttachments.length})
+									{m.uploaded_files_count({ count: uploadedAttachments.length })}
 								</p>
 								<div class="space-y-2">
 									{#each uploadedAttachments as attachment, index (attachment.id)}
@@ -375,7 +376,7 @@
 												class="h-8 w-8 px-0 text-text-subtle hover:text-error"
 												onclick={() => removeUploadedAttachment(index)}
 												type="button"
-												title="Remove attachment"
+												title={m.remove_attachment()}
 											>
 												<Trash2 class="h-4 w-4" />
 											</Button>
@@ -386,7 +387,7 @@
 						{/if}
 					</div>
 					<p class="ml-1 text-xs font-medium text-text-subtle">
-						Upload directly. Each completed upload is added automatically to this contract.
+						{m.contract_attachment_upload_hint()}
 					</p>
 				</div>
 			</div>
@@ -396,10 +397,10 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
 			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Plus class="h-4 w-4" />
-				{$delayed ? 'Creating Contract...' : 'Create Contract'}
+				{$delayed ? m.creating_contract() : m.create_contract()}
 			</Button>
 		</div>
 	{/snippet}

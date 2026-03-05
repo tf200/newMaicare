@@ -14,12 +14,14 @@
 		User,
 		Loader2
 	} from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	let {
 		open = $bindable(false),
 		clientId,
 		goalId = null,
-		goalTitle = 'Loading Goal...'
+		goalTitle = m.loading_goal()
 	} = $props<{
 		open: boolean;
 		clientId: string;
@@ -37,48 +39,50 @@
 
 	let timelineScroller = $state<HTMLDivElement | null>(null);
 	let timelineSentinel = $state<HTMLDivElement | null>(null);
+	let lastLoadKey = '';
+	let observer: IntersectionObserver | null = null;
 
 	const progressConfig: Record<
 		string,
 		{ label: string; bg: string; text: string; border: string; icon: any }
 	> = {
 		no_progress: {
-			label: 'No Progress',
+			label: m.progress_no_progress(),
 			bg: 'bg-zinc-500/10 dark:bg-zinc-500/20',
 			text: 'text-zinc-700 dark:text-zinc-300',
 			border: 'border-zinc-500/20 dark:border-zinc-500/30',
 			icon: Minus
 		},
 		regression: {
-			label: 'Regression',
+			label: m.progress_regression(),
 			bg: 'bg-rose-500/10 dark:bg-rose-500/20',
 			text: 'text-rose-700 dark:text-rose-400',
 			border: 'border-rose-500/20 dark:border-rose-500/30',
 			icon: TrendingDown
 		},
 		limited_progress: {
-			label: 'Limited Progress',
+			label: m.progress_limited(),
 			bg: 'bg-amber-500/10 dark:bg-amber-500/20',
 			text: 'text-amber-700 dark:text-amber-400',
 			border: 'border-amber-500/20 dark:border-amber-500/30',
 			icon: CircleDot
 		},
 		good_progress: {
-			label: 'Good Progress',
+			label: m.progress_good(),
 			bg: 'bg-emerald-500/10 dark:bg-emerald-500/20',
 			text: 'text-emerald-700 dark:text-emerald-400',
 			border: 'border-emerald-500/20 dark:border-emerald-500/30',
 			icon: TrendingUp
 		},
 		achieved: {
-			label: 'Achieved',
+			label: m.progress_achieved(),
 			bg: 'bg-teal-500/10 dark:bg-teal-500/20',
 			text: 'text-teal-700 dark:text-teal-400',
 			border: 'border-teal-500/20 dark:border-teal-500/30',
 			icon: CheckCircle2
 		},
 		blocked: {
-			label: 'Blocked',
+			label: m.progress_blocked(),
 			bg: 'bg-rose-500/10 dark:bg-rose-500/20',
 			text: 'text-rose-700 dark:text-rose-400',
 			border: 'border-rose-500/20 dark:border-rose-500/30',
@@ -86,9 +90,11 @@
 		}
 	};
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatDate = (value: string | null) => {
-		if (!value) return 'N/A';
-		return new Intl.DateTimeFormat('en-US', {
+		if (!value) return m.not_available_short();
+		return new Intl.DateTimeFormat(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
@@ -125,7 +131,7 @@
 			currentPage = page;
 			nextPage = parseNextPage(response.data.next);
 		} catch (error) {
-			loadError = error instanceof Error ? error.message : 'Failed to load goal progress history.';
+			loadError = error instanceof Error ? error.message : m.failed_load_goal_progress_history();
 		} finally {
 			loading = false;
 		}
@@ -136,21 +142,42 @@
 		await loadPage(nextPage);
 	};
 
+	const bindTimelineScroller = (node: HTMLDivElement) => {
+		timelineScroller = node;
+		return {
+			destroy() {
+				if (timelineScroller === node) timelineScroller = null;
+			}
+		};
+	};
+
+	const bindTimelineSentinel = (node: HTMLDivElement) => {
+		timelineSentinel = node;
+		return {
+			destroy() {
+				if (timelineSentinel === node) timelineSentinel = null;
+			}
+		};
+	};
+
 	$effect(() => {
-		if (!open || !goalId) return;
+		const nextKey = open && goalId ? String(goalId) : '';
+		if (!nextKey || nextKey === lastLoadKey) return;
 
 		historyItems = [];
 		totalCount = 0;
 		currentPage = 0;
 		nextPage = 1;
 		loadError = null;
+		lastLoadKey = nextKey;
 		void loadPage(1);
 	});
 
 	$effect(() => {
 		if (!open || !timelineScroller || !timelineSentinel) return;
 
-		const observer = new IntersectionObserver(
+		observer?.disconnect();
+		observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
 					if (entry.isIntersecting) {
@@ -165,23 +192,23 @@
 		);
 
 		observer.observe(timelineSentinel);
-		return () => observer.disconnect();
+		return () => observer?.disconnect();
 	});
 </script>
 
 <Modal
 	bind:open
 	size="lg"
-	title="Goal Progress History"
-	description="View the timeline of progress for this goal."
+	title={m.goal_progress_history_title()}
+	description={m.goal_progress_history_description()}
 >
 	<div class="space-y-6">
 		<div class="mb-8 border-b border-zinc-100 pb-4 dark:border-zinc-800">
-			<h3 class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Goal</h3>
+			<h3 class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{m.goal()}</h3>
 			<p class="mt-1 text-lg font-bold text-zinc-900 dark:text-white">{goalTitle}</p>
 		</div>
 
-		<div bind:this={timelineScroller} class="max-h-[62vh] overflow-y-auto pr-1">
+		<div use:bindTimelineScroller class="max-h-[62vh] overflow-y-auto pr-1">
 			<div class="relative pl-4 sm:pl-6">
 				<div
 					class="absolute top-4 bottom-4 left-4 w-px bg-zinc-200 sm:left-6 dark:bg-zinc-800"
@@ -205,7 +232,7 @@
 						<div
 							class="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-sm font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
 						>
-							No completed evaluations found for this goal.
+							{m.no_completed_goal_evaluations()}
 						</div>
 					{:else}
 						{#each historyItems as record (record.evaluation_id)}
@@ -242,11 +269,12 @@
 											</div>
 											<div class="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
 												<CalendarClock class="h-3.5 w-3.5" />
-												<span
-													>Period: {formatDate(record.period_start)} - {formatDate(
-														record.period_end
-													)}</span
-												>
+												<span>
+													{m.period_range({
+														start: formatDate(record.period_start),
+														end: formatDate(record.period_end)
+													})}
+												</span>
 											</div>
 										</div>
 
@@ -254,7 +282,7 @@
 											class="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400"
 										>
 											<User class="h-3.5 w-3.5" />
-											<span>{record.creator_name || 'N/A'}</span>
+											<span>{record.creator_name || m.not_available_short()}</span>
 										</div>
 									</div>
 
@@ -278,16 +306,16 @@
 					{/if}
 				</div>
 
-				<div bind:this={timelineSentinel} class="h-6"></div>
+				<div use:bindTimelineSentinel class="h-6"></div>
 
 				{#if loading && historyItems.length > 0}
 					<div class="mt-2 flex items-center justify-center gap-2 text-xs text-zinc-500">
 						<Loader2 class="h-3.5 w-3.5 animate-spin" />
-						Loading more entries...
+						{m.loading_more_entries()}
 					</div>
 				{:else if !canLoadMore && historyItems.length > 0}
 					<div class="mt-2 text-center text-xs text-zinc-400">
-						Showing {historyItems.length} of {totalCount} entries.
+						{m.showing_of_entries({ shown: historyItems.length, total: totalCount })}
 					</div>
 				{/if}
 			</div>

@@ -3,6 +3,8 @@
 	import { scale, fade, fly } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	let {
 		label = undefined,
@@ -12,6 +14,14 @@
 	} = $props();
 
 	type View = 'days' | 'months' | 'years';
+
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
+	const addDays = (date: Date, amount: number) => {
+		const next = new Date(date);
+		next.setDate(next.getDate() + amount);
+		return next;
+	};
 
 	let isOpen = $state(false);
 	let triggerEl = $state<HTMLElement>();
@@ -27,21 +37,15 @@
 	let view = $state<View>('days');
 
 	// Calendar logic
-	const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-	const monthNames = [
-		'January',
-		'February',
-		'March',
-		'April',
-		'May',
-		'June',
-		'July',
-		'August',
-		'September',
-		'October',
-		'November',
-		'December'
-	];
+	const days = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { weekday: 'short' });
+		const base = new Date(Date.UTC(2023, 0, 1));
+		return Array.from({ length: 7 }, (_, i) => formatter.format(addDays(base, i)));
+	});
+	const monthNames = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { month: 'long' });
+		return Array.from({ length: 12 }, (_, i) => formatter.format(new Date(Date.UTC(2023, i, 1))));
+	});
 
 	let daysInMonth = $derived(
 		new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
@@ -63,7 +67,7 @@
 
 	let formattedValue = $derived(
 		value
-			? new Date(value).toLocaleString('en-GB', {
+			? new Date(value).toLocaleString(resolveLocale(), {
 					month: 'short',
 					day: 'numeric',
 					year: 'numeric',
@@ -77,7 +81,7 @@
 	// Header Text
 	let headerText = $derived.by(() => {
 		if (view === 'days')
-			return viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+			return viewDate.toLocaleDateString(resolveLocale(), { month: 'long', year: 'numeric' });
 		if (view === 'months') return viewDate.getFullYear().toString();
 		return `${startYear} - ${startYear + 11}`;
 	});
@@ -185,7 +189,7 @@
 			{#if formattedValue}
 				<span class="font-medium">{formattedValue}</span>
 			{:else}
-				<span class="text-text-muted">Select date & time...</span>
+				<span class="text-text-muted">{m.select_date_time_placeholder()}</span>
 			{/if}
 		</button>
 
@@ -306,11 +310,11 @@
 				<div class="flex w-40 flex-col border-l border-border p-4">
 					<div class="mb-4 flex items-center gap-2">
 						<Clock class="h-4 w-4 text-text-muted" />
-						<span class="text-xs font-semibold text-text-muted">Time</span>
+						<span class="text-xs font-semibold text-text-muted">{m.time()}</span>
 					</div>
 					<div class="flex flex-1 flex-col justify-center gap-4">
 						<div class="space-y-1.5">
-							<label for="{id}-hour" class="text-xs font-medium text-text-muted">Hour</label>
+							<label for="{id}-hour" class="text-xs font-medium text-text-muted">{m.hour()}</label>
 							<select
 								id="{id}-hour"
 								bind:value={selectedHour}
@@ -323,7 +327,9 @@
 							</select>
 						</div>
 						<div class="space-y-1.5">
-							<label for="{id}-minute" class="text-xs font-medium text-text-muted">Minute</label>
+							<label for="{id}-minute" class="text-xs font-medium text-text-muted"
+								>{m.minute()}</label
+							>
 							<select
 								id="{id}-minute"
 								bind:value={selectedMinute}

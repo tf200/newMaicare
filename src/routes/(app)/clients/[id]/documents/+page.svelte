@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { m } from '$lib/paraglide/messages';
 	import {
 		generateClientAppointmentCardDocument,
 		upsertClientAppointmentCard
@@ -56,68 +57,68 @@
 	const sections: AppointmentSection[] = [
 		{
 			key: 'general_information',
-			title: 'General Information',
-			description: 'Core notes everyone should know before a handover.',
+			title: m.general_information(),
+			description: m.general_information_desc(),
 			icon: ClipboardList
 		},
 		{
 			key: 'important_contacts',
-			title: 'Important Contacts',
-			description: 'People and phone numbers to reach quickly.',
+			title: m.important_contacts(),
+			description: m.important_contacts_desc(),
 			icon: Contact
 		},
 		{
 			key: 'household_info',
-			title: 'Household Info',
-			description: 'Daily practical and home environment context.',
+			title: m.household_info(),
+			description: m.household_info_desc(),
 			icon: House
 		},
 		{
 			key: 'organization_agreements',
-			title: 'Organization Agreements',
-			description: 'Internal agreements this client must follow.',
+			title: m.organization_agreements(),
+			description: m.organization_agreements_desc(),
 			icon: FileText
 		},
 		{
 			key: 'youth_officer_agreements',
-			title: 'Youth Officer Agreements',
-			description: 'Arrangements made with the youth officer.',
+			title: m.youth_officer_agreements(),
+			description: m.youth_officer_agreements_desc(),
 			icon: UserRoundCheck
 		},
 		{
 			key: 'treatment_agreements',
-			title: 'Treatment Agreements',
-			description: 'Therapy and clinical collaboration agreements.',
+			title: m.treatment_agreements(),
+			description: m.treatment_agreements_desc(),
 			icon: ShieldCheck
 		},
 		{
 			key: 'smoking_rules',
-			title: 'Smoking Rules',
-			description: 'Boundaries and allowed smoking behavior.',
+			title: m.smoking_rules(),
+			description: m.smoking_rules_desc(),
 			icon: Users
 		},
 		{
 			key: 'work',
-			title: 'Work',
-			description: 'Employment details and operational notes.',
+			title: m.work_section(),
+			description: m.work_section_desc(),
 			icon: Briefcase
 		},
 		{
 			key: 'school_internship',
-			title: 'School / Internship',
-			description: 'Education and internship commitments.',
+			title: m.school_internship(),
+			description: m.school_internship_desc(),
 			icon: GraduationCap
 		},
 		{
 			key: 'travel',
-			title: 'Travel',
-			description: 'Transport permissions and travel routines.',
+			title: m.travel(),
+			description: m.travel_desc(),
 			icon: BusFront
 		},
 		{
 			key: 'leave',
-			title: 'Leave',
-			description: 'Leave policy, timing, and conditions.',
+			title: m.leave(),
+			description: m.leave_desc(),
 			icon: UserRoundCheck
 		}
 	];
@@ -166,7 +167,7 @@
 	let saveError = $state<string | null>(null);
 
 	const formatTimestamp = (value: string | null) => {
-		if (!value) return 'Not available';
+		if (!value) return m.not_available();
 		return new Intl.DateTimeFormat('nl-NL', {
 			day: '2-digit',
 			month: 'short',
@@ -196,10 +197,10 @@
 		try {
 			await upsertClientAppointmentCard(clientId, toPayload(draftText));
 			isEditing = false;
-			generationMessage = 'Appointment card saved successfully.';
+			generationMessage = m.appointment_card_saved();
 			await invalidateAll();
 		} catch (error) {
-			saveError = error instanceof Error ? error.message : 'Failed to save appointment card.';
+			saveError = error instanceof Error ? error.message : m.failed_save_appointment_card();
 		} finally {
 			isSaving = false;
 		}
@@ -243,7 +244,7 @@
 </script>
 
 <svelte:head>
-	<title>Appointment Card | MaiCare</title>
+	<title>{m.appointment_card()} | MaiCare</title>
 </svelte:head>
 
 {#await appointmentCardDataPromise}
@@ -282,11 +283,11 @@
 							<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 								<ClipboardList class="h-5 w-5" />
 							</span>
-							<span>Client Documentation</span>
+							<span>{m.client_documentation()}</span>
 						</div>
-						<h1 class="text-3xl font-bold tracking-tighter text-text">Appointment Card</h1>
+						<h1 class="text-3xl font-bold tracking-tighter text-text">{m.appointment_card()}</h1>
 						<p class="max-w-2xl text-sm font-medium text-text-muted">
-							One central handover document for everyone working with this client.
+							{m.appointment_card_description()}
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
@@ -294,7 +295,7 @@
 							<Button
 								variant="ghost"
 								class="border border-border"
-								onclick={() => startEditing(appointmentCard)}>Edit Card</Button
+								onclick={() => startEditing(appointmentCard)}>{m.edit_card()}</Button
 							>
 						{/if}
 						<Button
@@ -302,19 +303,19 @@
 							isLoading={isGenerating}
 							onclick={() => generateDocument(appointmentCard.client_id)}
 						>
-							>Generate Document</Button
+							>{m.generate_document()}</Button
 						>
 					</div>
 				</div>
 				<div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
 					<span class="rounded-full border border-border bg-bg px-3 py-1 text-text-muted"
-						>Client: {appointmentCard.client_id}</span
+						>{m.client()}: {appointmentCard.client_id}</span
 					>
 					<span class="rounded-full border border-border bg-bg px-3 py-1 text-text-muted"
-						>Created: {formatTimestamp(appointmentCard.created_at)}</span
+						>{m.created()}: {formatTimestamp(appointmentCard.created_at)}</span
 					>
 					<span class="rounded-full border border-border bg-bg px-3 py-1 text-text-muted"
-						>Updated: {formatTimestamp(appointmentCard.updated_at)}</span
+						>{m.updated()}: {formatTimestamp(appointmentCard.updated_at)}</span
 					>
 				</div>
 			</div>
@@ -360,7 +361,8 @@
 						<span class="rounded-full bg-brand/10 px-2 py-1 text-xs font-semibold text-brand"
 							>{isEditing
 								? countDraftItems(draftText[section.key])
-								: appointmentCard[section.key].length} items</span
+								: appointmentCard[section.key].length}
+							{m.items()}</span
 						>
 					</div>
 
@@ -368,7 +370,7 @@
 						<Textarea
 							bind:value={draftText[section.key]}
 							rows={7}
-							placeholder="One line per bullet point"
+							placeholder={m.one_line_per_bullet()}
 						/>
 					{:else if appointmentCard[section.key].length > 0}
 						<ul class="space-y-2">
@@ -378,7 +380,7 @@
 						</ul>
 					{:else}
 						<p class="rounded-xl bg-bg px-3 py-2 text-sm text-text-muted">
-							No information added yet.
+							{m.no_info_added()}
 						</p>
 					{/if}
 				</div>
@@ -393,10 +395,10 @@
 					<Button
 						variant="ghost"
 						class="border border-border"
-						onclick={() => discardChanges(appointmentCard)}>Discard</Button
+						onclick={() => discardChanges(appointmentCard)}>{m.discard()}</Button
 					>
 					<Button isLoading={isSaving} onclick={() => saveChanges(appointmentCard.client_id)}
-						>Save Changes</Button
+						>{m.save_changes()}</Button
 					>
 				</div>
 			</div>

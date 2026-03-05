@@ -520,14 +520,14 @@
 			<div class="flex flex-wrap gap-4 border-t border-border/40 pt-6 lg:border-t-0 lg:pt-0">
 				<div class="flex flex-col">
 					<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-						>Submitted</span
+						>{m.submitted_label()}</span
 					>
 					<span class="text-sm font-bold text-text">{formatDate(registration.submitted_at)}</span>
 				</div>
 				<div class="h-8 w-px bg-border lg:block"></div>
 				<div class="flex flex-col">
 					<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-						>Last Updated</span
+						>{m.last_updated_label()}</span
 					>
 					<span class="text-sm font-bold text-text">{formatDate(registration.updated_at)}</span>
 				</div>
@@ -560,10 +560,8 @@
 							<RotateCcw class="h-5 w-5" />
 						</div>
 						<div>
-							<p class="font-bold">Unsaved Changes</p>
-							<p class="text-sm opacity-90">
-								You have modified the registration details. Don't forget to save!
-							</p>
+							<p class="font-bold">{m.unsaved_changes_title()}</p>
+							<p class="text-sm opacity-90">{m.unsaved_changes_description()}</p>
 						</div>
 					</div>
 					<div class="flex gap-2">
@@ -572,7 +570,7 @@
 							onclick={resetChanges}
 							class="h-9 text-xs text-warning hover:bg-warning/20"
 						>
-							Discard Changes
+							{m.discard_changes()}
 						</Button>
 						<Button
 							variant="primary"
@@ -580,7 +578,7 @@
 							isLoading={isSaving}
 							class="h-9 bg-warning text-xs text-white hover:bg-warning/90"
 						>
-							Save Now
+							{m.save_now()}
 						</Button>
 					</div>
 				</div>
@@ -591,18 +589,22 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<User class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Client Information</h2>
+						<h2 class="text-xl font-bold text-text">{m.client_information()}</h2>
 					</div>
 					<div class="grid gap-6 sm:grid-cols-2">
-						<Input label="First Name" bind:value={editForm.client_first_name} />
-						<Input label="Last Name" bind:value={editForm.client_last_name} />
-						<Input label="BSN Number" bind:value={editForm.client_bsn_number} />
-						<DatePicker label="Date of Birth" bind:value={editForm.client_date_of_birth} />
-						<Select label="Gender" options={genderOptions} bind:value={editForm.client_gender} />
-						<Input label="Nationality" bind:value={editForm.client_nationality} />
-						<Input label="Phone Number" bind:value={editForm.client_phone_number} />
+						<Input label={m.first_name()} bind:value={editForm.client_first_name} />
+						<Input label={m.last_name()} bind:value={editForm.client_last_name} />
+						<Input label={m.bsn_number()} bind:value={editForm.client_bsn_number} />
+						<DatePicker label={m.date_of_birth()} bind:value={editForm.client_date_of_birth} />
+						<Select
+							label={m.gender()}
+							options={genderOptions}
+							bind:value={editForm.client_gender}
+						/>
+						<Input label={m.nationality()} bind:value={editForm.client_nationality} />
+						<Input label={m.phone_number()} bind:value={editForm.client_phone_number} />
 						<Input
-							label="Email Address"
+							label={m.email_address()}
 							type="email"
 							bind:value={editForm.client_email}
 							class="sm:col-span-2"
@@ -614,16 +616,19 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<MapPin class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Address Details</h2>
+						<h2 class="text-xl font-bold text-text">{m.address_details()}</h2>
 					</div>
 					<div class="grid gap-6 sm:grid-cols-2">
-						<Input label="Street" bind:value={editForm.client_street} />
+						<Input label={m.street()} bind:value={editForm.client_street} />
 						<div class="grid grid-cols-2 gap-4">
-							<Input label="House Number" bind:value={editForm.client_house_number} />
-							<Input label="Addition" bind:value={editForm.client_house_number_addition} />
+							<Input label={m.house_number()} bind:value={editForm.client_house_number} />
+							<Input
+								label={m.addition_optional()}
+								bind:value={editForm.client_house_number_addition}
+							/>
 						</div>
-						<Input label="Postal Code" bind:value={editForm.client_postal_code} />
-						<Input label="City" bind:value={editForm.client_city} />
+						<Input label={m.postal_code()} bind:value={editForm.client_postal_code} />
+						<Input label={m.city()} bind:value={editForm.client_city} />
 					</div>
 				</section>
 
@@ -631,20 +636,20 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<Building class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Referrer Details</h2>
+						<h2 class="text-xl font-bold text-text">{m.referrer_details()}</h2>
 					</div>
 					<div class="grid gap-6 sm:grid-cols-2">
-						<Input label="First Name" bind:value={editForm.referrer_first_name} />
-						<Input label="Last Name" bind:value={editForm.referrer_last_name} />
+						<Input label={m.first_name()} bind:value={editForm.referrer_first_name} />
+						<Input label={m.last_name()} bind:value={editForm.referrer_last_name} />
 						<Input
-							label="Organization"
+							label={m.organization()}
 							bind:value={editForm.referrer_organization}
 							class="sm:col-span-2"
 						/>
-						<Input label="Job Title" bind:value={editForm.referrer_job_title} />
-						<Input label="Phone" bind:value={editForm.referrer_phone_number} />
+						<Input label={m.job_title()} bind:value={editForm.referrer_job_title} />
+						<Input label={m.phone()} bind:value={editForm.referrer_phone_number} />
 						<Input
-							label="Email"
+							label={m.email()}
 							type="email"
 							bind:value={editForm.referrer_email}
 							class="sm:col-span-2"
@@ -656,24 +661,24 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<ShieldAlert class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Guardian Details</h2>
+						<h2 class="text-xl font-bold text-text">{m.guardian_details()}</h2>
 					</div>
 					<div class="space-y-8">
 						<div class="grid gap-6 sm:grid-cols-2">
-							<Input label="Primary Guardian Name" bind:value={editForm.guardian1_first_name} />
-							<Input label="Last Name" bind:value={editForm.guardian1_last_name} />
-							<Input label="Relationship" bind:value={editForm.guardian1_relationship} />
-							<Input label="Phone" bind:value={editForm.guardian1_phone_number} />
+							<Input label={m.first_name()} bind:value={editForm.guardian1_first_name} />
+							<Input label={m.last_name()} bind:value={editForm.guardian1_last_name} />
+							<Input label={m.relationship()} bind:value={editForm.guardian1_relationship} />
+							<Input label={m.phone()} bind:value={editForm.guardian1_phone_number} />
 						</div>
 						<div class="border-t border-border pt-6">
 							<h3 class="mb-4 text-sm font-semibold text-text-muted">
-								Secondary Guardian (Optional)
+								{m.secondary_guardian_optional()}
 							</h3>
 							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label="First Name" bind:value={editForm.guardian2_first_name} />
-								<Input label="Last Name" bind:value={editForm.guardian2_last_name} />
-								<Input label="Relationship" bind:value={editForm.guardian2_relationship} />
-								<Input label="Phone" bind:value={editForm.guardian2_phone_number} />
+								<Input label={m.first_name()} bind:value={editForm.guardian2_first_name} />
+								<Input label={m.last_name()} bind:value={editForm.guardian2_last_name} />
+								<Input label={m.relationship()} bind:value={editForm.guardian2_relationship} />
+								<Input label={m.phone()} bind:value={editForm.guardian2_phone_number} />
 							</div>
 						</div>
 					</div>
@@ -683,34 +688,34 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<Briefcase class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Education & Work</h2>
+						<h2 class="text-xl font-bold text-text">{m.education_work()}</h2>
 					</div>
 					<div class="space-y-6">
 						<div class="grid gap-6 sm:grid-cols-2">
-							<Input label="Education Level" bind:value={editForm.education_level} />
+							<Input label={m.education_level()} bind:value={editForm.education_level} />
 							<div class="flex items-end pb-2">
 								<Checkbox
-									label="Currently Enrolled"
+									label={m.currently_enrolled()}
 									bind:checked={editForm.education_currently_enrolled}
 								/>
 							</div>
 							<Input
-								label="Institution"
+								label={m.institution_name()}
 								bind:value={editForm.education_institution}
 								class="sm:col-span-2"
 							/>
 						</div>
 						<div class="border-t border-border pt-6">
 							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label="Current Employer" bind:value={editForm.work_current_employer} />
+								<Input label={m.current_employer()} bind:value={editForm.work_current_employer} />
 								<div class="flex items-end pb-2">
 									<Checkbox
-										label="Currently Employed"
+										label={m.currently_employed()}
 										bind:checked={editForm.work_currently_employed}
 									/>
 								</div>
-								<Input label="Position" bind:value={editForm.work_current_position} />
-								<DatePicker label="Start Date" bind:value={editForm.work_start_date} />
+								<Input label={m.position()} bind:value={editForm.work_current_position} />
+								<DatePicker label={m.start_date()} bind:value={editForm.work_start_date} />
 							</div>
 						</div>
 					</div>
@@ -720,51 +725,76 @@
 				<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<HeartPulse class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Care & Risks</h2>
+						<h2 class="text-xl font-bold text-text">{m.care_risks()}</h2>
 					</div>
 					<div class="space-y-6">
 						<div>
 							<h3 class="mb-3 text-sm font-semibold tracking-wider text-text-muted uppercase">
-								Requested Care
+								{m.care_needs()}
 							</h3>
 							<div class="grid grid-cols-2 gap-4">
-								<Checkbox label="Protected Living" bind:checked={editForm.care_protected_living} />
 								<Checkbox
-									label="Assisted Living"
+									label={m.protected_living()}
+									bind:checked={editForm.care_protected_living}
+								/>
+								<Checkbox
+									label={m.assisted_independent_living()}
 									bind:checked={editForm.care_assisted_independent_living}
 								/>
-								<Checkbox label="Room Training" bind:checked={editForm.care_room_training_center} />
-								<Checkbox label="Ambulatory" bind:checked={editForm.care_ambulatory_guidance} />
+								<Checkbox
+									label={m.room_training_center()}
+									bind:checked={editForm.care_room_training_center}
+								/>
+								<Checkbox
+									label={m.ambulatory_guidance()}
+									bind:checked={editForm.care_ambulatory_guidance}
+								/>
 							</div>
 						</div>
 						<div class="border-t border-border pt-6">
 							<h3 class="mb-3 text-sm font-semibold tracking-wider text-text-muted uppercase">
-								Risk Factors
+								{m.risk_factors()}
 							</h3>
 							<div class="grid grid-cols-2 gap-y-3">
 								<Checkbox
-									label="Aggressive Behavior"
+									label={m.aggressive_behavior()}
 									bind:checked={editForm.risk_aggressive_behavior}
 								/>
 								<Checkbox
-									label="Suicidal / Self-harm"
+									label={m.suicidal_selfharm()}
 									bind:checked={editForm.risk_suicidal_selfharm}
 								/>
-								<Checkbox label="Substance Abuse" bind:checked={editForm.risk_substance_abuse} />
 								<Checkbox
-									label="Psychiatric Issues"
+									label={m.substance_abuse()}
+									bind:checked={editForm.risk_substance_abuse}
+								/>
+								<Checkbox
+									label={m.psychiatric_issues()}
 									bind:checked={editForm.risk_psychiatric_issues}
 								/>
-								<Checkbox label="Criminal History" bind:checked={editForm.risk_criminal_history} />
-								<Checkbox label="Flight Behavior" bind:checked={editForm.risk_flight_behavior} />
 								<Checkbox
-									label="Weapon Possession"
+									label={m.criminal_history()}
+									bind:checked={editForm.risk_criminal_history}
+								/>
+								<Checkbox
+									label={m.flight_behavior()}
+									bind:checked={editForm.risk_flight_behavior}
+								/>
+								<Checkbox
+									label={m.weapon_possession()}
 									bind:checked={editForm.risk_weapon_possession}
 								/>
-								<Checkbox label="Sexual Behavior" bind:checked={editForm.risk_sexual_behavior} />
+								<Checkbox
+									label={m.sexual_behavior()}
+									bind:checked={editForm.risk_sexual_behavior}
+								/>
 							</div>
 							<div class="mt-6">
-								<Textarea label="Risk Notes" bind:value={editForm.risk_additional_notes} rows={3} />
+								<Textarea
+									label={m.additional_risk_notes()}
+									bind:value={editForm.risk_additional_notes}
+									rows={3}
+								/>
 							</div>
 						</div>
 					</div>
@@ -776,16 +806,17 @@
 				>
 					<div class="flex items-center gap-3 border-b border-border pb-4">
 						<Target class="h-5 w-5 text-brand" />
-						<h2 class="text-xl font-bold text-text">Goals & Application</h2>
+						<h2 class="text-xl font-bold text-text">{m.goals_reason()}</h2>
 					</div>
 					<div class="grid gap-10 lg:grid-cols-2">
 						<div class="space-y-4">
 							<div class="flex items-center justify-between">
 								<h3 class="text-sm font-semibold tracking-wider text-text-muted uppercase">
-									Client Goals
+									{m.client_goals()}
 								</h3>
 								<Button variant="ghost" onclick={addGoal} class="h-8 gap-1 text-xs text-brand">
-									<Plus class="h-3.5 w-3.5" /> Add Goal
+									<Plus class="h-3.5 w-3.5" />
+									{m.add_goal()}
 								</Button>
 							</div>
 							<div class="space-y-3">
@@ -793,7 +824,7 @@
 									<div class="flex gap-2">
 										<Input
 											bind:value={editForm.client_goals![index]}
-											placeholder="Enter a goal..."
+											placeholder={m.enter_a_goal()}
 										/>
 										<button
 											onclick={() => removeGoal(index)}
@@ -807,12 +838,12 @@
 						</div>
 						<div class="space-y-4">
 							<h3 class="text-sm font-semibold tracking-wider text-text-muted uppercase">
-								Application Reason
+								{m.reason_for_application()}
 							</h3>
 							<Textarea
 								bind:value={editForm.application_reason}
 								rows={6}
-								placeholder="Reason for application..."
+								placeholder={m.reason_for_application_placeholder()}
 							/>
 						</div>
 					</div>
@@ -821,7 +852,7 @@
 
 			<!-- Footer Actions -->
 			<div class="flex items-center justify-end gap-4 border-t border-border pt-8">
-				<Button variant="ghost" onclick={cancelEditing} class="px-8">Cancel</Button>
+				<Button variant="ghost" onclick={cancelEditing} class="px-8">{m.cancel()}</Button>
 				<Button
 					variant="primary"
 					onclick={saveChanges}
@@ -829,7 +860,7 @@
 					disabled={!hasChanges}
 					class="px-12"
 				>
-					Save Changes
+					{m.save_changes()}
 				</Button>
 			</div>
 		</div>
@@ -850,7 +881,7 @@
 								<div>
 									<h2 class="text-lg font-bold text-text">{m.intake_process_details()}</h2>
 									<p class="text-xs text-text-subtle">
-										{m.admission_type()}: {registration.admission_type || '—'}
+										{m.admission_type()}: {registration.admission_type || m.not_available_short()}
 									</p>
 								</div>
 							</div>
@@ -928,7 +959,7 @@
 									>
 										<MapPin class="mt-0.5 h-5 w-5 shrink-0 text-text-subtle" />
 										<p class="text-sm font-medium text-text">
-											{registration.intake_appointment_location || '—'}
+											{registration.intake_appointment_location || m.not_available_short()}
 										</p>
 									</div>
 								</div>
@@ -941,10 +972,10 @@
 										<div
 											class="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
 										>
-											{registration.processed_by_employee_name?.[0] || '—'}
+											{registration.processed_by_employee_name?.[0] || m.not_available_short()}
 										</div>
 										<p class="text-sm font-semibold text-text">
-											{registration.processed_by_employee_name || '—'}
+											{registration.processed_by_employee_name || m.not_available_short()}
 										</p>
 									</div>
 								</div>
@@ -1010,8 +1041,8 @@
 							<Target class="h-5 w-5" />
 						</div>
 						<div>
-							<h2 class="text-lg font-bold text-text">Motivation & Goals</h2>
-							<p class="text-xs text-text-subtle">Client's motivation and personal goals</p>
+							<h2 class="text-lg font-bold text-text">{m.motivation_goals()}</h2>
+							<p class="text-xs text-text-subtle">{m.motivation_goals_description()}</p>
 						</div>
 					</div>
 
@@ -1019,7 +1050,7 @@
 						{#if registration.client_goals && registration.client_goals.length > 0}
 							<div>
 								<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-									>Client Goals</span
+									>{m.client_goals()}</span
 								>
 								<ul class="mt-2 list-inside list-disc space-y-1 text-sm text-text-muted">
 									{#each registration.client_goals as goal (goal)}
@@ -1032,7 +1063,7 @@
 						{#if registration.application_reason}
 							<div>
 								<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-									>Application Reason</span
+									>{m.reason_for_application()}</span
 								>
 								<p class="mt-2 text-sm leading-relaxed text-text-muted">
 									{registration.application_reason}
@@ -1081,7 +1112,7 @@
 								>{m.risks_notes()}</span
 							>
 							<p class="mt-3 text-sm leading-relaxed text-text-muted">
-								{registration.risk_additional_notes || 'No additional risk notes provided.'}
+								{registration.risk_additional_notes || m.no_additional_risk_notes()}
 							</p>
 						</div>
 					</div>
@@ -1119,13 +1150,13 @@
 										? educationColors[registration.education_level as EducationLevel]
 										: 'bg-zinc-100 text-zinc-500'}"
 								>
-									{registration.education_level || 'Not Specified'}
+									{registration.education_level || m.not_specified()}
 								</span>
 							</div>
 							<div class="flex justify-between border-b border-border/50 pb-2">
 								<span class="text-text-muted">{m.currently_employed()}</span>
 								<span class="font-medium text-text"
-									>{registration.work_currently_employed ? 'Yes' : 'No'}</span
+									>{registration.work_currently_employed ? m.yes() : m.no()}</span
 								>
 							</div>
 							{#if registration.work_current_employer}
@@ -1147,7 +1178,7 @@
 							<h3 class="font-bold text-text">{m.documents()}</h3>
 						</div>
 						<div class="space-y-2">
-							{#each [{ name: 'Referral Letter', id: registration.document_referral }, { name: 'Education Report', id: registration.document_education_report }, { name: 'Psychiatric Report', id: registration.document_psychiatric_report }, { name: 'Diagnosis', id: registration.document_diagnosis }, { name: 'Safety Plan', id: registration.document_safety_plan }, { name: 'ID Copy', id: registration.document_id_copy }].filter((d) => d.id) as doc (doc.name)}
+							{#each [{ name: m.referral_document(), id: registration.document_referral }, { name: m.education_report(), id: registration.document_education_report }, { name: m.psychiatric_report(), id: registration.document_psychiatric_report }, { name: m.diagnosis_info(), id: registration.document_diagnosis }, { name: m.safety_plan(), id: registration.document_safety_plan }, { name: m.id_copy(), id: registration.document_id_copy }].filter((d) => d.id) as doc (doc.name)}
 								<div
 									class="group flex items-center gap-3 rounded-xl border border-transparent bg-zinc-50 p-2.5 transition-all hover:border-border hover:bg-white hover:shadow-sm dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
 								>
@@ -1159,7 +1190,7 @@
 									<div class="min-w-0 flex-1">
 										<p class="truncate text-sm font-medium text-text">{doc.name}</p>
 										<p class="text-xs text-text-subtle">
-											ID: {doc.id?.split('/').pop()?.substring(0, 8)}...
+											{m.id_label()}: {doc.id?.split('/').pop()?.substring(0, 8)}...
 										</p>
 									</div>
 									<button

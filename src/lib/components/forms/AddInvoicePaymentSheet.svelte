@@ -10,6 +10,8 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { createInvoicePayment } from '$lib/api/invoices';
 	import { InvoicePaymentSchema, type InvoicePaymentInput } from '$lib/schemas/finance';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	let {
 		open = $bindable(false),
@@ -60,7 +62,7 @@
 						reset();
 						open = false;
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to create payment.';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_payment();
 					}
 				}
 			}
@@ -68,22 +70,24 @@
 	);
 
 	const paymentMethodOptions = [
-		{ label: 'Bank transfer', value: 'bank_transfer' },
-		{ label: 'SEPA direct debit', value: 'sepa_direct_debit' },
-		{ label: 'iDEAL', value: 'ideal' },
-		{ label: 'Cash', value: 'cash' },
-		{ label: 'Card', value: 'card' },
-		{ label: 'Other', value: 'other' }
+		{ label: m.bank_transfer(), value: 'bank_transfer' },
+		{ label: m.sepa_direct_debit(), value: 'sepa_direct_debit' },
+		{ label: m.ideal(), value: 'ideal' },
+		{ label: m.cash(), value: 'cash' },
+		{ label: m.card(), value: 'card' },
+		{ label: m.other(), value: 'other' }
 	];
 
 	const statusOptions = [
-		{ label: 'Completed', value: 'completed' },
-		{ label: 'Pending', value: 'pending' },
-		{ label: 'Failed', value: 'failed' }
+		{ label: m.completed(), value: 'completed' },
+		{ label: m.pending(), value: 'pending' },
+		{ label: m.failed(), value: 'failed' }
 	];
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatCurrency = (value: number, currencyCode: string) => {
-		return new Intl.NumberFormat('nl-NL', {
+		return new Intl.NumberFormat(resolveLocale(), {
 			style: 'currency',
 			currency: currencyCode
 		}).format(value);
@@ -97,46 +101,41 @@
 	});
 </script>
 
-<Sheet
-	bind:open
-	title="Record payment"
-	description="Add a transaction for this invoice and keep payment tracking up to date."
-	size="lg"
->
+<Sheet bind:open title={m.record_payment()} description={m.record_payment_description()} size="lg">
 	<form id={formId} use:enhance class="space-y-5">
 		<div class="bg-surface-subtle/30 rounded-2xl border border-border/70 p-4">
-			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">Invoice balance</p>
+			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
+				{m.invoice_balance()}
+			</p>
 			<p class="mt-1 text-2xl font-bold tracking-tight text-text">
 				{formatCurrency(defaultAmount, currency)}
 			</p>
-			<p class="mt-1 text-xs text-text-muted">
-				Use this as a guide when recording a partial or full payment.
-			</p>
+			<p class="mt-1 text-xs text-text-muted">{m.payment_balance_help()}</p>
 		</div>
 
 		<Input
-			label="Amount"
+			label={m.amount()}
 			bind:value={$form.amount}
 			error={formatFormError($errors.amount)}
-			placeholder="0.00"
+			placeholder={m.placeholder_amount_zero()}
 			inputmode="decimal"
 		/>
 
 		<DateTimePicker
-			label="Payment date"
+			label={m.payment_date()}
 			bind:value={$form.payment_date}
 			error={formatFormError($errors.payment_date)}
 		/>
 
 		<div class="grid gap-4 sm:grid-cols-2">
 			<Select
-				label="Payment method"
+				label={m.payment_method()}
 				options={paymentMethodOptions}
 				bind:value={$form.payment_method}
 				error={formatFormError($errors.payment_method)}
 			/>
 			<Select
-				label="Status"
+				label={m.status()}
 				options={statusOptions}
 				bind:value={$form.status}
 				error={formatFormError($errors.status)}
@@ -144,16 +143,16 @@
 		</div>
 
 		<Input
-			label="Reference"
+			label={m.reference()}
 			bind:value={$form.reference}
-			placeholder="Transaction reference"
+			placeholder={m.placeholder_transaction_reference()}
 			error={formatFormError($errors.reference)}
 		/>
 
 		<Textarea
-			label="Notes"
+			label={m.notes_label()}
 			bind:value={$form.notes}
-			placeholder="Optional details for accounting or reconciliation"
+			placeholder={m.placeholder_payment_notes()}
 			rows={4}
 			error={formatFormError($errors.notes)}
 		/>
@@ -170,7 +169,7 @@
 
 	{#snippet footer()}
 		<div class="flex items-center justify-between gap-3">
-			<p class="text-xs text-text-muted">Required fields: amount, date, method</p>
+			<p class="text-xs text-text-muted">{m.required_payment_fields()}</p>
 			<div class="flex items-center gap-2">
 				<Button
 					variant="ghost"
@@ -179,10 +178,10 @@
 					}}
 					disabled={$delayed}
 				>
-					Cancel
+					{m.cancel()}
 				</Button>
 				<Button variant="primary" form={formId} type="submit" isLoading={$delayed}
-					>Save payment</Button
+					>{m.save_payment()}</Button
 				>
 			</div>
 		</div>

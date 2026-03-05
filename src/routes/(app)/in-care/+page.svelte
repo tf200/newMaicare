@@ -107,7 +107,7 @@
 </script>
 
 <svelte:head>
-	<title>In Care | MaiCare</title>
+	<title>{m.in_care_page_title()}</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -119,7 +119,7 @@
 			<input
 				type="search"
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
-				placeholder="Search in-care clients..."
+				placeholder={m.search_in_care_placeholder()}
 				value={appliedSearch}
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
@@ -205,8 +205,8 @@
 		<a
 			href="/clients/{row.id}/in-care"
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View details"
-			aria-label="View details"
+			title={m.view_details()}
+			aria-label={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>
@@ -237,9 +237,9 @@
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<HeartHandshake class="h-5 w-5" />
 					</span>
-					<span>Care Coordination</span>
+					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">In Care</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.in_care()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Manage and monitor clients currently receiving care or scheduled for intake.
 				</p>
@@ -268,7 +268,7 @@
 				updateQuery(nextPage, appliedSearch, appliedStatuses, sort.direction)}
 			onSort={handleSort}
 			rowKey="id"
-			title="In Care"
+			title={m.in_care()}
 			description="Active clients who are receiving care or scheduled for upcoming intake."
 			filters={tableFilters}
 			cells={{
@@ -293,7 +293,7 @@
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 					{inCareData.stats.total}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Clients</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.clients()}</p>
 			</div>
 		</div>
 
@@ -309,7 +309,7 @@
 				updateQuery(nextPage, appliedSearch, appliedStatuses, sort.direction)}
 			onSort={handleSort}
 			rowKey="id"
-			title="In Care"
+			title={m.in_care()}
 			description="Active clients who are receiving care or scheduled for upcoming intake."
 			filters={tableFilters}
 			cells={{

@@ -23,3 +23,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return resolve(event);
 };
+
+export const handleError = ({ error }: { error: unknown }) => {
+	console.error(error);
+};
+
+export const init = async () => {};

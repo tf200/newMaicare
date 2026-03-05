@@ -3,6 +3,7 @@
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
 
 	type Option = { label: string; value: string };
 
@@ -10,7 +11,7 @@
 		label,
 		options = [],
 		value = $bindable(''),
-		placeholder = 'Select...',
+		placeholder = undefined,
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = ''
@@ -28,7 +29,10 @@
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
 
-	let selectedLabel = $derived(options.find((opt: Option) => opt.value === value)?.label || placeholder);
+	let resolvedPlaceholder = $derived(placeholder ?? m.select_placeholder());
+	let selectedLabel = $derived(
+		options.find((opt: Option) => opt.value === value)?.label || resolvedPlaceholder
+	);
 
 	function toggle() {
 		isOpen = !isOpen;
@@ -101,7 +105,9 @@
 					</button>
 				{/each}
 				{#if options.length === 0}
-					<div class="p-3 text-center text-sm text-text-muted">No options available</div>
+					<div class="p-3 text-center text-sm text-text-muted">
+						{m.no_options_available()}
+					</div>
 				{/if}
 			</div>
 		{/if}

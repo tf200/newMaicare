@@ -261,7 +261,7 @@
 			<div class="flex justify-end">
 				<button
 					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-					aria-label="View Evaluation"
+					aria-label={m.view_evaluation()}
 					onclick={() =>
 						openCreateEvaluationForm(row.clientId, `${row.clientFirstName} ${row.clientLastName}`)}
 				>
@@ -354,7 +354,7 @@
 				<div class="flex justify-end">
 					<button
 						class="text-text-subtle transition hover:text-text"
-						aria-label="Continue Draft"
+						aria-label={m.continue_draft()}
 						onclick={() =>
 							openCreateEvaluationForm(
 								row.clientId,
@@ -442,7 +442,7 @@
 				<div class="flex justify-end">
 					<button
 						class="text-text-subtle transition hover:text-text"
-						aria-label="View Evaluation"
+						aria-label={m.view_evaluation()}
 						onclick={() =>
 							openExistingEvaluationForm(
 								row.evaluationId,

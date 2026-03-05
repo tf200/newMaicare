@@ -256,7 +256,7 @@
 </script>
 
 <svelte:head>
-	<title>Contracts | MaiCare</title>
+	<title>{m.contracts_page_title()}</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -268,7 +268,7 @@
 			<input
 				type="search"
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
-				placeholder="Search contracts..."
+				placeholder={m.search_contracts_placeholder()}
 				value={appliedSearch}
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
@@ -282,7 +282,7 @@
 		<FilterDropdown
 			filters={activeFilters}
 			groups={filterGroups}
-			title="Contract Filters"
+			title={m.contract_filters()}
 			onUpdate={handleFilterUpdate}
 			onClear={clearFilters}
 		/>
@@ -368,8 +368,8 @@
 		<a
 			href="/contracts/{row.id}"
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View details"
-			aria-label="View details"
+			title={m.view_details()}
+			aria-label={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>
@@ -401,7 +401,7 @@
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Contracts</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.contracts()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Manage all care contracts with financing, timeline, and approval status.
 				</p>
@@ -434,7 +434,7 @@
 			onPageChange={(nextPage) =>
 				updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })}
 			rowKey="id"
-			title="Contracts"
+			title={m.contracts()}
 			description="Contracts with financing, timeline, and status details."
 			filters={tableFilters}
 			cells={{
@@ -465,7 +465,7 @@
 					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 						{contractsData.stats.total}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">All matching records</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.all_matching_records()}</p>
 				</div>
 			</div>
 			<div
@@ -483,7 +483,7 @@
 					<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
 						{contractsData.stats.approved}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Current page</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.current_page()}</p>
 				</div>
 			</div>
 			<div
@@ -495,11 +495,13 @@
 					<Timer class="h-32 w-32" />
 				</div>
 				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Draft</div>
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.draft()}
+					</div>
 					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">
 						{contractsData.stats.draft}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Pending completion</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.pending_completion()}</p>
 				</div>
 			</div>
 			<div
@@ -517,7 +519,7 @@
 					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
 						{contractsData.stats.expiringSoon}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Within 30 days</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.within_30_days()}</p>
 				</div>
 			</div>
 		</div>
@@ -531,7 +533,7 @@
 			onPageChange={(nextPage) =>
 				updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })}
 			rowKey="id"
-			title="Contracts"
+			title={m.contracts()}
 			description="Contracts with financing, timeline, and status details."
 			filters={tableFilters}
 			cells={{

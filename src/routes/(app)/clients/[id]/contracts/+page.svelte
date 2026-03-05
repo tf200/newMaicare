@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
 		ArrowLeft,
@@ -29,10 +30,10 @@
 	const initial = $derived(data.initial);
 
 	const columns: DataTableColumn[] = [
-		{ key: 'care', label: 'Care', width: '260px' },
-		{ key: 'financing', label: 'Financing', width: '180px' },
-		{ key: 'period', label: 'Period', width: '230px' },
-		{ key: 'days', label: 'Days Left', align: 'right', width: '120px' }
+		{ key: 'care', label: m.care(), width: '260px' },
+		{ key: 'financing', label: m.financing(), width: '180px' },
+		{ key: 'period', label: m.period(), width: '230px' },
+		{ key: 'days', label: m.days_left_label(), align: 'right', width: '120px' }
 	];
 
 	const formatDate = (date: string) =>
@@ -57,7 +58,7 @@
 </script>
 
 <svelte:head>
-	<title>Client Contracts | MaiCare</title>
+	<title>{m.client_contracts()} | MaiCare</title>
 </svelte:head>
 
 {#snippet careCell(contract: ListClientContractsResponse)}
@@ -125,11 +126,11 @@
 				<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 					<ScrollText class="h-5 w-5" />
 				</span>
-				<span>Client Administration</span>
+				<span>{m.client_administration()}</span>
 			</div>
-			<h1 class="text-3xl font-bold tracking-tighter text-text">Contracts</h1>
+			<h1 class="text-3xl font-bold tracking-tighter text-text">{m.contracts()}</h1>
 			<p class="max-w-2xl text-sm font-medium text-text-muted">
-				Overview of all contracts for this client.
+				{m.contracts_overview()}
 			</p>
 		</div>
 	</header>
@@ -143,8 +144,8 @@
 			pageSize={initial.pageSize}
 			totalCount={0}
 			onPageChange={updatePage}
-			title="Client Contracts"
-			description="Contracts linked to this client account."
+			title={m.client_contracts()}
+			description={m.client_contracts_description()}
 			cells={{ care: careCell, financing: financingCell, period: periodCell, days: daysCell }}
 		/>
 	{:then contractsData}
@@ -159,10 +160,10 @@
 			pageSize={contractsData.pagination.pageSize}
 			totalCount={contractsData.pagination.count}
 			onPageChange={updatePage}
-			title="Client Contracts"
-			description="Contracts linked to this client account."
-			emptyTitle="No contracts found"
-			emptyDescription="There are no contracts available for this client yet."
+			title={m.client_contracts()}
+			description={m.client_contracts_description()}
+			emptyTitle={m.no_contracts_found()}
+			emptyDescription={m.no_contracts_description()}
 			emptyActionLabel="No action"
 			emptyActionDisabled
 			cells={{ care: careCell, financing: financingCell, period: periodCell, days: daysCell }}

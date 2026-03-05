@@ -10,6 +10,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { CreateSenderRequest } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -17,10 +18,10 @@
 	}
 
 	const typeOptions = [
-		{ value: 'main_provider', label: 'Main provider' },
-		{ value: 'local_authority', label: 'Local authority' },
-		{ value: 'particular_party', label: 'Private individual' },
-		{ value: 'healthcare_institution', label: 'Healthcare institution' }
+		{ value: 'main_provider', label: m.main_provider() },
+		{ value: 'local_authority', label: m.local_authority() },
+		{ value: 'particular_party', label: m.private_individual() },
+		{ value: 'healthcare_institution', label: m.healthcare_institution() }
 	] as const;
 
 	let { open = $bindable(false), onCreated }: Props = $props();
@@ -76,7 +77,7 @@
 						open = false;
 						onCreated?.();
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to create sender.';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_sender();
 					}
 				}
 			}
@@ -105,13 +106,13 @@
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
 			if (!result) {
-				lookupMessage = 'Address not found. Please fill street and city manually.';
+				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
 			isLookupLoading = false;
 		}
@@ -140,21 +141,21 @@
 
 <Modal
 	bind:open
-	title="Create Sender"
-	description="Add a new referral source and capture contact details."
+	title={m.create_sender()}
+	description={m.create_sender_description()}
 	class="max-w-3xl"
 >
 	<form id={formId} use:enhance class="max-h-[70vh] space-y-6 overflow-y-auto pr-2">
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
-				label="Sender name"
-				placeholder="Sender organization"
+				label={m.sender_name()}
+				placeholder={m.placeholder_sender_organization()}
 				bind:value={$form.name}
 				error={formatFormError($errors.name)}
 			/>
 			<div class="space-y-2">
 				<label for="sender-type" class="ml-1 text-sm font-semibold text-text-muted">
-					Sender type
+					{m.sender_type()}
 				</label>
 				<select
 					id="sender-type"
@@ -173,8 +174,8 @@
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 			<Input
-				label="Postal code"
-				placeholder="1234 AB"
+				label={m.postal_code()}
+				placeholder={m.example_postal_code()}
 				bind:value={$form.postal_code}
 				oninput={() => {
 					if ($form.postal_code && $form.house_number) {
@@ -192,8 +193,8 @@
 				error={formatFormError($errors.postal_code)}
 			/>
 			<Input
-				label="House number"
-				placeholder="10"
+				label={m.house_number()}
+				placeholder={m.example_house_number()}
 				bind:value={$form.house_number}
 				oninput={() => {
 					if ($form.postal_code && $form.house_number) {
@@ -202,26 +203,30 @@
 				}}
 				error={formatFormError($errors.house_number)}
 			/>
-			<Input label="Addition (optional)" placeholder="A" bind:value={$form.house_number_addition} />
+			<Input
+				label={m.addition_optional()}
+				placeholder={m.example_house_number_addition()}
+				bind:value={$form.house_number_addition}
+			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
-				label="Street"
-				placeholder="Main street"
+				label={m.street()}
+				placeholder={m.example_street_name()}
 				bind:value={$form.street}
 				error={formatFormError($errors.street)}
 			/>
 			<Input
-				label="City"
-				placeholder="Amsterdam"
+				label={m.city()}
+				placeholder={m.example_city_name()}
 				bind:value={$form.city}
 				error={formatFormError($errors.city)}
 			/>
 		</div>
 
 		{#if isLookupLoading}
-			<div class="text-xs font-medium text-text-muted">Looking up address via PDOK...</div>
+			<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
 		{/if}
 		{#if lookupMessage}
 			<div class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
@@ -230,45 +235,65 @@
 		{/if}
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-			<Input label="Country" placeholder="Netherlands" bind:value={$form.land} />
-			<Input label="Phone" placeholder="+31 20 123 4567" bind:value={$form.phone_number} />
-			<Input label="Client number" placeholder="REF-2024-01" bind:value={$form.client_number} />
+			<Input label={m.country()} placeholder={m.example_country()} bind:value={$form.land} />
+			<Input
+				label={m.phone_number()}
+				placeholder={m.example_phone_nl()}
+				bind:value={$form.phone_number}
+			/>
+			<Input
+				label={m.client_number()}
+				placeholder={m.placeholder_client_number()}
+				bind:value={$form.client_number}
+			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-			<Input label="KVK number" placeholder="12345678" bind:value={$form.KVKnumber} />
-			<Input label="BTW number" placeholder="NL123456789B01" bind:value={$form.BTWnumber} />
+			<Input
+				label={m.kvk_number()}
+				placeholder={m.placeholder_kvk_number()}
+				bind:value={$form.KVKnumber}
+			/>
+			<Input
+				label={m.btw_number()}
+				placeholder={m.placeholder_btw_number()}
+				bind:value={$form.BTWnumber}
+			/>
 		</div>
 
 		<div class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
-					<h3 class="text-sm font-semibold text-text">Contacts</h3>
-					<p class="text-xs text-text-muted">Add at least one contact if available.</p>
+					<h3 class="text-sm font-semibold text-text">{m.contacts()}</h3>
+					<p class="text-xs text-text-muted">{m.contacts_hint()}</p>
 				</div>
-				<Button variant="ghost" onclick={addContact} type="button">Add contact</Button>
+				<Button variant="ghost" onclick={addContact} type="button">{m.add_contact()}</Button>
 			</div>
 			<div class="space-y-4">
 				{#each $form.contacts as contact, index (index)}
 					<div class="rounded-2xl border border-border bg-surface/80 p-4">
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-							<Input label="Contact name" placeholder="J. de Vries" bind:value={contact.name} />
 							<Input
-								label="Email"
-								placeholder="contact@sender.nl"
+								label={m.contact_name()}
+								placeholder={m.placeholder_contact_name()}
+								bind:value={contact.name}
+							/>
+							<Input
+								label={m.email_address()}
+								placeholder={m.placeholder_contact_email()}
 								type="email"
 								bind:value={contact.email}
 								error={formatFormError($errors.contacts?.[index]?.email)}
 							/>
 							<Input
-								label="Phone"
-								placeholder="+31 6 123 456 78"
+								label={m.phone_number()}
+								placeholder={m.example_phone_nl()}
 								bind:value={contact.phone_number}
 							/>
 						</div>
 						<div class="mt-3 flex justify-end">
 							<Button variant="ghost" onclick={() => removeContact(index)} type="button"
-								>Remove</Button
+								>{m.remove()}</Button
 							>
 						</div>
 					</div>
@@ -287,8 +312,8 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>Create sender</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed}>{m.create_sender()}</Button>
 		</div>
 	{/snippet}
 </Modal>

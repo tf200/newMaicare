@@ -5,6 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { AuthContext } from '$lib/state/auth.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const otpSlots = Array.from({ length: 6 });
 	let otp = $state(['', '', '', '', '', '']);
@@ -58,7 +59,7 @@
 		errorMessage = null;
 		const code = otp.join('');
 		if (code.length !== otp.length) {
-			errorMessage = 'Enter the 6-digit code.';
+			errorMessage = m.twofa_enter_code();
 			return;
 		}
 		isLoading = true;
@@ -77,7 +78,7 @@
 </script>
 
 <svelte:head>
-	<title>Two-Factor Auth | Nexus</title>
+	<title>{m.twofa_title()} | Nexus</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
@@ -113,8 +114,8 @@
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tight text-text">Verify it's you</h1>
-				<p class="mt-2 font-medium text-text-muted">Enter the 6-digit code sent to your device</p>
+				<h1 class="text-3xl font-bold tracking-tight text-text">{m.twofa_title()}</h1>
+				<p class="mt-2 font-medium text-text-muted">{m.twofa_subtitle()}</p>
 			</div>
 
 			<!-- OTP Input Grid -->
@@ -147,7 +148,7 @@
 			<!-- Primary & Ghost Actions -->
 			<form class="space-y-4" onsubmit={handleVerify} in:fly={{ ...transition, delay: 300 }}>
 				<Button class="w-full py-7 text-lg shadow-teal-500/10" type="submit" {isLoading}>
-					{isLoading ? 'Verifying...' : 'Verify Code'}
+					{isLoading ? m.twofa_verifying() : m.twofa_verify()}
 				</Button>
 
 				<div class="flex flex-col items-center gap-2">
@@ -156,7 +157,7 @@
 						type="button"
 						class="text-xs font-semibold text-zinc-400 hover:text-teal-600"
 					>
-						Didn't receive a code? Resend
+						{m.twofa_resend()}
 					</Button>
 				</div>
 			</form>
@@ -167,7 +168,7 @@
 				in:fly={{ ...transition, delay: 400 }}
 			>
 				<a href="/login" class="text-sm font-bold text-brand transition-colors hover:opacity-80">
-					Back to login
+					{m.twofa_back_to_login()}
 				</a>
 			</div>
 		</div>
@@ -187,7 +188,7 @@
 				>
 					<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
 				</svg>
-				Secure Verification
+				{m.twofa_secure_verification()}
 			</span>
 		</div>
 	</div>

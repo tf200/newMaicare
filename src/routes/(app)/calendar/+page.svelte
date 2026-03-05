@@ -7,6 +7,7 @@
 	import AppointmentForm from '$lib/components/forms/AppointmentForm.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { Appointment } from '$lib/types/appointments';
 	import type { PageData } from './$types';
 	import type { EventOccurrenceResponse } from '$lib/types/api';
@@ -267,8 +268,8 @@
 	<!-- Page Header & Filters -->
 	<div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 		<div>
-			<h1 class="text-4xl font-bold tracking-tighter text-text">Appointments</h1>
-			<p class="text-text-muted">Manage your schedule and coordinate with clients.</p>
+			<h1 class="text-4xl font-bold tracking-tighter text-text">{m.appointments()}</h1>
+			<p class="text-text-muted">{m.appointments_subtitle()}</p>
 		</div>
 
 		{#if isAdmin || canViewAllAppointments}
@@ -278,12 +279,12 @@
 				{#if isAdmin}
 					<div class="w-40">
 						<Select
-							label="Scope"
+							label={m.scope()}
 							options={[
-								{ label: 'My Calendar', value: 'my' },
-								{ label: 'All', value: 'all' },
-								{ label: 'By Employee', value: 'employee' },
-								{ label: 'By Client', value: 'client' }
+								{ label: m.my_calendar(), value: 'my' },
+								{ label: m.all(), value: 'all' },
+								{ label: m.by_employee(), value: 'employee' },
+								{ label: m.by_client(), value: 'client' }
 							]}
 							bind:value={scope}
 						/>
@@ -292,19 +293,19 @@
 					{#if scope === 'employee'}
 						<div class="w-60">
 							<Select
-								label="Select Employee"
+								label={m.select_employee()}
 								options={employeeOptions}
 								bind:value={selectedScopeId}
-								placeholder="Choose employee..."
+								placeholder={m.choose_employee()}
 							/>
 						</div>
 					{:else if scope === 'client'}
 						<div class="w-60">
 							<Select
-								label="Select Client"
+								label={m.select_client()}
 								options={clientOptions}
 								bind:value={selectedScopeId}
-								placeholder="Choose client..."
+								placeholder={m.choose_client()}
 							/>
 						</div>
 					{/if}
@@ -314,10 +315,10 @@
 				<PermissionGuard permission="APPOINTMENT.VIEW_ALL">
 					<div class="w-60">
 						<Select
-							label="Filter by Employee"
-							options={[{ label: 'All Employees', value: '' }, ...employeeOptions]}
+							label={m.filter_by_employee()}
+							options={[{ label: m.all_employees(), value: '' }, ...employeeOptions]}
 							bind:value={filteredEmployeeId}
-							placeholder="Select employee..."
+							placeholder={m.select_employee_placeholder()}
 						/>
 					</div>
 				</PermissionGuard>
@@ -326,11 +327,11 @@
 	</div>
 
 	{#if loadError}
-		<InlineErrorBanner title="Unable to load appointments" message={loadError} />
+		<InlineErrorBanner title={m.unable_to_load_appointments()} message={loadError} />
 	{/if}
 
 	{#if saveError}
-		<InlineErrorBanner title="Unable to save appointment" message={saveError} />
+		<InlineErrorBanner title={m.unable_to_save_appointment()} message={saveError} />
 	{/if}
 
 	<!-- Calendar View -->
@@ -345,10 +346,10 @@
 
 <!-- Appointment Modal -->
 <Modal
-	title={selectedAppointment?.id ? 'Edit Appointment' : 'New Appointment'}
+	title={selectedAppointment?.id ? m.edit_appointment() : m.new_appointment()}
 	description={selectedAppointment?.id
-		? 'Modify the details of this appointment.'
-		: 'Fill in the details to schedule a new appointment.'}
+		? m.edit_appointment_description()
+		: m.new_appointment_description()}
 	bind:open={isModalOpen}
 >
 	<AppointmentForm

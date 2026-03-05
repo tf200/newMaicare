@@ -4,6 +4,7 @@
 	import type { Snippet } from 'svelte';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
 
 	// Generic option type
 	type Option = any;
@@ -12,8 +13,8 @@
 		label,
 		value = $bindable(''),
 		displayValue = $bindable(''),
-		placeholder = 'Select...',
-		searchPlaceholder = 'Search...',
+		placeholder = undefined,
+		searchPlaceholder = undefined,
 		disabled = false,
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
@@ -50,9 +51,11 @@
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
 
+	let resolvedPlaceholder = $derived(placeholder ?? m.select_placeholder());
+	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
 	let selectedLabel = $derived.by(() => {
 		const found = options.find((opt) => valueFn(opt) === value);
-		return found ? labelFn(found) : displayValue || placeholder;
+		return found ? labelFn(found) : displayValue || resolvedPlaceholder;
 	});
 
 	// Debounce search
@@ -166,8 +169,8 @@
 						tabindex="0"
 						onclick={clear}
 						onkeydown={(e) => e.key === 'Enter' && clear(e)}
-						class="text-text-muted hover:text-text cursor-pointer"
-						aria-label="Clear selection"
+						class="cursor-pointer text-text-muted hover:text-text"
+						aria-label={m.clear_selection()}
 					>
 						<X class="h-4 w-4" />
 					</div>
@@ -192,7 +195,7 @@
 							type="text"
 							value={searchQuery}
 							oninput={handleSearch}
-							placeholder={searchPlaceholder}
+							placeholder={resolvedSearchPlaceholder}
 							class="bg-background w-full rounded-lg py-2 pr-4 pl-9 text-sm outline-none placeholder:text-text-muted focus:ring-2 focus:ring-brand/20"
 						/>
 					</div>
@@ -201,10 +204,13 @@
 				<div class="max-h-48 overflow-y-auto p-1">
 					{#if isLoading}
 						<div class="flex items-center justify-center p-4 text-text-muted">
-							<Loader2 class="mr-2 h-4 w-4 animate-spin" /> Loading...
+							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+							{m.loading()}...
 						</div>
 					{:else if options.length === 0}
-						<div class="p-3 text-center text-sm text-text-muted">No results found</div>
+						<div class="p-3 text-center text-sm text-text-muted">
+							{m.no_results_found()}
+						</div>
 					{:else}
 						{#each options as option (valueFn(option))}
 							<button

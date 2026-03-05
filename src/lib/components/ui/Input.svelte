@@ -12,7 +12,7 @@
 
 <div class="space-y-2">
 	{#if label}
-		<label for={props.id} class="ml-1 text-sm font-semibold text-text-muted">
+		<label for={props.id} class="ml-1 text-xs font-semibold text-text-muted">
 			{label}
 		</label>
 	{/if}

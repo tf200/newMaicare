@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
 		Target,
@@ -85,13 +86,13 @@
 			'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
 	};
 
-	const progressLabel: Record<string, string> = {
-		no_progress: 'No Progress',
-		regression: 'Regression',
-		limited_progress: 'Limited Progress',
-		good_progress: 'Good Progress',
-		achieved: 'Achieved',
-		blocked: 'Blocked'
+	const progressLabel: Record<string, () => string> = {
+		no_progress: m.no_progress,
+		regression: m.regression,
+		limited_progress: m.limited_progress,
+		good_progress: m.good_progress,
+		achieved: m.achieved,
+		blocked: m.blocked
 	};
 
 	const priorityBadge: Record<string, string> = {
@@ -114,10 +115,10 @@
 	type HistoryRow = GoalsOverviewLoadResult['history'][0];
 
 	const historyColumns: DataTableColumn[] = [
-		{ key: 'evaluationDate', label: 'Evaluation Date', width: '180px' },
-		{ key: 'completion', label: 'Completion', width: '140px', align: 'center' },
-		{ key: 'creator', label: 'Evaluator', width: '180px' },
-		{ key: 'submitted', label: 'Submitted', width: '150px' },
+		{ key: 'evaluationDate', label: m.evaluation_date(), width: '180px' },
+		{ key: 'completion', label: m.completion(), width: '140px', align: 'center' },
+		{ key: 'creator', label: m.evaluator(), width: '180px' },
+		{ key: 'submitted', label: m.submitted(), width: '150px' },
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
 	];
 
@@ -139,7 +140,7 @@
 </script>
 
 <svelte:head>
-	<title>Goals & Evaluations | MaiCare</title>
+	<title>{m.goals_evaluations()} | MaiCare</title>
 </svelte:head>
 
 {#snippet historyEvaluationDateCell(row: HistoryRow)}
@@ -170,7 +171,7 @@
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-			title="View Evaluation"
+			title={m.view_evaluation()}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
@@ -225,13 +226,13 @@
 						>
 							<Target class="h-5 w-5" />
 						</span>
-						<span>Client Care Plan</span>
+						<span>{m.client_care_plan()}</span>
 					</div>
 					<h1 class="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
-						Goals & Evaluations
+						{m.goals_evaluations()}
 					</h1>
 					<p class="max-w-2xl text-sm font-medium text-zinc-500 dark:text-zinc-400">
-						Monitor progress and review achievements for this care period.
+						{m.goals_evaluations_description()}
 					</p>
 				</div>
 
@@ -240,7 +241,7 @@
 						class="gap-2 bg-teal-600 text-white shadow-sm hover:opacity-90 dark:bg-teal-400 dark:text-black"
 					>
 						<Plus class="h-4 w-4" />
-						New Goal
+						{m.new_goal()}
 					</Button>
 				</div>
 			</div>
@@ -261,12 +262,13 @@
 				<div class="space-y-6">
 					<div class="flex items-center justify-between px-1">
 						<h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-							Active Goals
+							{m.active_goals()}
 						</h2>
 						<span
 							class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
 						>
-							{goalsData.active_goals.length} Goals
+							{goalsData.active_goals.length}
+							{m.goals()}
 						</span>
 					</div>
 
@@ -280,10 +282,10 @@
 								<Activity class="h-8 w-8" />
 							</div>
 							<p class="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-								No active goals
+								{m.no_active_goals()}
 							</p>
 							<p class="text-sm text-zinc-500 dark:text-zinc-400">
-								Add goals to start tracking progress.
+								{m.add_goals_to_track()}
 							</p>
 						</div>
 					{:else}
@@ -323,8 +325,10 @@
 														goal.last_evaluation_progress
 													] || progressBadge.no_progress}"
 												>
-													{progressLabel[goal.last_evaluation_progress] ||
-														goal.last_evaluation_progress}
+													{(
+														progressLabel[goal.last_evaluation_progress] ||
+														(() => goal.last_evaluation_progress)
+													)()}
 												</span>
 											{/if}
 										</div>
@@ -335,7 +339,7 @@
 												onclick={() => openProgressModal(goal.id, goal.title)}
 												class="h-9 w-full justify-between px-3 text-[11px] font-bold text-zinc-500 hover:text-teal-600 dark:text-zinc-400 dark:hover:text-teal-400"
 											>
-												View Progress History
+												{m.view_progress_history()}
 												<TrendingUp class="h-3.5 w-3.5" />
 											</Button>
 										</div>
@@ -354,10 +358,10 @@
 					pageSize={goalsData.historyPagination.pageSize}
 					totalCount={goalsData.historyPagination.count}
 					onPageChange={updateHistoryPage}
-					title="Evaluation History"
-					description="Historical records of client progress reviews."
-					emptyTitle="No history found"
-					emptyDescription="Completed evaluations will be listed here."
+					title={m.evaluation_history()}
+					description={m.evaluation_history_description()}
+					emptyTitle={m.no_history_found()}
+					emptyDescription={m.completed_evaluations_listed()}
 					cells={{
 						evaluationDate: historyEvaluationDateCell,
 						completion: historyCompletionCell,
@@ -394,19 +398,23 @@
 									<CalendarClock class="h-5 w-5" />
 								</div>
 								<span class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase"
-									>Evaluation Period</span
+									>{m.evaluation_period()}</span
 								>
 							</div>
 							<div>
-								<h3 class="text-sm font-bold text-zinc-500 dark:text-zinc-400">Next Review In</h3>
+								<h3 class="text-sm font-bold text-zinc-500 dark:text-zinc-400">
+									{m.next_review_in()}
+								</h3>
 								<div class="mt-1 flex items-baseline gap-1">
 									<span class="text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
 										{goalsData.days_left ?? 'N/A'}
 									</span>
-									<span class="text-lg font-medium text-zinc-500 dark:text-zinc-400">days</span>
+									<span class="text-lg font-medium text-zinc-500 dark:text-zinc-400"
+										>{m.days()}</span
+									>
 								</div>
 								<p class="mt-2 text-xs font-medium text-zinc-400">
-									Due on {formatDate(goalsData.next_evaluation_date)}
+									{m.due_on({ date: formatDate(goalsData.next_evaluation_date) })}
 								</p>
 							</div>
 						</div>
@@ -421,12 +429,11 @@
 								<div class="flex items-center gap-2">
 									<Clock class="h-5 w-5 text-amber-600 dark:text-amber-500" />
 									<h3 class="text-lg font-bold text-amber-900 dark:text-amber-400">
-										Draft in Progress
+										{m.draft_in_progress_title()}
 									</h3>
 								</div>
 								<p class="text-sm font-medium text-amber-700 dark:text-amber-300">
-									You have an unfinished evaluation for this period. Continue to submit your
-									progress.
+									{m.draft_in_progress_description()}
 								</p>
 								<Button
 									class="h-12 w-full gap-2 rounded-xl bg-amber-600 font-bold text-white shadow-lg shadow-amber-500/10 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
@@ -437,7 +444,7 @@
 									}}
 								>
 									<Play class="h-4 w-4" fill="currentColor" />
-									Continue Evaluation
+									{m.continue_evaluation()}
 								</Button>
 							</div>
 						</div>
@@ -448,10 +455,10 @@
 							<div class="space-y-4">
 								<div class="flex items-center gap-2 text-teal-700 dark:text-teal-400">
 									<CheckCircle2 class="h-5 w-5" />
-									<h3 class="text-lg font-bold">Ready for Review?</h3>
+									<h3 class="text-lg font-bold">{m.ready_for_review()}</h3>
 								</div>
 								<p class="text-sm font-medium text-teal-600 dark:text-teal-400/80">
-									Start a new evaluation to document the client's progress for this period.
+									{m.start_evaluation_description()}
 								</p>
 								<Button
 									disabled={!goalsData.is_responsible_employee}
@@ -463,11 +470,11 @@
 									}}
 								>
 									<Plus class="h-4 w-4" />
-									Start Evaluation
+									{m.start_evaluation()}
 								</Button>
 								{#if !goalsData.is_responsible_employee}
 									<p class="text-xs font-medium text-teal-700/80 dark:text-teal-400/80">
-										Only the assigned coordinator can start this evaluation cycle.
+										{m.only_coordinator_can_start()}
 									</p>
 								{/if}
 							</div>
@@ -479,7 +486,7 @@
 						class="rounded-3xl border border-zinc-100 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
 					>
 						<h3 class="text-xs font-bold tracking-widest text-zinc-400 uppercase">
-							Last Completed
+							{m.last_completed()}
 						</h3>
 						<div class="mt-4 space-y-3">
 							{#if lastCompleted}
@@ -494,19 +501,19 @@
 											{formatDate(lastCompleted.evaluation_date)}
 										</span>
 										<span class="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-											By {lastCompleted.creator_name}
+											{lastCompleted.creator_name}
 										</span>
 									</div>
 								</div>
 								<button
 									class="group flex w-full items-center justify-between rounded-xl border border-zinc-100 p-3 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
 								>
-									View Full Report
+									{m.view_full_report()}
 									<ArrowRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
 								</button>
 							{:else}
 								<p class="text-sm font-medium text-zinc-400 italic">
-									No past evaluations recorded.
+									{m.no_past_evaluations()}
 								</p>
 							{/if}
 						</div>

@@ -15,6 +15,7 @@
 	import { EmployeeSchema, type EmployeeSchemaInput } from '$lib/schemas/employee';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -85,7 +86,7 @@
 						onCreated?.();
 						open = false;
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to create employee';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_employee();
 					}
 				}
 			}
@@ -94,15 +95,15 @@
 
 	// Options
 	const genderOptions = [
-		{ value: 'male', label: 'Male' },
-		{ value: 'female', label: 'Female' },
-		{ value: 'not_specified', label: 'Not Specified' }
+		{ value: 'male', label: m.male() },
+		{ value: 'female', label: m.female() },
+		{ value: 'not_specified', label: m.not_specified() }
 	];
 
 	const contractTypeOptions = [
-		{ value: 'loondienst', label: 'Loondienst (Full-time)' },
-		{ value: 'ZZP', label: 'ZZP (Freelance)' },
-		{ value: 'none', label: 'None' }
+		{ value: 'loondienst', label: m.loondienst_full_time() },
+		{ value: 'ZZP', label: m.zzp_freelance() },
+		{ value: 'none', label: m.none() }
 	];
 
 	const handleCancel = () => {
@@ -131,7 +132,9 @@
 {#snippet roleItem(option: RoleListItem)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{option.role_name}</span>
-		<span class="text-xs text-text-muted">{option.permission_count} permissions</span>
+		<span class="text-xs text-text-muted">
+			{m.permissions_count({ count: option.permission_count })}
+		</span>
 	</div>
 {/snippet}
 
@@ -141,7 +144,7 @@
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
 			<span>{option.street} {option.house_number}, {option.city}</span>
 			<span class="{option.available > 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium">
-				{option.available} spots available
+				{m.spots_available({ count: option.available })}
 			</span>
 		</div>
 	</div>
@@ -149,8 +152,8 @@
 
 <Modal
 	bind:open
-	title="Add New Employee"
-	description="Create a new employee profile with personal, contact, and contract details."
+	title={m.add_new_employee()}
+	description={m.add_new_employee_description()}
 	size="4xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
@@ -163,75 +166,75 @@
 		<!-- Section: Personal Information -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Personal Information
+				{m.personal_information()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="First Name"
-					placeholder="Jane"
+					label={m.first_name()}
+					placeholder={m.example_first_name()}
 					bind:value={$form.first_name}
 					error={formatFormError($errors.first_name)}
 					required
 				/>
 				<Input
-					label="Last Name"
-					placeholder="Doe"
+					label={m.last_name()}
+					placeholder={m.example_last_name()}
 					bind:value={$form.last_name}
 					error={formatFormError($errors.last_name)}
 					required
 				/>
 				<Input
-					label="BSN"
-					placeholder="123456789"
+					label={m.bsn()}
+					placeholder={m.example_bsn()}
 					bind:value={$form.bsn}
 					error={formatFormError($errors.bsn)}
 					required
 				/>
 				<Select
-					label="Gender"
+					label={m.gender()}
 					bind:value={$form.gender}
 					options={genderOptions}
-					placeholder="Select gender..."
+					placeholder={m.select_gender()}
 					error={formatFormError($errors.gender)}
 				/>
-				<DatePicker label="Date of Birth" bind:value={$form.date_of_birth} />
+				<DatePicker label={m.date_of_birth()} bind:value={$form.date_of_birth} />
 			</div>
 		</section>
 
 		<!-- Section: Contact Details -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Contact Details
+				{m.contact_details()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Work Email"
+					label={m.work_email()}
 					type="email"
-					placeholder="jane.doe@maicare.com"
+					placeholder={m.placeholder_work_email()}
 					bind:value={$form.work_email_address}
 					error={formatFormError($errors.work_email_address)}
 					required
 				/>
 				<Input
-					label="Private Email"
+					label={m.private_email()}
 					type="email"
-					placeholder="jane.doe@gmail.com"
+					placeholder={m.placeholder_private_email()}
 					bind:value={$form.private_email_address}
 					error={formatFormError($errors.private_email_address)}
 				/>
 				<Input
-					label="Work Phone"
-					placeholder="+31 6 12345678"
+					label={m.work_phone()}
+					placeholder={m.example_phone_nl()}
 					bind:value={$form.work_phone_number}
 				/>
 				<Input
-					label="Private Phone"
-					placeholder="+31 6 87654321"
+					label={m.private_phone()}
+					placeholder={m.example_phone_nl()}
 					bind:value={$form.private_phone_number}
 				/>
 				<Input
-					label="Home Telephone"
-					placeholder="+31 20 1234567"
+					label={m.home_telephone()}
+					placeholder={m.example_phone_nl()}
 					bind:value={$form.home_telephone_number}
 				/>
 			</div>
@@ -240,36 +243,40 @@
 		<!-- Section: Address -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Address
+				{m.address()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
-					label="Postal Code"
-					placeholder="1234 AB"
+					label={m.postal_code()}
+					placeholder={m.example_postal_code()}
 					bind:value={$form.postal_code}
 					error={formatFormError($errors.postal_code)}
 					required
 				/>
 				<Input
-					label="House Number"
-					placeholder="10"
+					label={m.house_number()}
+					placeholder={m.example_house_number()}
 					bind:value={$form.house_number}
 					error={formatFormError($errors.house_number)}
 					required
 				/>
-				<Input label="Addition" placeholder="A" bind:value={$form.house_number_addition} />
+				<Input
+					label={m.addition_optional()}
+					placeholder={m.example_house_number_addition()}
+					bind:value={$form.house_number_addition}
+				/>
 			</div>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Street"
-					placeholder="Main Street"
+					label={m.street()}
+					placeholder={m.example_street_name()}
 					bind:value={$form.street}
 					error={formatFormError($errors.street)}
 					required
 				/>
 				<Input
-					label="City"
-					placeholder="Amsterdam"
+					label={m.city()}
+					placeholder={m.example_city_name()}
 					bind:value={$form.city}
 					error={formatFormError($errors.city)}
 					required
@@ -280,70 +287,82 @@
 		<!-- Section: Employment & Role -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Employment & Role
+				{m.employment_role()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<SearchSelect
-					label="Role"
+					label={m.role()}
 					loadOptions={loadRoles}
 					bind:value={$form.role_id}
 					error={formatFormError($errors.role_id)}
 					item={roleItem}
 					labelFn={(role) => role.role_name}
 					valueFn={(role) => role.id}
-					placeholder="Search for a role..."
+					placeholder={m.search_role_placeholder()}
 				/>
 				<SearchSelect
-					label="Assigned Location"
+					label={m.assigned_location()}
 					loadOptions={loadLocations}
 					bind:value={$form.location_id}
 					item={locationItem}
 					labelFn={(location) => `${location.name} (${location.city})`}
 					valueFn={(location) => location.id}
-					placeholder="Search for a location..."
+					placeholder={m.search_location_placeholder()}
 				/>
-				<Input label="Employee Number" placeholder="EMP-001" bind:value={$form.employee_number} />
 				<Input
-					label="Employment Number"
-					placeholder="100200300"
+					label={m.employee_number()}
+					placeholder={m.placeholder_employee_number()}
+					bind:value={$form.employee_number}
+				/>
+				<Input
+					label={m.employment_number()}
+					placeholder={m.placeholder_employment_number()}
 					bind:value={$form.employment_number}
 				/>
-				<Input label="Position" placeholder="Senior Caregiver" bind:value={$form.position} />
-				<Input label="Department" placeholder="Ambulant Care" bind:value={$form.department} />
+				<Input
+					label={m.position()}
+					placeholder={m.placeholder_position()}
+					bind:value={$form.position}
+				/>
+				<Input
+					label={m.department()}
+					placeholder={m.placeholder_department()}
+					bind:value={$form.department}
+				/>
 			</div>
 		</section>
 
 		<!-- Section: Contract -->
 		<section class="space-y-4">
 			<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-				Contract
+				{m.contract()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Select
-					label="Contract Type"
+					label={m.contract_type()}
 					bind:value={$form.contract_type}
 					options={contractTypeOptions}
-					placeholder="Select type..."
+					placeholder={m.select_contract_type()}
 					error={formatFormError($errors.contract_type)}
 				/>
 				<Input
-					label="Contract Hours"
+					label={m.contract_hours()}
 					type="number"
-					placeholder="36"
+					placeholder={m.placeholder_contract_hours()}
 					bind:value={$form.contract_hours}
 					error={formatFormError($errors.contract_hours)}
 				/>
 				<Input
-					label="Rate / Salary"
+					label={m.rate_salary()}
 					type="number"
-					placeholder="0.00"
+					placeholder={m.placeholder_amount_zero()}
 					bind:value={$form.contract_rate}
 					error={formatFormError($errors.contract_rate)}
 				/>
 			</div>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<DatePicker label="Start Date" bind:value={$form.contract_start_date} />
-				<DatePicker label="End Date" bind:value={$form.contract_end_date} />
+				<DatePicker label={m.start_date()} bind:value={$form.contract_start_date} />
+				<DatePicker label={m.end_date()} bind:value={$form.contract_end_date} />
 			</div>
 		</section>
 
@@ -352,10 +371,10 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
 			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Plus class="h-4 w-4" />
-				{$delayed ? 'Creating Employee...' : 'Create Employee'}
+				{$delayed ? m.creating_employee() : m.create_employee()}
 			</Button>
 		</div>
 	{/snippet}

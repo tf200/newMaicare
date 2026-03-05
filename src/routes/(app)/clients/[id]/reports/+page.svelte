@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { invalidateAll } from '$app/navigation';
 	import {
 		deleteClientProgressReport,
@@ -139,42 +140,42 @@
 
 	const typeMeta: Record<ProgressReportType, { label: string; icon: any; className: string }> = {
 		morning_report: {
-			label: 'Morning Report',
+			label: m.morning_report(),
 			icon: Sun,
 			className: 'bg-amber-500 text-white border-amber-600/60 shadow-amber-600/30'
 		},
 		evening_report: {
-			label: 'Evening Report',
+			label: m.evening_report(),
 			icon: Sunset,
 			className: 'bg-orange-500 text-white border-orange-600/60 shadow-orange-600/30'
 		},
 		night_report: {
-			label: 'Night Report',
+			label: m.night_report(),
 			icon: Moon,
 			className: 'bg-indigo-600 text-white border-indigo-700/60 shadow-indigo-700/30'
 		},
 		shift_report: {
-			label: 'Shift Report',
+			label: m.shift_report(),
 			icon: ClipboardList,
 			className: 'bg-slate-600 text-white border-slate-700/60 shadow-slate-700/30'
 		},
 		one_to_one_report: {
-			label: '1-on-1 Report',
+			label: m.one_to_one_report(),
 			icon: UserRound,
 			className: 'bg-teal-600 text-white border-teal-700/60 shadow-teal-700/30'
 		},
 		process_report: {
-			label: 'Process Report',
+			label: m.process_report(),
 			icon: GitBranch,
 			className: 'bg-blue-600 text-white border-blue-700/60 shadow-blue-700/30'
 		},
 		contact_journal: {
-			label: 'Contact Journal',
+			label: m.contact_journal(),
 			icon: BookOpen,
 			className: 'bg-emerald-600 text-white border-emerald-700/60 shadow-emerald-700/30'
 		},
 		other: {
-			label: 'Other',
+			label: m.other(),
 			icon: MoreHorizontal,
 			className: 'bg-zinc-500 text-white border-zinc-600/60 shadow-zinc-600/30'
 		}
@@ -182,14 +183,14 @@
 
 	const filterGroups = [
 		{
-			label: 'Date Range',
+			label: m.date_range(),
 			items: [
-				{ key: 'date_from', label: 'From', type: 'date' as const },
-				{ key: 'date_to', label: 'To', type: 'date' as const }
+				{ key: 'date_from', label: m.from(), type: 'date' as const },
+				{ key: 'date_to', label: m.to(), type: 'date' as const }
 			]
 		},
 		{
-			label: 'Report Type',
+			label: m.report_type(),
 			items: Object.entries(typeMeta).map(([key, meta]) => ({
 				key,
 				label: meta.label,
@@ -203,43 +204,43 @@
 		{ label: string; icon: any; colorClass: string; bgClass: string }
 	> = {
 		normal: {
-			label: 'Normal',
+			label: m.normal(),
 			icon: Meh,
 			colorClass: 'text-zinc-600 dark:text-zinc-400',
 			bgClass: 'bg-zinc-100 dark:bg-zinc-800'
 		},
 		excited: {
-			label: 'Excited',
+			label: m.excited(),
 			icon: Zap,
 			colorClass: 'text-teal-600 dark:text-teal-400',
 			bgClass: 'bg-teal-50 dark:bg-teal-500/10'
 		},
 		happy: {
-			label: 'Happy',
+			label: m.happy(),
 			icon: Smile,
 			colorClass: 'text-emerald-600 dark:text-emerald-400',
 			bgClass: 'bg-emerald-50 dark:bg-emerald-500/10'
 		},
 		sad: {
-			label: 'Sad',
+			label: m.sad(),
 			icon: Frown,
 			colorClass: 'text-blue-600 dark:text-blue-400',
 			bgClass: 'bg-blue-50 dark:bg-blue-500/10'
 		},
 		angry: {
-			label: 'Angry',
+			label: m.angry(),
 			icon: Angry,
 			colorClass: 'text-rose-600 dark:text-rose-400',
 			bgClass: 'bg-rose-50 dark:bg-rose-500/10'
 		},
 		anxious: {
-			label: 'Anxious',
+			label: m.anxious(),
 			icon: AlertCircle,
 			colorClass: 'text-orange-600 dark:text-orange-400',
 			bgClass: 'bg-orange-50 dark:bg-orange-500/10'
 		},
 		depressed: {
-			label: 'Depressed',
+			label: m.depressed(),
 			icon: CloudRain,
 			colorClass: 'text-indigo-600 dark:text-indigo-400',
 			bgClass: 'bg-indigo-50 dark:bg-indigo-500/10'
@@ -247,11 +248,11 @@
 	};
 
 	const columns: DataTableColumn[] = [
-		{ key: 'date', label: 'Date', width: '180px' },
-		{ key: 'title', label: 'Report Title' },
-		{ key: 'type', label: 'Type', width: '180px' },
-		{ key: 'emotional_state', label: 'Emotional State', width: '160px' },
-		{ key: 'employee', label: 'Reporter', width: '200px' },
+		{ key: 'date', label: m.date(), width: '180px' },
+		{ key: 'title', label: m.report_title() },
+		{ key: 'type', label: m.type(), width: '180px' },
+		{ key: 'emotional_state', label: m.emotional_state(), width: '160px' },
+		{ key: 'employee', label: m.reporter(), width: '200px' },
 		{ key: 'actions', label: '', align: 'right', width: '140px' }
 	];
 
@@ -292,7 +293,7 @@
 </script>
 
 <svelte:head>
-	<title>Client Reports | MaiCare</title>
+	<title>{m.progress_reports()} | MaiCare</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -306,7 +307,7 @@
 					type="search"
 					bind:value={searchQuery}
 					class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
-					placeholder="Search reports..."
+					placeholder={m.search_reports()}
 				/>
 			</div>
 
@@ -315,8 +316,8 @@
 				groups={filterGroups}
 				onUpdate={(newFilters) => (activeFilters = newFilters)}
 				onClear={() => (activeFilters = {})}
-				title="Filter Reports"
-				buttonLabel="Filters"
+				title={m.filter_reports()}
+				buttonLabel={m.filters()}
 			/>
 		</div>
 	</div>
@@ -330,7 +331,7 @@
 {/snippet}
 
 {#snippet titleCell(row: ListProgressReportsResponse)}
-	<span class="font-semibold text-text">{row.title || 'Untitled Report'}</span>
+	<span class="font-semibold text-text">{row.title || m.untitled_report()}</span>
 {/snippet}
 
 {#snippet typeCell(row: ListProgressReportsResponse)}
@@ -364,7 +365,7 @@
 			{#if row.employee_first_name || row.employee_last_name}
 				{row.employee_first_name} {row.employee_last_name}
 			{:else}
-				<span class="text-text-muted italic">System / No employee</span>
+				<span class="text-text-muted italic">{m.system_no_employee()}</span>
 			{/if}
 		</span>
 	</div>
@@ -374,21 +375,21 @@
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View Report"
+			title={m.view_report()}
 			onclick={() => openReport(row.id)}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="Edit Report"
+			title={m.edit_report()}
 			onclick={() => openReport(row.id, true)}
 		>
 			<Pencil class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
-			title="Delete Report"
+			title={m.delete_report()}
 			onclick={() => deleteReport(row.id)}
 		>
 			<Trash2 class="h-4 w-4" />
@@ -421,11 +422,11 @@
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<FileText class="h-5 w-5" />
 					</span>
-					<span>Client Documentation</span>
+					<span>{m.client_documentation()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Progress Reports</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.progress_reports()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Review and manage daily progress reports, session notes, and emotional state tracking.
+					{m.progress_reports_description()}
 				</p>
 			</div>
 
@@ -434,7 +435,7 @@
 				onclick={() => (isCreateModalOpen = true)}
 			>
 				<Plus class="h-4 w-4" />
-				Create Report
+				{m.create_report()}
 			</button>
 		</div>
 	</header>
@@ -442,8 +443,8 @@
 	<DataTable
 		{columns}
 		rows={filteredReports}
-		title="Reports History"
-		description="Showing all documented reports for this client."
+		title={m.reports_history()}
+		description={m.reports_history_description()}
 		filters={tableFilters}
 		rowKey="id"
 		cells={{
@@ -461,9 +462,9 @@
 		<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 			<h3 class="flex items-center gap-2 text-lg font-bold tracking-tight text-text">
 				<Smile class="h-5 w-5 text-emerald-500" />
-				Emotional Well-being
+				{m.emotional_wellbeing()}
 			</h3>
-			<p class="mt-1 text-sm text-text-muted">Recent emotional states documented in reports.</p>
+			<p class="mt-1 text-sm text-text-muted">{m.emotional_wellbeing_description()}</p>
 
 			<div class="mt-6 flex flex-wrap gap-3">
 				{#each Object.entries(emotionalStateMeta) as [key, meta] (key)}
@@ -481,7 +482,7 @@
 							</div>
 							<div>
 								<p class="text-xs font-bold text-text">{meta.label}</p>
-								<p class="text-[10px] font-medium text-text-muted">{count} reports</p>
+								<p class="text-[10px] font-medium text-text-muted">{count} {m.reports()}</p>
 							</div>
 						</div>
 					{/if}
@@ -492,9 +493,9 @@
 		<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 			<h3 class="flex items-center gap-2 text-lg font-bold tracking-tight text-text">
 				<MessageSquare class="h-5 w-5 text-brand" />
-				Reporting Volume
+				{m.reporting_volume()}
 			</h3>
-			<p class="mt-1 text-sm text-text-muted">Breakdown of reports by category.</p>
+			<p class="mt-1 text-sm text-text-muted">{m.reporting_volume_description()}</p>
 
 			<div class="mt-6 space-y-3">
 				{#each Object.entries(typeMeta) as [key, meta] (key)}

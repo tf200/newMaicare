@@ -3,6 +3,7 @@
 	import GoalAssessmentForm from './GoalAssessmentForm.svelte';
 	import { Loader2, Save } from 'lucide-svelte';
 	import type { IntakeGoalTopic, CreateIntakeFormGoalsRequest } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open: boolean;
@@ -46,8 +47,8 @@
 
 <Modal
 	bind:open
-	title="Assessment & Goals"
-	description="Define maturity levels and set specific goals for the client."
+	title={m.goals_assessments()}
+	description={m.assessment_goals_description()}
 	size="2xl"
 >
 	{#snippet footer()}
@@ -56,7 +57,7 @@
 				onclick={onCancel}
 				class="rounded-xl px-4 py-2 text-sm font-semibold text-text-muted hover:bg-zinc-100 dark:hover:bg-zinc-800"
 			>
-				Cancel
+				{m.cancel()}
 			</button>
 			<button
 				onclick={handleSave}
@@ -65,10 +66,10 @@
 			>
 				{#if isSaving}
 					<Loader2 class="h-4 w-4 animate-spin" />
-					Saving...
+					{m.saving()}
 				{:else}
 					<Save class="h-4 w-4" />
-					Save Goals
+					{m.save_goals()}
 				{/if}
 			</button>
 		</div>

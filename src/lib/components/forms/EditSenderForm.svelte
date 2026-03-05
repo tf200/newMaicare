@@ -10,6 +10,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { UpdateSenderRequest } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -18,10 +19,10 @@
 	}
 
 	const typeOptions = [
-		{ value: 'main_provider', label: 'Main provider' },
-		{ value: 'local_authority', label: 'Local authority' },
-		{ value: 'particular_party', label: 'Private individual' },
-		{ value: 'healthcare_institution', label: 'Healthcare institution' }
+		{ value: 'main_provider', label: m.main_provider() },
+		{ value: 'local_authority', label: m.local_authority() },
+		{ value: 'particular_party', label: m.private_individual() },
+		{ value: 'healthcare_institution', label: m.healthcare_institution() }
 	] as const;
 
 	type SenderType = (typeof typeOptions)[number]['value'];
@@ -78,7 +79,7 @@
 						open = false;
 						onUpdated?.();
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to update sender.';
+						errorMessage = error instanceof Error ? error.message : m.failed_update_sender();
 					}
 				}
 			}
@@ -126,7 +127,7 @@
 
 			reset({ data: initialData });
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to fetch sender details.';
+			errorMessage = error instanceof Error ? error.message : m.failed_fetch_sender_details();
 		} finally {
 			isFetching = false;
 		}
@@ -153,13 +154,13 @@
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
 			if (!result) {
-				lookupMessage = 'Address not found. Please fill street and city manually.';
+				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
 			isLookupLoading = false;
 		}
@@ -188,8 +189,8 @@
 
 <Modal
 	bind:open
-	title="Edit Sender"
-	description="Update sender information and contact details."
+	title={m.edit_sender()}
+	description={m.edit_sender_description()}
 	class="max-w-3xl"
 >
 	<form id={formId} use:enhance class="max-h-[70vh] space-y-6 overflow-y-auto pr-2">
@@ -202,14 +203,14 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Sender name"
-					placeholder="Sender organization"
+					label={m.sender_name()}
+					placeholder={m.placeholder_sender_organization()}
 					bind:value={$form.name}
 					error={formatFormError($errors.name)}
 				/>
 				<div class="space-y-2">
 					<label for="sender-type" class="ml-1 text-sm font-semibold text-text-muted">
-						Sender type
+						{m.sender_type()}
 					</label>
 					<select
 						id="sender-type"
@@ -228,8 +229,8 @@
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
-					label="Postal code"
-					placeholder="1234 AB"
+					label={m.postal_code()}
+					placeholder={m.example_postal_code()}
 					bind:value={$form.postal_code}
 					oninput={() => {
 						if ($form.postal_code && $form.house_number) {
@@ -247,8 +248,8 @@
 					error={formatFormError($errors.postal_code)}
 				/>
 				<Input
-					label="House number"
-					placeholder="10"
+					label={m.house_number()}
+					placeholder={m.example_house_number()}
 					bind:value={$form.house_number}
 					oninput={() => {
 						if ($form.postal_code && $form.house_number) {
@@ -258,29 +259,29 @@
 					error={formatFormError($errors.house_number)}
 				/>
 				<Input
-					label="Addition (optional)"
-					placeholder="A"
+					label={m.addition_optional()}
+					placeholder={m.example_house_number_addition()}
 					bind:value={$form.house_number_addition}
 				/>
 			</div>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Street"
-					placeholder="Main street"
+					label={m.street()}
+					placeholder={m.example_street_name()}
 					bind:value={$form.street}
 					error={formatFormError($errors.street)}
 				/>
 				<Input
-					label="City"
-					placeholder="Amsterdam"
+					label={m.city()}
+					placeholder={m.example_city_name()}
 					bind:value={$form.city}
 					error={formatFormError($errors.city)}
 				/>
 			</div>
 
 			{#if isLookupLoading}
-				<div class="text-xs font-medium text-text-muted">Looking up address via PDOK...</div>
+				<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
 			{/if}
 			{#if lookupMessage}
 				<div
@@ -291,20 +292,36 @@
 			{/if}
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-				<Input label="Country" placeholder="Netherlands" bind:value={$form.land} />
-				<Input label="Phone" placeholder="+31 20 123 4567" bind:value={$form.phone_number} />
-				<Input label="Client number" placeholder="REF-2024-01" bind:value={$form.client_number} />
+				<Input label={m.country()} placeholder={m.example_country()} bind:value={$form.land} />
+				<Input
+					label={m.phone_number()}
+					placeholder={m.example_phone_nl()}
+					bind:value={$form.phone_number}
+				/>
+				<Input
+					label={m.client_number()}
+					placeholder={m.placeholder_client_number()}
+					bind:value={$form.client_number}
+				/>
 			</div>
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
-					label="Email address"
-					placeholder="info@sender.nl"
+					label={m.email_address()}
+					placeholder={m.placeholder_sender_email()}
 					bind:value={$form.email_address}
 					error={formatFormError($errors.email_address)}
 				/>
-				<Input label="KVK number" placeholder="12345678" bind:value={$form.KVKnumber} />
-				<Input label="BTW number" placeholder="NL123456789B01" bind:value={$form.BTWnumber} />
+				<Input
+					label={m.kvk_number()}
+					placeholder={m.placeholder_kvk_number()}
+					bind:value={$form.KVKnumber}
+				/>
+				<Input
+					label={m.btw_number()}
+					placeholder={m.placeholder_btw_number()}
+					bind:value={$form.BTWnumber}
+				/>
 			</div>
 
 			<div class="flex items-center gap-3 py-2">
@@ -314,38 +331,44 @@
 					bind:checked={$form.is_archived}
 					class="h-5 w-5 rounded border-border text-brand focus:ring-brand/20"
 				/>
-				<label for="is-archived" class="text-sm font-medium text-text"> Archive this sender </label>
+				<label for="is-archived" class="text-sm font-medium text-text">
+					{m.archive_sender()}
+				</label>
 			</div>
 
 			<div class="space-y-4">
 				<div class="flex items-center justify-between">
 					<div>
-						<h3 class="text-sm font-semibold text-text">Contacts</h3>
-						<p class="text-xs text-text-muted">Add at least one contact if available.</p>
+						<h3 class="text-sm font-semibold text-text">{m.contacts()}</h3>
+						<p class="text-xs text-text-muted">{m.contacts_hint()}</p>
 					</div>
-					<Button variant="ghost" onclick={addContact} type="button">Add contact</Button>
+					<Button variant="ghost" onclick={addContact} type="button">{m.add_contact()}</Button>
 				</div>
 				<div class="space-y-4">
 					{#each $form.contacts as contact, index (index)}
 						<div class="rounded-2xl border border-border bg-surface/80 p-4">
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-								<Input label="Contact name" placeholder="J. de Vries" bind:value={contact.name} />
 								<Input
-									label="Email"
-									placeholder="contact@sender.nl"
+									label={m.contact_name()}
+									placeholder={m.placeholder_contact_name()}
+									bind:value={contact.name}
+								/>
+								<Input
+									label={m.email_address()}
+									placeholder={m.placeholder_contact_email()}
 									type="email"
 									bind:value={contact.email}
 									error={formatFormError($errors.contacts?.[index]?.email)}
 								/>
 								<Input
-									label="Phone"
-									placeholder="+31 6 123 456 78"
+									label={m.phone_number()}
+									placeholder={m.example_phone_nl()}
 									bind:value={contact.phone_number}
 								/>
 							</div>
 							<div class="mt-3 flex justify-end">
 								<Button variant="ghost" onclick={() => removeContact(index)} type="button"
-									>Remove</Button
+									>{m.remove()}</Button
 								>
 							</div>
 						</div>
@@ -366,10 +389,10 @@
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
 			<Button variant="ghost" onclick={handleCancel} disabled={isFetching || $delayed}
-				>Cancel</Button
+				>{m.cancel()}</Button
 			>
 			<Button form={formId} type="submit" isLoading={$delayed} disabled={isFetching}>
-				Save changes
+				{m.save_changes()}
 			</Button>
 		</div>
 	{/snippet}

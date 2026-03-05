@@ -10,6 +10,7 @@
 	import { listLocations } from '$lib/api/locations';
 	import { intakes } from '$lib/api/intakes';
 	import { Calendar, FileText, Loader2, User, Activity, Save } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type {
 		GetIntakeFormResponse,
 		IntakeCareType,
@@ -180,8 +181,10 @@
 
 <Modal
 	bind:open
-	title="Edit Intake Form"
-	description={`For ${intake.client_first_name} ${intake.client_last_name}`}
+	title={m.edit_intake_form()}
+	description={m.intake_for_client({
+		name: `${intake.client_first_name} ${intake.client_last_name}`.trim()
+	})}
 	size="full"
 	class="max-w-[80vw] overflow-hidden"
 >
@@ -203,34 +206,34 @@
 							<User class="h-6 w-6" />
 						</div>
 						<div>
-							<h2 class="text-xl font-bold text-text">Client Situation</h2>
-							<p class="text-sm text-text-subtle">Current context and psychological overview</p>
+							<h2 class="text-xl font-bold text-text">{m.client_situation()}</h2>
+							<p class="text-sm text-text-subtle">{m.client_situation_description()}</p>
 						</div>
 					</div>
 
 					<div class="grid gap-6 lg:grid-cols-2">
 						<div class="lg:col-span-2">
 							<TextArea
-								label="Family Situation"
+								label={m.family_situation()}
 								bind:value={familySituation}
 								error={fieldErrors.familySituation}
-								placeholder="Describe the family context, relationships, and home environment..."
+								placeholder={m.family_situation_placeholder()}
 								rows={4}
 							/>
 						</div>
 						<div class="lg:col-span-2">
 							<TextArea
-								label="Psychological State"
+								label={m.psychological_state()}
 								bind:value={psychologicalState}
 								error={fieldErrors.psychologicalState}
-								placeholder="Describe current psychological state, history, and observations..."
+								placeholder={m.psychological_state_placeholder()}
 								rows={4}
 							/>
 						</div>
 						<div class="lg:col-span-1">
 							<Input
 								type="number"
-								label="Self Sufficiency Score (0-100)"
+								label={m.self_sufficiency_score_range()}
 								bind:value={selfSufficiency}
 								error={fieldErrors.selfSufficiency}
 								min="0"
@@ -247,30 +250,33 @@
 							<FileText class="h-6 w-6" />
 						</div>
 						<div>
-							<h2 class="text-xl font-bold text-text">Logistics & Assignment</h2>
-							<p class="text-sm text-text-subtle">Dates, participants, and location details</p>
+							<h2 class="text-xl font-bold text-text">{m.logistics_placement()}</h2>
+							<p class="text-sm text-text-subtle">{m.logistics_assignment_description()}</p>
 						</div>
 					</div>
 
 					<div class="grid gap-6 lg:grid-cols-2">
 						<div class="space-y-1.5">
 							<label class="flex items-center gap-1.5 text-sm font-semibold text-text-muted">
-								<Calendar class="h-3.5 w-3.5" /> Date of Intake
+								<Calendar class="h-3.5 w-3.5" />
+								{m.intake_date()}
 							</label>
 							<DateTimePicker bind:value={dateOfIntake} error={fieldErrors.dateOfIntake} />
 						</div>
 
 						<div>
 							<Input
-								label="Signature (Full Name)"
+								label={m.signature_full_name()}
 								bind:value={signature}
 								error={fieldErrors.signature}
-								placeholder="Type full name"
+								placeholder={m.signature_full_name_placeholder()}
 							/>
 						</div>
 
 						<div class="space-y-1.5">
-							<label for="care-type" class="text-sm font-semibold text-text-muted">Care Type</label>
+							<label for="care-type" class="text-sm font-semibold text-text-muted">
+								{m.care_type()}
+							</label>
 							<div class="relative">
 								<select
 									id="care-type"
@@ -306,16 +312,16 @@
 
 						<div class="lg:col-span-2">
 							<MultiSelect
-								label="Participants"
+								label={m.participants()}
 								bind:value={intakeParticipants}
 								options={participantOptions}
 								error={fieldErrors.intakeParticipants}
-								placeholder="Select participants..."
+								placeholder={m.select_participants_placeholder()}
 							/>
 						</div>
 
 						<SearchSelect
-							label="Sender / Referrer"
+							label={m.referrer_sender()}
 							bind:value={senderId}
 							bind:displayValue={senderName}
 							error={fieldErrors.senderId}
@@ -326,11 +332,11 @@
 							labelFn={(s) => s.name}
 							valueFn={(s) => s.id}
 							item={senderItem}
-							placeholder="Select sender..."
+							placeholder={m.select_sender_placeholder()}
 						/>
 
 						<SearchSelect
-							label="Assign Location"
+							label={m.assigned_location()}
 							bind:value={assignedLocationId}
 							error={fieldErrors.assignedLocationId}
 							loadOptions={async (query) => {
@@ -340,7 +346,7 @@
 							labelFn={(loc) => `${loc.name} (${loc.city})`}
 							valueFn={(loc) => loc.id}
 							item={locationItem}
-							placeholder="Select location..."
+							placeholder={m.select_location_placeholder()}
 						/>
 					</div>
 				</div>
@@ -353,24 +359,24 @@
 								<Activity class="h-6 w-6" />
 							</div>
 							<div>
-								<h2 class="text-xl font-bold text-text">Initial Assessment</h2>
-								<p class="text-sm text-text-subtle">Risk factors and preliminary conclusion</p>
+								<h2 class="text-xl font-bold text-text">{m.initial_assessment()}</h2>
+								<p class="text-sm text-text-subtle">{m.initial_assessment_description()}</p>
 							</div>
 						</div>
 
 						<div class="space-y-6">
 							<TextArea
-								label="Risk Assessment"
+								label={m.risk_assessment()}
 								bind:value={riskAssessment}
 								error={fieldErrors.riskAssessment}
-								placeholder="Identify potential risks (aggression, self-harm, addiction, etc.)..."
+								placeholder={m.risk_assessment_placeholder()}
 								rows={4}
 							/>
 
 							<div class="grid gap-6 md:grid-cols-2">
 								<div class="space-y-1.5">
 									<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
-										>Intake Conclusion</label
+										>{m.intake_conclusion()}</label
 									>
 									<div class="relative">
 										<select
@@ -409,19 +415,19 @@
 								<div>
 									<Input
 										type="number"
-										label="Evaluation Interval (weeks)"
+										label={m.evaluation_interval_weeks()}
 										bind:value={evaluationIntervalWeeks}
 										error={fieldErrors.evaluationIntervalWeeks}
 										min="1"
-										placeholder="e.g. 4"
+										placeholder={m.placeholder_weeks_example()}
 									/>
 								</div>
 								<div class="md:col-span-2">
 									<TextArea
-										label="Additional Notes"
+										label={m.additional_notes()}
 										bind:value={intakeConclusionNotes}
 										error={fieldErrors.intakeConclusionNotes}
-										placeholder="Any other relevant information..."
+										placeholder={m.additional_notes_placeholder()}
 										rows={3}
 									/>
 								</div>
@@ -435,14 +441,16 @@
 
 	{#snippet footer()}
 		<div class="flex items-center justify-end gap-3">
-			<Button variant="ghost" onclick={() => (open = false)} disabled={isLoading}>Cancel</Button>
+			<Button variant="ghost" onclick={() => (open = false)} disabled={isLoading}
+				>{m.cancel()}</Button
+			>
 			<Button onclick={handleSave} disabled={isLoading} class="gap-2">
 				{#if isLoading}
 					<Loader2 class="h-4 w-4 animate-spin" />
 				{:else}
 					<Save class="h-4 w-4" />
 				{/if}
-				Save Changes
+				{m.save_changes()}
 			</Button>
 		</div>
 	{/snippet}

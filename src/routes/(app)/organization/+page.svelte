@@ -11,6 +11,7 @@
 	import { getOrganization } from '$lib/api/organizations';
 	import type { GetOrganizationResponse } from '$lib/types/api';
 	import type { OrganizationCountsLoadResult, OrganizationLoadResult } from './+page';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props<{
 		data: {
@@ -32,12 +33,12 @@
 	let editLoadError = $state('');
 
 	const columns: DataTableColumn[] = [
-		{ key: 'name', label: 'Organization', headerClass: 'pl-14' },
-		{ key: 'address', label: 'Address' },
-		{ key: 'city', label: 'City' },
-		{ key: 'email', label: 'Email' },
-		{ key: 'kvkNumber', label: 'Registration', align: 'left', width: '180px' },
-		{ key: 'locationCount', label: 'Locations', align: 'right', width: '100px' },
+		{ key: 'name', label: m.organization(), headerClass: 'pl-14' },
+		{ key: 'address', label: m.address() },
+		{ key: 'city', label: m.city() },
+		{ key: 'email', label: m.email() },
+		{ key: 'kvkNumber', label: m.registration(), align: 'left', width: '180px' },
+		{ key: 'locationCount', label: m.location(), align: 'right', width: '100px' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
 
@@ -105,7 +106,7 @@
 </script>
 
 <svelte:head>
-	<title>Organization | MaiCare</title>
+	<title>{m.organization()} | MaiCare</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -116,7 +117,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search..."
+				placeholder={m.search_placeholder_short()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -134,7 +135,7 @@
 			<button
 				class="rounded-lg px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:bg-border/30 hover:text-text"
 			>
-				Multi-location
+				{m.multi_location()}
 			</button>
 		</div>
 	</div>
@@ -194,7 +195,7 @@
 		<span class="text-sm font-semibold text-text">
 			{row.locationCount}
 		</span>
-		<span class="text-xs text-text-subtle">sites</span>
+		<span class="text-xs text-text-subtle">{m.sites()}</span>
 	</span>
 {/snippet}
 
@@ -203,14 +204,14 @@
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => goto(`/organization/${row.id}`)}
-			title="View organization"
+			title={m.view_organization()}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => openEdit(row.id)}
-			title="Edit organization"
+			title={m.edit_organization()}
 		>
 			<Pencil class="h-4 w-4" />
 		</button>
@@ -230,16 +231,16 @@
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<Building2 class="h-5 w-5" />
 					</span>
-					<span>Organization</span>
+					<span>{m.organization()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Organizations</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.organizations()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Track organizations, registration details, and location coverage across MaiCare.
+					{m.organizations_description()}
 				</p>
 			</div>
 			<Button class="gap-2" onclick={() => (showCreateOrg = true)}>
 				<Plus class="h-4 w-4" />
-				Add organization
+				{m.add_organization()}
 			</Button>
 		</div>
 	</header>
@@ -276,8 +277,8 @@
 			totalCount={0}
 			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
 			rowKey="id"
-			title="Organization directory"
-			description="Monitor registered partners, coverage, and contact details across regions."
+			title={m.organization_directory()}
+			description={m.organization_directory_description()}
 			filters={tableFilters}
 			cells={{
 				name: nameCell,
@@ -319,12 +320,12 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Total Organizations
+							{m.total_organizations()}
 						</div>
 						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 							{organizationsData.pagination.count}
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Active in the network</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">{m.active_in_network()}</p>
 					</div>
 				</div>
 
@@ -338,12 +339,12 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Total Locations
+							{m.total_locations()}
 						</div>
 						<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
 							{countsData.counts.totalLocations}
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Total care sites covered</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">{m.total_care_sites()}</p>
 					</div>
 				</div>
 
@@ -357,13 +358,13 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Total Capacity
+							{m.total_capacity()}
 						</div>
 						<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
 							{countsData.counts.totalCapacity}
 						</div>
 						<p class="mt-2 text-xs font-medium text-text-muted">
-							Available places across locations
+							{m.available_places()}
 						</p>
 					</div>
 				</div>
@@ -378,7 +379,7 @@
 			totalCount={organizationsData.pagination.count}
 			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
 			rowKey="id"
-			title="Organization directory"
+			title={m.organization_directory()}
 			description="Monitor registered partners, coverage, and contact details across regions."
 			filters={tableFilters}
 			cells={{

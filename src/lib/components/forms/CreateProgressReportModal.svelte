@@ -39,6 +39,7 @@
 	} from '$lib/schemas/progress-report';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		open = $bindable(false),
@@ -88,7 +89,7 @@
 						onCreated?.();
 					} catch (error) {
 						errorMessage =
-							error instanceof Error ? error.message : 'Failed to create progress report';
+							error instanceof Error ? error.message : m.failed_create_progress_report();
 					}
 				}
 			}
@@ -96,24 +97,24 @@
 	);
 
 	const typeOptions: Array<{ value: ProgressReportType; label: string; icon: typeof Sun }> = [
-		{ value: 'morning_report', label: 'Morning Report', icon: Sun },
-		{ value: 'evening_report', label: 'Evening Report', icon: Sunset },
-		{ value: 'night_report', label: 'Night Report', icon: Moon },
-		{ value: 'shift_report', label: 'Shift Report', icon: ClipboardList },
-		{ value: 'one_to_one_report', label: '1-on-1 Report', icon: UserRound },
-		{ value: 'process_report', label: 'Process Report', icon: GitBranch },
-		{ value: 'contact_journal', label: 'Contact Journal', icon: BookOpen },
-		{ value: 'other', label: 'Other', icon: MoreHorizontal }
+		{ value: 'morning_report', label: m.morning_report(), icon: Sun },
+		{ value: 'evening_report', label: m.evening_report(), icon: Sunset },
+		{ value: 'night_report', label: m.night_report(), icon: Moon },
+		{ value: 'shift_report', label: m.shift_report(), icon: ClipboardList },
+		{ value: 'one_to_one_report', label: m.one_to_one_report(), icon: UserRound },
+		{ value: 'process_report', label: m.process_report(), icon: GitBranch },
+		{ value: 'contact_journal', label: m.contact_journal(), icon: BookOpen },
+		{ value: 'other', label: m.other(), icon: MoreHorizontal }
 	];
 
 	const emotionalStateOptions: Array<{ value: EmotionalState; label: string; icon: typeof Meh }> = [
-		{ value: 'normal', label: 'Normal', icon: Meh },
-		{ value: 'excited', label: 'Excited', icon: Zap },
-		{ value: 'happy', label: 'Happy', icon: Smile },
-		{ value: 'sad', label: 'Sad', icon: Frown },
-		{ value: 'angry', label: 'Angry', icon: Angry },
-		{ value: 'anxious', label: 'Anxious', icon: AlertCircle },
-		{ value: 'depressed', label: 'Depressed', icon: CloudRain }
+		{ value: 'normal', label: m.normal(), icon: Meh },
+		{ value: 'excited', label: m.excited(), icon: Zap },
+		{ value: 'happy', label: m.happy(), icon: Smile },
+		{ value: 'sad', label: m.sad(), icon: Frown },
+		{ value: 'angry', label: m.angry(), icon: Angry },
+		{ value: 'anxious', label: m.anxious(), icon: AlertCircle },
+		{ value: 'depressed', label: m.depressed(), icon: CloudRain }
 	];
 
 	const handleCancel = () => {
@@ -130,14 +131,14 @@
 {#snippet employeeItem(employee: EmployeeListItem)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{employee.first_name} {employee.last_name}</span>
-		<span class="text-xs text-text-muted">BSN: {employee.bsn}</span>
+		<span class="text-xs text-text-muted">{m.bsn()}: {employee.bsn}</span>
 	</div>
 {/snippet}
 
 <Modal
 	bind:open
-	title="Create Progress Report"
-	description="Document client progress, emotional state, and shift observations."
+	title={m.create_progress_report()}
+	description={m.create_progress_report_description()}
 	size="2xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
@@ -152,51 +153,51 @@
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<div class="space-y-5">
 				<Input
-					label="Report Title"
-					placeholder="Brief title (optional)"
+					label={m.report_title()}
+					placeholder={m.report_title_placeholder()}
 					bind:value={$form.title}
 					error={formatFormError($errors.title)}
 				/>
 
 				<DateTimePicker
-					label="Date & Time"
+					label={m.date_time()}
 					bind:value={$form.date}
 					error={formatFormError($errors.date)}
 				/>
 
 				<SearchSelect
-					label="Reporter (Employee)"
+					label={m.reporter_employee()}
 					loadOptions={loadEmployees}
 					bind:value={$form.employee_id}
 					bind:displayValue={employeeDisplay}
 					item={employeeItem}
 					labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 					valueFn={(employee) => employee.id}
-					placeholder="Search for an employee..."
+					placeholder={m.search_employee_placeholder()}
 					error={formatFormError($errors.employee_id)}
 				/>
 			</div>
 
 			<div class="space-y-5">
 				<Select
-					label="Report Type"
+					label={m.report_type()}
 					bind:value={$form.type}
 					options={typeOptions}
-					placeholder="Select report type..."
+					placeholder={m.select_report_type()}
 					error={formatFormError($errors.type)}
 				/>
 
 				<Select
-					label="Emotional State"
+					label={m.emotional_state()}
 					bind:value={$form.emotional_state}
 					options={emotionalStateOptions}
-					placeholder="Select emotional state..."
+					placeholder={m.select_emotional_state()}
 					error={formatFormError($errors.emotional_state)}
 				/>
 
 				<div class="rounded-2xl border border-border bg-zinc-50/50 p-4 dark:bg-zinc-800/50">
 					<p class="text-xs font-bold tracking-wider text-text-muted uppercase">
-						Selection Preview
+						{m.selection_preview()}
 					</p>
 					<div class="mt-3 flex items-center gap-3">
 						{#if $form.type}
@@ -230,8 +231,8 @@
 		</div>
 
 		<RichTextEditor
-			label="Report Content"
-			placeholder="Describe the observations, interactions, and events..."
+			label={m.report_content()}
+			placeholder={m.progress_report_content_placeholder()}
 			bind:value={$form.report_text}
 			error={formatFormError($errors.report_text)}
 		/>
@@ -240,10 +241,10 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
 			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
 				<Plus class="h-4 w-4" />
-				{$delayed ? 'Creating report...' : 'Create Report'}
+				{$delayed ? m.creating_report() : m.create_report()}
 			</Button>
 		</div>
 	{/snippet}

@@ -23,7 +23,9 @@
 	} from '$lib/types/api/invoices';
 	import type { InvoicesLoadResult } from './+page';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	let { data } = $props<{
 		data: {
@@ -86,87 +88,89 @@
 		return f;
 	});
 
-	const filterGroups = [
+	const filterGroups = $derived([
 		{
-			label: 'Properties',
-			items: [{ key: 'locked', label: 'Locked' }]
+			label: m.properties(),
+			items: [{ key: 'locked', label: m.locked() }]
 		},
 		{
-			label: 'Source',
+			label: m.source(),
 			items: [
-				{ key: 'source_auto', label: 'Auto' },
-				{ key: 'source_manual', label: 'Manual' },
-				{ key: 'source_imported', label: 'Imported' }
+				{ key: 'source_auto', label: m.auto() },
+				{ key: 'source_manual', label: m.manual() },
+				{ key: 'source_imported', label: m.imported() }
 			]
 		},
 		{
-			label: 'Type',
+			label: m.type(),
 			items: [
-				{ key: 'type_standard', label: 'Standard' },
-				{ key: 'type_credit', label: 'Credit Note' }
+				{ key: 'type_standard', label: m.standard() },
+				{ key: 'type_credit', label: m.credit_note() }
 			]
 		},
 		{
-			label: 'Issue Date',
+			label: m.issue_date(),
 			items: [
-				{ key: 'start_date', label: 'From', type: 'date' },
-				{ key: 'end_date', label: 'To', type: 'date' }
+				{ key: 'start_date', label: m.from(), type: 'date' },
+				{ key: 'end_date', label: m.to(), type: 'date' }
 			]
 		}
-	] as any[];
+	] as any[]);
 
-	const statusMeta: Record<InvoiceStatus, { label: string; className: string }> = {
+	const statusMeta: Record<InvoiceStatus, { label: string; className: string }> = $derived({
 		outstanding: {
-			label: 'Outstanding',
+			label: m.outstanding_status(),
 			className: 'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30'
 		},
 		partially_paid: {
-			label: 'Partial',
+			label: m.partially_paid(),
 			className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30'
 		},
 		paid: {
-			label: 'Paid',
+			label: m.paid(),
 			className:
 				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
 		},
 		expired: {
-			label: 'Expired',
+			label: m.expired(),
 			className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30'
 		},
 		overpaid: {
-			label: 'Overpaid',
+			label: m.overpaid(),
 			className:
 				'bg-purple-600 text-white border border-purple-700/60 shadow-sm shadow-purple-700/30'
 		},
 		imported: {
-			label: 'Imported',
+			label: m.imported(),
 			className: 'bg-zinc-600 text-white border border-zinc-700/60 shadow-sm shadow-zinc-700/30'
 		},
 		concept: {
-			label: 'Concept',
+			label: m.concept(),
 			className: 'bg-zinc-100 text-zinc-600 border border-zinc-300 shadow-sm shadow-zinc-200/30'
 		},
 		canceled: {
-			label: 'Canceled',
+			label: m.canceled(),
 			className: 'bg-zinc-800 text-zinc-300 border border-zinc-900 shadow-sm shadow-zinc-900/30'
 		}
-	};
+	});
 
-	const columns: DataTableColumn[] = [
-		{ key: 'invoice', label: 'Invoice', headerClass: 'pl-14' },
+	const columns: DataTableColumn[] = $derived([
+		{ key: 'invoice', label: m.invoice_col(), headerClass: 'pl-14' },
 		{ key: 'client', label: m.client() },
-		{ key: 'amount', label: 'Amount', align: 'right' },
+		{ key: 'amount', label: m.amount(), align: 'right' },
 		{ key: 'status', label: m.status(), width: '130px' },
-		{ key: 'dates', label: 'Dates' },
+		{ key: 'dates', label: m.dates_col() },
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
-	];
+	]);
+
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	const formatCurrency = (amount: number, currency: string = 'EUR') => {
-		return new Intl.NumberFormat('nl-NL', { style: 'currency', currency }).format(amount);
+		return new Intl.NumberFormat(resolveLocale(), { style: 'currency', currency }).format(amount);
 	};
 
 	const formatDate = (value: string) =>
-		new Date(value).toLocaleDateString('nl-NL', {
+		new Date(value).toLocaleDateString(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
@@ -244,7 +248,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search invoices..."
+				placeholder={m.search_invoices_placeholder()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -270,7 +274,7 @@
 					? 'bg-amber-500 text-white shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Outstanding
+				{m.outstanding_status()}
 			</button>
 			<button
 				onclick={() => setFilters({ ...filters, status: 'paid' })}
@@ -278,7 +282,7 @@
 					? 'bg-emerald-600 text-white shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Paid
+				{m.paid()}
 			</button>
 			<button
 				onclick={() => setFilters({ ...filters, status: 'expired' })}
@@ -287,7 +291,7 @@
 					? 'bg-rose-600 text-white shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Overdue
+				{m.overdue_status()}
 			</button>
 		</div>
 
@@ -296,7 +300,7 @@
 		<Filters
 			{filters}
 			groups={filterGroups}
-			title="Filter invoices"
+			title={m.filter_invoices()}
 			onUpdate={handleFilterUpdate}
 			onClear={clearFilters}
 		/>
@@ -304,7 +308,7 @@
 {/snippet}
 
 <svelte:head>
-	<title>{m.invoices?.() || 'Invoices'} | MaiCare</title>
+	<title>{m.invoices()} | MaiCare</title>
 </svelte:head>
 
 {#snippet invoiceCell(row: ListInvoicesResponse)}
@@ -320,7 +324,7 @@
 				{#if row.is_overdue}
 					<div
 						class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm"
-						title="Overdue"
+						title={m.overdue_status()}
 					>
 						<AlertCircle class="h-2.5 w-2.5" />
 					</div>
@@ -335,7 +339,7 @@
 	<div class="space-y-1">
 		<span class="text-sm font-medium text-text">{row.client_first_name} {row.client_last_name}</span
 		>
-		<span class="block text-xs text-text-subtle">FN: {row.client_filenumber}</span>
+		<span class="block text-xs text-text-subtle">{m.fn_prefix()} {row.client_filenumber}</span>
 	</div>
 {/snippet}
 
@@ -346,11 +350,12 @@
 		</span>
 		{#if row.balance_due_amount > 0}
 			<span class="block text-[11px] font-medium text-amber-600 dark:text-amber-500">
-				Due: {formatCurrency(row.balance_due_amount, row.currency)}
+				{m.due_label()}
+				{formatCurrency(row.balance_due_amount, row.currency)}
 			</span>
 		{:else if row.paid_total_amount > 0}
 			<span class="block text-[11px] font-medium text-emerald-600 dark:text-emerald-500">
-				Paid: {formatCurrency(row.paid_total_amount, row.currency)}
+				{m.paid()}: {formatCurrency(row.paid_total_amount, row.currency)}
 			</span>
 		{/if}
 	</div>
@@ -368,7 +373,7 @@
 {#snippet datesCell(row: ListInvoicesResponse)}
 	<div class="space-y-1">
 		<div class="flex items-center gap-1.5 text-xs text-text-muted">
-			<span class="font-medium">Issued:</span>
+			<span class="font-medium">{m.issued_label()}</span>
 			<span>{formatDate(row.issue_date)}</span>
 		</div>
 		<div
@@ -376,7 +381,7 @@
 				? 'font-bold text-rose-600'
 				: 'text-text-subtle'}"
 		>
-			<span class="font-medium">Due:</span>
+			<span class="font-medium">{m.due_label()}</span>
 			<span>{formatDate(row.due_date)}</span>
 		</div>
 	</div>
@@ -385,9 +390,9 @@
 {#snippet actionsCell(row: ListInvoicesResponse)}
 	<div class="flex justify-end gap-1">
 		<a
-			href="/finances/invoices/{row.id}"
+			href={resolve('/(app)/finances/invoices/[id]', { id: row.id })}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View invoice"
+			title={m.view_invoice()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>
@@ -407,13 +412,11 @@
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<BadgeEuro class="h-5 w-5" />
 					</span>
-					<span>{m.finances?.() || 'Finances'}</span>
+					<span>{m.finances()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">
-					{m.invoices?.() || 'Invoices'}
-				</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.invoices()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					{m.invoices_description?.() || 'Manage billing, payments, and invoice status.'}
+					{m.invoices_description()}
 				</p>
 			</div>
 		</div>
@@ -437,10 +440,10 @@
 			{pageSize}
 			totalCount={0}
 			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/finances/invoices/${row.id}`)}
+			onRowClick={(row) => goto(resolve('/(app)/finances/invoices/[id]', { id: row.id }))}
 			rowKey="id"
-			title="All Invoices"
-			description="View and filter all standard and credit invoices."
+			title={m.all_invoices_title()}
+			description={m.all_invoices_description()}
 			filters={tableFilters}
 			cells={{
 				invoice: invoiceCell,
@@ -481,12 +484,12 @@
 				</div>
 				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Total Invoices
+						{m.total_invoices()}
 					</div>
 					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 						{invoicesData.pagination.count}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">All time</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.all_time()}</p>
 				</div>
 			</div>
 
@@ -500,12 +503,12 @@
 				</div>
 				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Outstanding Balance
+						{m.outstanding_balance()}
 					</div>
 					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-500 sm:text-3xl">
 						{formatCurrency(outstandingTotal)}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Awaiting payment</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.awaiting_payment()}</p>
 				</div>
 			</div>
 
@@ -519,12 +522,12 @@
 				</div>
 				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Received Payments
+						{m.received_payments()}
 					</div>
 					<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
 						{formatCurrency(paidTotal)}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Processed successfully</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.processed_successfully()}</p>
 				</div>
 			</div>
 
@@ -538,12 +541,12 @@
 				</div>
 				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Overdue Amount
+						{m.overdue_amount()}
 					</div>
 					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
 						{formatCurrency(overdueTotal)}
 					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">Needs immediate attention</p>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.needs_immediate_attention()}</p>
 				</div>
 			</div>
 		</div>
@@ -555,10 +558,10 @@
 			pageSize={invoicesData.pagination.pageSize}
 			totalCount={invoicesData.pagination.count}
 			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/finances/invoices/${row.id}`)}
+			onRowClick={(row) => goto(resolve('/(app)/finances/invoices/[id]', { id: row.id }))}
 			rowKey="id"
-			title="All Invoices"
-			description="View and filter all standard and credit invoices."
+			title={m.all_invoices_title()}
+			description={m.all_invoices_description()}
 			filters={tableFilters}
 			cells={{
 				invoice: invoiceCell,

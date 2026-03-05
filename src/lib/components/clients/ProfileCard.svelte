@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { User, MapPin, Phone, Building2, Mail } from 'lucide-svelte';
 	import type { ClientOverviewData } from '$lib/mock/client-overview';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		client: ClientOverviewData;
@@ -17,8 +18,8 @@
 
 <div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-5 flex items-center justify-between">
-		<h3 class="font-bold text-text">Client Profile</h3>
-		<button class="text-xs font-bold text-brand">Edit</button>
+		<h3 class="font-bold text-text">{m.client_profile()}</h3>
+		<button class="text-xs font-bold text-brand">{m.edit()}</button>
 	</div>
 	<div class="space-y-4">
 		<div class="flex items-start gap-3">
@@ -28,9 +29,12 @@
 				<User class="h-4 w-4" />
 			</div>
 			<div>
-				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Gender & Age</p>
+				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.gender_and_age()}
+				</p>
 				<p class="text-sm font-medium text-text">
-					{client.gender}, {age} years
+					{client.gender}, {age}
+					{m.years()}
 				</p>
 			</div>
 		</div>
@@ -41,7 +45,9 @@
 				<MapPin class="h-4 w-4" />
 			</div>
 			<div>
-				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Address</p>
+				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.address()}
+				</p>
 				<p class="text-sm font-medium text-text">{client.address}</p>
 				<p class="text-xs text-text-muted">{client.cityLine}</p>
 			</div>
@@ -54,9 +60,11 @@
 			</div>
 			<div>
 				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Sender / Referrer
+					{m.sender_referrer()}
 				</p>
-				<p class="text-sm font-bold text-text">{client.senderName || 'Unknown Sender'}</p>
+				<p class="text-sm font-bold text-text">
+					{client.senderName || m.unknown_sender()}
+				</p>
 				<div class="mt-1 space-y-1">
 					{#if client.phone}
 						<p class="flex items-center gap-1.5 text-xs text-text-muted">

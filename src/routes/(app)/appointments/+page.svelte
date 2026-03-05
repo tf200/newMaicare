@@ -25,6 +25,7 @@
 	import { setEventWorkApproval } from '$lib/api/events';
 	import type { WorkApprovalQueueItemResponse, WorkApprovalStatus } from '$lib/types/api';
 	import type { PageData } from './$types';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Employee {
 		id: string;
@@ -235,7 +236,7 @@
 </script>
 
 <svelte:head>
-	<title>Appointments | MaiCare</title>
+	<title>{m.work_approvals()} | MaiCare</title>
 </svelte:head>
 
 <section class="space-y-6">
@@ -247,11 +248,11 @@
 				<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
 					<FolderClock class="h-5 w-5" />
 				</span>
-				<span>Workforce</span>
+				<span>{m.workforce()}</span>
 			</div>
-			<h1 class="text-3xl font-bold tracking-tight text-text">Work Approvals</h1>
+			<h1 class="text-3xl font-bold tracking-tight text-text">{m.work_approvals()}</h1>
 			<p class="max-w-2xl text-sm font-medium text-text-muted">
-				Review completed appointments and their current work approval status.
+				{m.work_approvals_description()}
 			</p>
 		</div>
 	</header>
@@ -271,7 +272,10 @@
 		</div>
 	{:then approvalsData}
 		{#if approvalsData.loadError}
-			<InlineErrorBanner title="Unable to load work approvals" message={approvalsData.loadError} />
+			<InlineErrorBanner
+				title={m.unable_to_load_appointments()}
+				message={approvalsData.loadError}
+			/>
 		{/if}
 
 		{@const appointments = approvalsData.items}
@@ -294,13 +298,15 @@
 				<span
 					class="inline-flex items-center justify-center rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/20 dark:text-amber-400"
 				>
-					{pendingCount} Pending
+					{pendingCount}
+					{m.pending()}
 				</span>
 			{/if}
 			<span
 				class="inline-flex items-center justify-center rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-bold text-text-muted"
 			>
-				{approvalsData.total} Total
+				{approvalsData.total}
+				{m.total()}
 			</span>
 		</div>
 
@@ -316,7 +322,7 @@
 						: 'text-text-muted hover:text-text'}"
 				>
 					<Calendar class="h-4 w-4" />
-					Date
+					{m.date()}
 				</button>
 				<button
 					onclick={() => (groupBy = 'employee')}
@@ -326,7 +332,7 @@
 						: 'text-text-muted hover:text-text'}"
 				>
 					<UserRound class="h-4 w-4" />
-					Employee
+					{m.employee()}
 				</button>
 			</div>
 
@@ -338,7 +344,7 @@
 						id="start-date"
 						compact
 					/>
-					<span class="text-xs font-medium text-text-muted">to</span>
+					<span class="text-xs font-medium text-text-muted">{m.to()}</span>
 					<DatePicker
 						bind:value={selectedEndAt}
 						onchange={() => updateQuery(1)}
@@ -352,7 +358,7 @@
 						bind:value={selectedEmployeeId}
 						displayValue={employees.find((e) => e.id === selectedEmployeeId)?.name ?? ''}
 						loadOptions={loadEmployeeOptions}
-						placeholder="All Employees"
+						placeholder={m.all_employees()}
 						onchange={() => updateQuery(1)}
 						compact
 					/>
@@ -473,7 +479,7 @@
 												{client.name}
 											</span>
 										{:else}
-											<span class="text-xs text-text-muted italic">None</span>
+											<span class="text-xs text-text-muted italic">{m.none()}</span>
 										{/each}
 									</div>
 								</div>
@@ -498,24 +504,28 @@
 
 									{#if appointment.work_approval_status === 'pending'}
 										<PermissionGuard permission="APPOINTMENT.WORK_APPROVAL.UPDATE">
-											<div class="flex items-center gap-1 ml-1">
+											<div class="ml-1 flex items-center gap-1">
 												<button
 													type="button"
 													onclick={() => handleApprove(appointment)}
-													disabled={actionLoading[`${appointment.event_id}-${appointment.recurrence_id || 'master'}`]}
+													disabled={actionLoading[
+														`${appointment.event_id}-${appointment.recurrence_id || 'master'}`
+													]}
 													class="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-													aria-label="Approve"
-													title="Approve Appointment"
+													aria-label={m.approve()}
+													title={m.approve_appointment_title()}
 												>
 													<Check class="h-4 w-4" />
 												</button>
 												<button
 													type="button"
 													onclick={() => openRejectModal(appointment)}
-													disabled={actionLoading[`${appointment.event_id}-${appointment.recurrence_id || 'master'}`]}
+													disabled={actionLoading[
+														`${appointment.event_id}-${appointment.recurrence_id || 'master'}`
+													]}
 													class="flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
-													aria-label="Reject"
-													title="Reject Appointment"
+													aria-label={m.reject()}
+													title={m.reject_appointment_title()}
 												>
 													<X class="h-4 w-4" />
 												</button>
@@ -544,9 +554,9 @@
 					>
 						<FolderClock class="h-10 w-10 text-text-muted" />
 					</div>
-					<h3 class="text-xl font-bold text-text">No appointments to review</h3>
+					<h3 class="text-xl font-bold text-text">{m.no_appointments_to_review()}</h3>
 					<p class="mt-2 max-w-sm text-sm text-text-muted">
-						There are no work approval items matching your current filters.
+						{m.no_matching_items()}
 					</p>
 				</div>
 			{/each}
@@ -569,7 +579,7 @@
 					}}
 				>
 					<ChevronLeft class="h-4 w-4" />
-					Previous
+					{m.previous()}
 				</button>
 				<button
 					class="inline-flex h-9 items-center gap-1 rounded-xl border border-border px-3 text-xs font-semibold text-text disabled:opacity-50"
@@ -580,7 +590,7 @@
 						updateQuery(nextPage);
 					}}
 				>
-					Next
+					{m.next()}
 					<ChevronRight class="h-4 w-4" />
 				</button>
 			</div>
@@ -588,27 +598,35 @@
 	{/await}
 </section>
 
-<Modal bind:open={rejectModalOpen} title="Reject Appointment" description="Please provide a reason for rejecting this work approval." size="md">
+<Modal
+	bind:open={rejectModalOpen}
+	title={m.reject_appointment()}
+	description={m.reject_appointment_description()}
+	size="md"
+>
 	<div class="space-y-4">
 		<p class="text-sm text-text-muted">
-			This will be recorded and visible to the organizer.
+			{m.rejection_recorded_note()}
 		</p>
 		<Textarea
 			bind:value={rejectionReason}
-			placeholder="Enter rejection reason..."
+			placeholder={m.enter_rejection_reason()}
 			required
 			rows={4}
 		/>
 	</div>
 	{#snippet footer()}
-		<div class="flex items-center justify-end gap-3 w-full">
-			<Button variant="ghost" onclick={() => (rejectModalOpen = false)}>Cancel</Button>
+		<div class="flex w-full items-center justify-end gap-3">
+			<Button variant="ghost" onclick={() => (rejectModalOpen = false)}>{m.cancel()}</Button>
 			<Button
 				variant="destructive"
 				onclick={submitReject}
-				disabled={!rejectionReason.trim() || actionLoading[`${selectedAppointmentToReject?.event_id}-${selectedAppointmentToReject?.recurrence_id || 'master'}`]}
+				disabled={!rejectionReason.trim() ||
+					actionLoading[
+						`${selectedAppointmentToReject?.event_id}-${selectedAppointmentToReject?.recurrence_id || 'master'}`
+					]}
 			>
-				Confirm Rejection
+				{m.confirm_rejection()}
 			</Button>
 		</div>
 	{/snippet}

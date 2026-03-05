@@ -32,6 +32,8 @@
 		GetProgressReportResponse,
 		UpdateProgressReportRequest
 	} from '$lib/types/api/clients';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	interface EditableReportForm {
 		title: string;
@@ -63,42 +65,42 @@
 
 	const typeMeta: Record<ProgressReportType, { label: string; icon: any; className: string }> = {
 		morning_report: {
-			label: 'Morning Report',
+			label: m.morning_report(),
 			icon: Sun,
 			className: 'bg-amber-500/10 text-amber-600 border-amber-500/20'
 		},
 		evening_report: {
-			label: 'Evening Report',
+			label: m.evening_report(),
 			icon: Sunset,
 			className: 'bg-orange-500/10 text-orange-600 border-orange-500/20'
 		},
 		night_report: {
-			label: 'Night Report',
+			label: m.night_report(),
 			icon: Moon,
 			className: 'bg-indigo-600/10 text-indigo-600 border-indigo-600/20'
 		},
 		shift_report: {
-			label: 'Shift Report',
+			label: m.shift_report(),
 			icon: ClipboardList,
 			className: 'bg-slate-600/10 text-slate-600 border-slate-600/20'
 		},
 		one_to_one_report: {
-			label: '1-on-1 Report',
+			label: m.one_to_one_report(),
 			icon: UserRound,
 			className: 'bg-teal-600/10 text-teal-600 border-teal-600/20'
 		},
 		process_report: {
-			label: 'Process Report',
+			label: m.process_report(),
 			icon: GitBranch,
 			className: 'bg-blue-600/10 text-blue-600 border-blue-600/20'
 		},
 		contact_journal: {
-			label: 'Contact Journal',
+			label: m.contact_journal(),
 			icon: BookOpen,
 			className: 'bg-emerald-600/10 text-emerald-600 border-emerald-600/20'
 		},
 		other: {
-			label: 'Other',
+			label: m.other(),
 			icon: MoreHorizontal,
 			className: 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20'
 		}
@@ -109,43 +111,43 @@
 		{ label: string; icon: any; colorClass: string; bgClass: string }
 	> = {
 		normal: {
-			label: 'Normal',
+			label: m.normal(),
 			icon: Meh,
 			colorClass: 'text-zinc-600 dark:text-zinc-400',
 			bgClass: 'bg-zinc-100 dark:bg-zinc-800'
 		},
 		excited: {
-			label: 'Excited',
+			label: m.excited(),
 			icon: Zap,
 			colorClass: 'text-teal-600 dark:text-teal-400',
 			bgClass: 'bg-teal-50 dark:bg-teal-500/10'
 		},
 		happy: {
-			label: 'Happy',
+			label: m.happy(),
 			icon: Smile,
 			colorClass: 'text-emerald-600 dark:text-emerald-400',
 			bgClass: 'bg-emerald-50 dark:bg-emerald-500/10'
 		},
 		sad: {
-			label: 'Sad',
+			label: m.sad(),
 			icon: Frown,
 			colorClass: 'text-blue-600 dark:text-blue-400',
 			bgClass: 'bg-blue-50 dark:bg-blue-500/10'
 		},
 		angry: {
-			label: 'Angry',
+			label: m.angry(),
 			icon: Angry,
 			colorClass: 'text-rose-600 dark:text-rose-400',
 			bgClass: 'bg-rose-50 dark:bg-rose-500/10'
 		},
 		anxious: {
-			label: 'Anxious',
+			label: m.anxious(),
 			icon: AlertCircle,
 			colorClass: 'text-orange-600 dark:text-orange-400',
 			bgClass: 'bg-orange-50 dark:bg-orange-500/10'
 		},
 		depressed: {
-			label: 'Depressed',
+			label: m.depressed(),
 			icon: CloudRain,
 			colorClass: 'text-indigo-600 dark:text-indigo-400',
 			bgClass: 'bg-indigo-50 dark:bg-indigo-500/10'
@@ -208,9 +210,11 @@
 		report ? resolveEmotionalStateMeta(report.emotional_state) : emotionalStateMeta.normal
 	);
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatDate = (dateStr: string) => {
 		const date = new Date(dateStr);
-		return new Intl.DateTimeFormat('en-GB', {
+		return new Intl.DateTimeFormat(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric',
@@ -234,18 +238,18 @@
 			});
 			isEditing = false;
 		} catch (error) {
-			actionError = error instanceof Error ? error.message : 'Failed to update progress report';
+			actionError = error instanceof Error ? error.message : m.failed_update_progress_report();
 		}
 	};
 
 	const requestDelete = async () => {
 		if (!report || !onDelete || actionLoading) return;
-		if (!confirm('Delete this progress report? This action cannot be undone.')) return;
+		if (!confirm(m.delete_progress_report_confirm())) return;
 		actionError = null;
 		try {
 			await onDelete();
 		} catch (error) {
-			actionError = error instanceof Error ? error.message : 'Failed to delete progress report';
+			actionError = error instanceof Error ? error.message : m.failed_delete_progress_report();
 		}
 	};
 
@@ -259,8 +263,8 @@
 
 <Modal
 	bind:open
-	title={report?.title ?? (loading ? 'Loading progress report...' : 'Progress Report')}
-	description={isEditing ? 'Edit report details.' : 'Review client documentation.'}
+	title={report?.title ?? (loading ? m.loading_progress_report() : m.progress_report())}
+	description={isEditing ? m.edit_report_details() : m.review_client_documentation()}
 	size="2xl"
 >
 	<div class="space-y-6">
@@ -268,7 +272,7 @@
 			<div
 				class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200"
 			>
-				<p class="font-semibold">Couldn't load progress report</p>
+				<p class="font-semibold">{m.could_not_load_progress_report()}</p>
 				<p class="mt-1 text-xs opacity-90">{loadError}</p>
 			</div>
 		{/if}
@@ -302,20 +306,22 @@
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<div class="space-y-5">
 					<Input
-						label="Report Title"
-						placeholder="Brief title (optional)"
+						label={m.report_title()}
+						placeholder={m.report_title_placeholder()}
 						bind:value={formData.title}
 					/>
 
-					<DateTimePicker label="Date & Time" bind:value={formData.date} />
+					<DateTimePicker label={m.date_time()} bind:value={formData.date} />
 
 					<div class="rounded-2xl border border-border bg-zinc-50/50 p-4 dark:bg-zinc-800/50">
-						<p class="text-xs font-bold tracking-wider text-text-muted uppercase">Reporter</p>
+						<p class="text-xs font-bold tracking-wider text-text-muted uppercase">
+							{m.reporter()}
+						</p>
 						<p class="mt-2 text-sm font-semibold text-text">
 							{#if report.employee_first_name || report.employee_last_name}
 								{report.employee_first_name} {report.employee_last_name}
 							{:else}
-								<span class="text-text-muted italic">System / Unknown</span>
+								<span class="text-text-muted italic">{m.system_unknown()}</span>
 							{/if}
 						</p>
 					</div>
@@ -323,27 +329,27 @@
 
 				<div class="space-y-5">
 					<Select
-						label="Report Type"
+						label={m.report_type()}
 						bind:value={formData.type}
 						options={typeOptions}
-						placeholder="Select report type..."
+						placeholder={m.select_report_type()}
 					/>
 
 					<Select
-						label="Emotional State"
+						label={m.emotional_state()}
 						bind:value={formData.emotional_state}
 						options={emotionalStateOptions}
-						placeholder="Select emotional state..."
+						placeholder={m.select_emotional_state()}
 					/>
 				</div>
 			</div>
 
-			<RichTextEditor label="Report Content" bind:value={formData.report_text} />
+			<RichTextEditor label={m.report_content()} bind:value={formData.report_text} />
 		{:else if report}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div class="rounded-2xl border border-border bg-zinc-50/50 p-4 dark:bg-zinc-800/50">
 					<p class="mb-4 text-xs font-bold tracking-wider text-text-muted uppercase">
-						Report Details
+						{m.report_details()}
 					</p>
 					<div class="space-y-4">
 						<div class="flex items-center gap-3">
@@ -353,7 +359,7 @@
 								<Calendar class="h-4 w-4 text-text-muted" />
 							</div>
 							<div>
-								<p class="text-xs font-medium text-text-muted">Date & Time</p>
+								<p class="text-xs font-medium text-text-muted">{m.date_time()}</p>
 								<p class="text-sm font-semibold text-text">{formatDate(report.date)}</p>
 							</div>
 						</div>
@@ -373,12 +379,12 @@
 								{/if}
 							</div>
 							<div>
-								<p class="text-xs font-medium text-text-muted">Reporter</p>
+								<p class="text-xs font-medium text-text-muted">{m.reporter()}</p>
 								<p class="text-sm font-semibold text-text">
 									{#if report.employee_first_name || report.employee_last_name}
 										{report.employee_first_name} {report.employee_last_name}
 									{:else}
-										<span class="text-text-muted italic">System / Unknown</span>
+										<span class="text-text-muted italic">{m.system_unknown()}</span>
 									{/if}
 								</p>
 							</div>
@@ -388,7 +394,7 @@
 
 				<div class="rounded-2xl border border-border bg-zinc-50/50 p-4 dark:bg-zinc-800/50">
 					<p class="mb-4 text-xs font-bold tracking-wider text-text-muted uppercase">
-						Classification
+						{m.classification()}
 					</p>
 					<div class="space-y-4">
 						<div class="flex items-center gap-3">
@@ -414,7 +420,7 @@
 
 			<div class="overflow-hidden rounded-3xl border border-border bg-surface">
 				<div class="border-b border-border bg-zinc-50/50 px-5 py-3 dark:bg-zinc-800/50">
-					<h3 class="text-sm font-bold tracking-tight text-text">Report Content</h3>
+					<h3 class="text-sm font-bold tracking-tight text-text">{m.report_content()}</h3>
 				</div>
 				<div class="p-5">
 					<div
@@ -427,7 +433,7 @@
 			</div>
 		{:else}
 			<div class="rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted">
-				Select a progress report to view its details.
+				{m.select_progress_report_prompt()}
 			</div>
 		{/if}
 	</div>
@@ -442,7 +448,7 @@
 					onclick={requestDelete}
 				>
 					<Trash2 class="h-4 w-4" />
-					Delete
+					{m.delete()}
 				</Button>
 			{:else}
 				<span></span>
@@ -451,23 +457,25 @@
 			<div class="flex justify-end gap-3">
 				{#if report && isEditing}
 					<Button variant="secondary" disabled={actionLoading || loading} onclick={cancelEdit}>
-						Cancel
+						{m.cancel()}
 					</Button>
-					<Button disabled={actionLoading || loading} onclick={saveChanges}>Save Changes</Button>
+					<Button disabled={actionLoading || loading} onclick={saveChanges}>
+						{m.save_changes()}
+					</Button>
 				{:else if report}
 					<Button
 						variant="secondary"
 						disabled={actionLoading || loading}
 						onclick={() => (open = false)}
 					>
-						Close
+						{m.close()}
 					</Button>
 					<Button disabled={actionLoading || loading} onclick={() => (isEditing = true)}>
 						<Pencil class="h-4 w-4" />
-						Edit
+						{m.edit()}
 					</Button>
 				{:else}
-					<Button variant="secondary" onclick={() => (open = false)}>Close</Button>
+					<Button variant="secondary" onclick={() => (open = false)}>{m.close()}</Button>
 				{/if}
 			</div>
 		</div>

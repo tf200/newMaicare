@@ -61,12 +61,12 @@
 	});
 
 	const columns: DataTableColumn[] = [
-		{ key: 'client', label: 'Client', headerClass: 'pl-14' },
-		{ key: 'fileNumber', label: 'File #', width: '130px' },
+		{ key: 'client', label: m.client(), headerClass: 'pl-14' },
+		{ key: 'fileNumber', label: m.file_number_label(), width: '130px' },
 		{ key: 'status', label: m.status(), width: '160px' },
 		{ key: 'careType', label: m.care_type(), width: '180px' },
 		{ key: 'locationName', label: m.location(), width: '220px' },
-		{ key: 'metrics', label: 'Goals / Risks', width: '170px', align: 'center' },
+		{ key: 'metrics', label: m.goals_risks(), width: '170px', align: 'center' },
 		{ key: 'actions', label: '', align: 'right', width: '70px' }
 	];
 
@@ -81,29 +81,29 @@
 	const statusMeta: Record<ClientStatus, { label: string; className: string; detailPath: string }> =
 		{
 			in_care: {
-				label: 'In care',
+				label: m.status_in_care(),
 				className:
 					'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30',
 				detailPath: 'in-care'
 			},
 			on_waiting_list: {
-				label: 'Waiting list',
+				label: m.status_waiting_list(),
 				className:
 					'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30',
 				detailPath: 'on-waiting-list'
 			},
 			scheduled_in_care: {
-				label: 'Scheduled in',
+				label: m.status_scheduled_in_care(),
 				className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30',
 				detailPath: 'scheduled-in-care'
 			},
 			scheduled_out_of_care: {
-				label: 'Scheduled out',
+				label: m.status_scheduled_out_of_care(),
 				className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30',
 				detailPath: 'scheduled-out-of-care'
 			},
 			out_of_care: {
-				label: 'Out of care',
+				label: m.status_out_of_care(),
 				className:
 					'bg-slate-500 text-white border border-slate-600/60 shadow-sm shadow-slate-600/30',
 				detailPath: 'out-of-care'
@@ -161,7 +161,7 @@
 </script>
 
 <svelte:head>
-	<title>Clients | MaiCare</title>
+	<title>{m.clients_page_title()}</title>
 </svelte:head>
 
 {#snippet locationItem(option: any)}
@@ -170,7 +170,7 @@
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
 			<span>{option.street} {option.house_number}, {option.city}</span>
 			<span class={option.available > 0 ? 'text-emerald-600' : 'text-rose-600'}>
-				{option.available} spots available
+				{m.spots_available({ count: option.available })}
 			</span>
 		</div>
 	</div>
@@ -186,7 +186,7 @@
 				<input
 					type="search"
 					class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
-					placeholder="Search clients..."
+					placeholder={m.search_clients()}
 					value={appliedSearch}
 					onkeydown={(event) => {
 						if (event.key === 'Enter') {
@@ -207,8 +207,8 @@
 					labelFn={(loc) => loc.name}
 					valueFn={(loc) => loc.id}
 					item={locationItem}
-					placeholder="All Locations"
-					searchPlaceholder="Search locations..."
+					placeholder={m.all_locations()}
+					searchPlaceholder={m.search_locations_placeholder()}
 					compact
 				/>
 			</div>
@@ -221,7 +221,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				All
+				{m.all()}
 			</button>
 			<button
 				onclick={() => applyStatus('in_care')}
@@ -230,7 +230,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				In care
+				{m.status_in_care()}
 			</button>
 			<button
 				onclick={() => applyStatus('on_waiting_list')}
@@ -239,7 +239,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Waiting list
+				{m.status_waiting_list()}
 			</button>
 			<button
 				onclick={() => applyStatus('scheduled_in_care')}
@@ -248,7 +248,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Scheduled in
+				{m.status_scheduled_in_care()}
 			</button>
 			<button
 				onclick={() => applyStatus('scheduled_out_of_care')}
@@ -257,7 +257,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Scheduled out
+				{m.status_scheduled_out_of_care()}
 			</button>
 			<button
 				onclick={() => applyStatus('out_of_care')}
@@ -266,7 +266,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Out of care
+				{m.status_out_of_care()}
 			</button>
 		</div>
 	</div>
@@ -334,8 +334,8 @@
 				? `/clients/${row.id}`
 				: `/clients/${row.id}/${statusMeta[row.status].detailPath}`}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View details"
-			aria-label="View details"
+			title={m.view_details()}
+			aria-label={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>
@@ -355,11 +355,11 @@
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<UsersRound class="h-5 w-5" />
 					</span>
-					<span>Client Management</span>
+					<span>{m.client_management()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Clients</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.clients()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Central client index for all statuses, locations, and care tracks.
+					{m.client_index_description()}
 				</p>
 			</div>
 		</div>
@@ -386,8 +386,8 @@
 				updateQuery(nextPage, appliedSearch, appliedStatus, appliedLocationId)}
 			onRowClick={openClientDetail}
 			rowKey="id"
-			title="Clients"
-			description="All clients with status, care type, location, goals, and risk signals."
+			title={m.clients()}
+			description={m.clients_table_description()}
 			filters={tableFilters}
 			cells={{
 				client: clientCell,
@@ -413,7 +413,7 @@
 				</div>
 				<div class="relative">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Total Clients
+						{m.total_clients()}
 					</div>
 					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 						{clientsData.stats.total}
@@ -440,12 +440,14 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							In/Scheduled In Care
+							{m.in_or_scheduled_in_care()}
 						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 							{countsData.counts.clientsInOrScheduledInCare}
 						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Active and upcoming care</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">
+							{m.in_or_scheduled_in_care_description()}
+						</p>
 					</div>
 				</div>
 
@@ -459,12 +461,14 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Waiting List
+							{m.waiting_list()}
 						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 							{countsData.counts.clientsOnWaitingList}
 						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Awaiting placement</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">
+							{m.waiting_list_description()}
+						</p>
 					</div>
 				</div>
 
@@ -478,12 +482,14 @@
 					</div>
 					<div class="relative">
 						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Out/Scheduled Out
+							{m.out_or_scheduled_out()}
 						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 							{countsData.counts.clientsOutOrScheduledOutOfCare}
 						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Discharged or planned out</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">
+							{m.out_or_scheduled_out_description()}
+						</p>
 					</div>
 				</div>
 			{/await}
@@ -505,8 +511,8 @@
 				updateQuery(nextPage, appliedSearch, appliedStatus, appliedLocationId)}
 			onRowClick={openClientDetail}
 			rowKey="id"
-			title="Clients"
-			description="All clients with status, care type, location, goals, and risk signals."
+			title={m.clients()}
+			description={m.clients_table_description()}
 			filters={tableFilters}
 			cells={{
 				client: clientCell,

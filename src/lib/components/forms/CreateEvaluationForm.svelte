@@ -11,6 +11,8 @@
 		getEvaluationBootstrap,
 		getGoalEvaluation
 	} from '$lib/api/evaluations';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import type {
 		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
@@ -104,7 +106,7 @@
 						}
 					} catch (error) {
 						formError = normalizeErrorMessage(
-							error instanceof Error ? error.message : 'Failed to save evaluation.'
+							error instanceof Error ? error.message : m.failed_save_evaluation()
 						);
 					}
 				}
@@ -113,12 +115,12 @@
 	);
 
 	const progressOptions = [
-		{ value: 'no_progress', label: 'No progress' },
-		{ value: 'regression', label: 'Regression' },
-		{ value: 'limited_progress', label: 'Limited progress' },
-		{ value: 'good_progress', label: 'Good progress' },
-		{ value: 'achieved', label: 'Achieved' },
-		{ value: 'blocked', label: 'Blocked' }
+		{ value: 'no_progress', label: m.no_progress() },
+		{ value: 'regression', label: m.regression() },
+		{ value: 'limited_progress', label: m.limited_progress() },
+		{ value: 'good_progress', label: m.good_progress() },
+		{ value: 'achieved', label: m.achieved() },
+		{ value: 'blocked', label: m.blocked() }
 	];
 
 	const sortedGoals = $derived.by(() =>
@@ -164,13 +166,13 @@
 	});
 
 	const modalTitle = $derived.by(() => {
-		if (isReadOnly) return 'Evaluation Details';
-		return mode === 'edit_draft' ? 'Continue Draft' : 'Create Evaluation';
+		if (isReadOnly) return m.evaluation_details();
+		return mode === 'edit_draft' ? m.continue_draft() : m.create_evaluation();
 	});
 
 	const modalDescription = $derived.by(() => {
-		if (isReadOnly) return 'Review saved evaluation details.';
-		return 'Review previous outcomes and complete this evaluation.';
+		if (isReadOnly) return m.review_saved_evaluation_details();
+		return m.review_previous_outcomes();
 	});
 
 	const priorityTone = (priority: 'high' | 'medium' | 'low') => {
@@ -186,9 +188,36 @@
 			lower.includes('outside allowed window') ||
 			(lower.includes('allowed') && lower.includes('before due'))
 		) {
-			return 'This evaluation cannot be submitted yet (allowed only within 14 days before due date).';
+			return m.evaluation_submit_not_allowed();
 		}
 		return message;
+	};
+
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
+	const progressLabel = (value: string | null | undefined) => {
+		switch (value) {
+			case 'no_progress':
+				return m.no_progress();
+			case 'regression':
+				return m.regression();
+			case 'limited_progress':
+				return m.limited_progress();
+			case 'good_progress':
+				return m.good_progress();
+			case 'achieved':
+				return m.achieved();
+			case 'blocked':
+				return m.blocked();
+			default:
+				return value ? value.replace('_', ' ') : m.not_available_short();
+		}
+	};
+
+	const priorityLabel = (priority: 'high' | 'medium' | 'low') => {
+		if (priority === 'high') return m.high();
+		if (priority === 'medium') return m.medium();
+		return m.low();
 	};
 
 	const isSameTimestamp = (left: string, right: string) =>
@@ -264,7 +293,7 @@
 					}
 				} catch (error) {
 					formError = normalizeErrorMessage(
-						error instanceof Error ? error.message : 'Failed to load evaluation form.'
+						error instanceof Error ? error.message : m.failed_load_evaluation_form()
 					);
 				} finally {
 					isLoading = false;
@@ -289,11 +318,11 @@
 <Modal bind:open size="4xl" title={modalTitle} description={modalDescription}>
 	{#if isLoading}
 		<div class="rounded-2xl border border-border bg-bg/50 p-6 text-sm text-text-muted">
-			Loading evaluation form...
+			{m.loading_evaluation_form()}
 		</div>
 	{:else if !bootstrap && !evaluation}
 		<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error">
-			Unable to load evaluation data.
+			{m.unable_load_evaluation_data()}
 		</div>
 	{:else}
 		<form id={formId} use:enhance class="space-y-5">
@@ -306,21 +335,21 @@
 			<header class="rounded-2xl border border-border bg-bg/40 p-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
-						<p class="text-xs font-bold tracking-widest text-text-subtle uppercase">Client</p>
+						<p class="text-xs font-bold tracking-widest text-text-subtle uppercase">{m.client()}</p>
 						<h3 class="text-lg font-bold text-text">
 							{clientName ??
 								(bootstrap
 									? `${bootstrap.client_first_name} ${bootstrap.client_last_name}`
-									: 'Client')}
+									: m.client())}
 						</h3>
 					</div>
 					{#if bootstrap}
 						<div class="flex items-center gap-2 text-sm font-semibold text-text-muted">
 							<CalendarClock class="h-4 w-4" />
 							{#if bootstrap.next_evaluation_date}
-								{bootstrap.days_left} days left
+								{m.days_left({ days: bootstrap.days_left })}
 							{:else}
-								No due date scheduled
+								{m.no_due_date_scheduled()}
 							{/if}
 						</div>
 					{/if}
@@ -330,9 +359,11 @@
 						class="mt-3 inline-flex items-center gap-2 rounded-full border border-info/60 bg-info px-3 py-1 text-xs font-semibold text-white"
 					>
 						<FileClock class="h-3.5 w-3.5" />
-						Continuing draft from {new Date(
-							evaluation?.updated_at ?? bootstrap?.existing_draft?.updated_at ?? Date.now()
-						).toLocaleDateString('en-GB')}
+						{m.continuing_draft_from({
+							date: new Date(
+								evaluation?.updated_at ?? bootstrap?.existing_draft?.updated_at ?? Date.now()
+							).toLocaleDateString(resolveLocale())
+						})}
 					</div>
 				{/if}
 			</header>
@@ -341,38 +372,38 @@
 				{#if showLastEvaluation}
 					<section class="space-y-4 rounded-2xl border border-border bg-surface p-4">
 						<h4 class="text-xs font-bold tracking-widest text-text-subtle uppercase">
-							Last Evaluation
+							{m.last_evaluation()}
 						</h4>
 						{#if bootstrap?.last_completed_evaluation}
 							<div class="space-y-3 text-sm text-text-muted">
 								<p>
-									<span class="font-semibold text-text">Evaluation date:</span>
+									<span class="font-semibold text-text">{m.evaluation_date()}:</span>
 									{new Date(bootstrap.last_completed_evaluation.evaluation_date).toLocaleDateString(
-										'en-GB'
+										resolveLocale()
 									)}
 								</p>
 								<p>
-									<span class="font-semibold text-text">Submitted:</span>
+									<span class="font-semibold text-text">{m.submitted()}:</span>
 									{new Date(bootstrap.last_completed_evaluation.submitted_at).toLocaleString(
-										'en-GB'
+										resolveLocale()
 									)}
 								</p>
 								<p>
-									<span class="font-semibold text-text">Created by:</span>
-									{bootstrap.last_completed_evaluation.creator_name ?? '—'}
+									<span class="font-semibold text-text">{m.created_by()}:</span>
+									{bootstrap.last_completed_evaluation.creator_name ?? m.not_available_short()}
 								</p>
 								<div class="rounded-xl border border-border bg-bg/40 p-3">
 									<p class="mb-1 text-xs font-bold tracking-wide text-text-subtle uppercase">
-										Notes
+										{m.notes_label()}
 									</p>
 									<p class="text-sm text-text">
-										{bootstrap.last_completed_evaluation.overall_notes ?? 'No notes available.'}
+										{bootstrap.last_completed_evaluation.overall_notes ?? m.no_notes_available()}
 									</p>
 								</div>
 							</div>
 						{:else}
 							<div class="rounded-xl border border-border bg-bg/40 p-3 text-sm text-text-muted">
-								No previous evaluation found.
+								{m.no_previous_evaluation_found()}
 							</div>
 						{/if}
 					</section>
@@ -380,11 +411,11 @@
 
 				<section class="space-y-4 rounded-2xl border border-border bg-surface p-4">
 					<h4 class="text-xs font-bold tracking-widest text-text-subtle uppercase">
-						Current Evaluation
+						{m.current_evaluation()}
 					</h4>
 					<Textarea
-						label="Overall notes"
-						placeholder="Add summary notes for this evaluation..."
+						label={m.overall_notes()}
+						placeholder={m.placeholder_overall_notes()}
 						disabled={isReadOnly}
 						bind:value={$form.overall_notes}
 					/>
@@ -395,7 +426,9 @@
 								<div class="mb-3 flex flex-wrap items-start justify-between gap-2">
 									<div>
 										<p class="text-sm font-semibold text-text">{goal.title}</p>
-										<p class="text-xs text-text-muted">{goal.topic_name_snapshot ?? '—'}</p>
+										<p class="text-xs text-text-muted">
+											{goal.topic_name_snapshot ?? m.not_available_short()}
+										</p>
 									</div>
 									{#if goal.priority}
 										<span
@@ -403,7 +436,7 @@
 												goal.priority
 											)}"
 										>
-											{goal.priority}
+											{priorityLabel(goal.priority)}
 										</span>
 									{/if}
 								</div>
@@ -411,23 +444,27 @@
 								{#if isReadOnly}
 									<div class="mb-3">
 										<p class="mb-1 text-xs font-bold tracking-wide text-text-subtle uppercase">
-											Progress
+											{m.progress()}
 										</p>
 										<p class="text-sm text-text">
-											{($form.items[index]?.progress ?? 'no_progress').replace('_', ' ')}
+											{progressLabel($form.items[index]?.progress ?? 'no_progress')}
 										</p>
 									</div>
-									<Textarea label="Notes" disabled={true} value={$form.items[index]?.notes ?? ''} />
+									<Textarea
+										label={m.notes_label()}
+										disabled={true}
+										value={$form.items[index]?.notes ?? ''}
+									/>
 								{:else if $form.items[index]}
 									<Select
-										label="Progress"
+										label={m.progress()}
 										options={progressOptions}
 										bind:value={$form.items[index].progress}
 										error={formatFormError($errors.items?.[index]?.progress)}
 									/>
 									<Textarea
-										label="Notes"
-										placeholder="Optional notes for this goal..."
+										label={m.notes_label()}
+										placeholder={m.placeholder_goal_notes()}
 										bind:value={$form.items[index].notes}
 										error={formatFormError($errors.items?.[index]?.notes)}
 									/>
@@ -437,12 +474,14 @@
 									<div
 										class="mt-2 rounded-lg border border-border bg-bg/40 p-2 text-xs text-text-muted"
 									>
-										<p class="font-semibold text-text">Last evaluation context</p>
+										<p class="font-semibold text-text">{m.last_evaluation_context()}</p>
 										{#if goal.last_progress}
-											<p>Progress: {goal.last_progress.replace('_', ' ')}</p>
+											<p>
+												{m.progress()}: {progressLabel(goal.last_progress)}
+											</p>
 										{/if}
 										{#if goal.last_notes}
-											<p>Notes: {goal.last_notes}</p>
+											<p>{m.notes_label()}: {goal.last_notes}</p>
 										{/if}
 									</div>
 								{/if}
@@ -458,26 +497,28 @@
 	{#snippet footer()}
 		{#if isReadOnly}
 			<div class="flex justify-end">
-				<Button variant="ghost" onclick={() => (open = false)}>Close</Button>
+				<Button variant="ghost" onclick={() => (open = false)}>{m.close()}</Button>
 			</div>
 		{:else}
 			<div class="flex items-center justify-between gap-3">
 				<div class="inline-flex items-center gap-2 text-xs text-text-muted">
 					<CircleAlert class="h-3.5 w-3.5" />
-					Submit saves first; if completion is blocked it remains a draft.
+					{m.submit_saves_draft_notice()}
 				</div>
 				<div class="flex gap-2">
-					<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}>Cancel</Button>
+					<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}
+						>{m.cancel()}</Button
+					>
 					<Button
 						variant="secondary"
 						onclick={saveDraft}
 						isLoading={$delayed && !$form.submit}
-						disabled={$delayed && $form.submit}>Save Draft</Button
+						disabled={$delayed && $form.submit}>{m.save_draft()}</Button
 					>
 					<Button
 						onclick={submitEvaluation}
 						isLoading={$delayed && $form.submit}
-						disabled={$delayed && !$form.submit}>Submit</Button
+						disabled={$delayed && !$form.submit}>{m.submit()}</Button
 					>
 				</div>
 			</div>

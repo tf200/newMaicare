@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import {
 		ShieldAlert,
 		Calendar,
@@ -72,8 +73,7 @@
 			isConfirmModalOpen = false;
 			await invalidateAll();
 		} catch (error) {
-			confirmIncidentError =
-				error instanceof Error ? error.message : 'Failed to confirm incident. Please try again.';
+			confirmIncidentError = error instanceof Error ? error.message : m.failed_confirm_incident();
 		} finally {
 			isConfirmingIncident = false;
 		}
@@ -105,24 +105,24 @@
 		});
 	};
 
-	const incidentTypeLabels: Record<IncidentType, string> = {
-		passing_away: 'Passing Away',
-		self_harm: 'Self Harm',
-		violence: 'Violence',
-		fire_water_damage: 'Fire/Water Damage',
-		accident: 'Accident',
-		client_absence: 'Client Absence',
-		medicines: 'Medicines',
-		organization: 'Organization',
-		use_prohibited_substances: 'Use of Prohibited Substances',
-		other: 'Other'
+	const incidentTypeLabels: Record<IncidentType, () => string> = {
+		passing_away: () => m.passing_away(),
+		self_harm: () => m.self_harm(),
+		violence: () => m.violence(),
+		fire_water_damage: () => m.fire_water_damage(),
+		accident: () => m.accident(),
+		client_absence: () => m.client_absence(),
+		medicines: () => m.medicines(),
+		organization: () => m.organization(),
+		use_prohibited_substances: () => m.use_prohibited_substances(),
+		other: () => m.other()
 	};
 
-	const severityLabels: Record<IncidentSeverity, string> = {
-		near_incident: 'Near Incident',
-		less_serious: 'Less Serious',
-		serious: 'Serious',
-		fatal: 'Fatal'
+	const severityLabels: Record<IncidentSeverity, () => string> = {
+		near_incident: () => m.near_incident(),
+		less_serious: () => m.less_serious(),
+		serious: () => m.serious(),
+		fatal: () => m.fatal()
 	};
 
 	const severityColors: Record<IncidentSeverity, string> = {
@@ -132,28 +132,28 @@
 		fatal: 'bg-rose-500/10 text-rose-700 border-rose-500/20'
 	};
 
-	const reporterInvolvementLabels: Record<ReporterInvolvement, string> = {
-		directly_involved: 'Directly Involved',
-		witness: 'Witness',
-		found_afterwards: 'Found Afterwards',
-		alarmed: 'Alarmed'
+	const reporterInvolvementLabels: Record<ReporterInvolvement, () => string> = {
+		directly_involved: () => m.directly_involved(),
+		witness: () => m.witness(),
+		found_afterwards: () => m.found_afterwards(),
+		alarmed: () => m.alarmed()
 	};
 
-	const informedPartyLabels: Record<InformedParty, string> = {
-		parents_guardians: 'Parents/Guardians',
-		care_coordinator: 'Care Coordinator',
-		referrer: 'Referrer',
-		healthcare_provider: 'Healthcare Provider',
-		inspectorate: 'Inspectorate',
-		police: 'Police',
-		other: 'Other'
+	const informedPartyLabels: Record<InformedParty, () => string> = {
+		parents_guardians: () => m.parents_guardians(),
+		care_coordinator: () => m.care_coordinator(),
+		referrer: () => m.referrer(),
+		healthcare_provider: () => m.healthcare_provider(),
+		inspectorate: () => m.inspectorate(),
+		police: () => m.police(),
+		other: () => m.other()
 	};
 
-	const recurrenceRiskLabels: Record<RecurrenceRisk, string> = {
-		very_low: 'Very Low',
-		means: 'Medium',
-		high: 'High',
-		very_high: 'Very High'
+	const recurrenceRiskLabels: Record<RecurrenceRisk, () => string> = {
+		very_low: () => m.very_low(),
+		means: () => m.medium(),
+		high: () => m.high(),
+		very_high: () => m.very_high()
 	};
 
 	const recurrenceRiskColors: Record<RecurrenceRisk, string> = {
@@ -163,49 +163,49 @@
 		very_high: 'text-rose-600'
 	};
 
-	const causeCategoryLabels: Record<CauseCategory, string> = {
-		internal_personal: 'Internal/Personal',
-		external_environmental: 'External/Environmental',
-		organizational: 'Organizational',
-		technical: 'Technical',
-		employee_related: 'Employee Related',
-		client_related: 'Client Related',
-		other: 'Other'
+	const causeCategoryLabels: Record<CauseCategory, () => string> = {
+		internal_personal: () => m.internal_personal(),
+		external_environmental: () => m.external_environmental(),
+		organizational: () => m.organizational(),
+		technical: () => m.technical(),
+		employee_related: () => m.employee_related(),
+		client_related: () => m.client_related(),
+		other: () => m.other()
 	};
 
-	const physicalInjuryLabels: Record<PhysicalInjury, string> = {
-		no_injuries: 'No Injuries',
-		not_noticeable_yet: 'Not Noticeable Yet',
-		bruising_swelling: 'Bruising/Swelling',
-		skin_injury: 'Skin Injury',
-		broken_bones: 'Broken Bones',
-		shortness_of_breath: 'Shortness of Breath',
-		death: 'Death',
-		other: 'Other'
+	const physicalInjuryLabels: Record<PhysicalInjury, () => string> = {
+		no_injuries: () => m.no_injuries(),
+		not_noticeable_yet: () => m.not_noticeable_yet(),
+		bruising_swelling: () => m.bruising_swelling(),
+		skin_injury: () => m.skin_injury(),
+		broken_bones: () => m.broken_bones(),
+		shortness_of_breath: () => m.shortness_of_breath(),
+		death: () => m.death(),
+		other: () => m.other()
 	};
 
-	const psychologicalDamageLabels: Record<PsychologicalDamage, string> = {
-		no: 'No',
-		not_noticeable_yet: 'Not Noticeable Yet',
-		drowsiness: 'Drowsiness',
-		unrest: 'Unrest',
-		other: 'Other'
+	const psychologicalDamageLabels: Record<PsychologicalDamage, () => string> = {
+		no: () => m.no(),
+		not_noticeable_yet: () => m.not_noticeable_yet(),
+		drowsiness: () => m.drowsiness(),
+		unrest: () => m.unrest(),
+		other: () => m.other()
 	};
 
-	const neededConsultationLabels: Record<NeededConsultation, string> = {
-		no: 'No',
-		not_clear: 'Not Clear',
-		hospitalization: 'Hospitalization',
-		consult_gp: 'Consult GP'
+	const neededConsultationLabels: Record<NeededConsultation, () => string> = {
+		no: () => m.no(),
+		not_clear: () => m.not_clear(),
+		hospitalization: () => m.hospitalization(),
+		consult_gp: () => m.consult_gp()
 	};
 
-	const followUpActionLabels: Record<FollowUpAction, string> = {
-		medical_check: 'Medical Check',
-		family_contact: 'Family Contact',
-		internal_review: 'Internal Review',
-		official_report: 'Official Report',
-		notify_inspectorate: 'Notify Inspectorate',
-		other: 'Other'
+	const followUpActionLabels: Record<FollowUpAction, () => string> = {
+		medical_check: () => m.medical_check(),
+		family_contact: () => m.family_contact(),
+		internal_review: () => m.internal_review(),
+		official_report: () => m.official_report(),
+		notify_inspectorate: () => m.notify_inspectorate(),
+		other: () => m.other()
 	};
 </script>
 
@@ -232,8 +232,8 @@
 			/>
 			<Modal
 				bind:open={isConfirmModalOpen}
-				title="Confirm and notify guardians"
-				description="This action marks the incident as confirmed and sends email notifications."
+				title={m.confirm_and_notify()}
+				description={m.confirm_and_notify_description()}
 				size="md"
 			>
 				<div class="space-y-4">
@@ -246,11 +246,10 @@
 							</span>
 							<div class="space-y-2">
 								<p class="text-sm font-semibold text-amber-900">
-									Are you sure you want to confirm?
+									{m.are_you_sure_confirm()}
 								</p>
 								<p class="text-sm text-amber-800">
-									Once confirmed, this incident will be finalized and an email will be sent to the
-									client guardians.
+									{m.confirm_incident_warning()}
 								</p>
 							</div>
 						</div>
@@ -267,14 +266,14 @@
 				{#snippet footer()}
 					<div class="flex justify-end gap-3">
 						<Button variant="ghost" onclick={closeConfirmModal} disabled={isConfirmingIncident}
-							>Cancel</Button
+							>{m.cancel()}</Button
 						>
 						<Button
 							onclick={() => handleConfirmIncident(incident.id)}
 							isLoading={isConfirmingIncident}
 							disabled={isConfirmingIncident}
 						>
-							{isConfirmingIncident ? 'Confirming incident...' : 'Yes, confirm incident'}
+							{isConfirmingIncident ? m.confirming_incident() : m.yes_confirm_incident()}
 						</Button>
 					</div>
 				{/snippet}
@@ -285,10 +284,10 @@
 				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
 					<a href="/incidents" class="flex items-center gap-1 transition-colors hover:text-text">
 						<ArrowLeft class="h-4 w-4" />
-						Incidents
+						{m.incidents()}
 					</a>
 					<ChevronRight class="h-4 w-4" />
-					<span class="text-text">Incident Detail</span>
+					<span class="text-text">{m.incident_detail()}</span>
 				</nav>
 
 				<div class="flex flex-wrap items-center justify-end gap-2">
@@ -296,14 +295,14 @@
 						class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 					>
 						<FileText class="h-4 w-4" />
-						Export PDF
+						{m.export_pdf()}
 					</button>
 					<button
 						onclick={() => (isEditModalOpen = true)}
 						class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 					>
 						<Pencil class="h-4 w-4" />
-						Edit Incident
+						{m.edit_incident()}
 					</button>
 					{#if !incident.isConfirmed}
 						<button
@@ -311,7 +310,7 @@
 							class="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong dark:text-zinc-900"
 						>
 							<CheckCircle2 class="h-4 w-4" />
-							Confirm Incident
+							{m.confirm_incident()}
 						</button>
 					{/if}
 				</div>
@@ -338,26 +337,26 @@
 						<div>
 							<div class="flex flex-wrap items-center gap-3">
 								<h1 class="text-3xl font-bold tracking-tight text-text">
-									{incidentTypeLabels[incident.incidentType]}
+									{incidentTypeLabels[incident.incidentType]()}
 								</h1>
 								<span
 									class={`rounded-full border px-3 py-1 text-xs font-bold tracking-wider uppercase ${severityColors[incident.severity]}`}
 								>
-									{severityLabels[incident.severity]}
+									{severityLabels[incident.severity]()}
 								</span>
 								{#if incident.isConfirmed}
 									<span
 										class="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold tracking-wider text-emerald-700 uppercase"
 									>
 										<CheckCircle2 class="h-3 w-3" />
-										Confirmed
+										{m.confirmed()}
 									</span>
 								{:else}
 									<span
 										class="flex items-center gap-1 rounded-full border border-zinc-500/20 bg-zinc-500/10 px-3 py-1 text-xs font-bold tracking-wider text-zinc-700 uppercase"
 									>
 										<Clock class="h-3 w-3" />
-										Pending
+										{m.pending()}
 									</span>
 								{/if}
 							</div>
@@ -384,7 +383,7 @@
 					<div class="flex flex-wrap gap-4 border-t border-border/40 pt-6 lg:border-t-0 lg:pt-0">
 						<div class="flex flex-col">
 							<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-								>Reporter</span
+								>{m.reporter()}</span
 							>
 							<span class="text-sm font-bold text-text"
 								>{incident.employeeFirstName} {incident.employeeLastName}</span
@@ -393,12 +392,12 @@
 						<div class="h-8 w-px bg-border lg:block"></div>
 						<div class="flex flex-col">
 							<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-								>Involvement</span
+								>{m.involvement()}</span
 							>
 							<span class="text-sm font-bold text-text"
 								>{reporterInvolvementLabels[
 									incident.reporterInvolvement || 'directly_involved'
-								]}</span
+								]()}</span
 							>
 						</div>
 					</div>
@@ -418,16 +417,16 @@
 								>
 									<FileText class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Incident Summary</h3>
+								<h3 class="text-lg font-bold text-text">{m.incident_summary()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
 							<div>
 								<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Explanation
+									{m.explanation()}
 								</p>
 								<p class="mt-2 text-sm leading-relaxed text-text">
-									{incident.incidentExplanation || 'No explanation provided.'}
+									{incident.incidentExplanation || m.no_explanation_provided()}
 								</p>
 							</div>
 							<div
@@ -435,12 +434,12 @@
 							>
 								<div>
 									<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Recurrence Risk
+										{m.recurrence_risk()}
 									</p>
 									<p
 										class={`mt-1 text-sm font-bold ${recurrenceRiskColors[incident.recurrenceRisk]}`}
 									>
-										{recurrenceRiskLabels[incident.recurrenceRisk]}
+										{recurrenceRiskLabels[incident.recurrenceRisk]()}
 									</p>
 								</div>
 								<AlertTriangle
@@ -459,30 +458,30 @@
 								>
 									<Info class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Causes & Context</h3>
+								<h3 class="text-lg font-bold text-text">{m.causes_context()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
 							<div>
 								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Cause Categories
+									{m.cause_categories()}
 								</p>
 								<div class="flex flex-wrap gap-2">
 									{#each incident.causeCategories as category (category)}
 										<span
 											class="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-text-muted dark:bg-zinc-900"
 										>
-											{causeCategoryLabels[category]}
+											{causeCategoryLabels[category]()}
 										</span>
 									{/each}
 								</div>
 							</div>
 							<div>
 								<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Detailed Cause
+									{m.detailed_cause()}
 								</p>
 								<p class="mt-2 text-sm leading-relaxed text-text">
-									{incident.causeExplanation || 'No cause explanation provided.'}
+									{incident.causeExplanation || m.no_cause_explanation()}
 								</p>
 							</div>
 						</div>
@@ -497,13 +496,13 @@
 								>
 									<Bell class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Notifications</h3>
+								<h3 class="text-lg font-bold text-text">{m.notifications()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
 							<div>
 								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Informed Parties
+									{m.informed_parties()}
 								</p>
 								<div class="flex flex-wrap gap-2">
 									{#each incident.informedParties as party (party)}
@@ -511,7 +510,7 @@
 											class="flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/5 px-3 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-400"
 										>
 											<CheckCircle2 class="h-3.5 w-3.5" />
-											{informedPartyLabels[party]}
+											{informedPartyLabels[party]()}
 										</span>
 									{/each}
 								</div>
@@ -519,7 +518,7 @@
 							{#if incident.emails.length > 0}
 								<div>
 									<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Notification Emails
+										{m.notification_emails()}
 									</p>
 									<div class="space-y-2">
 										{#each incident.emails as email (email)}
@@ -546,7 +545,7 @@
 								>
 									<Activity class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Impact & Injury</h3>
+								<h3 class="text-lg font-bold text-text">{m.impact_injury()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
@@ -555,27 +554,27 @@
 									class="rounded-2xl border border-border/50 bg-zinc-50/50 p-4 dark:bg-zinc-900/50"
 								>
 									<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Physical Injury
+										{m.physical_injury()}
 									</p>
 									<p class="mt-1 text-sm font-bold text-text">
-										{physicalInjuryLabels[incident.physicalInjury]}
+										{physicalInjuryLabels[incident.physicalInjury]()}
 									</p>
 								</div>
 								<div
 									class="rounded-2xl border border-border/50 bg-zinc-50/50 p-4 dark:bg-zinc-900/50"
 								>
 									<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Psychological Damage
+										{m.psychological_damage()}
 									</p>
 									<p class="mt-1 text-sm font-bold text-text">
-										{psychologicalDamageLabels[incident.psychologicalDamage]}
+										{psychologicalDamageLabels[incident.psychologicalDamage]()}
 									</p>
 								</div>
 							</div>
 							{#if incident.physicalInjuryDesc}
 								<div>
 									<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Injury Description
+										{m.injury_description()}
 									</p>
 									<p class="mt-2 text-sm text-text">{incident.physicalInjuryDesc}</p>
 								</div>
@@ -583,7 +582,7 @@
 							{#if incident.psychologicalDamageDesc}
 								<div>
 									<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										Damage Description
+										{m.damage_description()}
 									</p>
 									<p class="mt-2 text-sm text-text">{incident.psychologicalDamageDesc}</p>
 								</div>
@@ -595,10 +594,10 @@
 									<Stethoscope class="h-5 w-5 text-amber-600" />
 									<div>
 										<p class="text-[10px] font-bold tracking-widest text-amber-600 uppercase">
-											Consultation Needed
+											{m.consultation_needed()}
 										</p>
 										<p class="text-sm font-bold text-amber-700">
-											{neededConsultationLabels[incident.neededConsultation]}
+											{neededConsultationLabels[incident.neededConsultation]()}
 										</p>
 									</div>
 								</div>
@@ -615,39 +614,39 @@
 								>
 									<History class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Follow-up Actions</h3>
+								<h3 class="text-lg font-bold text-text">{m.follow_up_actions()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
 							<div>
 								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Actions Taken
+									{m.actions_taken()}
 								</p>
 								<div class="flex flex-wrap gap-2">
 									{#each incident.followUpActions as action (action)}
 										<span
 											class="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
 										>
-											{followUpActionLabels[action]}
+											{followUpActionLabels[action]()}
 										</span>
 									{/each}
 								</div>
 							</div>
 							<div>
 								<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Follow-up Notes
+									{m.follow_up_notes()}
 								</p>
 								<p class="mt-2 text-sm leading-relaxed text-text">
-									{incident.followUpNotes || 'No follow-up notes provided.'}
+									{incident.followUpNotes || m.no_follow_up_notes()}
 								</p>
 							</div>
 							<div class="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
 								{#if incident.isEmployeeAbsent}
 									<XCircle class="h-5 w-5 text-rose-500" />
-									<p class="text-sm font-bold text-rose-600">Employee is absent due to incident</p>
+									<p class="text-sm font-bold text-rose-600">{m.employee_absent_incident()}</p>
 								{:else}
 									<CheckCircle2 class="h-5 w-5 text-emerald-500" />
-									<p class="text-sm font-bold text-text-muted">No employee absence reported</p>
+									<p class="text-sm font-bold text-text-muted">{m.no_employee_absence()}</p>
 								{/if}
 							</div>
 						</div>
@@ -662,24 +661,24 @@
 								>
 									<ShieldCheck class="h-5 w-5" />
 								</div>
-								<h3 class="text-lg font-bold text-text">Measures & Prevention</h3>
+								<h3 class="text-lg font-bold text-text">{m.measures_prevention()}</h3>
 							</div>
 						</div>
 						<div class="space-y-6 p-6">
 							<div>
 								<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Measures Taken
+									{m.measures_taken()}
 								</p>
 								<p class="mt-2 text-sm leading-relaxed text-text">
-									{incident.incidentTakenMeasures || 'No measures recorded.'}
+									{incident.incidentTakenMeasures || m.no_measures_recorded()}
 								</p>
 							</div>
 							<div>
 								<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									Prevention Steps
+									{m.prevention_steps()}
 								</p>
 								<p class="mt-2 text-sm leading-relaxed text-text">
-									{incident.incidentPreventSteps || 'No prevention steps recorded.'}
+									{incident.incidentPreventSteps || m.no_prevention_steps()}
 								</p>
 							</div>
 						</div>
@@ -689,15 +688,15 @@
 					<div class="rounded-3xl border border-border bg-zinc-50/50 p-6 dark:bg-zinc-900/20">
 						<div class="grid gap-4 text-[11px] text-text-muted">
 							<div class="flex items-center justify-between">
-								<span class="font-bold tracking-widest uppercase">Incident ID</span>
+								<span class="font-bold tracking-widest uppercase">{m.incident_id()}</span>
 								<span class="font-mono">{incident.id}</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="font-bold tracking-widest uppercase">Created At</span>
+								<span class="font-bold tracking-widest uppercase">{m.created_at()}</span>
 								<span>{formatDate(incident.createdAt)}</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="font-bold tracking-widest uppercase">Last Updated</span>
+								<span class="font-bold tracking-widest uppercase">{m.updated()}</span>
 								<span>{formatDate(incident.updatedAt)}</span>
 							</div>
 						</div>
@@ -711,7 +710,7 @@
 					<div class="flex items-center justify-between border-b border-border/50 p-6">
 						<div class="flex items-center gap-3">
 							<Info class="h-5 w-5 text-text-subtle" />
-							<h3 class="text-lg font-bold text-text">Additional Details</h3>
+							<h3 class="text-lg font-bold text-text">{m.additional_details()}</h3>
 						</div>
 					</div>
 					<div class="p-6">

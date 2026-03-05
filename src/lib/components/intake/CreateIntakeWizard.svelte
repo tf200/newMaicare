@@ -9,6 +9,7 @@
 	import { listSenders } from '$lib/api/senders';
 	import { listLocations } from '$lib/api/locations';
 	import { intakes } from '$lib/api/intakes';
+	import { m } from '$lib/paraglide/messages';
 	import {
 		ArrowRight,
 		Activity,
@@ -217,7 +218,7 @@
 				<span>{option.city}</span>
 				<span>•</span>
 			{/if}
-			<span class="capitalize">{option.types?.replace(/_/g, ' ') || 'Sender'}</span>
+			<span class="capitalize">{option.types?.replace(/_/g, ' ') || m.sender()}</span>
 		</div>
 	</div>
 {/snippet}
@@ -228,7 +229,7 @@
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
 			<span>{option.street} {option.house_number}, {option.city}</span>
 			<span class="{option.available > 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium">
-				{option.available} spots available
+				{m.spots_available({ count: option.available })}
 			</span>
 		</div>
 	</div>
@@ -236,17 +237,20 @@
 
 <Modal
 	bind:open
-	title="Create Intake"
-	description={`For ${registration.client_first_name} ${registration.client_last_name}`}
+	title={m.create_intake()}
+	description={m.intake_for_client({
+		name: `${registration.client_first_name} ${registration.client_last_name}`.trim()
+	})}
 	size="full"
 	class="max-w-[80vw] overflow-hidden"
 >
 	{#snippet header()}
 		<div>
-			<h2 class="text-lg font-bold text-text">Create Intake</h2>
+			<h2 class="text-lg font-bold text-text">{m.create_intake()}</h2>
 			<p class="text-sm text-text-muted">
-				For {registration.client_first_name}
-				{registration.client_last_name}
+				{m.intake_for_client({
+					name: `${registration.client_first_name} ${registration.client_last_name}`.trim()
+				})}
 			</p>
 		</div>
 	{/snippet}
@@ -269,34 +273,34 @@
 							<User class="h-6 w-6" />
 						</div>
 						<div>
-							<h2 class="text-xl font-bold text-text">Client Situation</h2>
-							<p class="text-sm text-text-subtle">Current context and psychological overview</p>
+							<h2 class="text-xl font-bold text-text">{m.client_situation()}</h2>
+							<p class="text-sm text-text-subtle">{m.client_situation_description()}</p>
 						</div>
 					</div>
 
 					<div class="grid gap-6 lg:grid-cols-2">
 						<div class="lg:col-span-2">
 							<TextArea
-								label="Family Situation"
+								label={m.family_situation()}
 								bind:value={familySituation}
 								error={fieldErrors.familySituation}
-								placeholder="Describe the family context, relationships, and home environment..."
+								placeholder={m.family_situation_placeholder()}
 								rows={4}
 							/>
 						</div>
 						<div class="lg:col-span-2">
 							<TextArea
-								label="Psychological State"
+								label={m.psychological_state()}
 								bind:value={psychologicalState}
 								error={fieldErrors.psychologicalState}
-								placeholder="Describe current psychological state, history, and observations..."
+								placeholder={m.psychological_state_placeholder()}
 								rows={4}
 							/>
 						</div>
 						<div class="lg:col-span-1">
 							<Input
 								type="number"
-								label="Self Sufficiency Score (0-100)"
+								label={m.self_sufficiency_score_range()}
 								bind:value={selfSufficiency}
 								error={fieldErrors.selfSufficiency}
 								min="0"
@@ -313,30 +317,33 @@
 							<FileText class="h-6 w-6" />
 						</div>
 						<div>
-							<h2 class="text-xl font-bold text-text">Logistics & Assignment</h2>
-							<p class="text-sm text-text-subtle">Dates, participants, and location details</p>
+							<h2 class="text-xl font-bold text-text">{m.logistics_placement()}</h2>
+							<p class="text-sm text-text-subtle">{m.logistics_assignment_description()}</p>
 						</div>
 					</div>
 
 					<div class="grid gap-6 lg:grid-cols-2">
 						<div class="space-y-1.5">
 							<label class="flex items-center gap-1.5 text-sm font-semibold text-text-muted">
-								<Calendar class="h-3.5 w-3.5" /> Date of Intake
+								<Calendar class="h-3.5 w-3.5" />
+								{m.intake_date()}
 							</label>
 							<DateTimePicker bind:value={dateOfIntake} error={fieldErrors.dateOfIntake} />
 						</div>
 
 						<div>
 							<Input
-								label="Signature (Full Name)"
+								label={m.signature_full_name()}
 								bind:value={signature}
 								error={fieldErrors.signature}
-								placeholder="Type full name"
+								placeholder={m.signature_full_name_placeholder()}
 							/>
 						</div>
 
 						<div class="space-y-1.5">
-							<label for="care-type" class="text-sm font-semibold text-text-muted">Care Type</label>
+							<label for="care-type" class="text-sm font-semibold text-text-muted">
+								{m.care_type()}
+							</label>
 							<div class="relative">
 								<select
 									id="care-type"
@@ -372,16 +379,16 @@
 
 						<div class="lg:col-span-2">
 							<MultiSelect
-								label="Participants"
+								label={m.participants()}
 								bind:value={intakeParticipants}
 								options={participantOptions}
 								error={fieldErrors.intakeParticipants}
-								placeholder="Select participants..."
+								placeholder={m.select_participants_placeholder()}
 							/>
 						</div>
 
 						<SearchSelect
-							label="Sender / Referrer"
+							label={m.referrer_sender()}
 							bind:value={senderId}
 							bind:displayValue={senderName}
 							error={fieldErrors.senderId}
@@ -392,11 +399,11 @@
 							labelFn={(s) => s.name}
 							valueFn={(s) => s.id}
 							item={senderItem}
-							placeholder="Select sender..."
+							placeholder={m.select_sender_placeholder()}
 						/>
 
 						<SearchSelect
-							label="Assign Location"
+							label={m.assigned_location()}
 							bind:value={assignedLocationId}
 							error={fieldErrors.assignedLocationId}
 							loadOptions={async (query) => {
@@ -406,7 +413,7 @@
 							labelFn={(loc) => `${loc.name} (${loc.city})`}
 							valueFn={(loc) => loc.id}
 							item={locationItem}
-							placeholder="Select location..."
+							placeholder={m.select_location_placeholder()}
 						/>
 					</div>
 				</div>
@@ -419,24 +426,24 @@
 								<Activity class="h-6 w-6" />
 							</div>
 							<div>
-								<h2 class="text-xl font-bold text-text">Initial Assessment</h2>
-								<p class="text-sm text-text-subtle">Risk factors and preliminary conclusion</p>
+								<h2 class="text-xl font-bold text-text">{m.initial_assessment()}</h2>
+								<p class="text-sm text-text-subtle">{m.initial_assessment_description()}</p>
 							</div>
 						</div>
 
 						<div class="space-y-6">
 							<TextArea
-								label="Risk Assessment"
+								label={m.risk_assessment()}
 								bind:value={riskAssessment}
 								error={fieldErrors.riskAssessment}
-								placeholder="Identify potential risks (aggression, self-harm, addiction, etc.)..."
+								placeholder={m.risk_assessment_placeholder()}
 								rows={4}
 							/>
 
 							<div class="grid gap-6 md:grid-cols-2">
 								<div class="space-y-1.5">
 									<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
-										>Intake Conclusion</label
+										>{m.intake_conclusion()}</label
 									>
 									<div class="relative">
 										<select
@@ -475,19 +482,19 @@
 								<div>
 									<Input
 										type="number"
-										label="Evaluation Interval (weeks)"
+										label={m.evaluation_interval_weeks()}
 										bind:value={evaluationIntervalWeeks}
 										error={fieldErrors.evaluationIntervalWeeks}
 										min="1"
-										placeholder="e.g. 4"
+										placeholder={m.placeholder_weeks_example()}
 									/>
 								</div>
 								<div class="md:col-span-2">
 									<TextArea
-										label="Additional Notes"
+										label={m.additional_notes()}
 										bind:value={intakeConclusionNotes}
 										error={fieldErrors.intakeConclusionNotes}
-										placeholder="Any other relevant information..."
+										placeholder={m.additional_notes_placeholder()}
 										rows={3}
 									/>
 								</div>
@@ -498,15 +505,15 @@
 					<section class="space-y-5">
 						<div class="space-y-2 px-1">
 							<div class="flex items-center justify-between">
-								<h2 class="text-xl font-bold text-text">Assessments & Goals</h2>
+								<h2 class="text-xl font-bold text-text">{m.goals_assessments()}</h2>
 								<span
 									class="rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary"
 								>
-									Optional
+									{m.optional()}
 								</span>
 							</div>
 							<p class="text-base text-text-subtle">
-								You can define the maturity matrix and goals now, or complete this later.
+								{m.assessments_optional_description()}
 							</p>
 						</div>
 
@@ -528,18 +535,18 @@
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<span class="text-lg font-bold text-text group-hover:text-emerald-900">
-											Define Now
+											{m.define_now()}
 										</span>
 										<span
 											class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100"
 										>
-											Recommended
+											{m.recommended()}
 										</span>
 									</div>
 									<p
 										class="mt-1 text-sm font-medium text-text-muted group-hover:text-emerald-700/80"
 									>
-										Proceed to the maturity matrix and set goals immediately.
+										{m.define_now_description()}
 									</p>
 								</div>
 
@@ -566,10 +573,10 @@
 
 								<div class="flex-1">
 									<span class="text-lg font-bold text-text group-hover:text-zinc-900">
-										Do Later
+										{m.do_later()}
 									</span>
 									<p class="mt-1 text-sm font-medium text-text-muted group-hover:text-zinc-700">
-										Save the intake now and skip the assessment step.
+										{m.do_later_description()}
 									</p>
 								</div>
 							</button>
@@ -582,9 +589,9 @@
 				<aside class="space-y-6">
 					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 						<div class="mb-4 flex items-center justify-between">
-							<h3 class="text-base font-bold text-text">Client Goals (Reference)</h3>
+							<h3 class="text-base font-bold text-text">{m.registration_goals_reference()}</h3>
 							<span class="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
-								Read-only
+								{m.read_only()}
 							</span>
 						</div>
 						{#if registration.client_goals && registration.client_goals.length > 0}
@@ -596,12 +603,12 @@
 								{/each}
 							</ul>
 						{:else}
-							<p class="text-sm text-text-subtle">No goals were submitted with the registration.</p>
+							<p class="text-sm text-text-subtle">{m.no_goals_specified()}</p>
 						{/if}
 						{#if registration.application_reason}
 							<div class="mt-4 border-t border-border/60 pt-4">
 								<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
-									Application Reason
+									{m.reason_for_application()}
 								</p>
 								<p class="mt-2 text-sm text-text-muted">
 									{registration.application_reason}
@@ -615,10 +622,8 @@
 					<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 						<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
 							<div>
-								<h2 class="text-xl font-bold text-text">Assessment & Goals</h2>
-								<p class="text-sm text-text-subtle">
-									Select relevant topics, assign level, and define goals.
-								</p>
+								<h2 class="text-xl font-bold text-text">{m.goals_assessments()}</h2>
+								<p class="text-sm text-text-subtle">{m.assessment_goals_description()}</p>
 							</div>
 							<button
 								onclick={saveGoalsAndFinish}
@@ -630,7 +635,7 @@
 								{:else}
 									<Save class="h-4 w-4" />
 								{/if}
-								Save & Finish
+								{m.save_finish()}
 							</button>
 						</div>
 

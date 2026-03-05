@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
 		ClipboardList,
@@ -61,12 +62,12 @@
 	}
 
 	const medicationColumns: DataTableColumn[] = [
-		{ key: 'medication', label: 'Medication', width: '220px' },
-		{ key: 'dosage', label: 'Dosage', width: '200px' },
-		{ key: 'administration', label: 'Administration', width: '180px' },
-		{ key: 'schedule', label: 'Schedule', width: '200px' },
-		{ key: 'timeline', label: 'Timeline', width: '160px' },
-		{ key: 'diagnosis', label: 'Diagnosis Link', width: '220px' },
+		{ key: 'medication', label: m.medication(), width: '220px' },
+		{ key: 'dosage', label: m.dosage(), width: '200px' },
+		{ key: 'administration', label: m.administration(), width: '180px' },
+		{ key: 'schedule', label: m.schedule(), width: '200px' },
+		{ key: 'timeline', label: m.timeline(), width: '160px' },
+		{ key: 'diagnosis', label: m.diagnosis_link(), width: '220px' },
 		{ key: 'actions', label: '', align: 'right', width: '100px' }
 	];
 
@@ -98,7 +99,7 @@
 	};
 
 	const formatDate = (value: string | null) => {
-		if (!value) return 'Ongoing';
+		if (!value) return m.ongoing();
 		return new Intl.DateTimeFormat('nl-NL', {
 			day: '2-digit',
 			month: 'short',
@@ -181,7 +182,7 @@
 </script>
 
 <svelte:head>
-	<title>Medical Dossier | MaiCare</title>
+	<title>{m.medical_dossier()} | MaiCare</title>
 </svelte:head>
 
 {#snippet medicationCell(row: MedicationRow)}
@@ -202,7 +203,7 @@
 					<span
 						class="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[9px] font-bold tracking-wider text-rose-700 uppercase"
 					>
-						Critical
+						{m.critical()}
 					</span>
 				{/if}
 				{#if row.is_prn}
@@ -243,9 +244,9 @@
 		{#if row.admin_mode !== 'self'}
 			<p
 				class="truncate text-[11px] font-medium text-text-muted"
-				title={row.responsible_name ?? 'Unassigned'}
+				title={row.responsible_name ?? m.unassigned()}
 			>
-				{row.responsible_name ?? 'Unassigned'}
+				{row.responsible_name ?? m.unassigned()}
 			</p>
 		{/if}
 	</div>
@@ -253,7 +254,7 @@
 
 {#snippet scheduleCell(row: MedicationRow)}
 	<div class="space-y-2">
-		<p class="text-xs font-semibold text-text">{row.frequency_text ?? 'As needed'}</p>
+		<p class="text-xs font-semibold text-text">{row.frequency_text ?? m.as_needed()}</p>
 		{#if row.schedule.length > 0}
 			<div class="flex flex-wrap gap-1">
 				{#each row.schedule as item, index (`${row.id}-schedule-${index}`)}
@@ -270,7 +271,7 @@
 				class="truncate text-[10px] leading-tight text-amber-800 italic"
 				title={row.prn_indication}
 			>
-				Indication: {row.prn_indication}
+				{m.indication()}: {row.prn_indication}
 			</p>
 		{/if}
 	</div>
@@ -315,7 +316,7 @@
 			</div>
 		</div>
 	{:else}
-		<span class="text-[10px] font-medium text-text-subtle italic">No linked diagnosis</span>
+		<span class="text-[10px] font-medium text-text-subtle italic">{m.no_linked_diagnosis()}</span>
 	{/if}
 {/snippet}
 
@@ -323,13 +324,13 @@
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View details"
+			title={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="Edit order"
+			title={m.edit_order()}
 			onclick={() => handleMedicationEdit(row.id)}
 		>
 			<Pencil class="h-4 w-4" />
@@ -340,7 +341,7 @@
 {#snippet medicationActions()}
 	<Button class="gap-2" onclick={() => (showCreateMedicationModal = true)}>
 		<Plus class="h-4 w-4" />
-		Add medication
+		{m.add_medication()}
 	</Button>
 {/snippet}
 
@@ -381,11 +382,11 @@
 						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 							<HeartPulse class="h-5 w-5" />
 						</span>
-						<span>Client Health Overview</span>
+						<span>{m.client_health_overview()}</span>
 					</div>
-					<h1 class="text-3xl font-bold tracking-tighter text-text">Medical Dossier</h1>
+					<h1 class="text-3xl font-bold tracking-tighter text-text">{m.medical_dossier()}</h1>
 					<p class="max-w-2xl text-sm font-medium text-text-muted">
-						Current active medication orders and diagnosis context in one place.
+						{m.medical_dossier_description()}
 					</p>
 				</div>
 			</div>
@@ -394,37 +395,37 @@
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Active orders
+					{m.active_orders()}
 				</div>
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 					{medicationRows.length}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Current prescriptions</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.current_prescriptions()}</p>
 			</div>
 			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					PRN orders
+					{m.prn_orders()}
 				</div>
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{prnCount}</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">As-needed medications</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.as_needed_medications()}</p>
 			</div>
 			<div class="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-rose-700 uppercase">
-					Critical medication
+					{m.critical_medication()}
 				</div>
 				<div class="mt-2 text-2xl font-bold tracking-tight text-rose-700 sm:text-3xl">
 					{criticalCount}
 				</div>
-				<p class="mt-2 text-xs font-medium text-rose-600">High-priority meds</p>
+				<p class="mt-2 text-xs font-medium text-rose-600">{m.high_priority_meds()}</p>
 			</div>
 			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Diagnoses
+					{m.diagnoses()}
 				</div>
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 					{diagnoses.length}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Recorded conditions</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.recorded_conditions()}</p>
 			</div>
 		</div>
 
@@ -438,10 +439,10 @@
 			currentPage={1}
 			pageSize={Math.max(1, medicationRows.length)}
 			totalCount={medicationRows.length}
-			title="Active Medication Orders"
-			description="Medication orders currently active for this client."
-			emptyTitle="No active medication orders"
-			emptyDescription="When active orders are available, they will appear here."
+			title={m.active_medication_orders()}
+			description={m.active_medication_orders_description()}
+			emptyTitle={m.no_active_medication_orders()}
+			emptyDescription={m.medication_orders_empty()}
 			emptyActionLabel="No action"
 			emptyActionDisabled
 			actions={medicationActions}
@@ -463,16 +464,16 @@
 				<div class="space-y-1">
 					<div class="flex items-center gap-2 text-sm font-semibold text-brand">
 						<ClipboardList class="h-4 w-4" />
-						<span>Clinical Context</span>
+						<span>{m.clinical_context()}</span>
 					</div>
-					<h2 class="text-2xl font-bold tracking-tighter text-text">Diagnoses</h2>
+					<h2 class="text-2xl font-bold tracking-tighter text-text">{m.diagnoses()}</h2>
 					<p class="text-sm font-medium text-text-muted">
-						Sorted by active status first, then recently diagnosed.
+						{m.diagnoses_sorted_description()}
 					</p>
 				</div>
 				<Button class="gap-2" onclick={() => (showCreateDiagnosisModal = true)}>
 					<Plus class="h-4 w-4" />
-					Add diagnosis
+					{m.add_diagnosis()}
 				</Button>
 			</header>
 
@@ -481,8 +482,8 @@
 					<div
 						class="rounded-2xl border border-dashed border-border px-5 py-10 text-center lg:col-span-2"
 					>
-						<p class="text-base font-semibold text-text">No diagnoses on record</p>
-						<p class="mt-1 text-sm text-text-muted">Diagnoses will appear here once available.</p>
+						<p class="text-base font-semibold text-text">{m.no_diagnoses_on_record()}</p>
+						<p class="mt-1 text-sm text-text-muted">{m.diagnoses_will_appear()}</p>
 					</div>
 				{:else}
 					{#each diagnoses as diagnosis (diagnosis.id)}
@@ -490,7 +491,7 @@
 							<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
 								<div class="min-w-[160px] flex-1 space-y-1">
 									<h3 class="text-base font-bold text-text">
-										{diagnosis.title ?? 'Untitled diagnosis'}
+										{diagnosis.title ?? m.untitled_diagnosis()}
 									</h3>
 									<p class="text-xs font-medium text-text-muted">
 										{formatCodeLine(diagnosis.code_system, diagnosis.code)}
@@ -517,8 +518,8 @@
 										type="button"
 										onclick={() => handleDiagnosisEdit(diagnosis.id)}
 										class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-subtle opacity-100 transition-all duration-200 hover:bg-border/50 hover:text-text sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-										aria-label="Edit diagnosis"
-										title="Edit diagnosis"
+										aria-label={m.edit()}
+										title={m.edit()}
 									>
 										<Pencil class="h-4 w-4" />
 									</button>
@@ -527,11 +528,11 @@
 
 							<div class="mt-4 grid gap-2 text-xs font-medium text-text-muted sm:grid-cols-2">
 								<p>
-									Diagnosed on:
+									{m.diagnosed_on()}
 									<span class="font-semibold text-text"> {formatDate(diagnosis.diagnosed_on)}</span>
 								</p>
 								<p>
-									Resolved on:
+									{m.resolved_on()}
 									<span class="font-semibold text-text"> {formatDate(diagnosis.resolved_on)}</span>
 								</p>
 							</div>
@@ -544,13 +545,13 @@
 								<div class="mt-4 space-y-1 text-xs text-text-muted">
 									{#if diagnosis.diagnosing_clinician}
 										<p>
-											<span class="font-semibold text-text">Clinician:</span>
+											<span class="font-semibold text-text">{m.clinician()}</span>
 											{diagnosis.diagnosing_clinician}
 										</p>
 									{/if}
 									{#if diagnosis.notes}
 										<p>
-											<span class="font-semibold text-text">Notes:</span>
+											<span class="font-semibold text-text">{m.notes()}</span>
 											{diagnosis.notes}
 										</p>
 									{/if}

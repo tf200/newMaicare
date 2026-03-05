@@ -153,7 +153,7 @@
 </script>
 
 <svelte:head>
-	<title>Incidents | MaiCare</title>
+	<title>{m.incidents_page_title()}</title>
 </svelte:head>
 
 <section class="space-y-8">
@@ -172,7 +172,7 @@
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Incidents</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.incidents()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Monitor and manage safety incidents, near-misses, and reporting across all locations and
 					clients.
@@ -215,7 +215,7 @@
 					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 						{totalIncidents}
 					</div>
-					<p class="mt-1 text-xs font-medium text-text-muted">Registered in system</p>
+					<p class="mt-1 text-xs font-medium text-text-muted">{m.registered_in_system()}</p>
 				</div>
 			</div>
 
@@ -263,7 +263,7 @@
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 							{countsData.counts.pendingConfirmation}
 						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Awaiting supervisor review</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.awaiting_supervisor_review()}</p>
 					</div>
 				</div>
 
@@ -282,7 +282,7 @@
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
 							{countsData.counts.past24h}
 						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Incidents in the last day</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.incidents_last_day()}</p>
 					</div>
 				</div>
 			{/await}
@@ -375,8 +375,8 @@
 				<a
 					href={`/incidents/${row.id}`}
 					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-					title="View details"
-					aria-label="View details"
+					title={m.view_details()}
+					aria-label={m.view_details()}
 				>
 					<Eye class="h-4 w-4" />
 				</a>
@@ -391,7 +391,7 @@
 					/>
 					<input
 						type="text"
-						placeholder="Search client first or last name..."
+						placeholder={m.search_client_name_placeholder()}
 						bind:value={searchTerm}
 						class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-72"
 						onkeydown={(event) => {
@@ -438,7 +438,7 @@
 				{columns}
 				rows={[]}
 				loading
-				title="Recent Incidents"
+				title={m.recent_incidents_title()}
 				description="Displaying all reported incidents and near-misses."
 				{currentPage}
 				{pageSize}
@@ -455,7 +455,7 @@
 			<DataTable
 				{columns}
 				rows={incidents}
-				title="Recent Incidents"
+				title={m.recent_incidents_title()}
 				description="Displaying all reported incidents and near-misses."
 				filters={tableFilters}
 				currentPage={pagination.page}

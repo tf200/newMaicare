@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
@@ -98,14 +99,14 @@
 		showManageShifts = true;
 	};
 
-	const columns: DataTableColumn[] = [
-		{ key: 'name', label: 'Location' },
-		{ key: 'address', label: 'Address' },
-		{ key: 'occupancy', label: 'Occupancy', width: '200px' },
-		{ key: 'available', label: 'Available', align: 'right', width: '120px' },
-		{ key: 'updated_at', label: 'Updated', align: 'right', width: '140px' },
+	const columns = $derived<DataTableColumn[]>([
+		{ key: 'name', label: m.location() },
+		{ key: 'address', label: m.address() },
+		{ key: 'occupancy', label: m.occupancy(), width: '200px' },
+		{ key: 'available', label: m.available(), align: 'right', width: '120px' },
+		{ key: 'updated_at', label: m.updated(), align: 'right', width: '140px' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
-	];
+	]);
 
 	const formatDate = (value: string) =>
 		new Date(value).toLocaleDateString('en-GB', {
@@ -139,7 +140,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search locations..."
+				placeholder={m.search_locations_placeholder()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -204,7 +205,7 @@
 {#snippet availableCell(row: OrganizationLocation)}
 	<span class="inline-flex items-center justify-end gap-1">
 		<span class="text-sm font-semibold text-text">{formatNumber(row.available)}</span>
-		<span class="text-xs text-text-subtle">beds</span>
+		<span class="text-xs text-text-subtle">{m.beds()}</span>
 	</span>
 {/snippet}
 
@@ -217,14 +218,14 @@
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => openManageShifts(row)}
-			title="Manage shifts"
+			title={m.manage_shifts()}
 		>
 			<Clock class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			onclick={() => openEdit(row.id)}
-			title="Edit location"
+			title={m.edit_location()}
 		>
 			<Pencil class="h-4 w-4" />
 		</button>
@@ -238,7 +239,7 @@
 			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
 		>
 			<ArrowLeft class="h-4 w-4" />
-			Back to organizations
+			{m.back_to_organizations()}
 		</a>
 	</div>
 
@@ -335,12 +336,12 @@
 						</div>
 						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								Locations
+								{m.locations()}
 							</div>
 							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 								{formatNumber(countsData.counts.location_count)}
 							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">Active care locations</p>
+							<p class="mt-2 text-xs font-medium text-text-muted">{m.active_care_locations()}</p>
 						</div>
 					</div>
 					<div
@@ -353,14 +354,14 @@
 						</div>
 						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								Clients
+								{m.clients()}
 							</div>
 							<div
 								class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
 							>
 								{formatNumber(countsData.counts.client_count)}
 							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">Clients under care</p>
+							<p class="mt-2 text-xs font-medium text-text-muted">{m.clients_under_care()}</p>
 						</div>
 					</div>
 					<div
@@ -373,12 +374,12 @@
 						</div>
 						<div class="relative">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								Employees
+								{m.employees()}
 							</div>
 							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 								{formatNumber(countsData.counts.employee_count)}
 							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">Active caregivers</p>
+							<p class="mt-2 text-xs font-medium text-text-muted">{m.active_caregivers()}</p>
 						</div>
 					</div>
 				</section>
@@ -389,10 +390,12 @@
 					<div
 						class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-teal-900/10"
 					>
-						<h2 class="text-lg font-bold tracking-tight text-white">Organization details</h2>
+						<h2 class="text-lg font-bold tracking-tight text-white">{m.organization_details()}</h2>
 						<div class="mt-6 space-y-4 text-sm">
 							<div>
-								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Address</p>
+								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">
+									{m.address()}
+								</p>
 								<p class="mt-1 font-semibold text-white">{formatAddress(organization)}</p>
 								<p class="text-white/90">
 									{organization.postal_code}
@@ -400,30 +403,34 @@
 								</p>
 							</div>
 							<div>
-								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">Email</p>
+								<p class="text-xs font-bold tracking-wider text-white/80 uppercase">{m.email()}</p>
 								<p class="mt-1 text-white">{formatOptional(organization.email)}</p>
 							</div>
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">KVK</p>
+									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">
+										{m.kvk_label()}
+									</p>
 									<p class="mt-1 text-white">{formatOptional(organization.kvk_number)}</p>
 								</div>
 								<div>
-									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">BTW</p>
+									<p class="text-xs font-bold tracking-wider text-white/80 uppercase">
+										{m.btw_label()}
+									</p>
 									<p class="mt-1 text-white">{formatOptional(organization.btw_number)}</p>
 								</div>
 							</div>
 						</div>
 						<div class="mt-6 border-t border-white/20 pt-4 text-xs text-white/70">
-							Updated {formatDate(organization.updated_at)}
+							{m.updated()}: {formatDate(organization.updated_at)}
 						</div>
 					</div>
 				</aside>
 
 				{#await locationsDataPromise}
 					<DataTable
-						title="Locations"
-						description="Availability across organization sites."
+						title={m.locations()}
+						description={m.locations_description()}
 						{columns}
 						rows={[]}
 						loading
@@ -448,8 +455,8 @@
 					{/if}
 
 					<DataTable
-						title="Locations"
-						description="Availability across organization sites."
+						title={m.locations()}
+						description={m.locations_description()}
 						{columns}
 						rows={locationsData.locations}
 						currentPage={locationsData.pagination.page}
@@ -473,7 +480,7 @@
 			<div
 				class="rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm"
 			>
-				Organization not available.
+				{m.organization_not_available()}
 			</div>
 		{/if}
 	{/await}

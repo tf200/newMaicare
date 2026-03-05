@@ -4,6 +4,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { updateContractStatus } from '$lib/api/contracts';
 	import type { ContractStatus } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		open = $bindable(false),
@@ -18,11 +19,11 @@
 	}>();
 
 	const statusOptions: Array<{ value: ContractStatus; label: string }> = [
-		{ value: 'approved', label: 'Approved' },
-		{ value: 'draft', label: 'Draft' },
-		{ value: 'terminated', label: 'Terminated' },
-		{ value: 'stopped', label: 'Stopped' },
-		{ value: 'expired', label: 'Expired' }
+		{ value: 'approved', label: m.approved() },
+		{ value: 'draft', label: m.draft() },
+		{ value: 'terminated', label: m.terminated() },
+		{ value: 'stopped', label: m.stopped() },
+		{ value: 'expired', label: m.expired() }
 	];
 
 	let selectedStatus = $state<ContractStatus>('draft');
@@ -49,7 +50,7 @@
 			open = false;
 			onUpdated?.();
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to update contract status';
+			errorMessage = error instanceof Error ? error.message : m.failed_update_contract_status();
 		} finally {
 			isLoading = false;
 		}
@@ -58,11 +59,11 @@
 
 <Modal
 	bind:open
-	title="Update Contract Status"
-	description="Change the contract lifecycle status using the dedicated status endpoint."
+	title={m.update_contract_status()}
+	description={m.update_contract_status_description()}
 >
 	<div class="space-y-5">
-		<Select label="Status" bind:value={selectedStatus} options={statusOptions} />
+		<Select label={m.status()} bind:value={selectedStatus} options={statusOptions} />
 
 		{#if errorMessage}
 			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
@@ -73,13 +74,13 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={isLoading}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={isLoading}>{m.cancel()}</Button>
 			<Button
 				onclick={handleSubmit}
 				{isLoading}
 				disabled={!contractId || selectedStatus === currentStatus}
 			>
-				{isLoading ? 'Updating Status...' : 'Update Status'}
+				{isLoading ? m.updating_status() : m.update_status()}
 			</Button>
 		</div>
 	{/snippet}

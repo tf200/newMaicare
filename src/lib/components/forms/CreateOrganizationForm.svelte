@@ -10,6 +10,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { CreateOrganizationRequest } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -58,8 +59,7 @@
 						open = false;
 						onCreated?.();
 					} catch (error) {
-						errorMessage =
-							error instanceof Error ? error.message : 'Failed to create organization.';
+						errorMessage = error instanceof Error ? error.message : m.failed_create_organization();
 					}
 				}
 			}
@@ -88,13 +88,13 @@
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
 			if (!result) {
-				lookupMessage = 'Address not found. Please fill street and city manually.';
+				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
 			isLookupLoading = false;
 		}
@@ -110,22 +110,18 @@
 	};
 </script>
 
-<Modal
-	bind:open
-	title="Create Organization"
-	description="Add a new organization to manage its settings and members."
->
+<Modal bind:open title={m.create_organization()} description={m.create_organization_description()}>
 	<form id={formId} use:enhance class="space-y-5">
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
-				label="Organization Name"
-				placeholder="Acme Corp"
+				label={m.organization_name()}
+				placeholder={m.placeholder_organization_name_example()}
 				bind:value={$form.name}
 				error={formatFormError($errors.name)}
 			/>
 			<Input
-				label="Email (optional)"
-				placeholder="contact@acme.com"
+				label={m.email_optional()}
+				placeholder={m.placeholder_organization_email()}
 				type="email"
 				bind:value={$form.email}
 				error={formatFormError($errors.email)}
@@ -134,8 +130,8 @@
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 			<Input
-				label="Postal Code"
-				placeholder="1234 AB"
+				label={m.postal_code()}
+				placeholder={m.example_postal_code()}
 				bind:value={$form.postal_code}
 				error={formatFormError($errors.postal_code)}
 				oninput={() => {
@@ -153,8 +149,8 @@
 				}}
 			/>
 			<Input
-				label="House Number"
-				placeholder="10"
+				label={m.house_number()}
+				placeholder={m.example_house_number()}
 				bind:value={$form.house_number}
 				error={formatFormError($errors.house_number)}
 				oninput={() => {
@@ -163,26 +159,30 @@
 					}
 				}}
 			/>
-			<Input label="Addition (optional)" placeholder="A" bind:value={$form.house_number_addition} />
+			<Input
+				label={m.addition_optional()}
+				placeholder={m.example_house_number_addition()}
+				bind:value={$form.house_number_addition}
+			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
-				label="Street"
-				placeholder="Main Street"
+				label={m.street()}
+				placeholder={m.example_street_name()}
 				bind:value={$form.street}
 				error={formatFormError($errors.street)}
 			/>
 			<Input
-				label="City"
-				placeholder="Amsterdam"
+				label={m.city()}
+				placeholder={m.example_city_name()}
 				bind:value={$form.city}
 				error={formatFormError($errors.city)}
 			/>
 		</div>
 
 		{#if isLookupLoading}
-			<div class="text-xs font-medium text-text-muted">Looking up address via PDOK...</div>
+			<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
 		{/if}
 		{#if lookupMessage}
 			<div class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
@@ -191,10 +191,14 @@
 		{/if}
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-			<Input label="KVK Number (optional)" placeholder="12345678" bind:value={$form.kvk_number} />
 			<Input
-				label="BTW Number (optional)"
-				placeholder="NL123456789B01"
+				label={m.kvk_number_optional()}
+				placeholder={m.placeholder_kvk_number()}
+				bind:value={$form.kvk_number}
+			/>
+			<Input
+				label={m.btw_number_optional()}
+				placeholder={m.placeholder_btw_number()}
 				bind:value={$form.btw_number}
 			/>
 		</div>
@@ -210,8 +214,8 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>Create Organization</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed}>{m.create_organization()}</Button>
 		</div>
 	{/snippet}
 </Modal>

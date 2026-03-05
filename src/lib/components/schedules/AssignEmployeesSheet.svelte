@@ -4,6 +4,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
 	import Sheet from '$lib/components/ui/Sheet.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Employee {
 		id: string;
@@ -157,7 +158,7 @@
 	}
 </script>
 
-<Sheet bind:open title="Assign Employees">
+<Sheet bind:open title={m.assign_employees()}>
 	<!-- Context Section -->
 	<div class="mb-8 space-y-4">
 		<div class="flex items-center gap-3 text-sm text-text-muted">
@@ -177,7 +178,7 @@
 					: 'bg-surface text-text shadow-sm'}"
 				onclick={() => (isCustomMode = false)}
 			>
-				Preset Shift
+				{m.preset_shift()}
 			</button>
 			<button
 				class="flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all {isCustomMode
@@ -185,25 +186,25 @@
 					: 'text-text-muted hover:text-text'}"
 				onclick={() => (isCustomMode = true)}
 			>
-				Custom Time
+				{m.custom_time()}
 			</button>
 		</div>
 
 		{#if isCustomMode}
 			<div class="bg-surface-subtle/30 space-y-4 rounded-xl border border-border/60 p-4">
-				<DateTimePicker label="Start Time" bind:value={startDatetime} />
-				<DateTimePicker label="End Time" bind:value={endDatetime} />
+				<DateTimePicker label={m.start_time()} bind:value={startDatetime} />
+				<DateTimePicker label={m.end_time()} bind:value={endDatetime} />
 				{#if startDatetime && endDatetime && new Date(startDatetime) >= new Date(endDatetime)}
-					<p class="text-xs font-medium text-rose-500">End time must be after start time.</p>
+					<p class="text-xs font-medium text-rose-500">{m.end_time_after_start()}</p>
 				{/if}
 			</div>
 		{:else}
 			<div class="mt-4">
 				<Select
-					label="Shift Template"
+					label={m.shift_template()}
 					options={templateOptions}
 					bind:value={selectedTemplateId}
-					placeholder="Select a template..."
+					placeholder={m.select_template_placeholder()}
 				/>
 			</div>
 
@@ -230,7 +231,7 @@
 							class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
 						>
 							<Moon class="h-3 w-3" />
-							<span>+1d</span>
+							<span>{m.cross_midnight_short()}</span>
 						</div>
 					{/if}
 				</div>
@@ -238,20 +239,24 @@
 		{/if}
 
 		<div class="mt-4">
-			<Select label="Repeat Shift" options={recurrenceOptions} bind:value={selectedRecurrence} />
+			<Select
+				label={m.repeat_shift()}
+				options={recurrenceOptions}
+				bind:value={selectedRecurrence}
+			/>
 		</div>
 	</div>
 
 	<!-- Employee Selection -->
 	<div class="space-y-4">
-		<h3 class="text-sm font-semibold text-text-muted">Select Employees</h3>
+		<h3 class="text-sm font-semibold text-text-muted">{m.select_employees()}</h3>
 
 		<div class="relative">
 			<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-muted" />
 			<input
 				type="text"
 				bind:value={searchQuery}
-				placeholder="Search employees..."
+				placeholder={m.search_employees()}
 				class="w-full rounded-xl border border-border bg-surface py-2.5 pr-4 pl-10 text-sm text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
 			/>
 		</div>
@@ -261,13 +266,13 @@
 				<div class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
 					<p>{employeesLoadError}</p>
 					{#if onRetryEmployees}
-						<Button variant="ghost" class="mt-2" onclick={onRetryEmployees}>Retry</Button>
+						<Button variant="ghost" class="mt-2" onclick={onRetryEmployees}>{m.retry()}</Button>
 					{/if}
 				</div>
 			{:else if employeesLoading}
 				<div class="flex items-center justify-center gap-2 py-8 text-sm text-text-muted">
 					<Loader2 class="h-4 w-4 animate-spin" />
-					<span>Loading employees...</span>
+					<span>{m.loading_employees()}</span>
 				</div>
 			{:else}
 				{#each availableEmployees as employee (employee.id)}
@@ -301,7 +306,7 @@
 					</button>
 				{:else}
 					<div class="py-8 text-center text-sm text-text-muted">
-						No employees found matching "{searchQuery}"
+						{m.no_employees_matching({ query: searchQuery })}
 					</div>
 				{/each}
 			{/if}
@@ -314,11 +319,11 @@
 		{/if}
 		<div class="flex items-center justify-between">
 			<span class="text-sm font-medium text-text-muted">
-				{selectedEmployeeIds.length} selected
+				{m.selected_count({ count: selectedEmployeeIds.length })}
 			</span>
 			<div class="flex gap-3">
 				<Button variant="ghost" onclick={() => (open = false)} disabled={isSubmitting}>
-					Cancel
+					{m.cancel()}
 				</Button>
 				<Button
 					variant="primary"
@@ -331,7 +336,7 @@
 						isSubmitting}
 					isLoading={isSubmitting}
 				>
-					Assign
+					{m.assign()}
 				</Button>
 			</div>
 		</div>

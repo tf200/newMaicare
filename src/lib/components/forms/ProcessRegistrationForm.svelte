@@ -13,6 +13,7 @@
 		type ProcessRegistrationInput
 	} from '$lib/schemas/registration';
 	import { formatFormError } from '$lib/utils/form-errors';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -52,8 +53,7 @@
 						open = false;
 						onProcessed?.();
 					} catch (error) {
-						errorMessage =
-							error instanceof Error ? error.message : 'Failed to process registration.';
+						errorMessage = error instanceof Error ? error.message : m.failed_process_registration();
 					}
 				}
 			}
@@ -61,8 +61,8 @@
 	);
 
 	const admissionOptions = [
-		{ value: 'crisis_admission', label: 'Crisis Admission' },
-		{ value: 'regular_placement', label: 'Regular Placement' }
+		{ value: 'crisis_admission', label: m.crisis_admission() },
+		{ value: 'regular_placement', label: m.regular_placement() }
 	];
 
 	const addDate = () => {
@@ -85,15 +85,15 @@
 
 <Modal
 	bind:open
-	title="Process Registration"
-	description="Propose intake dates and confirm admission details."
+	title={m.process_registration()}
+	description={m.process_registration_description()}
 	class="max-w-xl"
 >
 	<form id={formId} use:enhance class="space-y-6">
 		<!-- Admission Type -->
 		<div class="space-y-2">
 			<label for="admission-type" class="ml-1 text-sm font-semibold text-text-muted">
-				Admission Type
+				{m.admission_type()}
 			</label>
 			<select
 				id="admission-type"
@@ -111,8 +111,8 @@
 
 		<!-- Location -->
 		<Input
-			label="Location"
-			placeholder="e.g. Main Office, Room 3B"
+			label={m.location()}
+			placeholder={m.placeholder_location_example()}
 			bind:value={$form.intake_appointment_location}
 			error={formatFormError($errors.intake_appointment_location)}
 		/>
@@ -120,9 +120,10 @@
 		<!-- Proposed Dates -->
 		<div class="space-y-3">
 			<div class="flex items-center justify-between">
-				<span class="ml-1 text-sm font-semibold text-text-muted">Proposed Dates</span>
+				<span class="ml-1 text-sm font-semibold text-text-muted">{m.proposed_dates()}</span>
 				<Button variant="ghost" onclick={addDate} type="button" class="h-8 gap-1">
-					<Plus class="h-3.5 w-3.5" /> Add Date
+					<Plus class="h-3.5 w-3.5" />
+					{m.add_date()}
 				</Button>
 			</div>
 
@@ -162,8 +163,8 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>Confirm & Process</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed}>{m.confirm_process()}</Button>
 		</div>
 	{/snippet}
 </Modal>

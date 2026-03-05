@@ -11,6 +11,7 @@
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
 	import { submitRegistration } from '$lib/api/registration';
 	import type { ClientGender, EducationLevel } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	// Form State
 	let form = $state({
@@ -110,12 +111,12 @@
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const steps = [
-		'Client Information',
-		'Referrer Details',
-		'Guardians',
-		'Education & Work',
-		'Care & Risks',
-		'Documents'
+		m.client_information(),
+		m.referrer_details(),
+		m.guardians(),
+		m.education_work(),
+		m.care_risks(),
+		m.documents()
 	];
 
 	const normalizePostalCode = (value: string) => value.replace(/\s+/g, '').toUpperCase().trim();
@@ -135,13 +136,13 @@
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
 			if (!result) {
-				lookupMessage = 'Address not found. Please fill street and city manually.';
+				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			form.client_street = result.street;
 			form.client_city = result.city;
 		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
 			isLookupLoading = false;
 		}
@@ -175,20 +176,20 @@
 		isSubmitting = true;
 		try {
 			await submitRegistration(form);
-			alert('Registration submitted successfully!');
+			alert(m.registration_submitted_success());
 			// Reset form or redirect
 			window.location.href = '/';
 		} catch (error) {
-			submitError = error instanceof Error ? error.message : 'Failed to submit registration.';
+			submitError = error instanceof Error ? error.message : m.registration_submit_failed();
 		} finally {
 			isSubmitting = false;
 		}
 	}
 
 	const genderOptions = [
-		{ label: 'Male', value: 'male' },
-		{ label: 'Female', value: 'female' },
-		{ label: 'Other', value: 'other' }
+		{ label: m.male(), value: 'male' },
+		{ label: m.female(), value: 'female' },
+		{ label: m.other(), value: 'other' }
 	];
 
 	function addGoal() {
@@ -206,8 +207,8 @@
 	<div class="mx-auto max-w-5xl">
 		<!-- Header -->
 		<div class="mb-12 text-center">
-			<h1 class="text-4xl font-bold tracking-tight text-text">Client Registration</h1>
-			<p class="mt-2 text-text-muted">Please complete all sections to register a new client.</p>
+			<h1 class="text-4xl font-bold tracking-tight text-text">{m.client_registration()}</h1>
+			<p class="mt-2 text-text-muted">{m.client_registration_subtitle()}</p>
 		</div>
 
 		<!-- Progress Steps -->
@@ -268,44 +269,56 @@
 			<div>
 				{#if currentStep === 0}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Client Information</h2>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.client_information()}</h2>
 						<div class="grid gap-6 md:grid-cols-2">
-							<Input label="First Name" bind:value={form.client_first_name} placeholder="John" />
-							<Input label="Last Name" bind:value={form.client_last_name} placeholder="Doe" />
 							<Input
-								label="BSN Number"
-								bind:value={form.client_bsn_number}
-								placeholder="123456789"
+								label={m.first_name()}
+								bind:value={form.client_first_name}
+								placeholder={m.example_first_name()}
 							/>
-							<DatePicker label="Date of Birth" bind:value={form.client_date_of_birth} />
-							<DatePicker label="Application Date" bind:value={form.application_date} />
+							<Input
+								label={m.last_name()}
+								bind:value={form.client_last_name}
+								placeholder={m.example_last_name()}
+							/>
+							<Input
+								label={m.bsn_number()}
+								bind:value={form.client_bsn_number}
+								placeholder={m.example_bsn()}
+							/>
+							<DatePicker label={m.date_of_birth()} bind:value={form.client_date_of_birth} />
+							<DatePicker label={m.application_date()} bind:value={form.application_date} />
 							<Select
-								label="Gender"
+								label={m.gender()}
 								options={genderOptions}
 								bind:value={form.client_gender}
-								placeholder="Select gender"
+								placeholder={m.select_gender()}
 							/>
 
-							<Input label="Nationality" bind:value={form.client_nationality} placeholder="Dutch" />
 							<Input
-								label="Phone Number"
-								bind:value={form.client_phone_number}
-								placeholder="+31 6 12345678"
+								label={m.nationality()}
+								bind:value={form.client_nationality}
+								placeholder={m.example_nationality()}
 							/>
 							<Input
-								label="Email Address"
+								label={m.phone_number()}
+								bind:value={form.client_phone_number}
+								placeholder={m.example_phone_nl()}
+							/>
+							<Input
+								label={m.email_address()}
 								type="email"
 								bind:value={form.client_email}
-								placeholder="john@example.com"
+								placeholder={m.example_personal_email()}
 								class="md:col-span-2"
 							/>
 							<div class="space-y-4 rounded-2xl border border-border bg-bg/50 p-6 md:col-span-2">
-								<h3 class="text-base font-semibold text-text">Address Details</h3>
+								<h3 class="text-base font-semibold text-text">{m.address_details()}</h3>
 								<div class="grid gap-4 md:grid-cols-4">
 									<Input
-										label="Postal Code"
+										label={m.postal_code()}
 										bind:value={form.client_postal_code}
-										placeholder="1234 AB"
+										placeholder={m.example_postal_code()}
 										oninput={() => {
 											scheduleLookup(form.client_postal_code, form.client_house_number);
 										}}
@@ -315,26 +328,34 @@
 										}}
 									/>
 									<Input
-										label="House Number"
+										label={m.house_number()}
 										bind:value={form.client_house_number}
-										placeholder="12"
+										placeholder={m.example_house_number()}
 										oninput={() => {
 											scheduleLookup(form.client_postal_code, form.client_house_number);
 										}}
 									/>
 									<Input
-										label="Addition (optional)"
+										label={m.addition_optional()}
 										bind:value={form.client_house_number_addition}
-										placeholder="A"
+										placeholder={m.example_house_number_addition()}
 									/>
 								</div>
 								<div class="grid gap-4 md:grid-cols-2">
-									<Input label="Street" bind:value={form.client_street} placeholder="Street name" />
-									<Input label="City" bind:value={form.client_city} placeholder="Amsterdam" />
+									<Input
+										label={m.street()}
+										bind:value={form.client_street}
+										placeholder={m.example_street_name()}
+									/>
+									<Input
+										label={m.city()}
+										bind:value={form.client_city}
+										placeholder={m.example_city_name()}
+									/>
 								</div>
 								{#if isLookupLoading}
 									<div class="text-xs font-medium text-text-muted">
-										Looking up address via PDOK...
+										{m.looking_up_address()}
 									</div>
 								{/if}
 								{#if lookupMessage}
@@ -349,36 +370,44 @@
 					</div>
 				{:else if currentStep === 1}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Referrer Details</h2>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.referrer_details()}</h2>
 						<div class="grid gap-6 md:grid-cols-2">
-							<Input label="First Name" bind:value={form.referrer_first_name} placeholder="Jane" />
-							<Input label="Last Name" bind:value={form.referrer_last_name} placeholder="Smith" />
 							<Input
-								label="Organization"
+								label={m.first_name()}
+								bind:value={form.referrer_first_name}
+								placeholder={m.example_first_name()}
+							/>
+							<Input
+								label={m.last_name()}
+								bind:value={form.referrer_last_name}
+								placeholder={m.example_last_name()}
+							/>
+							<Input
+								label={m.referrer_organization()}
 								bind:value={form.referrer_organization}
-								placeholder="Organization Name"
+								placeholder={m.placeholder_organization_name()}
 								class="md:col-span-2"
 							/>
 							<Input
-								label="Job Title"
+								label={m.job_title()}
 								bind:value={form.referrer_job_title}
-								placeholder="Case Manager"
+								placeholder={m.placeholder_case_manager()}
 							/>
 							<Input
-								label="Phone Number"
+								label={m.phone_number()}
 								bind:value={form.referrer_phone_number}
-								placeholder="+31 6 87654321"
+								placeholder={m.example_phone_nl()}
 							/>
 							<Input
-								label="Email Address"
+								label={m.email_address()}
 								type="email"
 								bind:value={form.referrer_email}
-								placeholder="jane@organization.com"
+								placeholder={m.example_work_email()}
 								class="md:col-span-2"
 							/>
 							<div class="mt-4 md:col-span-2">
 								<Checkbox
-									label="I confirm that I am authorized to refer this client."
+									label={m.referrer_confirm_authorized()}
 									bind:checked={form.referrer_signature}
 								/>
 							</div>
@@ -386,37 +415,37 @@
 					</div>
 				{:else if currentStep === 2}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Guardians / Contact Persons</h2>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.guardians_contact()}</h2>
 
 						<!-- Guardian 1 -->
 						<div class="mb-10 rounded-2xl border border-border bg-bg/50 p-6">
-							<h3 class="mb-4 text-lg font-semibold text-text">Primary Guardian</h3>
+							<h3 class="mb-4 text-lg font-semibold text-text">{m.primary_guardian()}</h3>
 							<div class="grid gap-6 md:grid-cols-2">
 								<Input
-									label="First Name"
+									label={m.first_name()}
 									bind:value={form.guardian1_first_name}
-									placeholder="Parent/Guardian Name"
+									placeholder={m.placeholder_guardian_name()}
 								/>
 								<Input
-									label="Last Name"
+									label={m.last_name()}
 									bind:value={form.guardian1_last_name}
-									placeholder="Surname"
+									placeholder={m.placeholder_surname()}
 								/>
 								<Input
-									label="Relationship"
+									label={m.relationship()}
 									bind:value={form.guardian1_relationship}
-									placeholder="Mother, Father, etc."
+									placeholder={m.placeholder_relationship_example()}
 								/>
 								<Input
-									label="Phone Number"
+									label={m.phone_number()}
 									bind:value={form.guardian1_phone_number}
-									placeholder="+31 6 ..."
+									placeholder={m.example_phone_nl()}
 								/>
 								<Input
-									label="Email Address"
+									label={m.email_address()}
 									type="email"
 									bind:value={form.guardian1_email}
-									placeholder="guardian@example.com"
+									placeholder={m.example_personal_email()}
 									class="md:col-span-2"
 								/>
 							</div>
@@ -424,33 +453,35 @@
 
 						<!-- Guardian 2 -->
 						<div class="rounded-2xl border border-border bg-bg/50 p-6">
-							<h3 class="mb-4 text-lg font-semibold text-text">Secondary Guardian (Optional)</h3>
+							<h3 class="mb-4 text-lg font-semibold text-text">
+								{m.secondary_guardian_optional()}
+							</h3>
 							<div class="grid gap-6 md:grid-cols-2">
 								<Input
-									label="First Name"
+									label={m.first_name()}
 									bind:value={form.guardian2_first_name}
-									placeholder="Name"
+									placeholder={m.name()}
 								/>
 								<Input
-									label="Last Name"
+									label={m.last_name()}
 									bind:value={form.guardian2_last_name}
-									placeholder="Surname"
+									placeholder={m.placeholder_surname()}
 								/>
 								<Input
-									label="Relationship"
+									label={m.relationship()}
 									bind:value={form.guardian2_relationship}
-									placeholder="Relationship"
+									placeholder={m.relationship()}
 								/>
 								<Input
-									label="Phone Number"
+									label={m.phone_number()}
 									bind:value={form.guardian2_phone_number}
-									placeholder="+31 6 ..."
+									placeholder={m.example_phone_nl()}
 								/>
 								<Input
-									label="Email Address"
+									label={m.email_address()}
 									type="email"
 									bind:value={form.guardian2_email}
-									placeholder="guardian2@example.com"
+									placeholder={m.example_personal_email()}
 									class="md:col-span-2"
 								/>
 							</div>
@@ -458,49 +489,49 @@
 					</div>
 				{:else if currentStep === 3}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Education & Work</h2>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.education_work()}</h2>
 
 						<!-- Education -->
 						<div class="mb-10 border-b border-border pb-10">
 							<div class="mb-4 flex items-center justify-between">
-								<h3 class="text-xl font-semibold text-text">Education</h3>
+								<h3 class="text-xl font-semibold text-text">{m.education()}</h3>
 								<Checkbox
-									label="Currently Enrolled"
+									label={m.currently_enrolled()}
 									bind:checked={form.education_currently_enrolled}
 								/>
 							</div>
 							<div class="grid gap-6 md:grid-cols-2">
 								<Input
-									label="Institution Name"
+									label={m.institution_name()}
 									bind:value={form.education_institution}
-									placeholder="School / University"
+									placeholder={m.placeholder_school_university()}
 									class="md:col-span-2"
 								/>
 								<Input
-									label="Level"
+									label={m.level()}
 									bind:value={form.education_level}
-									placeholder="HBO, MBO, etc."
+									placeholder={m.placeholder_education_level_example()}
 								/>
 								<Input
-									label="Mentor Name"
+									label={m.mentor_name()}
 									bind:value={form.education_mentor_name}
-									placeholder="Mentor Name"
+									placeholder={m.mentor_name()}
 								/>
 								<Input
-									label="Mentor Phone"
+									label={m.mentor_phone()}
 									bind:value={form.education_mentor_phone}
-									placeholder="+31 6 ..."
+									placeholder={m.example_phone_nl()}
 								/>
 								<Input
-									label="Mentor Email"
+									label={m.mentor_email()}
 									type="email"
 									bind:value={form.education_mentor_email}
-									placeholder="mentor@school.com"
+									placeholder={m.example_work_email()}
 								/>
 								<Input
-									label="Additional Notes"
+									label={m.additional_notes()}
 									bind:value={form.education_additional_notes}
-									placeholder="Any specific details..."
+									placeholder={m.placeholder_additional_details()}
 									class="md:col-span-2"
 								/>
 							</div>
@@ -509,36 +540,39 @@
 						<!-- Work -->
 						<div>
 							<div class="mb-4 flex items-center justify-between">
-								<h3 class="text-xl font-semibold text-text">Work</h3>
-								<Checkbox label="Currently Employed" bind:checked={form.work_currently_employed} />
+								<h3 class="text-xl font-semibold text-text">{m.work()}</h3>
+								<Checkbox
+									label={m.currently_employed()}
+									bind:checked={form.work_currently_employed}
+								/>
 							</div>
 							<div class="grid gap-6 md:grid-cols-2">
 								<Input
-									label="Current Employer"
+									label={m.current_employer()}
 									bind:value={form.work_current_employer}
-									placeholder="Company Name"
+									placeholder={m.placeholder_company_name()}
 								/>
 								<Input
-									label="Position"
+									label={m.position()}
 									bind:value={form.work_current_position}
-									placeholder="Job Title"
+									placeholder={m.job_title()}
 								/>
 								<Input
-									label="Employer Phone"
+									label={m.employer_phone()}
 									bind:value={form.work_employer_phone}
-									placeholder="+31 6 ..."
+									placeholder={m.example_phone_nl()}
 								/>
 								<Input
-									label="Employer Email"
+									label={m.employer_email()}
 									type="email"
 									bind:value={form.work_employer_email}
-									placeholder="hr@company.com"
+									placeholder={m.example_work_email()}
 								/>
-								<DatePicker label="Start Date" bind:value={form.work_start_date} />
+								<DatePicker label={m.start_date()} bind:value={form.work_start_date} />
 								<Input
-									label="Additional Notes"
+									label={m.additional_notes()}
 									bind:value={form.work_additional_notes}
-									placeholder="Work details..."
+									placeholder={m.placeholder_work_details()}
 									class="md:col-span-2"
 								/>
 							</div>
@@ -546,26 +580,29 @@
 					</div>
 				{:else if currentStep === 4}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Care & Risks</h2>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.care_risks()}</h2>
 
 						<!-- Additional Info -->
 						<div class="mb-10 border-b border-border pb-10">
-							<h3 class="mb-4 text-xl font-semibold text-text">Goals & Reason</h3>
+							<h3 class="mb-4 text-xl font-semibold text-text">{m.goals_reason()}</h3>
 							<div class="grid gap-6 md:grid-cols-2">
 								<div class="space-y-2">
 									<div class="flex items-center justify-between">
-										<span class="ml-1 text-sm font-semibold text-text-muted">Client Goals</span>
+										<span class="ml-1 text-sm font-semibold text-text-muted"
+											>{m.client_goals()}</span
+										>
 										<Button variant="ghost" onclick={addGoal} class="h-8 gap-1 text-xs">
-											<Plus class="h-3.5 w-3.5" /> Add Goal
+											<Plus class="h-3.5 w-3.5" />
+											{m.add_goal()}
 										</Button>
 									</div>
 									{#if form.client_goals && form.client_goals.length > 0}
 										<div class="space-y-2">
-											{#each form.client_goals as _, index}
+											{#each form.client_goals as _, index (index)}
 												<div class="flex gap-2">
 													<Input
 														bind:value={form.client_goals[index]}
-														placeholder="Enter a goal..."
+														placeholder={m.enter_a_goal()}
 													/>
 													{#if form.client_goals.length > 1}
 														<button
@@ -582,14 +619,14 @@
 										<div
 											class="rounded-xl border border-dashed border-border p-4 text-center text-sm text-text-muted"
 										>
-											No goals added.
+											{m.no_goals_added()}
 										</div>
 									{/if}
 								</div>
 								<Textarea
-									label="Reason for Application"
+									label={m.reason_for_application()}
 									bind:value={form.application_reason}
-									placeholder="Why is care being requested now?"
+									placeholder={m.placeholder_application_reason()}
 									rows={3}
 								/>
 							</div>
@@ -597,19 +634,19 @@
 
 						<!-- Care -->
 						<div class="mb-10 border-b border-border pb-10">
-							<h3 class="mb-4 text-xl font-semibold text-text">Care Needs</h3>
+							<h3 class="mb-4 text-xl font-semibold text-text">{m.care_needs()}</h3>
 							<div class="grid gap-4 md:grid-cols-2">
-								<Checkbox label="Protected Living" bind:checked={form.care_protected_living} />
+								<Checkbox label={m.protected_living()} bind:checked={form.care_protected_living} />
 								<Checkbox
-									label="Assisted Independent Living"
+									label={m.assisted_independent_living()}
 									bind:checked={form.care_assisted_independent_living}
 								/>
 								<Checkbox
-									label="Room Training Center"
+									label={m.room_training_center()}
 									bind:checked={form.care_room_training_center}
 								/>
 								<Checkbox
-									label="Ambulatory Guidance"
+									label={m.ambulatory_guidance()}
 									bind:checked={form.care_ambulatory_guidance}
 								/>
 							</div>
@@ -617,71 +654,77 @@
 
 						<!-- Risks -->
 						<div>
-							<h3 class="mb-4 text-xl font-semibold text-text">Risk Factors</h3>
+							<h3 class="mb-4 text-xl font-semibold text-text">{m.risk_factors()}</h3>
 							<div class="grid gap-4 md:grid-cols-2">
 								<Checkbox
-									label="Aggressive Behavior"
+									label={m.aggressive_behavior()}
 									bind:checked={form.risk_aggressive_behavior}
 								/>
-								<Checkbox label="Suicidal / Self-harm" bind:checked={form.risk_suicidal_selfharm} />
-								<Checkbox label="Substance Abuse" bind:checked={form.risk_substance_abuse} />
-								<Checkbox label="Psychiatric Issues" bind:checked={form.risk_psychiatric_issues} />
-								<Checkbox label="Criminal History" bind:checked={form.risk_criminal_history} />
-								<Checkbox label="Flight Behavior" bind:checked={form.risk_flight_behavior} />
-								<Checkbox label="Weapon Possession" bind:checked={form.risk_weapon_possession} />
-								<Checkbox label="Sexual Behavior" bind:checked={form.risk_sexual_behavior} />
 								<Checkbox
-									label="Day/Night Rhythm Issues"
-									bind:checked={form.risk_day_night_rhythm}
+									label={m.suicidal_selfharm()}
+									bind:checked={form.risk_suicidal_selfharm}
 								/>
-								<Checkbox label="Other" bind:checked={form.risk_other} />
+								<Checkbox label={m.substance_abuse()} bind:checked={form.risk_substance_abuse} />
+								<Checkbox
+									label={m.psychiatric_issues()}
+									bind:checked={form.risk_psychiatric_issues}
+								/>
+								<Checkbox label={m.criminal_history()} bind:checked={form.risk_criminal_history} />
+								<Checkbox label={m.flight_behavior()} bind:checked={form.risk_flight_behavior} />
+								<Checkbox
+									label={m.weapon_possession()}
+									bind:checked={form.risk_weapon_possession}
+								/>
+								<Checkbox label={m.sexual_behavior()} bind:checked={form.risk_sexual_behavior} />
+								<Checkbox label={m.day_night_rhythm()} bind:checked={form.risk_day_night_rhythm} />
+								<Checkbox label={m.other()} bind:checked={form.risk_other} />
 							</div>
 							{#if form.risk_other}
 								<div class="mt-4" in:fade>
 									<Input
-										label="Description of Other Risks"
+										label={m.description_other_risks()}
 										bind:value={form.risk_other_description}
 									/>
 								</div>
 							{/if}
 							<div class="mt-4">
-								<Input label="Additional Risk Notes" bind:value={form.risk_additional_notes} />
+								<Input label={m.additional_risk_notes()} bind:value={form.risk_additional_notes} />
 							</div>
 						</div>
 					</div>
 				{:else if currentStep === 5}
 					<div in:fade={{ duration: 300 }}>
-						<h2 class="mb-6 text-2xl font-bold text-text">Documents</h2>
-						<p class="mb-6 text-text-muted">Please upload any relevant documents.</p>
+						<h2 class="mb-6 text-2xl font-bold text-text">{m.documents()}</h2>
+						<p class="mb-6 text-text-muted">{m.upload_documents()}</p>
 
 						<div class="grid gap-6 md:grid-cols-2">
 							<FileUpload
-								label="Referral Document"
+								label={m.referral_document()}
 								bind:fileId={form.document_referral}
 								accept=".pdf,.doc,.docx"
 							/>
 							<FileUpload
-								label="Education Report"
+								label={m.education_report()}
 								bind:fileId={form.document_education_report}
 								accept=".pdf,.doc,.docx"
 							/>
 							<FileUpload
-								label="Psychiatric Report"
+								label={m.psychiatric_report()}
 								bind:fileId={form.document_psychiatric_report}
 								accept=".pdf,.doc,.docx"
 							/>
 							<FileUpload
-								label="Diagnosis Info"
+								label={m.diagnosis_info()}
 								bind:fileId={form.document_diagnosis}
 								accept=".pdf,.doc,.docx"
 							/>
 							<FileUpload
-								label="Safety Plan"
+								label={m.safety_plan()}
 								bind:fileId={form.document_safety_plan}
 								accept=".pdf,.doc,.docx"
 							/>
 							<FileUpload
-								label="ID Copy"
+								label={m.id_copy()}
 								bind:fileId={form.document_id_copy}
 								accept=".pdf,.jpg,.png"
 							/>
@@ -706,14 +749,14 @@
 					disabled={currentStep === 0}
 					class={currentStep === 0 ? 'invisible' : ''}
 				>
-					Previous
+					{m.previous()}
 				</Button>
 				{#if currentStep === steps.length - 1}
 					<Button variant="primary" onclick={handleSubmit} isLoading={isSubmitting}
-						>Submit Application</Button
+						>{m.submit_application()}</Button
 					>
 				{:else}
-					<Button variant="primary" onclick={nextStep}>Next Step</Button>
+					<Button variant="primary" onclick={nextStep}>{m.next_step()}</Button>
 				{/if}
 			</div>
 		</div>

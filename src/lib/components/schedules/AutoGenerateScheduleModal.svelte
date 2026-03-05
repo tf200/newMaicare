@@ -4,6 +4,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import MultiSearchSelect from '$lib/components/ui/MultiSearchSelect.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { autoGenerateSchedules, saveGeneratedSchedule } from '$lib/api/schedules';
 	import type {
@@ -477,11 +478,9 @@
 			const message =
 				error instanceof Error && error.message
 					? error.message
-					: 'Unable to save generated schedule right now. Please try again.';
+					: m.unable_save_generated_schedule();
 
-			draftError = isWeekConflictError(message)
-				? 'This week is no longer empty for this location. Refresh schedules and try again.'
-				: message;
+			draftError = isWeekConflictError(message) ? m.week_no_longer_empty() : message;
 		} finally {
 			saving = false;
 		}
@@ -498,7 +497,7 @@
 	}
 
 	function employeeLabel(employee: GeneratedScheduleEmployee): string {
-		return `${employee.first_name} ${employee.last_name}`.trim() || 'Unknown employee';
+		return `${employee.first_name} ${employee.last_name}`.trim() || m.unknown_employee();
 	}
 
 	function toClock(minute: number): string {
@@ -512,36 +511,39 @@
 
 <Modal
 	bind:open
-	title="Auto-generate schedule"
-	description="Create a draft for the selected week, then refine assignments before saving."
+	title={m.auto_generate_schedule_title()}
+	description={m.auto_generate_schedule_description()}
 	size={step === 'review' ? '4xl' : 'xl'}
 >
 	{#if step === 'config'}
 		<div class="space-y-5">
 			<div class="bg-surface-subtle/40 rounded-2xl border border-border/70 p-4">
-				<p class="text-sm font-semibold text-text">{locationName || 'Unknown location'}</p>
+				<p class="text-sm font-semibold text-text">{locationName || m.unknown_location()}</p>
 				<p class="mt-1 text-xs text-text-muted">
-					Week {String(week).padStart(2, '0')} - {year} - starts {weekStartDate}
+					{m.week_start_summary({
+						week: String(week).padStart(2, '0'),
+						year,
+						date: weekStartDate
+					})}
 				</p>
 			</div>
 
 			<MultiSearchSelect
-				label="Employees"
+				label={m.employees()}
 				bind:value={selectedEmployeeIds}
 				loadOptions={loadEmployeeOptions}
 				labelFn={(employee: EmployeeOption) => employee.name}
 				valueFn={(employee: EmployeeOption) => employee.id}
-				placeholder="Select employees to include"
-				searchPlaceholder="Search employees..."
+				placeholder={m.select_employees_placeholder()}
+				searchPlaceholder={m.search_employees()}
 			/>
 
 			{#if loadError}
-				<InlineErrorBanner title="Could not generate plan" message={loadError} />
+				<InlineErrorBanner title={m.could_not_generate_plan()} message={loadError} />
 			{/if}
 
 			<div class="rounded-xl border border-border/70 bg-surface p-3 text-xs text-text-muted">
-				The solver can place up to {maxEmployeesPerCell} employees per shift cell. You can adjust the
-				generated plan before saving.
+				{m.solver_limit_note({ count: maxEmployeesPerCell })}
 			</div>
 		</div>
 	{:else if generatedPlan}
@@ -556,10 +558,14 @@
 					<status.icon class="h-3.5 w-3.5" />
 					{status.label}
 				</div>
-				<span class="text-xs text-text-muted">Plan ID: {generatedPlan.plan_id}</span>
-				<span class="text-xs text-text-muted">Timezone: {generatedPlan.timezone}</span>
 				<span class="text-xs text-text-muted">
-					Max staff/shift: {generatedPlan.constraints.max_staff_per_shift}
+					{m.plan_id_label({ id: generatedPlan.plan_id })}
+				</span>
+				<span class="text-xs text-text-muted">
+					{m.timezone_label({ timezone: generatedPlan.timezone })}
+				</span>
+				<span class="text-xs text-text-muted">
+					{m.max_staff_per_shift({ count: generatedPlan.constraints.max_staff_per_shift })}
 				</span>
 			</div>
 
@@ -567,7 +573,7 @@
 				<div
 					class="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-800"
 				>
-					<p class="font-semibold">Warnings</p>
+					<p class="font-semibold">{m.warnings()}</p>
 					<ul class="mt-1 space-y-1 text-xs">
 						{#each generatedPlan.warnings ?? [] as warning, index (`${warning.code}-${index}`)}
 							<li>{warning.code}: {warning.message}</li>
@@ -577,7 +583,7 @@
 			{/if}
 
 			{#if draftError}
-				<InlineErrorBanner title="Could not save generated schedule" message={draftError} />
+				<InlineErrorBanner title={m.could_not_save_generated_schedule()} message={draftError} />
 			{/if}
 
 			{#if dragError}
@@ -591,13 +597,13 @@
 			<div class="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
 				<section
 					class="space-y-3 rounded-2xl border border-border/70 bg-surface p-3"
-					aria-label="Unassigned employees"
+					aria-label={m.unassigned_employees_label()}
 					ondragover={(event) => event.preventDefault()}
 					ondrop={onDropToBench}
 				>
 					<div>
-						<h3 class="text-sm font-semibold text-text">Bench / Unassigned</h3>
-						<p class="text-xs text-text-muted">Drag an employee here to remove from a shift.</p>
+						<h3 class="text-sm font-semibold text-text">{m.bench_unassigned()}</h3>
+						<p class="text-xs text-text-muted">{m.drag_employee_remove()}</p>
 					</div>
 
 					<div
@@ -617,13 +623,13 @@
 								</div>
 							{/each}
 						{:else}
-							<span class="text-xs text-text-muted">All selected employees are assigned.</span>
+							<span class="text-xs text-text-muted">{m.all_employees_assigned()}</span>
 						{/if}
 					</div>
 
 					<div class="space-y-2 pt-1">
 						<h4 class="text-xs font-semibold tracking-wide text-text-muted uppercase">
-							Live summary
+							{m.live_summary()}
 						</h4>
 						<div class="max-h-[420px] space-y-2 overflow-auto pr-1">
 							{#each liveSummary as summary (summary.employee.id)}
@@ -640,7 +646,9 @@
 									</div>
 									{#if summary.overtimeMinutes > 0}
 										<p class="mt-1 text-[11px] font-medium text-rose-700">
-											Overtime: {formatMinutes(summary.overtimeMinutes)}
+											{m.overtime_label({
+												minutes: formatMinutes(summary.overtimeMinutes)
+											})}
 										</p>
 									{/if}
 								</div>
@@ -654,7 +662,7 @@
 						<div
 							class="bg-surface-subtle/80 sticky left-0 z-10 flex items-end border-r border-b border-border/60 p-3 text-[11px] font-semibold tracking-wide text-text-muted uppercase"
 						>
-							Shift
+							{m.shift_label()}
 						</div>
 						{#each weekDays as day (day.date)}
 							<div class="bg-surface-subtle/80 border-r border-b border-border/60 p-2 text-center">
@@ -670,7 +678,7 @@
 								<p class="text-sm font-semibold text-text">{template.name}</p>
 								<p class="mt-1 text-xs text-text-muted">
 									{toClock(template.start_minute)} - {toClock(template.end_minute)}
-									{template.overnight ? ' (+1d)' : ''}
+									{template.overnight ? ` (${m.cross_midnight_short()})` : ''}
 								</p>
 							</div>
 
@@ -679,7 +687,10 @@
 								{@const slot = getSlot(day.date, template.shift_id)}
 								<div
 									role="region"
-									aria-label={`Dropzone for ${template.name} on ${day.dayName} ${day.dayNumber}`}
+									aria-label={m.dropzone_for_shift({
+										name: template.name,
+										day: `${day.dayName} ${day.dayNumber}`
+									})}
 									class="min-h-[110px] border-r border-b border-border/60 bg-surface p-2"
 									ondragover={(event) => event.preventDefault()}
 									ondrop={(event) => onDropToSlot(event, slotKey)}
@@ -700,7 +711,7 @@
 													<div class="flex min-w-0 items-center gap-1">
 														<GripVertical class="h-3 w-3 shrink-0 text-text-muted" />
 														<span class="truncate"
-															>{employee ? employeeLabel(employee) : 'Unknown employee'}</span
+															>{employee ? employeeLabel(employee) : m.unknown_employee()}</span
 														>
 													</div>
 													<button
@@ -710,7 +721,7 @@
 															event.stopPropagation();
 															removeEmployeeFromSlot(slotKey, employeeId);
 														}}
-														aria-label="Remove employee"
+														aria-label={m.remove_employee()}
 													>
 														X
 													</button>
@@ -720,7 +731,7 @@
 											<div
 												class="flex min-h-[74px] items-center justify-center text-[11px] text-text-muted"
 											>
-												Drop employee here
+												{m.drop_employee_here()}
 											</div>
 										{/if}
 									</div>
@@ -736,21 +747,21 @@
 	{#snippet footer()}
 		{#if step === 'config'}
 			<div class="flex flex-wrap justify-end gap-2">
-				<Button variant="ghost" onclick={closeModal} disabled={generating}>Cancel</Button>
+				<Button variant="ghost" onclick={closeModal} disabled={generating}>{m.cancel()}</Button>
 				<Button
 					onclick={handleGenerate}
 					isLoading={generating}
 					disabled={selectedEmployeeIds.length === 0}
 				>
 					<Sparkles class="h-4 w-4" />
-					Generate plan
+					{m.generate_plan()}
 				</Button>
 			</div>
 		{:else if step === 'review'}
 			<div class="flex flex-wrap justify-end gap-2">
-				<Button variant="ghost" onclick={backToConfig} disabled={saving}>Back</Button>
-				<Button variant="ghost" onclick={closeModal} disabled={saving}>Discard</Button>
-				<Button onclick={handleSave} isLoading={saving}>Save generated schedule</Button>
+				<Button variant="ghost" onclick={backToConfig} disabled={saving}>{m.back()}</Button>
+				<Button variant="ghost" onclick={closeModal} disabled={saving}>{m.discard()}</Button>
+				<Button onclick={handleSave} isLoading={saving}>{m.save_generated_schedule()}</Button>
 			</div>
 		{/if}
 	{/snippet}

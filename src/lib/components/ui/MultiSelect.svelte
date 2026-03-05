@@ -3,6 +3,7 @@
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
 
 	type Option = { label: string; value: string };
 
@@ -10,7 +11,7 @@
 		label,
 		options = [],
 		value = $bindable([]),
-		placeholder = 'Select items...',
+		placeholder = undefined,
 		error = undefined,
 		disabled = false,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`
@@ -28,29 +29,30 @@
 	let search = $state('');
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
-let filteredOptions = $derived(
-	options.filter((opt: Option) => opt.label.toLowerCase().includes(search.toLowerCase()))
-);
+	let resolvedPlaceholder = $derived(placeholder ?? m.select_items_placeholder());
+	let filteredOptions = $derived(
+		options.filter((opt: Option) => opt.label.toLowerCase().includes(search.toLowerCase()))
+	);
 
-let selectedLabels = $derived(options.filter((opt: Option) => value.includes(opt.value)));
+	let selectedLabels = $derived(options.filter((opt: Option) => value.includes(opt.value)));
 
-function toggle() {
-	if (disabled) return;
-	isOpen = !isOpen;
-}
-
-function select(val: string) {
-	if (value.includes(val)) {
-		value = value.filter((v: string) => v !== val);
-	} else {
-		value = [...value, val];
+	function toggle() {
+		if (disabled) return;
+		isOpen = !isOpen;
 	}
-}
 
-function remove(val: string, e: Event) {
-	e.stopPropagation();
-	value = value.filter((v: string) => v !== val);
-}
+	function select(val: string) {
+		if (value.includes(val)) {
+			value = value.filter((v: string) => v !== val);
+		} else {
+			value = [...value, val];
+		}
+	}
+
+	function remove(val: string, e: Event) {
+		e.stopPropagation();
+		value = value.filter((v: string) => v !== val);
+	}
 
 	function handleOutsideClick(node: HTMLElement) {
 		const handleClick = (e: MouseEvent) => {
@@ -87,7 +89,7 @@ function remove(val: string, e: Event) {
 			aria-expanded={isOpen}
 		>
 			{#if value.length === 0}
-				<span class="text-text-subtle">{placeholder}</span>
+				<span class="text-text-subtle">{resolvedPlaceholder}</span>
 			{:else}
 				{#each selectedLabels as item (item.value)}
 					<span
@@ -138,7 +140,9 @@ function remove(val: string, e: Event) {
 					</button>
 				{/each}
 				{#if filteredOptions.length === 0}
-					<div class="p-3 text-center text-sm text-text-muted">No options found.</div>
+					<div class="p-3 text-center text-sm text-text-muted">
+						{m.no_options_found()}
+					</div>
 				{/if}
 			</div>
 		{/if}

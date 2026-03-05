@@ -97,7 +97,7 @@ class ApiClient {
 				if (browser) {
 					if (hasRetried) {
 						this.clearAuth();
-						await goto(resolve('/login'));
+						await goto(resolve('/(auth)/login'));
 						throw new Error('Unauthorized');
 					}
 
@@ -115,13 +115,13 @@ class ApiClient {
 							return this.request<T>(endpoint, options, true);
 						} catch (error) {
 							this.clearAuth();
-							await goto(resolve('/login'));
+							await goto(resolve('/(auth)/login'));
 							throw new Error('Unauthorized');
 						}
 					}
 
 					this.clearAuth();
-					await goto(resolve('/login'));
+					await goto(resolve('/(auth)/login'));
 				}
 				throw new Error('Unauthorized');
 			}
@@ -208,7 +208,7 @@ class ApiClient {
 				if (browser) {
 					if (hasRetried) {
 						this.clearAuth();
-						await goto(resolve('/login'));
+						await goto(resolve('/(auth)/login'));
 						throw new Error('Unauthorized');
 					}
 
@@ -226,13 +226,13 @@ class ApiClient {
 							return this.requestBlob(endpoint, options, true);
 						} catch (error) {
 							this.clearAuth();
-							await goto(resolve('/login'));
+							await goto(resolve('/(auth)/login'));
 							throw new Error('Unauthorized');
 						}
 					}
 
 					this.clearAuth();
-					await goto(resolve('/login'));
+					await goto(resolve('/(auth)/login'));
 				}
 				throw new Error('Unauthorized');
 			}

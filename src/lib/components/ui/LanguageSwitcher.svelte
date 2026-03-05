@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { locales, getLocale, localizeHref, setLocale } from '$lib/paraglide/runtime';
 	import { Globe, Check, ChevronDown } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 	import { fly, fade } from 'svelte/transition';
 
 	/**
@@ -16,8 +17,8 @@
 
 	// Map of locale codes to display names
 	const localeNames: Record<string, string> = {
-		en: 'English',
-		nl: 'Nederlands'
+		en: m.language_name_en(),
+		nl: m.language_name_nl()
 	};
 
 	function toggleDropdown() {
@@ -63,7 +64,7 @@
 		onclick={toggleDropdown}
 		aria-expanded={isOpen}
 		aria-haspopup="true"
-		aria-label="Select language"
+		aria-label={m.select_language()}
 	>
 		<div class="relative flex items-center justify-center">
 			<Globe
@@ -94,7 +95,7 @@
 			out:fade={{ duration: 150 }}
 		>
 			<div class="mb-1 px-3 py-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Select Language
+				{m.select_language()}
 			</div>
 
 			{#each locales as locale (locale)}

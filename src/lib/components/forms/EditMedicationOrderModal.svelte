@@ -23,6 +23,7 @@
 	import { MedicationOrderSchema, type MedicationOrderSchemaInput } from '$lib/schemas/medication';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		clientId: string;
@@ -186,7 +187,7 @@
 						onUpdated?.();
 					} catch (error) {
 						errorMessage =
-							error instanceof Error ? error.message : 'Failed to update medication order.';
+							error instanceof Error ? error.message : m.failed_update_medication_order();
 					}
 				}
 			}
@@ -257,8 +258,7 @@
 						: null;
 				})
 				.catch((error) => {
-					errorMessage =
-						error instanceof Error ? error.message : 'Failed to load medication order.';
+					errorMessage = error instanceof Error ? error.message : m.failed_load_medication_order();
 				})
 				.finally(() => {
 					isFetchingOrder = false;
@@ -267,10 +267,10 @@
 	});
 
 	const statusOptions: Array<{ label: string; value: MedicationOrderStatus }> = [
-		{ label: 'Active', value: 'active' },
-		{ label: 'Paused', value: 'paused' },
-		{ label: 'Stopped', value: 'stopped' },
-		{ label: 'Completed', value: 'completed' }
+		{ label: m.active(), value: 'active' },
+		{ label: m.paused(), value: 'paused' },
+		{ label: m.stopped(), value: 'stopped' },
+		{ label: m.completed(), value: 'completed' }
 	];
 
 	const adminModeOptions: Array<{
@@ -280,43 +280,43 @@
 	}> = [
 		{
 			value: 'self',
-			label: 'Self',
+			label: m.self_admin(),
 			activeClass: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700'
 		},
 		{
 			value: 'staff',
-			label: 'Staff',
+			label: m.staff_admin(),
 			activeClass: 'border-sky-500/20 bg-sky-500/10 text-sky-700'
 		},
 		{
 			value: 'shared',
-			label: 'Shared',
+			label: m.shared_admin(),
 			activeClass: 'border-amber-500/20 bg-amber-500/10 text-amber-700'
 		}
 	];
 
 	const routeOptions = [
-		{ label: 'Oral', value: 'oral' },
-		{ label: 'Intravenous (IV)', value: 'iv' },
-		{ label: 'Intramuscular (IM)', value: 'im' },
-		{ label: 'Subcutaneous (SC)', value: 'sc' },
-		{ label: 'Topical', value: 'topical' },
-		{ label: 'Inhalation', value: 'inhalation' },
-		{ label: 'Other', value: 'other' }
+		{ label: m.route_oral(), value: 'oral' },
+		{ label: m.route_intravenous(), value: 'iv' },
+		{ label: m.route_intramuscular(), value: 'im' },
+		{ label: m.route_subcutaneous(), value: 'sc' },
+		{ label: m.route_topical(), value: 'topical' },
+		{ label: m.route_inhalation(), value: 'inhalation' },
+		{ label: m.other(), value: 'other' }
 	];
 
 	const doseUnitOptions = [
-		{ label: 'mg', value: 'mg' },
-		{ label: 'mcg', value: 'mcg' },
-		{ label: 'g', value: 'g' },
-		{ label: 'ml', value: 'ml' },
-		{ label: 'tablet', value: 'tablet' },
-		{ label: 'capsule', value: 'capsule' },
-		{ label: 'drop', value: 'drop' }
+		{ label: m.unit_mg(), value: 'mg' },
+		{ label: m.unit_mcg(), value: 'mcg' },
+		{ label: m.unit_g(), value: 'g' },
+		{ label: m.unit_ml(), value: 'ml' },
+		{ label: m.unit_tablet(), value: 'tablet' },
+		{ label: m.unit_capsule(), value: 'capsule' },
+		{ label: m.unit_drop(), value: 'drop' }
 	];
 
 	const diagnosisOptions = $derived.by(() => [
-		{ label: 'No linked diagnosis', value: '' },
+		{ label: m.no_linked_diagnosis(), value: '' },
 		...diagnoses.map((diagnosis) => ({
 			label: `${diagnosis.code_system} ${diagnosis.code}${diagnosis.title ? ` - ${diagnosis.title}` : ''}`,
 			value: diagnosis.id
@@ -371,73 +371,73 @@
 
 <Modal
 	bind:open
-	title="Edit Medication Order"
-	description="Update medication details, administration mode, and safeguards for this client."
+	title={m.edit_medication_order()}
+	description={m.edit_medication_order_description()}
 	size="xl"
 >
 	{#if isFetchingOrder}
 		<div class="rounded-xl border border-border/60 bg-surface/80 px-4 py-10 text-center">
-			<p class="text-sm font-medium text-text-muted">Loading medication order...</p>
+			<p class="text-sm font-medium text-text-muted">{m.loading_medication_order()}</p>
 		</div>
 	{:else}
 		<form id={formId} use:enhance class="space-y-6">
 			<section class="space-y-4">
 				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-					Medication identity
+					{m.medication_identity()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 					<Input
-						label="Medication name"
-						placeholder="Sertraline"
+						label={m.medication_name()}
+						placeholder={m.placeholder_medication_name()}
 						bind:value={$form.medication_name}
 						error={formatFormError($errors.medication_name)}
 					/>
 					<Select
-						label="Route"
+						label={m.route()}
 						options={routeOptions}
 						bind:value={$form.route}
-						placeholder="Select route"
+						placeholder={m.select_route()}
 						error={formatFormError($errors.route)}
 					/>
 				</div>
 				<Input
-					label="Dosage text"
-					placeholder="50 mg once daily in the morning"
+					label={m.dosage_text()}
+					placeholder={m.placeholder_dosage_text()}
 					bind:value={$form.dosage_text}
 					error={formatFormError($errors.dosage_text)}
 				/>
-				<Checkbox label="Mark as critical medication" bind:checked={$form.is_critical} />
+				<Checkbox label={m.mark_critical_medication()} bind:checked={$form.is_critical} />
 			</section>
 
 			<section class="space-y-4">
 				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-					Dosing and schedule
+					{m.dosing_schedule()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 					<Input
-						label="Dose amount"
+						label={m.dose_amount()}
 						type="number"
 						step="0.01"
 						bind:value={$form.dose_amount}
 						error={formatFormError($errors.dose_amount)}
 					/>
 					<Select
-						label="Dose unit"
+						label={m.dose_unit()}
 						options={doseUnitOptions}
 						bind:value={$form.dose_unit}
-						placeholder="Select unit"
+						placeholder={m.select_unit()}
 						error={formatFormError($errors.dose_unit)}
 					/>
 					<Input
-						label="Frequency text"
-						placeholder="Once daily"
+						label={m.frequency_text()}
+						placeholder={m.placeholder_frequency_text()}
 						bind:value={$form.frequency_text}
 						error={formatFormError($errors.frequency_text)}
 					/>
 				</div>
 
 				<Textarea
-					label="Structured schedule (JSON)"
+					label={m.structured_schedule_json()}
 					placeholder={`[{"time":"08:00"}]`}
 					rows={3}
 					bind:value={scheduleInput}
@@ -445,10 +445,10 @@
 				/>
 
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-					<Checkbox label="PRN (as needed)" bind:checked={$form.is_prn} />
+					<Checkbox label={m.prn_as_needed()} bind:checked={$form.is_prn} />
 					{#if $form.is_prn}
 						<Input
-							label="Max doses per 24h"
+							label={m.max_doses_per_24h()}
 							type="number"
 							step="1"
 							bind:value={$form.max_doses_per_24h}
@@ -459,8 +459,8 @@
 
 				{#if $form.is_prn}
 					<Textarea
-						label="PRN indication"
-						placeholder="Acute panic symptoms"
+						label={m.prn_indication()}
+						placeholder={m.placeholder_prn_indication()}
 						rows={2}
 						bind:value={$form.prn_indication}
 						error={formatFormError($errors.prn_indication)}
@@ -470,11 +470,11 @@
 
 			<section class="space-y-4">
 				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-					Administration
+					{m.administration()}
 				</h3>
 
 				<div class="space-y-2">
-					<p class="ml-1 text-sm font-semibold text-text-muted">Admin mode</p>
+					<p class="ml-1 text-sm font-semibold text-text-muted">{m.admin_mode()}</p>
 					<div class="flex flex-wrap gap-2">
 						{#each adminModeOptions as option (option.value)}
 							<button
@@ -495,13 +495,13 @@
 
 				{#if showResponsibleEmployee}
 					<SearchSelect
-						label="Responsible employee"
+						label={m.responsible_employee()}
 						bind:value={$form.responsible_employee_id}
 						bind:displayValue={responsibleEmployeeName}
 						loadOptions={loadEmployeeOptions}
 						labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 						valueFn={(employee) => employee.id}
-						placeholder="Search employee"
+						placeholder={m.search_employee_placeholder()}
 						searchPlaceholder="Search employees..."
 						error={formatFormError($errors.responsible_employee_id)}
 					/>
@@ -509,14 +509,14 @@
 
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 					<Select
-						label="Linked diagnosis"
+						label={m.linked_diagnosis()}
 						options={diagnosisOptions}
 						bind:value={$form.diagnosis_id}
-						placeholder="Select diagnosis"
+						placeholder={m.select_diagnosis()}
 						error={formatFormError($errors.diagnosis_id)}
 					/>
 					<Select
-						label="Order status"
+						label={m.order_status()}
 						options={statusOptions}
 						bind:value={$form.status}
 						error={formatFormError($errors.status)}
@@ -526,17 +526,17 @@
 
 			<section class="space-y-4">
 				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
-					Timeline and notes
+					{m.timeline_and_notes()}
 				</h3>
 
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 					<DatePicker
-						label="Start date"
+						label={m.start_date()}
 						bind:value={$form.start_date}
 						error={formatFormError($errors.start_date)}
 					/>
 					<DatePicker
-						label="End date"
+						label={m.end_date()}
 						bind:value={$form.end_date}
 						error={formatFormError($errors.end_date)}
 					/>
@@ -544,7 +544,9 @@
 
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 					<div class="space-y-3">
-						<div class="ml-1 text-sm font-semibold text-text-muted">Source attachment</div>
+						<div class="ml-1 text-sm font-semibold text-text-muted">
+							{m.source_attachment()}
+						</div>
 						<div class="space-y-4 rounded-2xl border border-border bg-surface/60 p-4">
 							{#key uploadKey}
 								<FileUpload
@@ -559,7 +561,7 @@
 									class="rounded-xl border border-border/60 bg-zinc-50/70 p-3 dark:bg-zinc-900/30"
 								>
 									<p class="mb-2 text-xs font-bold tracking-wide text-text-subtle uppercase">
-										Uploaded file
+										{m.uploaded_file()}
 									</p>
 									<div
 										class="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2"
@@ -572,7 +574,7 @@
 											type="button"
 											class="rounded p-1 text-text-subtle transition-colors hover:bg-error/10 hover:text-error"
 											onclick={clearAttachment}
-											title="Remove attachment"
+											title={m.remove_attachment()}
 										>
 											<Trash2 class="h-4 w-4" />
 										</button>
@@ -581,12 +583,12 @@
 							{/if}
 						</div>
 						<p class="ml-1 text-xs font-medium text-text-subtle">
-							Upload a source file. The uploaded attachment ID is linked automatically.
+							{m.source_attachment_hint()}
 						</p>
 					</div>
 					<Textarea
-						label="Notes"
-						placeholder="Take with food if nausea occurs."
+						label={m.notes_label()}
+						placeholder={m.placeholder_medication_notes()}
 						rows={3}
 						bind:value={$form.notes}
 						error={formatFormError($errors.notes)}
@@ -606,7 +608,7 @@
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
 			<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed || isFetchingOrder}
-				>Cancel</Button
+				>{m.cancel()}</Button
 			>
 			<Button
 				class="gap-2"
@@ -615,7 +617,7 @@
 				isLoading={$delayed || isFetchingOrder}
 			>
 				<Pill class="h-4 w-4" />
-				Update medication
+				{m.update_medication()}
 			</Button>
 		</div>
 	{/snippet}

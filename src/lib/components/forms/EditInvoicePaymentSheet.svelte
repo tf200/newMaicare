@@ -11,6 +11,8 @@
 	import { InvoicePaymentSchema, type InvoicePaymentSchemaInput } from '$lib/schemas/finance';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	type EditablePayment = {
 		id: string;
@@ -68,7 +70,7 @@
 						await onUpdated?.();
 						open = false;
 					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : 'Failed to update payment.';
+						errorMessage = error instanceof Error ? error.message : m.failed_update_payment();
 					}
 				}
 			}
@@ -122,68 +124,67 @@
 	});
 
 	const paymentMethodOptions = [
-		{ label: 'Bank transfer', value: 'bank_transfer' },
-		{ label: 'Credit card', value: 'credit_card' },
-		{ label: 'Check', value: 'check' },
-		{ label: 'Cash', value: 'cash' },
-		{ label: 'Other', value: 'other' }
+		{ label: m.bank_transfer(), value: 'bank_transfer' },
+		{ label: m.credit_card(), value: 'credit_card' },
+		{ label: m.check(), value: 'check' },
+		{ label: m.cash(), value: 'cash' },
+		{ label: m.other(), value: 'other' }
 	];
 
 	const paymentStatusOptions = [
-		{ label: 'Completed', value: 'completed' },
-		{ label: 'Pending', value: 'pending' },
-		{ label: 'Failed', value: 'failed' },
-		{ label: 'Reversed', value: 'reversed' },
-		{ label: 'Refunded', value: 'refunded' }
+		{ label: m.completed(), value: 'completed' },
+		{ label: m.pending(), value: 'pending' },
+		{ label: m.failed(), value: 'failed' },
+		{ label: m.reversed(), value: 'reversed' },
+		{ label: m.refunded(), value: 'refunded' }
 	];
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatCurrency = (value: number, currencyCode: string) => {
-		return new Intl.NumberFormat('nl-NL', {
+		return new Intl.NumberFormat(resolveLocale(), {
 			style: 'currency',
 			currency: currencyCode
 		}).format(value);
 	};
 </script>
 
-<Sheet
-	bind:open
-	title="Edit payment"
-	description="Update payment details and sync invoice balances and statuses."
-	size="lg"
->
+<Sheet bind:open title={m.edit_payment()} description={m.edit_payment_description()} size="lg">
 	<form id={formId} use:enhance class="space-y-5">
 		<div class="bg-surface-subtle/30 rounded-2xl border border-border/70 p-4">
-			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">Current payment</p>
+			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
+				{m.current_payment()}
+			</p>
 			<p class="mt-1 text-2xl font-bold tracking-tight text-text">
 				{formatCurrency(payment.amount, currency)}
 			</p>
 			<p class="mt-1 text-xs text-text-muted">
-				Recorded on {new Date(payment.date).toLocaleString()}.
+				{m.recorded_on({ date: new Date(payment.date).toLocaleString(resolveLocale()) })}
 			</p>
 		</div>
 
 		<Input
-			label="Amount"
+			label={m.amount()}
 			bind:value={$form.amount}
 			error={formatFormError($errors.amount)}
 			inputmode="decimal"
 		/>
 
 		<DateTimePicker
-			label="Payment date"
+			label={m.payment_date()}
 			bind:value={$form.payment_date}
 			error={formatFormError($errors.payment_date)}
 		/>
 
 		<div class="grid gap-4 sm:grid-cols-2">
 			<Select
-				label="Payment method"
+				label={m.payment_method()}
 				options={paymentMethodOptions}
 				bind:value={$form.payment_method}
 				error={formatFormError($errors.payment_method)}
 			/>
 			<Select
-				label="Status"
+				label={m.status()}
 				options={paymentStatusOptions}
 				bind:value={$form.status}
 				error={formatFormError($errors.status)}
@@ -191,13 +192,13 @@
 		</div>
 
 		<Input
-			label="Reference"
+			label={m.reference()}
 			bind:value={$form.reference}
 			error={formatFormError($errors.reference)}
 		/>
 
 		<Textarea
-			label="Notes"
+			label={m.notes_label()}
 			bind:value={$form.notes}
 			error={formatFormError($errors.notes)}
 			rows={4}
@@ -215,11 +216,13 @@
 
 	{#snippet footer()}
 		<div class="flex items-center justify-between gap-3">
-			<p class="text-xs text-text-muted">Update the payment details and save changes.</p>
+			<p class="text-xs text-text-muted">{m.update_payment_help()}</p>
 			<div class="flex items-center gap-2">
-				<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}>Cancel</Button>
+				<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}
+					>{m.cancel()}</Button
+				>
 				<Button variant="primary" form={formId} type="submit" isLoading={$delayed}
-					>Update payment</Button
+					>{m.update_payment()}</Button
 				>
 			</div>
 		</div>

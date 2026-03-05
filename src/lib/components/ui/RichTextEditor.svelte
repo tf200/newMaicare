@@ -12,12 +12,13 @@
 		AlignCenter,
 		AlignRight
 	} from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		value = $bindable(''),
 		label = '',
 		error = '',
-		placeholder = 'Start typing...',
+		placeholder = m.start_typing_placeholder(),
 		class: className = ''
 	} = $props<{
 		value?: string;
@@ -191,8 +192,8 @@
 					e.preventDefault();
 					execCommand('bold');
 				}}
-				title="Bold"
-				aria-label="Bold"
+				title={m.bold()}
+				aria-label={m.bold()}
 			>
 				<Bold class="h-4 w-4" />
 			</button>
@@ -203,8 +204,8 @@
 					e.preventDefault();
 					execCommand('italic');
 				}}
-				title="Italic"
-				aria-label="Italic"
+				title={m.italic()}
+				aria-label={m.italic()}
 			>
 				<Italic class="h-4 w-4" />
 			</button>
@@ -215,8 +216,8 @@
 					e.preventDefault();
 					execCommand('underline');
 				}}
-				title="Underline"
-				aria-label="Underline"
+				title={m.underline()}
+				aria-label={m.underline()}
 			>
 				<Underline class="h-4 w-4" />
 			</button>
@@ -230,8 +231,8 @@
 					e.preventDefault();
 					execCommand('justifyLeft');
 				}}
-				title="Align Left"
-				aria-label="Align left"
+				title={m.align_left()}
+				aria-label={m.align_left()}
 			>
 				<AlignLeft class="h-4 w-4" />
 			</button>
@@ -242,8 +243,8 @@
 					e.preventDefault();
 					execCommand('justifyCenter');
 				}}
-				title="Align Center"
-				aria-label="Align center"
+				title={m.align_center()}
+				aria-label={m.align_center()}
 			>
 				<AlignCenter class="h-4 w-4" />
 			</button>
@@ -254,8 +255,8 @@
 					e.preventDefault();
 					execCommand('justifyRight');
 				}}
-				title="Align Right"
-				aria-label="Align right"
+				title={m.align_right()}
+				aria-label={m.align_right()}
 			>
 				<AlignRight class="h-4 w-4" />
 			</button>
@@ -269,8 +270,8 @@
 					e.preventDefault();
 					execCommand('insertUnorderedList');
 				}}
-				title="Bullet List"
-				aria-label="Bullet list"
+				title={m.bullet_list()}
+				aria-label={m.bullet_list()}
 			>
 				<List class="h-4 w-4" />
 			</button>
@@ -281,8 +282,8 @@
 					e.preventDefault();
 					execCommand('insertOrderedList');
 				}}
-				title="Numbered List"
-				aria-label="Numbered list"
+				title={m.numbered_list()}
+				aria-label={m.numbered_list()}
 			>
 				<ListOrdered class="h-4 w-4" />
 			</button>
@@ -293,8 +294,8 @@
 					e.preventDefault();
 					execCommand('formatBlock', 'BLOCKQUOTE');
 				}}
-				title="Quote"
-				aria-label="Quote"
+				title={m.quote()}
+				aria-label={m.quote()}
 			>
 				<Quote class="h-4 w-4" />
 			</button>
@@ -308,8 +309,8 @@
 					e.preventDefault();
 					execCommand('undo');
 				}}
-				title="Undo"
-				aria-label="Undo"
+				title={m.undo()}
+				aria-label={m.undo()}
 			>
 				<Undo class="h-4 w-4" />
 			</button>
@@ -320,8 +321,8 @@
 					e.preventDefault();
 					execCommand('redo');
 				}}
-				title="Redo"
-				aria-label="Redo"
+				title={m.redo()}
+				aria-label={m.redo()}
 			>
 				<Redo class="h-4 w-4" />
 			</button>

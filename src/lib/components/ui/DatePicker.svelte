@@ -3,6 +3,8 @@
 	import { scale, fade, fly } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	let {
 		label,
@@ -31,6 +33,14 @@
 		return new Date(year, month - 1, day);
 	}
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
+	const addDays = (date: Date, amount: number) => {
+		const next = new Date(date);
+		next.setDate(next.getDate() + amount);
+		return next;
+	};
+
 	function formatDateValue(date: Date) {
 		const year = date.getFullYear();
 		const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -45,21 +55,15 @@
 	let view = $state<View>('days');
 
 	// Calendar logic
-	const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-	const monthNames = [
-		'January',
-		'February',
-		'March',
-		'April',
-		'May',
-		'June',
-		'July',
-		'August',
-		'September',
-		'October',
-		'November',
-		'December'
-	];
+	const days = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { weekday: 'short' });
+		const base = new Date(Date.UTC(2023, 0, 1));
+		return Array.from({ length: 7 }, (_, i) => formatter.format(addDays(base, i)));
+	});
+	const monthNames = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { month: 'long' });
+		return Array.from({ length: 12 }, (_, i) => formatter.format(new Date(Date.UTC(2023, i, 1))));
+	});
 
 	let daysInMonth = $derived(
 		new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
@@ -81,7 +85,7 @@
 
 	let formattedValue = $derived(
 		value
-			? (parseDateValue(value) ?? new Date(value)).toLocaleDateString('en-US', {
+			? (parseDateValue(value) ?? new Date(value)).toLocaleDateString(resolveLocale(), {
 					month: 'long',
 					day: 'numeric',
 					year: 'numeric'
@@ -92,7 +96,7 @@
 	// Header Text
 	let headerText = $derived.by(() => {
 		if (view === 'days')
-			return viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+			return viewDate.toLocaleDateString(resolveLocale(), { month: 'long', year: 'numeric' });
 		if (view === 'months') return viewDate.getFullYear().toString();
 		return `${startYear} - ${startYear + 11}`;
 	});
@@ -180,7 +184,7 @@
 			{#if formattedValue}
 				<span class="font-medium">{formattedValue}</span>
 			{:else}
-				<span class="text-text-muted">Select date...</span>
+				<span class="text-text-muted">{m.select_date_placeholder()}</span>
 			{/if}
 		</button>
 

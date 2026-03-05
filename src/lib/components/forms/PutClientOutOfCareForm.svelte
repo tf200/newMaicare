@@ -14,6 +14,7 @@
 		PutClientOutOfCareSchema,
 		type PutClientOutOfCareSchemaInput
 	} from '$lib/schemas/client-care';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -56,7 +57,7 @@
 						onSuccess?.();
 					} catch (error) {
 						errorMessage =
-							error instanceof Error ? error.message : 'Failed to put client out of care.';
+							error instanceof Error ? error.message : m.failed_put_client_out_of_care();
 					}
 				}
 			}
@@ -64,12 +65,12 @@
 	);
 
 	const dischargeReasonOptions: Array<{ label: string; value: ClientDischargeReason }> = [
-		{ label: 'Treatment completed', value: 'treatment_completed' },
-		{ label: 'Mutual agreement', value: 'terminated_by_mutual_agreement' },
-		{ label: 'Terminated by client', value: 'terminated_by_client' },
-		{ label: 'Terminated by provider', value: 'terminated_by_provider' },
-		{ label: 'External factors', value: 'terminated_due_to_external_factors' },
-		{ label: 'Other', value: 'other' }
+		{ label: m.treatment_completed(), value: 'treatment_completed' },
+		{ label: m.mutual_agreement(), value: 'terminated_by_mutual_agreement' },
+		{ label: m.terminated_by_client(), value: 'terminated_by_client' },
+		{ label: m.terminated_by_provider(), value: 'terminated_by_provider' },
+		{ label: m.external_factors(), value: 'terminated_due_to_external_factors' },
+		{ label: m.other(), value: 'other' }
 	];
 
 	const handleCancel = () => {
@@ -80,37 +81,37 @@
 
 <Modal
 	bind:open
-	title="Put Client Out Of Care"
-	description="Schedule or complete discharge for this client."
+	title={m.put_client_out_of_care()}
+	description={m.put_client_out_of_care_description()}
 	class="max-w-xl"
 >
 	<form id={formId} use:enhance class="space-y-5">
 		<DatePicker
-			label="Discharge Date"
+			label={m.discharge_date()}
 			bind:value={$form.discharge_date}
 			error={formatFormError($errors.discharge_date)}
 		/>
 
 		<Select
-			label="Discharge Reason"
+			label={m.discharge_reason()}
 			options={dischargeReasonOptions}
 			bind:value={$form.discharge_reason}
 			error={formatFormError($errors.discharge_reason)}
-			placeholder="Select discharge reason..."
+			placeholder={m.select_discharge_reason()}
 		/>
 
 		<Textarea
-			label="Final Evaluation"
+			label={m.final_evaluation()}
 			bind:value={$form.final_evaluation}
 			error={formatFormError($errors.final_evaluation)}
-			placeholder="Required when discharge date is today or in the past."
+			placeholder={m.discharge_final_evaluation_hint()}
 			rows={4}
 		/>
 
 		<Textarea
-			label="Reason (Optional)"
+			label={m.reason_optional()}
 			bind:value={$form.reason}
-			placeholder="Status-history reason override"
+			placeholder={m.status_history_reason_override()}
 			rows={3}
 		/>
 
@@ -124,9 +125,9 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>Cancel</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
 			<Button variant="destructive" form={formId} type="submit" isLoading={$delayed}
-				>Put Out Of Care</Button
+				>{m.put_out_of_care()}</Button
 			>
 		</div>
 	{/snippet}

@@ -10,6 +10,7 @@
 	import { LocationSchema, type LocationSchemaInput } from '$lib/schemas/location';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -76,7 +77,7 @@
 						onUpdated?.();
 					} catch (error) {
 						submitErrorMessage =
-							error instanceof Error ? error.message : 'Failed to update location.';
+							error instanceof Error ? error.message : m.failed_update_location();
 					}
 				}
 			}
@@ -119,13 +120,13 @@
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
 			if (!result || !location) {
-				lookupMessage = 'Address not found. Please fill street and city manually.';
+				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : 'Unable to fetch address from PDOK.';
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
 			isLookupLoading = false;
 		}
@@ -141,15 +142,11 @@
 	};
 </script>
 
-<Modal
-	bind:open
-	title="Edit Location"
-	description="Update location details and address information."
->
+<Modal bind:open title={m.edit_location()} description={m.edit_location_description()}>
 	<form id={formId} use:enhance class="space-y-5">
 		{#if isFetching}
 			<div class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted">
-				Loading location details...
+				{m.loading_location_details()}
 			</div>
 		{/if}
 		{#if loadErrorMessage}
@@ -160,8 +157,8 @@
 
 		{#if location}
 			<Input
-				label="Location Name"
-				placeholder="Main campus"
+				label={m.location_name()}
+				placeholder={m.placeholder_location_name()}
 				bind:value={$form.name}
 				error={formatFormError($errors.name)}
 				disabled={isFetching}
@@ -169,8 +166,8 @@
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
-					label="Postal Code"
-					placeholder="1234 AB"
+					label={m.postal_code()}
+					placeholder={m.example_postal_code()}
 					bind:value={$form.postal_code}
 					error={formatFormError($errors.postal_code)}
 					oninput={() => {
@@ -189,8 +186,8 @@
 					disabled={isFetching}
 				/>
 				<Input
-					label="House Number"
-					placeholder="10"
+					label={m.house_number()}
+					placeholder={m.example_house_number()}
 					bind:value={$form.house_number}
 					error={formatFormError($errors.house_number)}
 					oninput={() => {
@@ -201,8 +198,8 @@
 					disabled={isFetching}
 				/>
 				<Input
-					label="Addition (optional)"
-					placeholder="A"
+					label={m.addition_optional()}
+					placeholder={m.example_house_number_addition()}
 					bind:value={$form.house_number_addition}
 					disabled={isFetching}
 				/>
@@ -210,15 +207,15 @@
 
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
-					label="Street"
-					placeholder="Main Street"
+					label={m.street()}
+					placeholder={m.example_street_name()}
 					bind:value={$form.street}
 					error={formatFormError($errors.street)}
 					disabled={isFetching}
 				/>
 				<Input
-					label="City"
-					placeholder="Amsterdam"
+					label={m.city()}
+					placeholder={m.example_city_name()}
 					bind:value={$form.city}
 					error={formatFormError($errors.city)}
 					disabled={isFetching}
@@ -226,7 +223,7 @@
 			</div>
 
 			{#if isLookupLoading}
-				<div class="text-xs font-medium text-text-muted">Looking up address via PDOK...</div>
+				<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
 			{/if}
 			{#if lookupMessage}
 				<div
@@ -237,8 +234,8 @@
 			{/if}
 
 			<Input
-				label="Capacity (optional)"
-				placeholder="20"
+				label={m.capacity_optional()}
+				placeholder={m.placeholder_capacity()}
 				type="number"
 				min="0"
 				step="1"
@@ -260,10 +257,10 @@
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
 			<Button variant="ghost" onclick={handleCancel} disabled={isFetching || $delayed}>
-				Cancel
+				{m.cancel()}
 			</Button>
 			<Button form={formId} type="submit" isLoading={$delayed} disabled={isFetching || !location}>
-				Save changes
+				{m.save_changes()}
 			</Button>
 		</div>
 	{/snippet}

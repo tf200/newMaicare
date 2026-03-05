@@ -6,6 +6,7 @@
 	import { Loader2, Sparkles, X, Plus } from 'lucide-svelte';
 	import { listMaturityMatrixTopics } from '$lib/api/maturityMatrix';
 	import type { IntakeGoalTopic, MaturityGoal, ListCarePlanTopics } from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		goals: IntakeGoalTopic[];
@@ -126,8 +127,10 @@
 		await new Promise((resolve) => setTimeout(resolve, 1500));
 		const newGoals: MaturityGoal[] = [
 			{
-				title: `Improve consistency in ${maturityTopics.find((t) => t.id === topicId)?.topic_name}`,
-				description: 'Focused approach on daily routines and self-management.',
+				title: m.goal_suggestion_title({
+					name: maturityTopics.find((t) => t.id === topicId)?.topic_name ?? ''
+				}),
+				description: m.goal_suggestion_description(),
 				priority: 'medium'
 			}
 		];
@@ -141,7 +144,7 @@
 	{#if maturityLoading}
 		<div class="flex flex-col items-center justify-center py-12">
 			<Loader2 class="h-8 w-8 animate-spin text-brand" />
-			<p class="mt-4 text-sm text-text-muted">Loading topics...</p>
+			<p class="mt-4 text-sm text-text-muted">{m.loading_topics()}</p>
 		</div>
 	{:else if maturityError}
 		<div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-rose-700">
@@ -176,7 +179,7 @@
 					{topic.topic_name}
 				</h3>
 				<p class="text-xs text-text-subtle">
-					{isSelected ? 'Configure levels and goals below.' : 'Select to assess.'}
+					{isSelected ? m.configure_levels_goals() : m.select_to_assess()}
 				</p>
 			</div>
 			<button
@@ -185,7 +188,7 @@
 					? 'border-brand bg-brand text-white shadow-sm'
 					: 'border-border bg-surface text-text-subtle hover:border-secondary hover:text-secondary hover:text-text'}"
 			>
-				{isSelected ? 'Selected' : 'Select'}
+				{isSelected ? m.selected() : m.select()}
 			</button>
 		</div>
 
@@ -195,11 +198,13 @@
 					class="space-y-3 rounded-xl border border-border/60 bg-zinc-50/50 p-3 dark:bg-zinc-900/50"
 				>
 					<div class="flex items-center justify-between">
-						<span class="text-xs font-semibold tracking-wide text-text-subtle uppercase"
-							>Maturity Level</span
-						>
+						<span class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
+							{m.maturity_level()}
+						</span>
 						<span class="text-xs font-bold text-brand">
-							{topicLevels[topic.id] ? `Level ${topicLevels[topic.id]}` : 'Not set'}
+							{topicLevels[topic.id]
+								? m.level_label({ level: topicLevels[topic.id] })
+								: m.not_set()}
 						</span>
 					</div>
 					<div class="flex gap-1">
@@ -232,7 +237,7 @@
 					<div class="space-y-3">
 						<div class="flex items-center justify-between">
 							<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
-								Action Plan
+								{m.action_plan()}
 							</p>
 							<div class="flex items-center gap-2">
 								<button
@@ -245,21 +250,22 @@
 									{:else}
 										<Sparkles class="h-3.5 w-3.5 text-purple-100" />
 									{/if}
-									AI Suggest
+									{m.ai_suggest()}
 								</button>
 								<div class="h-3 w-px bg-border"></div>
 								<button
 									onclick={() => addGoal(topic.id)}
 									class="flex items-center gap-1 text-[11px] font-semibold text-brand transition-colors hover:text-secondary"
 								>
-									<Plus class="h-3.5 w-3.5" /> Add
+									<Plus class="h-3.5 w-3.5" />
+									{m.add()}
 								</button>
 							</div>
 						</div>
 
 						<TextArea
 							bind:value={topicDescriptions[topic.id]}
-							placeholder="Add assessment notes here..."
+							placeholder={m.assessment_notes_placeholder()}
 							rows={2}
 							class="border-zinc-200 bg-zinc-50 text-sm focus:border-brand/40"
 						/>
@@ -274,7 +280,7 @@
 										<div class="flex-1">
 											<Input
 												bind:value={goal.title}
-												placeholder="Goal title"
+												placeholder={m.goal_title_placeholder()}
 												class="h-9 bg-white py-1 text-sm"
 											/>
 										</div>
@@ -283,9 +289,9 @@
 												bind:value={goal.priority}
 												class="h-9 w-full cursor-pointer rounded-xl border border-border bg-white px-2 text-xs text-text outline-none focus:ring-2 focus:ring-brand/20"
 											>
-												<option value="high">High</option>
-												<option value="medium">Med</option>
-												<option value="low">Low</option>
+												<option value="high">{m.high()}</option>
+												<option value="medium">{m.medium()}</option>
+												<option value="low">{m.low()}</option>
 											</select>
 										</div>
 										<button
@@ -297,7 +303,7 @@
 									</div>
 									<TextArea
 										bind:value={goal.description}
-										placeholder="Goal description..."
+										placeholder={m.goal_description_placeholder()}
 										rows={2}
 										class="min-h-12 bg-white text-sm"
 									/>

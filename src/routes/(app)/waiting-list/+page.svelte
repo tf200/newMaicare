@@ -173,7 +173,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search waiting list..."
+				placeholder={m.search_waiting_list_placeholder()}
 				value={appliedSearch}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -269,7 +269,7 @@
 					openPutInCareModal(row);
 				}}
 				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-emerald-100/80 hover:text-emerald-700"
-				title="Put in care"
+				title={m.put_in_care()}
 			>
 				<HeartHandshake class="h-4 w-4" />
 			</button>
@@ -277,7 +277,7 @@
 		<a
 			href="/clients/{row.id}"
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View details"
+			title={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>
@@ -334,7 +334,7 @@
 				)}
 			onSort={handleSort}
 			rowKey="id"
-			title="Waiting List"
+			title={m.waiting_list()}
 			description="Clients currently in waiting list"
 			filters={tableFilters}
 			cells={{
@@ -380,7 +380,7 @@
 				)}
 			onSort={handleSort}
 			rowKey="id"
-			title="Waiting List"
+			title={m.waiting_list()}
 			description="Clients currently in waiting list"
 			filters={tableFilters}
 			cells={{

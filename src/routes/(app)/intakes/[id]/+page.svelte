@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import {
 		ArrowLeft,
 		ChevronRight,
@@ -59,9 +60,9 @@
 			actionSuccess = null;
 			const refreshed = await intakes.getById(intake.id);
 			intake = refreshed.data;
-			actionSuccess = 'Intake form updated successfully.';
+			actionSuccess = m.intake_form_updated();
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Failed to refresh intake data.';
+			actionError = err instanceof Error ? err.message : m.failed_refresh_intake();
 			console.error('Failed to refresh intake data:', err);
 		}
 	};
@@ -69,7 +70,7 @@
 	const handleSaveGoals = async (requestData: CreateIntakeFormGoalsRequest) => {
 		if (!canEditGoals) {
 			actionSuccess = null;
-			actionError = 'Goals can no longer be updated after this intake is converted to a client.';
+			actionError = m.goals_locked_error();
 			isGoalModalOpen = false;
 			return;
 		}
@@ -80,10 +81,10 @@
 			await intakes.updateGoals(intake.id, requestData);
 			const refreshed = await intakes.getById(intake.id);
 			intake = refreshed.data;
-			actionSuccess = 'Goals were updated successfully.';
+			actionSuccess = m.goals_updated();
 			isGoalModalOpen = false;
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Failed to update goals.';
+			actionError = err instanceof Error ? err.message : m.failed_update_goals();
 			console.error('Failed to update goals:', err);
 		}
 	};
@@ -95,9 +96,9 @@
 			await intakes.updateConclusion(intake.id, payload);
 			const refreshed = await intakes.getById(intake.id);
 			intake = refreshed.data;
-			actionSuccess = 'Intake conclusion updated successfully.';
+			actionSuccess = m.intake_conclusion_updated();
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Failed to update intake conclusion.';
+			actionError = err instanceof Error ? err.message : m.failed_update_conclusion();
 			console.error('Failed to update intake conclusion:', err);
 		}
 	};
@@ -110,9 +111,11 @@
 			const response = await intakes.promote(intake.id);
 			const refreshed = await intakes.getById(intake.id);
 			intake = refreshed.data;
-			actionSuccess = `Intake promoted to client (${response.data.emergency_contacts_created} contacts migrated).`;
+			actionSuccess = m.intake_promoted({
+				contacts: String(response.data.emergency_contacts_created)
+			});
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Failed to promote intake to client.';
+			actionError = err instanceof Error ? err.message : m.failed_promote_intake();
 			console.error('Failed to promote intake to client:', err);
 		} finally {
 			isPromoting = false;
@@ -151,10 +154,10 @@
 		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
 			<a href="/intakes" class="flex items-center gap-1 transition-colors hover:text-text">
 				<ArrowLeft class="h-4 w-4" />
-				Intakes
+				{m.intakes()}
 			</a>
 			<ChevronRight class="h-4 w-4" />
-			<span class="text-text">Intake Detail</span>
+			<span class="text-text">{m.intake_details()}</span>
 		</nav>
 
 		{#if canEditIntake}
@@ -163,7 +166,7 @@
 				class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-strong hover:shadow-lg hover:shadow-brand/30"
 			>
 				<PenLine class="h-4 w-4" />
-				Edit intake form
+				{m.edit_intake_form()}
 			</button>
 		{/if}
 	</div>
@@ -181,7 +184,7 @@
 					{intake.client_first_name[0]}{intake.client_last_name[0]}
 				</div>
 				<div>
-					<h1 class="text-3xl font-bold tracking-tight text-text">Intake Details</h1>
+					<h1 class="text-3xl font-bold tracking-tight text-text">{m.intake_details()}</h1>
 					<div class="flex items-center gap-2">
 						<p class="text-lg font-medium text-text-muted">
 							{intake.client_first_name}
@@ -194,7 +197,7 @@
 							<span
 								class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 ring-1 ring-emerald-500/20"
 							>
-								Converted to Client
+								{m.converted_to_client()}
 							</span>
 						{/if}
 					</div>
@@ -208,7 +211,7 @@
 						class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong"
 					>
 						<CheckCircle2 class="h-4 w-4" />
-						Process intake
+						{m.process_intake()}
 					</button>
 				{:else if canPromoteToClient}
 					<button
@@ -217,7 +220,7 @@
 						class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60 dark:text-zinc-900"
 					>
 						<UserPlus class="h-4 w-4" />
-						{isPromoting ? 'Promoting...' : 'Promote to Client'}
+						{isPromoting ? m.promoting() : m.promote_to_client()}
 					</button>
 				{/if}
 			</div>
@@ -266,14 +269,14 @@
 								<Target class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-bold text-text">Goals & Assessments</h2>
-								<p class="text-xs text-text-subtle">Maturity matrix levels and action plan</p>
+								<h2 class="text-lg font-bold text-text">{m.goals_assessments()}</h2>
+								<p class="text-xs text-text-subtle">{m.maturity_matrix_description()}</p>
 							</div>
 						</div>
 						{#if !canEditGoals}
 							<div class="flex items-center gap-2 text-[10px] font-bold text-text-subtle uppercase">
 								<Lock class="h-3.5 w-3.5" />
-								<span>Goals Locked (Converted)</span>
+								<span>{m.goals_locked()}</span>
 							</div>
 						{:else}
 							<Button
@@ -282,7 +285,7 @@
 								class="h-9 px-3 text-xs"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-white/40"></span>
-								{intake.intake_goals_assigned.length > 0 ? 'Edit Goals' : 'Add Goals'}
+								{intake.intake_goals_assigned.length > 0 ? m.edit_goals() : m.add_goals()}
 							</Button>
 						{/if}
 					</div>
@@ -309,7 +312,7 @@
 										</div>
 										<div class="flex flex-col items-end gap-1">
 											<span class="text-[10px] font-bold tracking-wider text-text-subtle uppercase"
-												>Maturity Level</span
+												>{m.maturity_level()}</span
 											>
 											<span
 												class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white shadow-sm"
@@ -359,7 +362,7 @@
 							>
 								<ListChecks class="h-8 w-8" />
 							</div>
-							<h3 class="text-lg font-bold text-text">Goals Pending</h3>
+							<h3 class="text-lg font-bold text-text">{m.goals_pending()}</h3>
 							<p class="mx-auto mt-2 max-w-sm text-sm text-text-muted">
 								This client has not been assessed yet. Please complete the maturity matrix and
 								define initial goals.
@@ -369,7 +372,7 @@
 									class="mt-6 flex items-center gap-2 rounded-xl bg-zinc-100 px-6 py-3 text-sm font-bold text-text-subtle dark:bg-zinc-800"
 								>
 									<Lock class="h-5 w-5" />
-									Goals Locked (Converted)
+									{m.goals_locked()}
 								</div>
 							{:else}
 								<Button
@@ -378,7 +381,7 @@
 									class="mt-6 px-6 py-3"
 								>
 									<Plus class="h-5 w-5" />
-									Start Assessment
+									{m.start_assessment()}
 								</Button>
 							{/if}
 						</div>
@@ -393,15 +396,15 @@
 						<User class="h-5 w-5" />
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-text">Client Situation</h2>
-						<p class="text-xs text-text-subtle">Context and psychological state</p>
+						<h2 class="text-lg font-bold text-text">{m.client_situation()}</h2>
+						<p class="text-xs text-text-subtle">{m.client_situation_description()}</p>
 					</div>
 				</div>
 
 				<div class="grid gap-6 md:grid-cols-2">
 					<div class="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Family Situation</span
+							>{m.family_situation()}</span
 						>
 						<p class="mt-2 text-sm leading-relaxed text-text-muted">
 							{intake.family_situation || 'N/A'}
@@ -409,7 +412,7 @@
 					</div>
 					<div class="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Psychological State</span
+							>{m.psychological_state()}</span
 						>
 						<p class="mt-2 text-sm leading-relaxed text-text-muted">
 							{intake.psychological_state || 'N/A'}
@@ -417,7 +420,7 @@
 					</div>
 				</div>
 				<div class="mt-6 flex items-center justify-between border-t border-border/50 pt-4">
-					<span class="text-sm font-medium text-text-muted">Self Sufficiency Score</span>
+					<span class="text-sm font-medium text-text-muted">{m.self_sufficiency_score()}</span>
 					<div class="flex items-center gap-3">
 						<div class="h-2.5 w-32 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
 							<div
@@ -439,8 +442,8 @@
 						<Info class="h-5 w-5" />
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-text">Registration Goals (Reference)</h2>
-						<p class="text-xs text-text-subtle">Goals submitted during registration</p>
+						<h2 class="text-lg font-bold text-text">{m.registration_goals_reference()}</h2>
+						<p class="text-xs text-text-subtle">{m.registration_goals_description()}</p>
 					</div>
 				</div>
 
@@ -456,7 +459,7 @@
 						{/each}
 					</div>
 				{:else}
-					<p class="text-sm text-text-subtle italic">No goals specified during registration.</p>
+					<p class="text-sm text-text-subtle italic">{m.no_goals_specified()}</p>
 				{/if}
 			</section>
 		</div>
@@ -467,7 +470,7 @@
 			<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 				<div class="mb-5 flex items-center gap-2">
 					<Activity class="h-5 w-5 text-text-subtle" />
-					<h3 class="text-lg font-bold text-text">Assessment Conclusion</h3>
+					<h3 class="text-lg font-bold text-text">{m.assessment_conclusion()}</h3>
 				</div>
 
 				<div class="space-y-5">
@@ -476,14 +479,14 @@
 					>
 						<div class="flex items-center gap-2 text-rose-700 dark:text-rose-400">
 							<ShieldAlert class="h-4 w-4" />
-							<span class="text-xs font-bold tracking-wider uppercase">Risk Assessment</span>
+							<span class="text-xs font-bold tracking-wider uppercase">{m.risk_assessment()}</span>
 						</div>
 						<p class="mt-2 text-sm text-text-muted">{intake.risk_assessment || 'None'}</p>
 					</div>
 
 					<div>
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Conclusion</span
+							>{m.conclusion()}</span
 						>
 						<div
 							class="mt-2 flex items-center gap-2 rounded-xl bg-zinc-50 p-3 font-medium text-text dark:bg-zinc-900/50"
@@ -494,9 +497,11 @@
 					</div>
 
 					<div>
-						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase">Notes</span>
+						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
+							>{m.notes_label()}</span
+						>
 						<p class="mt-2 text-sm text-text-muted">
-							{intake.intake_conclusion_notes || 'No notes'}
+							{intake.intake_conclusion_notes || m.no_notes()}
 						</p>
 					</div>
 				</div>
@@ -506,13 +511,13 @@
 			<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 				<div class="mb-5 flex items-center gap-2">
 					<Building2 class="h-5 w-5 text-text-subtle" />
-					<h3 class="text-lg font-bold text-text">Logistics & Placement</h3>
+					<h3 class="text-lg font-bold text-text">{m.logistics_placement()}</h3>
 				</div>
 
 				<div class="space-y-6">
 					<div>
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Intake Date</span
+							>{m.intake_date()}</span
 						>
 						<div class="mt-2 flex items-center gap-2 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/50">
 							<Calendar class="h-4 w-4 text-secondary" />
@@ -524,7 +529,7 @@
 
 					<div>
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Assigned Location</span
+							>{m.assigned_location()}</span
 						>
 						{#if intake.location}
 							<div class="mt-2 rounded-2xl bg-zinc-50 p-4 text-sm dark:bg-zinc-900/50">
@@ -539,14 +544,14 @@
 							<p
 								class="mt-2 rounded-xl border border-dashed border-border py-4 text-center text-sm text-text-subtle italic"
 							>
-								No location assigned
+								{m.no_location_assigned()}
 							</p>
 						{/if}
 					</div>
 
 					<div>
 						<span class="text-xs font-bold tracking-wider text-text-subtle uppercase"
-							>Referrer / Sender</span
+							>{m.referrer_sender()}</span
 						>
 						<div class="mt-2 flex items-center gap-3">
 							<div
@@ -564,24 +569,24 @@
 			<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 				<div class="mb-5 flex items-center gap-2">
 					<FileText class="h-5 w-5 text-text-subtle" />
-					<h3 class="text-lg font-bold text-text">Intake Configuration</h3>
+					<h3 class="text-lg font-bold text-text">{m.intake_configuration()}</h3>
 				</div>
 
 				<div class="space-y-4 text-sm">
 					<div class="flex justify-between border-b border-border/50 pb-2">
-						<span class="text-text-muted">Care Type</span>
+						<span class="text-text-muted">{m.care_type()}</span>
 						<span class="font-medium text-text capitalize"
 							>{intake.care_type.replace(/_/g, ' ')}</span
 						>
 					</div>
 					<div class="flex justify-between border-b border-border/50 pb-2">
-						<span class="text-text-muted">Evaluation</span>
+						<span class="text-text-muted">{m.evaluation_label()}</span>
 						<span class="font-medium text-text"
-							>Every {intake.evaluation_intervals_weeks} weeks</span
+							>{m.every_weeks({ weeks: String(intake.evaluation_intervals_weeks) })}</span
 						>
 					</div>
 					<div class="pt-1">
-						<span class="mb-2 block text-text-muted">Participants</span>
+						<span class="mb-2 block text-text-muted">{m.participants()}</span>
 						<div class="flex flex-wrap gap-1.5">
 							{#each intake.intake_participants as participant, i (i)}
 								<span
@@ -599,12 +604,12 @@
 			<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 				<div class="mb-4 flex items-center gap-2">
 					<PenLine class="h-5 w-5 text-text-subtle" />
-					<h3 class="text-lg font-bold text-text">Signature</h3>
+					<h3 class="text-lg font-bold text-text">{m.signature()}</h3>
 				</div>
 				<div class="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
-					<p class="text-xs font-bold tracking-wider text-text-subtle uppercase">Signed By</p>
+					<p class="text-xs font-bold tracking-wider text-text-subtle uppercase">{m.signed_by()}</p>
 					<p class="mt-2 text-base font-medium text-text italic">
-						{intake.signature || 'Not signed'}
+						{intake.signature || m.not_signed()}
 					</p>
 				</div>
 			</div>
@@ -613,11 +618,11 @@
 			<div class="space-y-2 px-2">
 				<div class="flex items-center gap-2 text-[10px] font-bold text-text-subtle uppercase">
 					<Clock class="h-3 w-3" />
-					Timeline
+					{m.timeline()}
 				</div>
 				<div class="space-y-1 text-[11px] text-text-subtle">
-					<p>Created: {formatFullDate(intake.created_at)}</p>
-					<p>Last Update: {formatFullDate(intake.updated_at)}</p>
+					<p>{m.created()}: {formatFullDate(intake.created_at)}</p>
+					<p>{m.updated()}: {formatFullDate(intake.updated_at)}</p>
 				</div>
 			</div>
 		</div>

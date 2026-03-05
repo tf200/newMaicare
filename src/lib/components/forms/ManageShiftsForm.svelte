@@ -5,6 +5,7 @@
 	import { createLocationShift, updateLocationShift } from '$lib/api/organizations';
 	import type { OrganizationLocation } from '$lib/types/api';
 	import { Plus, Trash2, Clock } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -103,12 +104,12 @@
 		const draft = draftShifts.find((d) => d._localId === localId);
 		if (!draft) return;
 		if (!location?.id) {
-			draft.error = 'Location is unavailable.';
+			draft.error = m.location_unavailable();
 			return;
 		}
 
 		if (!draft.data.shift.trim() || !draft.data.start_time || !draft.data.end_time) {
-			draft.error = 'Please fill in all fields.';
+			draft.error = m.fill_all_fields();
 			return;
 		}
 
@@ -147,7 +148,7 @@
 				draft.saveSuccess = false;
 			}, 3000);
 		} catch (error) {
-			draft.error = error instanceof Error ? error.message : 'Failed to save shift.';
+			draft.error = error instanceof Error ? error.message : m.failed_save_shift();
 		} finally {
 			draft.isSaving = false;
 		}
@@ -175,13 +176,15 @@
 
 <Modal
 	bind:open
-	title="Manage Shifts"
-	description="Configure independent daily shifts for {location?.name ?? 'this location'}."
+	title={m.manage_shifts()}
+	description={m.manage_shifts_description({
+		location: location?.name ?? m.this_location()
+	})}
 >
 	<div class="space-y-6">
 		{#if isFetching}
 			<div class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted">
-				Loading location details...
+				{m.loading_location_details()}
 			</div>
 		{/if}
 		{#if loadErrorMessage}
@@ -190,7 +193,7 @@
 			</div>
 		{/if}
 		<div class="rounded-xl border border-brand/25 bg-brand/5 px-4 py-3 text-sm text-text-muted">
-			Each shift save is persisted immediately for this location.
+			{m.shift_save_persisted_notice()}
 		</div>
 
 		{#if location && !isFetching}
@@ -205,9 +208,9 @@
 							<Clock class="h-8 w-8" />
 						</div>
 						<div>
-							<h3 class="text-lg font-bold tracking-tight text-text">No shifts defined</h3>
+							<h3 class="text-lg font-bold tracking-tight text-text">{m.no_shifts_defined()}</h3>
 							<p class="mt-1 text-sm font-medium text-text-muted">
-								Add your first shift below to get started.
+								{m.add_first_shift_help()}
 							</p>
 						</div>
 					</div>
@@ -222,7 +225,7 @@
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-3">
 												<h4 class="truncate text-2xl font-black tracking-tight text-text">
-													{draft.data.shift || `Shift ${i + 1}`}
+													{draft.data.shift || m.shift_number({ number: i + 1 })}
 												</h4>
 											</div>
 											<div class="mt-2 flex items-center gap-2 text-sm font-medium text-text-muted">
@@ -242,13 +245,13 @@
 												class="hover:ring-border-strong flex h-11 items-center justify-center rounded-2xl bg-surface px-4 text-sm font-bold text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-bg hover:text-text focus:ring-2 focus:ring-brand/50 focus:outline-none"
 												onclick={() => startEdit(draft._localId)}
 											>
-												Edit
+												{m.edit()}
 											</button>
 											<button
 												type="button"
 												class="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-error hover:text-white hover:ring-error focus:ring-2 focus:ring-error/50 focus:outline-none"
 												onclick={() => removeShift(draft._localId)}
-												title="Remove shift"
+												title={m.remove_shift()}
 											>
 												<Trash2 class="h-4 w-4" />
 											</button>
@@ -258,7 +261,7 @@
 										<div
 											class="animate-in fade-in slide-in-from-top-2 absolute -top-3 right-6 rounded-full bg-success px-3 py-1 text-xs font-bold text-white shadow-sm"
 										>
-											Saved
+											{m.saved_label()}
 										</div>
 									{/if}
 								{:else}
@@ -266,13 +269,13 @@
 										<div class="grid gap-5 sm:grid-cols-2">
 											<div class="sm:col-span-2">
 												<Input
-													placeholder="Shift Name (e.g. Ochtenddienst)"
+													placeholder={m.placeholder_shift_name()}
 													bind:value={draft.data.shift}
 												/>
 											</div>
 											<div>
 												<Input
-													label="Start"
+													label={m.start()}
 													type="time"
 													value={draft.data.start_time.slice(0, 5)}
 													oninput={(e) => (draft.data.start_time = e.currentTarget.value)}
@@ -280,7 +283,7 @@
 											</div>
 											<div>
 												<Input
-													label="End"
+													label={m.end()}
 													type="time"
 													value={draft.data.end_time.slice(0, 5)}
 													oninput={(e) => (draft.data.end_time = e.currentTarget.value)}
@@ -303,7 +306,7 @@
 												onclick={() => cancelEdit(draft._localId)}
 												class="w-full sm:w-auto"
 											>
-												Cancel
+												{m.cancel()}
 											</Button>
 											<Button
 												type="button"
@@ -312,7 +315,7 @@
 												isLoading={draft.isSaving}
 												class="w-full min-w-[140px] sm:w-auto"
 											>
-												Save shift
+												{m.save_shift()}
 											</Button>
 										</div>
 									</div>
@@ -330,9 +333,10 @@
 					disabled={draftShifts.length >= 4}
 				>
 					<Plus class="h-6 w-6" />
-					<span class="text-base font-bold tracking-tight"
-						>Add Shift {draftShifts.length >= 4 ? '(Max 4 reached)' : ''}</span
-					>
+					<span class="text-base font-bold tracking-tight">
+						{m.add_shift()}
+						{draftShifts.length >= 4 ? m.max_shifts_reached() : ''}
+					</span>
 				</Button>
 			</div>
 		{/if}
@@ -340,7 +344,7 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end">
-			<Button variant="ghost" onclick={handleCancel} class="w-full sm:w-auto">Close</Button>
+			<Button variant="ghost" onclick={handleCancel} class="w-full sm:w-auto">{m.close()}</Button>
 		</div>
 	{/snippet}
 </Modal>

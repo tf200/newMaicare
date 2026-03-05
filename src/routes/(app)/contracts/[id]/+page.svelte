@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { invalidateAll } from '$app/navigation';
 	import {
 		Calendar,
@@ -39,27 +40,27 @@
 
 	const statusMeta = {
 		approved: {
-			label: 'Approved',
+			label: () => m.approved(),
 			className: 'bg-emerald-600 text-white border-emerald-700/50 shadow-sm shadow-emerald-700/20',
 			icon: CheckCircle2
 		},
 		draft: {
-			label: 'Draft',
+			label: () => m.draft(),
 			className: 'bg-amber-500 text-white border-amber-600/50 shadow-sm shadow-amber-600/20',
 			icon: Timer
 		},
 		terminated: {
-			label: 'Terminated',
+			label: () => m.terminated(),
 			className: 'bg-rose-600 text-white border-rose-700/50 shadow-sm shadow-rose-700/20',
 			icon: XCircle
 		},
 		stopped: {
-			label: 'Stopped',
+			label: () => m.stopped(),
 			className: 'bg-slate-600 text-white border-slate-700/50 shadow-sm shadow-slate-700/20',
 			icon: SquareMinus
 		},
 		expired: {
-			label: 'Expired',
+			label: () => m.expired(),
 			className: 'bg-zinc-500 text-white border-zinc-600/50 shadow-sm shadow-zinc-600/20',
 			icon: Clock
 		}
@@ -109,7 +110,7 @@
 </script>
 
 <svelte:head>
-	<title>Contract Details | MaiCare</title>
+	<title>{m.contract_details()} | MaiCare</title>
 </svelte:head>
 
 <div class="space-y-6">
@@ -149,7 +150,7 @@
 			<!-- Breadcrumbs & Actions -->
 			<div class="flex items-center justify-between">
 				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-					<a href="/contracts" class="transition-colors hover:text-text">Contracts</a>
+					<a href="/contracts" class="transition-colors hover:text-text">{m.contracts()}</a>
 					<ChevronRight class="h-4 w-4" />
 					<span class="text-text">{contract.careName}</span>
 				</nav>
@@ -161,14 +162,14 @@
 						onclick={() => (showUpdateStatusModal = true)}
 					>
 						<CircleDashed class="h-4 w-4" />
-						Update Status
+						{m.update_status()}
 					</Button>
 					<Button
 						class="h-9 gap-2 px-4 shadow-md shadow-brand/25"
 						onclick={() => (showEditContractModal = true)}
 					>
 						<SquarePen class="h-4 w-4" />
-						Update Contract
+						{m.update_contract()}
 					</Button>
 				</div>
 			</div>
@@ -220,7 +221,7 @@
 											class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tracking-wide uppercase {meta.className}"
 										>
 											<meta.icon class="h-3.5 w-3.5" />
-											{meta.label}
+											{meta.label()}
 										</span>
 									</div>
 									<div class="mt-1 flex items-center gap-3">
@@ -245,12 +246,12 @@
 								</div>
 								<div class="flex items-center gap-2 border-l border-border pl-6">
 									<Clock class="h-4 w-4 text-text-subtle" />
-									<span>Created: {formatDate(contract.createdAt)}</span>
+									<span>{m.created()}: {formatDate(contract.createdAt)}</span>
 								</div>
 								{#if contract.approvedAt}
 									<div class="flex items-center gap-2 border-l border-border pl-6">
 										<CheckCircle2 class="h-4 w-4 text-emerald-500" />
-										<span>Approved: {formatDate(contract.approvedAt)}</span>
+										<span>{m.approved()}: {formatDate(contract.approvedAt)}</span>
 									</div>
 								{/if}
 							</div>
@@ -269,12 +270,14 @@
 					</div>
 					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-							>Price</span
+							>{m.price()}</span
 						>
 						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 							{formatCurrency(contract.price)}
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Per {contract.priceTimeUnit}</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">
+							{m.per_unit({ unit: contract.priceTimeUnit })}
+						</p>
 					</div>
 				</div>
 
@@ -288,12 +291,12 @@
 					</div>
 					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-							>Period</span
+							>{m.period()}</span
 						>
 						<div class="mt-2 text-xl font-bold tracking-tight text-text sm:text-2xl">
 							{formatDate(contract.startDate)} — {formatDate(contract.endDate)}
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Effective dates</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">{m.effective_dates()}</p>
 					</div>
 				</div>
 
@@ -307,12 +310,14 @@
 					</div>
 					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-							>Financing</span
+							>{m.financing()}</span
 						>
 						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 							{contract.financingAct}
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">via {contract.financingOption}</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">
+							{m.via_option({ option: contract.financingOption })}
+						</p>
 					</div>
 				</div>
 
@@ -326,7 +331,7 @@
 					</div>
 					<div class="relative">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-							>Reminders & VAT</span
+							>{m.reminders_vat()}</span
 						>
 						<div class="mt-2 flex items-baseline gap-2">
 							<span class="text-2xl font-bold tracking-tight text-text sm:text-3xl">
@@ -334,7 +339,7 @@
 							</span>
 							<span class="text-sm font-semibold text-text-muted">({contract.vat}%)</span>
 						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">Notice period and VAT rate</p>
+						<p class="mt-2 text-xs font-medium text-text-muted">{m.notice_period_vat()}</p>
 					</div>
 				</div>
 			</section>
@@ -351,27 +356,27 @@
 								<FileText class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-bold text-text">Contract Terms</h2>
-								<p class="text-xs text-text-subtle">Core details and delivery parameters</p>
+								<h2 class="text-lg font-bold text-text">{m.contract_terms()}</h2>
+								<p class="text-xs text-text-subtle">{m.contract_terms_description()}</p>
 							</div>
 						</div>
 
 						<div class="grid gap-8 md:grid-cols-2">
 							<div class="space-y-4">
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">Contract Type</span>
+									<span class="text-sm text-text-muted">{m.contract_type()}</span>
 									<span class="text-sm font-semibold text-text">{contract.typeName ?? '—'}</span>
 								</div>
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">Price Unit</span>
+									<span class="text-sm text-text-muted">{m.price_unit()}</span>
 									<span class="text-sm font-semibold text-text capitalize"
 										>{contract.priceTimeUnit}</span
 									>
 								</div>
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">Hours</span>
+									<span class="text-sm text-text-muted">{m.hours()}</span>
 									<span class="text-sm font-semibold text-text">
-										{contract.hours ? `${contract.hours} hrs` : '—'}
+										{contract.hours ? `${contract.hours} ${m.hrs()}` : '—'}
 										{#if contract.hoursType}
 											<span class="text-xs font-medium text-text-subtle"
 												>({contract.hoursType})</span
@@ -383,18 +388,18 @@
 
 							<div class="space-y-4">
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">Start Date</span>
+									<span class="text-sm text-text-muted">{m.start_date()}</span>
 									<span class="text-sm font-semibold text-text"
 										>{formatDate(contract.startDate)}</span
 									>
 								</div>
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">End Date</span>
+									<span class="text-sm text-text-muted">{m.end_date()}</span>
 									<span class="text-sm font-semibold text-text">{formatDate(contract.endDate)}</span
 									>
 								</div>
 								<div class="flex justify-between border-b border-border/50 pb-2">
-									<span class="text-sm text-text-muted">Last Updated</span>
+									<span class="text-sm text-text-muted">{m.updated()}</span>
 									<span class="text-sm font-semibold text-text"
 										>{formatDateTime(contract.updatedAt)}</span
 									>
@@ -405,17 +410,18 @@
 						{#if contract.departureReason || contract.departureReport}
 							<div class="mt-8 space-y-4">
 								<h3 class="text-sm font-bold tracking-wider text-text-subtle uppercase">
-									Departure Information
+									{m.departure_information()}
 								</h3>
 								<div class="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
 									<p class="text-sm font-semibold text-text">
-										Reason: <span class="font-normal text-text-muted"
+										{m.reason()}:
+										<span class="font-normal text-text-muted"
 											>{contract.departureReason || '—'}</span
 										>
 									</p>
 									{#if contract.departureReport}
 										<div class="mt-3">
-											<p class="text-xs font-bold text-text-subtle uppercase">Report</p>
+											<p class="text-xs font-bold text-text-subtle uppercase">{m.report()}</p>
 											<p class="mt-1 text-sm text-text-muted italic">
 												"{contract.departureReport}"
 											</p>
@@ -436,12 +442,12 @@
 									<FileText class="h-5 w-5" />
 								</div>
 								<div>
-									<h2 class="text-lg font-bold text-text">Attachments</h2>
-									<p class="text-xs text-text-subtle">Supporting documents and contract files</p>
+									<h2 class="text-lg font-bold text-text">{m.attachments()}</h2>
+									<p class="text-xs text-text-subtle">{m.attachments_description()}</p>
 								</div>
 							</div>
 							<span class="text-xs font-semibold text-text-subtle"
-								>{contract.attachments.length} files</span
+								>{contract.attachments.length} {m.files()}</span
 							>
 						</div>
 
@@ -468,7 +474,7 @@
 										target="_blank"
 										rel="noopener noreferrer"
 										class="flex h-10 w-10 items-center justify-center rounded-xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-brand hover:text-white hover:ring-brand"
-										title="Download file"
+										title={m.download_file()}
 									>
 										<Download class="h-4 w-4" />
 									</a>
@@ -494,21 +500,20 @@
 									</div>
 									<div class="max-w-sm">
 										<h2 class="text-lg font-bold tracking-tight text-text">
-											No documents attached
+											{m.no_documents_attached()}
 										</h2>
 										<p class="mt-2 text-sm leading-relaxed text-text-muted">
-											There are currently no files or supporting documents linked to this contract
-											record.
+											{m.no_documents_attached_description()}
 										</p>
 										<div class="mt-8 flex flex-col items-center gap-2">
 											<div
 												class="h-px w-12 bg-gradient-to-r from-transparent via-border to-transparent"
 											></div>
 											<p class="text-[10px] font-bold tracking-[0.2em] text-text-subtle uppercase">
-												Waiting for uploads
+												{m.waiting_for_uploads()}
 											</p>
 											<p class="text-[11px] font-medium text-text-subtle/60">
-												Documents will appear here once they are added to the system.
+												{m.documents_will_appear()}
 											</p>
 										</div>
 									</div>
@@ -525,7 +530,7 @@
 						<div class="mb-5 flex items-center justify-between">
 							<h3 class="flex items-center gap-2 text-lg font-bold text-text">
 								<User class="h-5 w-5 text-text-subtle" />
-								Client Profile
+								{m.client_profile()}
 							</h3>
 						</div>
 
@@ -543,20 +548,20 @@
 									{contract.client.lastName}
 								</h4>
 								<p class="text-xs font-bold tracking-widest text-text-subtle uppercase">
-									File: {contract.client.fileNumber}
+									{m.file_number()}: {contract.client.fileNumber}
 								</p>
 
 								<a
 									href="/clients/{contract.client.id}"
 									class="mt-6 inline-flex h-9 items-center justify-center rounded-xl bg-surface px-4 text-xs font-bold text-text shadow-sm ring-1 ring-border transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800"
 								>
-									View Full Profile
+									{m.view_full_profile()}
 								</a>
 							</div>
 
 							<div class="space-y-3 rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-900/50">
 								<div class="flex justify-between text-sm">
-									<span class="text-text-muted">BSN</span>
+									<span class="text-text-muted">{m.bsn()}</span>
 									<span class="font-mono font-bold text-text">{contract.client.bsn ?? '—'}</span>
 								</div>
 							</div>
@@ -567,7 +572,7 @@
 					<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 						<h3 class="mb-4 flex items-center gap-2 text-base font-bold text-text">
 							<Building2 class="h-4 w-4 text-text-subtle" />
-							Sender Information
+							{m.sender_information()}
 						</h3>
 
 						<div class="space-y-6">
@@ -647,7 +652,7 @@
 								{#if contract.sender.clientNumber}
 									<div class="border-t border-border/50 pt-4">
 										<p class="text-[10px] font-bold tracking-wider text-text-subtle uppercase">
-											Sender Client #
+											{m.sender_client_number()}
 										</p>
 										<p class="mt-0.5 text-xs font-semibold text-text">
 											{contract.sender.clientNumber}
@@ -664,9 +669,9 @@
 				class="rounded-3xl border border-border bg-surface p-12 text-center text-sm text-text-muted shadow-sm"
 			>
 				<Info class="mx-auto h-8 w-8 text-text-subtle opacity-50" />
-				<p class="mt-4">Contract details not available.</p>
+				<p class="mt-4">{m.contract_not_available()}</p>
 				<Button variant="ghost" class="mt-6 ring-1 ring-border" onclick={() => invalidateAll()}
-					>Retry</Button
+					>{m.retry()}</Button
 				>
 			</div>
 		{/if}

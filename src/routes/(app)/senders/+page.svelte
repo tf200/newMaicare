@@ -110,7 +110,7 @@
 </script>
 
 <svelte:head>
-	<title>Senders | MaiCare</title>
+	<title>{m.senders_page_title()}</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -121,7 +121,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search senders..."
+				placeholder={m.search_senders_placeholder()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -191,7 +191,7 @@
 {#snippet clientCountCell(row: SenderRow)}
 	<span class="inline-flex items-center justify-end gap-1.5">
 		<span class="text-sm font-semibold text-text">{row.clientsCount}</span>
-		<span class="text-xs text-text-subtle">clients</span>
+		<span class="text-xs text-text-subtle">{m.clients()}</span>
 	</span>
 {/snippet}
 
@@ -199,13 +199,13 @@
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View sender"
+			title={m.view_sender()}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="Edit sender"
+			title={m.edit_sender()}
 			onclick={() => openEdit(row.id)}
 		>
 			<Pencil class="h-4 w-4" />
@@ -228,7 +228,7 @@
 					</span>
 					<span>{m.senders()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Senders</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.senders()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					Centralize referral sources, contact points, and active client assignments in one place.
 				</p>
@@ -266,7 +266,7 @@
 			totalCount={0}
 			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
 			rowKey="id"
-			title="Sender directory"
+			title={m.sender_directory()}
 			description="Overview of referral sources, contact data, and client volume."
 			filters={tableFilters}
 			emptyTitle="No senders found"
@@ -302,7 +302,7 @@
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 					{sendersData.pagination.count}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">Active referral partners</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.active_referral_partners()}</p>
 			</div>
 			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -311,7 +311,7 @@
 				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
 					{totalClients}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">In the current view</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.in_current_view()}</p>
 			</div>
 			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
 				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -320,7 +320,7 @@
 				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
 					{registeredSenders}
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">KVK or BTW in view</p>
+				<p class="mt-2 text-xs font-medium text-text-muted">{m.kvk_btw_in_view()}</p>
 			</div>
 		</div>
 
@@ -332,7 +332,7 @@
 			totalCount={sendersData.pagination.count}
 			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
 			rowKey="id"
-			title="Sender directory"
+			title={m.sender_directory()}
 			description="Overview of referral sources, contact data, and client volume."
 			filters={tableFilters}
 			emptyTitle="No senders found"

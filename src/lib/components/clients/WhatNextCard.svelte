@@ -3,6 +3,8 @@
 	import { Activity, ChevronRight } from 'lucide-svelte';
 	import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	interface Props {
 		client: ClientOverviewData;
@@ -12,9 +14,11 @@
 	let { client, status }: Props = $props();
 	let showPutInCareForm = $state(false);
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+
 	const formatDate = (dateString?: string) => {
-		if (!dateString) return 'N/A';
-		return new Date(dateString).toLocaleDateString('nl-NL', {
+		if (!dateString) return m.not_available_short();
+		return new Date(dateString).toLocaleDateString(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
@@ -25,33 +29,39 @@
 		switch (status) {
 			case 'on_waiting_list':
 				return {
-					title: 'Move Client to In Care',
-					description: 'Next step is to place this client in care and confirm the start plan.',
-					action: 'Start In Care'
+					title: m.whats_next_move_client_title(),
+					description: m.whats_next_move_client_description(),
+					action: m.whats_next_move_client_action()
 				};
 			case 'scheduled_in_care':
 				return {
-					title: 'Onboarding Start',
-					description: `Planned start date: ${formatDate(client.plannedInCareDate)}. Verify readiness checks and coordinator handoff.`,
-					action: 'Prepare Start'
+					title: m.whats_next_onboarding_title(),
+					description: m.whats_next_onboarding_description({
+						date: formatDate(client.plannedInCareDate)
+					}),
+					action: m.whats_next_onboarding_action()
 				};
 			case 'in_care':
 				return {
-					title: 'Periodic Evaluation',
-					description: `Next evaluation scheduled for ${formatDate(client.nextEvaluationDate)}.`,
-					action: 'Open Plan'
+					title: m.whats_next_evaluation_title(),
+					description: m.whats_next_evaluation_description({
+						date: formatDate(client.nextEvaluationDate)
+					}),
+					action: m.whats_next_evaluation_action()
 				};
 			case 'scheduled_out_of_care':
 				return {
-					title: 'Discharge Preparation',
-					description: `Planned discharge date: ${formatDate(client.plannedOutOfCareDate)}. Finalize aftercare and close documentation.`,
-					action: 'Discharge Plan'
+					title: m.whats_next_discharge_title(),
+					description: m.whats_next_discharge_description({
+						date: formatDate(client.plannedOutOfCareDate)
+					}),
+					action: m.whats_next_discharge_action()
 				};
 			case 'out_of_care':
 				return {
-					title: 'Archive Client',
-					description: 'Closing report pending. Complete to archive file.',
-					action: 'Final Report'
+					title: m.whats_next_archive_title(),
+					description: m.whats_next_archive_description(),
+					action: m.whats_next_archive_action()
 				};
 			default:
 				return null;
@@ -75,7 +85,7 @@
 				<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
 					<Activity class="h-5 w-5" />
 				</div>
-				<h3 class="text-lg font-bold text-text">What's Next?</h3>
+				<h3 class="text-lg font-bold text-text">{m.whats_next_heading()}</h3>
 			</div>
 			<p class="text-sm font-bold text-text">{whatsNext.title}</p>
 			<p class="mt-1 text-sm text-text-muted">{whatsNext.description}</p>

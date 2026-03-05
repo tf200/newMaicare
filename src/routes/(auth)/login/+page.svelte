@@ -93,7 +93,7 @@
 						type="email"
 						id="email"
 						bind:value={email}
-						placeholder="name@company.com"
+						placeholder={m.login_email_placeholder()}
 						required
 					/>
 				</div>
@@ -104,7 +104,7 @@
 						type={showPassword ? 'text' : 'password'}
 						id="password"
 						bind:value={password}
-						placeholder="••••••••"
+						placeholder={m.login_password_placeholder()}
 						required
 					/>
 					<button

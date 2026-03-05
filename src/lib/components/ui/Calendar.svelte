@@ -2,6 +2,8 @@
 	import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte';
 	import Button from './Button.svelte';
 	import type { Appointment } from '$lib/types/appointments';
+	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 
 	type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -30,6 +32,8 @@
 	let weekScrollEl = $state<HTMLDivElement>();
 	let dayScrollEl = $state<HTMLDivElement>();
 	let lastAutoScrollKey = $state('');
+
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	$effect(() => {
 		view = initialView;
@@ -66,22 +70,6 @@
 		lastAutoScrollKey = key;
 	});
 
-	const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-	const months = [
-		'January',
-		'February',
-		'March',
-		'April',
-		'May',
-		'June',
-		'July',
-		'August',
-		'September',
-		'October',
-		'November',
-		'December'
-	];
-
 	const startOfDay = (date: Date) => {
 		const d = new Date(date);
 		d.setHours(0, 0, 0, 0);
@@ -93,6 +81,19 @@
 		d.setDate(d.getDate() + amount);
 		return d;
 	};
+
+	const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+		new Intl.DateTimeFormat(resolveLocale(), options).format(date);
+
+	const daysOfWeek = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { weekday: 'short' });
+		const base = new Date(Date.UTC(2023, 0, 1));
+		return Array.from({ length: 7 }, (_, i) => formatter.format(addDays(base, i)));
+	});
+	const months = $derived.by(() => {
+		const formatter = new Intl.DateTimeFormat(resolveLocale(), { month: 'long' });
+		return Array.from({ length: 12 }, (_, i) => formatter.format(new Date(Date.UTC(2023, i, 1))));
+	});
 
 	const isSameDay = (a: Date, b: Date) =>
 		a.getFullYear() === b.getFullYear() &&
@@ -338,7 +339,7 @@
 	const headerTitle = $derived.by(() => {
 		if (view === 'month') return `${months[currentMonth]} ${currentYear}`;
 		if (view === 'day') {
-			return viewDate.toLocaleDateString(undefined, {
+			return formatDate(viewDate, {
 				weekday: 'long',
 				month: 'long',
 				day: 'numeric',
@@ -348,19 +349,21 @@
 		const start = view === 'week' ? weekStart : agendaRangeStart;
 		const end = addDays(start, 6);
 		const sameYear = start.getFullYear() === end.getFullYear();
-		const startStr = start.toLocaleDateString(
-			undefined,
+		const startStr = formatDate(
+			start,
 			sameYear
 				? { month: 'short', day: 'numeric' }
 				: { month: 'short', day: 'numeric', year: 'numeric' }
 		);
-		const endStr = end.toLocaleDateString(undefined, {
+		const endStr = formatDate(end, {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
 		});
 		return `${startStr} – ${endStr}`;
 	});
+
+	const appointmentLabel = (count: number) => (count === 1 ? m.appointment() : m.appointments());
 
 	const next = () => {
 		if (view === 'month') viewDate = new Date(currentYear, currentMonth + 1, 1);
@@ -414,7 +417,7 @@
 					onclick={goToday}
 					class="rounded-lg px-3 py-1 text-sm font-semibold transition-colors hover:bg-border/20"
 				>
-					Today
+					{m.today()}
 				</button>
 				<button onclick={next} class="rounded-lg p-2 transition-colors hover:bg-border/20">
 					<ChevronRight class="h-5 w-5" />
@@ -422,16 +425,16 @@
 			</div>
 
 			<div class="sm:hidden">
-				<label class="sr-only" for="calendar-view">View</label>
+				<label class="sr-only" for="calendar-view">{m.view()}</label>
 				<select
 					id="calendar-view"
 					bind:value={view}
 					class="h-11 rounded-xl border border-border bg-surface px-3 text-sm font-bold text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
 				>
-					<option value="month">Month</option>
-					<option value="week">Week</option>
-					<option value="day">Day</option>
-					<option value="agenda">Agenda</option>
+					<option value="month">{m.month()}</option>
+					<option value="week">{m.week()}</option>
+					<option value="day">{m.day()}</option>
+					<option value="agenda">{m.agenda()}</option>
 				</select>
 			</div>
 
@@ -445,7 +448,7 @@
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
 				>
-					Month
+					{m.month()}
 				</button>
 				<button
 					onclick={() => (view = 'week')}
@@ -454,7 +457,7 @@
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
 				>
-					Week
+					{m.week()}
 				</button>
 				<button
 					onclick={() => (view = 'day')}
@@ -463,7 +466,7 @@
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
 				>
-					Day
+					{m.day()}
 				</button>
 				<button
 					onclick={() => (view = 'agenda')}
@@ -472,14 +475,14 @@
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
 				>
-					Agenda
+					{m.agenda()}
 				</button>
 			</div>
 		</div>
 
 		<Button variant="primary" onclick={() => onAddAppointment?.(new Date())}>
 			<Plus class="mr-2 h-4 w-4" />
-			Add Appointment
+			{m.add_appointment()}
 		</Button>
 	</div>
 
@@ -487,7 +490,7 @@
 		<!-- Month View -->
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="grid grid-cols-7 border-b border-border bg-zinc-50/50">
-				{#each daysOfWeek as day}
+				{#each daysOfWeek as day, i (i)}
 					<div
 						class="px-4 py-3 text-center text-[10px] font-bold tracking-widest text-text-subtle uppercase"
 					>
@@ -518,7 +521,9 @@
 							<button
 								onclick={() => onAddAppointment?.(new Date(date))}
 								class="rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 hover:bg-border/40"
-								aria-label={`Add appointment ${date.toDateString()}`}
+								aria-label={m.add_appointment_on_date({
+									date: formatDate(date, { year: 'numeric', month: 'short', day: 'numeric' })
+								})}
 							>
 								<Plus class="h-4 w-4 text-text-muted" />
 							</button>
@@ -547,7 +552,8 @@
 									}}
 									class="rounded-lg px-2 py-1 text-left text-[10px] font-bold text-text-muted hover:bg-border/30"
 								>
-									+{dayApps.length - 1} more
+									+{dayApps.length - 1}
+									{m.more()}
 								</button>
 							{/if}
 						</div>
@@ -560,13 +566,13 @@
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="grid grid-cols-[96px_repeat(7,1fr)] border-b border-border bg-zinc-50/50">
 				<div class="px-4 py-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Time
+					{m.time()}
 				</div>
 				{#each weekDays as d (d.toISOString())}
 					<div class="px-4 py-3">
 						<div class="flex items-baseline justify-between">
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								{d.toLocaleDateString(undefined, { weekday: 'short' })}
+								{formatDate(d, { weekday: 'short' })}
 							</div>
 							<div class="text-sm font-bold text-text {isToday(d) ? 'text-teal-700' : ''}">
 								{d.getDate()}
@@ -599,7 +605,11 @@
 									type="button"
 									onclick={() => onAddAppointment?.(slotDateTime(day, s.minutesFromStart))}
 									class="group block h-10 w-full border-b border-border/50 text-left transition-colors hover:bg-zinc-50/30"
-									aria-label={`Add appointment ${day.toDateString()} ${s.time}`}
+									aria-label={m.add_appointment_on_date({
+										date: `${formatDate(day, { weekday: 'short', month: 'short', day: 'numeric' })} ${
+											s.time
+										}`
+									})}
 								></button>
 							{/each}
 
@@ -638,14 +648,10 @@
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="grid grid-cols-[96px_1fr] border-b border-border bg-zinc-50/50">
 				<div class="px-4 py-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Time
+					{m.time()}
 				</div>
 				<div class="px-4 py-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{viewDate.toLocaleDateString(undefined, {
-						weekday: 'long',
-						month: 'short',
-						day: 'numeric'
-					})}
+					{formatDate(viewDate, { weekday: 'long', month: 'short', day: 'numeric' })}
 				</div>
 			</div>
 			<div class="max-h-[720px] overflow-y-auto" bind:this={dayScrollEl}>
@@ -665,7 +671,11 @@
 								type="button"
 								onclick={() => onAddAppointment?.(slotDateTime(viewDate, s.minutesFromStart))}
 								class="block h-12 w-full border-b border-border/50 text-left transition-colors hover:bg-zinc-50/30"
-								aria-label={`Add appointment ${viewDate.toDateString()} ${s.time}`}
+								aria-label={m.add_appointment_on_date({
+									date: `${formatDate(viewDate, { weekday: 'short', month: 'short', day: 'numeric' })} ${
+										s.time
+									}`
+								})}
 							></button>
 						{/each}
 
@@ -708,12 +718,13 @@
 			<div class="border-b border-border bg-zinc-50/50 px-5 py-4">
 				<div class="flex flex-col gap-1">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Next 7 days
+						{m.next_7_days()}
 					</div>
 					<div class="text-sm font-semibold text-text-muted">
-						Showing {agendaAppointments.length} appointment{agendaAppointments.length === 1
-							? ''
-							: 's'}
+						{m.showing_count({
+							count: agendaAppointments.length,
+							label: appointmentLabel(agendaAppointments.length)
+						})}
 					</div>
 				</div>
 			</div>
@@ -724,16 +735,12 @@
 					<div class="px-5 py-4">
 						<div class="mb-3 flex items-center justify-between">
 							<div class="text-sm font-bold text-text">
-								{d.toLocaleDateString(undefined, {
-									weekday: 'long',
-									month: 'short',
-									day: 'numeric'
-								})}
+								{formatDate(d, { weekday: 'long', month: 'short', day: 'numeric' })}
 								{#if isToday(d)}
 									<span
 										class="ml-2 rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-teal-700 uppercase"
 									>
-										Today
+										{m.today()}
 									</span>
 								{/if}
 							</div>
@@ -742,12 +749,12 @@
 								onclick={() => onAddAppointment?.(new Date(d))}
 								class="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-bold text-text-muted transition hover:bg-border/30"
 							>
-								Add
+								{m.add()}
 							</button>
 						</div>
 
 						{#if dayApps.length === 0}
-							<div class="text-sm text-text-muted">No appointments.</div>
+							<div class="text-sm text-text-muted">{m.no_appointments()}</div>
 						{:else}
 							<div class="grid gap-2 md:grid-cols-2">
 								{#each dayApps as app (app.id)}

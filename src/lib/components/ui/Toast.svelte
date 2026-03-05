@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
 	import { CheckCircle2, AlertTriangle, AlertCircle, X } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		message: string | null;
@@ -49,7 +50,7 @@
 				type="button"
 				onclick={onClose}
 				class="-mr-1 ml-1 rounded-full p-1 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-				aria-label="Close"
+				aria-label={m.close()}
 			>
 				<X class="h-4 w-4" />
 			</button>

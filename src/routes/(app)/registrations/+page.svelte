@@ -256,7 +256,7 @@
 		<Filters
 			{filters}
 			groups={filterGroups}
-			title="Filter registrations"
+			title={m.filter_registrations()}
 			onUpdate={(nextFilters) => setFilters(nextFilters as unknown as RegistrationFilters)}
 			onClear={clearFilters}
 		/>
@@ -280,7 +280,7 @@
 				{#if row.intakeFormId}
 					<div
 						class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
-						title="Intake started"
+						title={m.intake_started()}
 					>
 						<ClipboardCheck class="h-2.5 w-2.5" />
 					</div>
@@ -347,7 +347,7 @@
 		<a
 			href="/registrations/{row.id}"
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="View registration"
+			title={m.view_registration()}
 		>
 			<Eye class="h-4 w-4" />
 		</a>

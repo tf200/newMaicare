@@ -8,6 +8,7 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
 	import CreateEmployeeForm from '$lib/components/forms/CreateEmployeeForm.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type {
 		EmployeeFilters as EmployeePageFilters,
 		EmployeeRow,
@@ -27,11 +28,11 @@
 	type EmployeeFilters = EmployeePageFilters;
 
 	const columns: DataTableColumn[] = [
-		{ key: 'name', label: 'Employee', headerClass: 'pl-14' },
-		{ key: 'department', label: 'Department' },
-		{ key: 'location', label: 'Location' },
-		{ key: 'contractType', label: 'Contract', width: '140px' },
-		{ key: 'contractEndDate', label: 'Contract end', width: '150px' },
+		{ key: 'name', label: m.employee(), headerClass: 'pl-14' },
+		{ key: 'department', label: m.department() },
+		{ key: 'location', label: m.location() },
+		{ key: 'contractType', label: m.contract_type_label(), width: '140px' },
+		{ key: 'contractEndDate', label: m.contract_end(), width: '150px' },
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
 	];
 
@@ -64,10 +65,10 @@
 		items: Array<{ key: 'isArchived' | 'outOfService'; label: string }>;
 	}> = [
 		{
-			label: 'Employment state',
+			label: m.employment_state(),
 			items: [
-				{ key: 'isArchived', label: 'Archived employees' },
-				{ key: 'outOfService', label: 'Out of service' }
+				{ key: 'isArchived', label: m.archived_employees() },
+				{ key: 'outOfService', label: m.out_of_service() }
 			]
 		}
 	];
@@ -130,7 +131,7 @@
 </script>
 
 <svelte:head>
-	<title>Employees | MaiCare</title>
+	<title>{m.employees()} | MaiCare</title>
 </svelte:head>
 
 {#snippet tableFilters()}
@@ -141,7 +142,7 @@
 			/>
 			<input
 				type="text"
-				placeholder="Search employees..."
+				placeholder={m.search_employees()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -159,7 +160,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				All
+				{m.all()}
 			</button>
 			<button
 				onclick={() => setFilters({ ...filters, contractType: 'loondienst' })}
@@ -168,7 +169,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				Loondienst
+				{m.loondienst()}
 			</button>
 			<button
 				onclick={() => setFilters({ ...filters, contractType: 'ZZP' })}
@@ -177,7 +178,7 @@
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
 					: 'border border-border text-text-muted hover:text-text'}"
 			>
-				ZZP
+				{m.zzp()}
 			</button>
 		</div>
 
@@ -186,7 +187,7 @@
 		<Filters
 			{filters}
 			groups={filterGroups}
-			title="Filter employees"
+			title={m.filter_employees()}
 			onUpdate={(nextFilters) => setFilters(nextFilters as unknown as EmployeeFilters)}
 			onClear={clearFilters}
 		/>
@@ -219,7 +220,7 @@
 
 {#snippet actionsCell(row: EmployeeRow)}
 	<div class="flex items-center justify-end gap-2 text-xs font-semibold">
-		<button class="text-text-muted transition hover:text-brand">View</button>
+		<button class="text-text-muted transition hover:text-brand">{m.view()}</button>
 	</div>
 {/snippet}
 
@@ -233,17 +234,17 @@
 					>
 						<Users class="h-5 w-5" />
 					</span>
-					<span>Workforce</span>
+					<span>{m.workforce()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">Employees</h1>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.employees()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Keep a live view of staffing coverage, permissions, and team availability across MaiCare.
+					{m.employees_description()}
 				</p>
 			</div>
 			<div class="flex items-center gap-3">
 				<Button variant="secondary" class="gap-2" onclick={() => (showCreateEmployee = true)}>
 					<Plus class="h-4 w-4" />
-					New hire
+					{m.new_hire()}
 				</Button>
 			</div>
 		</div>
@@ -261,8 +262,8 @@
 			totalCount={0}
 			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
 			rowKey="id"
-			title="Employee roster"
-			description="Track active coverage, leave status, and team ownership in real time."
+			title={m.employee_roster()}
+			description={m.employee_roster_description()}
 			filters={tableFilters}
 			cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
 		/>
@@ -279,7 +280,7 @@
 			totalCount={employeesData.pagination.count}
 			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
 			rowKey="id"
-			title="Employee roster"
+			title={m.employee_roster()}
 			description="Track active coverage, leave status, and team ownership in real time."
 			filters={tableFilters}
 			cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
