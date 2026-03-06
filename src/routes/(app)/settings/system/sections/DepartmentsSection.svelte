@@ -59,11 +59,11 @@
 
 <div class="space-y-6">
 	<DataTable
+		title="Departments"
+		description="Manage organizational structure and units."
 		{columns}
 		rows={departments}
 		rowKey="id"
-		title="Departments"
-		description="Manage organizational structure and units."
 		cells={{
 			name: nameCell,
 			head: headCell,
@@ -72,7 +72,7 @@
 		}}
 	>
 		{#snippet actions()}
-			<Button class="gap-2">
+			<Button class="gap-2 rounded-xl">
 				<Plus class="h-4 w-4" />
 				Add Department
 			</Button>

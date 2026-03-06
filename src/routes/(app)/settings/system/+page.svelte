@@ -7,7 +7,6 @@
 		Lock,
 		Users,
 		Settings2,
-		CheckCircle2,
 		ChevronLeft
 	} from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
@@ -32,17 +31,6 @@
 	type TabId = (typeof tabs)[number]['id'];
 	let activeTab = $state<TabId>('organization');
 
-	let isSaving = $state(false);
-	let saveSuccess = $state(false);
-
-	const handleSave = async () => {
-		isSaving = true;
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-		isSaving = false;
-		saveSuccess = true;
-		setTimeout(() => (saveSuccess = false), 3000);
-	};
-
 	const { systemSettings } = $derived(data);
 </script>
 
@@ -66,17 +54,9 @@
 		</div>
 
 		<div class="flex gap-3">
-			<Button variant="ghost" class="gap-2">
+			<Button variant="ghost" class="gap-2 rounded-xl">
 				<Settings2 class="h-4 w-4" />
 				Audit Logs
-			</Button>
-			<Button onclick={handleSave} isLoading={isSaving} class="min-w-[140px]">
-				{#if saveSuccess}
-					<CheckCircle2 class="mr-2 h-4 w-4" />
-					Saved
-				{:else}
-					Save Changes
-				{/if}
 			</Button>
 		</div>
 	</header>

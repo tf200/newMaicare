@@ -1,9 +1,29 @@
 <script lang="ts">
 	import type { Integration } from '../types';
-	import { Share2, Plus, ExternalLink, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-svelte';
+	import {
+		Share2,
+		Plus,
+		ExternalLink,
+		RefreshCw,
+		AlertCircle,
+		CheckCircle2,
+		Save
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { fade } from 'svelte/transition';
 
 	let { integrations }: { integrations: Integration[] } = $props();
+
+	let isSaving = $state(false);
+	let saveSuccess = $state(false);
+
+	async function handleSave() {
+		isSaving = true;
+		await new Promise((resolve) => setTimeout(resolve, 800));
+		isSaving = false;
+		saveSuccess = true;
+		setTimeout(() => (saveSuccess = false), 3000);
+	}
 
 	const cardClass =
 		'group relative overflow-hidden rounded-3xl border border-border/50 bg-glass-surface p-6 shadow-sm backdrop-blur-xl transition-all duration-300 hover:border-brand/30';
@@ -18,14 +38,35 @@
 				<Share2 class="h-5 w-5" />
 			</div>
 			<div>
-				<h3 class="text-lg font-bold text-text">Integrations</h3>
+				<h3 class="text-2xl font-bold text-text">Integrations</h3>
 				<p class="text-sm text-text-muted">Connect external services and sync data.</p>
 			</div>
 		</div>
-		<Button class="gap-2">
-			<Plus class="h-4 w-4" />
-			Add Integration
-		</Button>
+		<div class="flex items-center gap-2">
+			{#if saveSuccess}
+				<div
+					in:fade
+					out:fade
+					class="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600"
+				>
+					<CheckCircle2 class="h-3.5 w-3.5" />
+					Synced
+				</div>
+			{/if}
+			<Button
+				variant="ghost"
+				onclick={handleSave}
+				isLoading={isSaving}
+				class="gap-2 rounded-xl border border-border/60 bg-surface/70 px-4 py-2 hover:border-brand/30 hover:bg-surface"
+			>
+				<RefreshCw class="h-4 w-4" />
+				Sync All
+			</Button>
+			<Button class="gap-2 rounded-xl px-4 py-2">
+				<Plus class="h-4 w-4" />
+				Add Integration
+			</Button>
+		</div>
 	</header>
 
 	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

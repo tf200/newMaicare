@@ -16,7 +16,8 @@
 		Filter,
 		LayoutGrid,
 		List,
-		ArrowRight
+		ArrowRight,
+		Save
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { fade, slide } from 'svelte/transition';
@@ -202,6 +203,17 @@
 	}
 
 	const totalSelectedCount = $derived(selectedRole?.permissions.length ?? 0);
+
+	let isSaving = $state(false);
+	let saveSuccess = $state(false);
+
+	async function handleSave() {
+		isSaving = true;
+		await new Promise((resolve) => setTimeout(resolve, 800));
+		isSaving = false;
+		saveSuccess = true;
+		setTimeout(() => (saveSuccess = false), 3000);
+	}
 </script>
 
 <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
@@ -209,7 +221,7 @@
 	<aside class="space-y-6 lg:col-span-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-bold text-text">Access Roles</h3>
-			<Button variant="ghost" class="h-8 px-2 text-brand">
+			<Button variant="ghost" class="h-8 rounded-xl px-2 text-brand">
 				<Plus class="mr-1 h-3.5 w-3.5" />
 				New Role
 			</Button>
@@ -282,12 +294,21 @@
 						</h3>
 						<p class="text-sm text-text-muted">Configure granular access controls for this role.</p>
 					</div>
-					<div class="flex items-center gap-2">
-						<div
-							class="rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand ring-1 ring-brand/20"
-						>
-							{totalSelectedCount} Selected
-						</div>
+					<div class="flex items-center gap-3">
+						{#if saveSuccess}
+							<div
+								in:fade
+								out:fade
+								class="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600"
+							>
+								<CheckCircle2 class="h-3.5 w-3.5" />
+								Saved
+							</div>
+						{/if}
+						<Button onclick={handleSave} isLoading={isSaving} class="gap-2 rounded-xl px-4 py-2">
+							<Save class="h-4 w-4" />
+							Save Permissions
+						</Button>
 					</div>
 				</header>
 
