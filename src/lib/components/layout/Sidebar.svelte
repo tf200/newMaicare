@@ -14,7 +14,8 @@
 		HeartHandshake,
 		ArrowLeft,
 		CircleUser,
-		BadgeEuro
+		BadgeEuro,
+		Settings2
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -95,6 +96,11 @@
 					permission: 'INVOICE.VIEW'
 				}
 			]
+		},
+		{
+			label: 'System Settings',
+			href: '/settings/system',
+			icon: Settings2
 		}
 	];
 

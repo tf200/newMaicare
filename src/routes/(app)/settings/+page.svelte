@@ -35,20 +35,24 @@
 		QrCode
 	} from 'lucide-svelte';
 	import { fade, slide, scale } from 'svelte/transition';
+	import { goto } from '$app/navigation';
 	import type { ActiveSessionDetail } from '$lib/types/api';
 	import type { SettingsProfileLoadResult } from './+page';
 
 	const auth = getAuthState();
 	let { data }: { data: SettingsProfileLoadResult } = $props();
 
-	const tabs = [
+	const roleNames = $derived(data.profile?.roles.map((role) => role.name) ?? []);
+	const isAdmin = $derived(roleNames.some((role) => role.toLowerCase().includes('admin')));
+
+	const tabs = $derived([
 		{ id: 'personal', label: m.personal_info(), icon: User },
 		{ id: 'security', label: m.security(), icon: ShieldCheck },
 		{ id: 'preferences', label: m.preferences(), icon: Bell },
 		{ id: 'appearance', label: m.appearance(), icon: Monitor }
-	] as const;
+	] as const);
 
-	type TabId = (typeof tabs)[number]['id'];
+	type TabId = 'personal' | 'security' | 'preferences' | 'appearance';
 	let activeTab = $state<TabId>('personal');
 
 	const profile = $derived(data.profile);
@@ -65,9 +69,7 @@
 			.map((part) => part[0]?.toUpperCase() ?? '')
 			.join('') || 'U'
 	);
-	const roleNames = $derived(profile?.roles.map((role) => role.name) ?? []);
 	const primaryRole = $derived(roleNames[0] ?? 'Employee');
-	const isAdmin = $derived(roleNames.some((role) => role.toLowerCase().includes('admin')));
 	const accountStatus = $derived(
 		!profile
 			? m.active()
@@ -381,7 +383,7 @@
 		<div class="flex min-w-full gap-1">
 			{#each tabs as tab (tab.id)}
 				<button
-					onclick={() => (activeTab = tab.id)}
+					onclick={() => (activeTab = tab.id as TabId)}
 					class="relative flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all
                     {activeTab === tab.id
 						? 'text-brand'
