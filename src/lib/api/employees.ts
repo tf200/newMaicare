@@ -7,6 +7,7 @@ export type EmployeeContractType = 'loondienst' | 'ZZP' | 'none';
 export interface ListEmployeesParams {
 	page?: number;
 	pageSize?: number;
+	page_size?: number;
 	isArchived?: boolean;
 	outOfService?: boolean;
 	locationId?: string;
@@ -79,10 +80,14 @@ export interface CreateEmployeeResponse {
 	is_archived: boolean;
 }
 
-export function listEmployees(params: ListEmployeesParams = {}) {
-	const query = new URLSearchParams();
-	query.set('page', String(params.page ?? 1));
-	query.set('page_size', String(params.pageSize ?? 10));
+	export function listEmployees(params: ListEmployeesParams = {}) {
+		const query = new URLSearchParams();
+		if (params.page != null) query.set('page', String(params.page));
+		if (params.page_size != null) {
+			query.set('page_size', String(params.page_size));
+		} else if (params.pageSize != null) {
+			query.set('page_size', String(params.pageSize));
+		}
 
 	if (params.isArchived != null) query.set('is_archived', String(params.isArchived));
 	if (params.outOfService != null) query.set('out_of_service', String(params.outOfService));
@@ -90,10 +95,10 @@ export function listEmployees(params: ListEmployeesParams = {}) {
 	if (params.contractType) query.set('contract_type', params.contractType);
 	if (params.search) query.set('search', params.search);
 
-	return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(
-		`/employees?${query.toString()}`
-	);
-}
+		const queryString = query.toString();
+		const endpoint = queryString ? `/employees?${queryString}` : '/employees';
+		return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(endpoint);
+	}
 
 export function createEmployee(payload: CreateEmployeeRequest) {
 	return api.post<ApiEnvelope<CreateEmployeeResponse>>('/employees', payload);

@@ -18,11 +18,18 @@
 	import { fade, slide, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
-	let { organization = $bindable() }: { organization: OrganizationProfile } = $props();
+	let {
+		organization = $bindable(),
+		onSave
+	}: {
+		organization: OrganizationProfile;
+		onSave?: (profile: OrganizationProfile) => Promise<OrganizationProfile>;
+	} = $props();
 
 	let isEditing = $state(false);
 	let isSaving = $state(false);
 	let saveSuccess = $state(false);
+	let saveError = $state('');
 
 	// Create a local copy for editing
 	let editForm = $state<OrganizationProfile>(JSON.parse(JSON.stringify(organization)));
@@ -44,13 +51,20 @@
 
 	async function handleSave() {
 		isSaving = true;
-		// Simulate API call
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-		organization = JSON.parse(JSON.stringify(editForm));
+		saveError = '';
+		try {
+			if (onSave) {
+				organization = await onSave(JSON.parse(JSON.stringify(editForm)));
+			} else {
+				organization = JSON.parse(JSON.stringify(editForm));
+			}
+			saveSuccess = true;
+			isEditing = false;
+			setTimeout(() => (saveSuccess = false), 3000);
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save changes';
+		}
 		isSaving = false;
-		saveSuccess = true;
-		isEditing = false;
-		setTimeout(() => (saveSuccess = false), 3000);
 	}
 
 	const cardClass =
@@ -77,6 +91,17 @@
 				>
 					<CheckCircle2 class="h-3.5 w-3.5" />
 					Changes saved
+				</div>
+			{/if}
+
+			{#if saveError}
+				<div
+					in:fade
+					out:fade
+					class="flex items-center gap-2 rounded-full bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-600"
+				>
+					<X class="h-3.5 w-3.5" />
+					{saveError}
 				</div>
 			{/if}
 

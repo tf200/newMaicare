@@ -1,10 +1,34 @@
 <script lang="ts">
-	import type { Department } from '../types';
+	import type { Department, EmployeeOption } from '../types';
 	import { Building2, Plus, Pencil, Trash2, Users, UserCircle } from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 
-	let { departments }: { departments: Department[] } = $props();
+	let {
+		departments = $bindable(),
+		employees = [],
+		onCreateDepartment,
+		onUpdateDepartment
+	}: {
+		departments: Department[];
+		employees?: EmployeeOption[];
+		onCreateDepartment?: (payload: {
+			name: string;
+			description?: string;
+			departmentHeadId?: string | null;
+		}) => Promise<Department>;
+		onUpdateDepartment?: (
+			id: string,
+			payload: {
+				name?: string;
+				description?: string;
+				departmentHeadId?: string | null;
+			}
+		) => Promise<Department>;
+	} = $props();
 
 	const columns: DataTableColumn[] = [
 		{ key: 'name', label: 'Department Name' },
@@ -13,6 +37,77 @@
 		{ key: 'employeeCount', label: 'Employees', align: 'right', width: '120px' },
 		{ key: 'actions', label: '', align: 'right', width: '100px' }
 	];
+
+	let isModalOpen = $state(false);
+	let isSaving = $state(false);
+	let formError = $state('');
+	let editingDepartmentId = $state<string | null>(null);
+	let formName = $state('');
+	let formDescription = $state('');
+	let formHeadId = $state('');
+
+	const employeeOptions = $derived([
+		{ label: 'Unassigned', value: '' },
+		...employees.map((employee) => ({ label: employee.name, value: employee.id }))
+	]);
+
+	function getEmployeeLabel(employeeId: string | null) {
+		if (!employeeId) return 'Unassigned';
+		return employees.find((employee) => employee.id === employeeId)?.name ?? employeeId;
+	}
+
+	function openCreateModal() {
+		editingDepartmentId = null;
+		formName = '';
+		formDescription = '';
+		formHeadId = '';
+		formError = '';
+		isModalOpen = true;
+	}
+
+	function openEditModal(department: Department) {
+		editingDepartmentId = department.id;
+		formName = department.name;
+		formDescription = department.description;
+		formHeadId = department.head ?? '';
+		formError = '';
+		isModalOpen = true;
+	}
+
+	async function handleSubmit() {
+		if (!formName.trim()) {
+			formError = 'Department name is required.';
+			return;
+		}
+		isSaving = true;
+		formError = '';
+		try {
+			if (editingDepartmentId) {
+				if (!onUpdateDepartment) return;
+				const updated = await onUpdateDepartment(editingDepartmentId, {
+					name: formName.trim(),
+					description: formDescription.trim() || undefined,
+					departmentHeadId: formHeadId.trim() || null
+				});
+				departments = departments.map((dept) =>
+					dept.id === updated.id ? updated : dept
+				);
+			} else {
+				if (!onCreateDepartment) return;
+				const created = await onCreateDepartment({
+					name: formName.trim(),
+					description: formDescription.trim() || undefined,
+					departmentHeadId: formHeadId.trim() || null
+				});
+				departments = [...departments, created];
+			}
+			isModalOpen = false;
+		} catch (error) {
+			formError = error instanceof Error ? error.message : 'Unable to save department.';
+		} finally {
+			isSaving = false;
+		}
+	}
 </script>
 
 {#snippet nameCell(row: Department)}
@@ -29,7 +124,7 @@
 {#snippet headCell(row: Department)}
 	<div class="flex items-center gap-2 text-text-muted">
 		<UserCircle class="h-3.5 w-3.5" />
-		<span class="text-sm font-medium">{row.head}</span>
+		<span class="text-sm font-medium">{getEmployeeLabel(row.head)}</span>
 	</div>
 {/snippet}
 
@@ -40,11 +135,12 @@
 	</div>
 {/snippet}
 
-{#snippet actionsCell()}
+{#snippet actionsCell(row: Department)}
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title="Edit Department"
+			onclick={() => openEditModal(row)}
 		>
 			<Pencil class="h-4 w-4" />
 		</button>
@@ -72,10 +168,40 @@
 		}}
 	>
 		{#snippet actions()}
-			<Button class="gap-2 rounded-xl">
+			<Button class="gap-2 rounded-xl" onclick={openCreateModal}>
 				<Plus class="h-4 w-4" />
 				Add Department
 			</Button>
 		{/snippet}
 	</DataTable>
 </div>
+
+<Modal
+	bind:open={isModalOpen}
+	title={editingDepartmentId ? 'Edit Department' : 'Add Department'}
+	description="Set the team details and head employee ID"
+>
+	<div class="space-y-4">
+		<Input label="Department name" bind:value={formName} />
+		<Input label="Description" bind:value={formDescription} />
+		<Select
+			label="Department head"
+			options={employeeOptions}
+			bind:value={formHeadId}
+			placeholder="Select employee"
+		/>
+		{#if formError}
+			<p class="text-xs font-medium text-rose-600">{formError}</p>
+		{/if}
+	</div>
+	{#snippet footer()}
+		<div class="flex items-center justify-end gap-2">
+			<Button variant="ghost" onclick={() => (isModalOpen = false)}>
+				Cancel
+			</Button>
+			<Button onclick={handleSubmit} isLoading={isSaving} class="px-4">
+				{editingDepartmentId ? 'Save Changes' : 'Create Department'}
+			</Button>
+		</div>
+	{/snippet}
+</Modal>

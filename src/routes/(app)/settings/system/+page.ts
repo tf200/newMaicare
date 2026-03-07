@@ -1,73 +1,147 @@
 import type { PageLoad } from './$types';
-import type { SystemSettings } from './types';
+import type {
+	Department,
+	EmployeeOption,
+	OrganizationProfile,
+	PermissionGroup,
+	Role,
+	SystemSettings
+} from './types';
+import type {
+	DepartmentItem,
+	GetOrganizationProfileResponse,
+	ListRolesApiResponse,
+	PermissionGroupResponse
+} from '$lib/types/api';
+import {
+	getOrganizationProfile,
+	listDepartments,
+	listPermissionGroups,
+	listRolePermissions,
+	listRoles
+} from '$lib/api/settings';
+import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
+
+const emptyOrganization: OrganizationProfile = {
+	name: '',
+	timezone: 'Europe/Amsterdam',
+	address: {
+		street: '',
+		number: '',
+		postalCode: '',
+		city: '',
+		country: ''
+	},
+	contact: {
+		email: '',
+		phone: '',
+		website: ''
+	}
+};
+
+function mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
+	const houseNumber = [data.hq_house_number, data.hq_house_number_addition]
+		.filter(Boolean)
+		.join(' ');
+
+	return {
+		name: data.name,
+		timezone: data.default_timezone,
+		address: {
+			street: data.hq_street,
+			number: houseNumber,
+			postalCode: data.hq_postal_code,
+			city: data.hq_city,
+			country: 'Netherlands'
+		},
+		contact: {
+			email: data.email,
+			phone: data.phone_number,
+			website: data.website
+		}
+	};
+}
+
+function mapRole(role: ListRolesApiResponse, permissions: string[]): Role {
+	return {
+		id: role.id,
+		name: role.role_name,
+		description: role.description,
+		permissions,
+		userCount: role.employee_count,
+		permissionCount: role.permission_count
+	};
+}
+
+function mapDepartment(item: DepartmentItem): Department {
+	return {
+		id: item.id,
+		name: item.name,
+		description: item.description ?? '',
+		head: item.department_head_employee_id ?? null,
+		employeeCount: 0
+	};
+}
+
+function mapPermissionGroups(groups: PermissionGroupResponse[]): PermissionGroup[] {
+	return groups.map((group) => {
+		const permissions = group.sections
+			.flatMap((section) => section.permissions)
+			.sort((a, b) => a.sort_order - b.sort_order)
+			.map((permission) => ({
+				id: permission.permission_id,
+				label: permission.display_name,
+				description: permission.description,
+				resource: permission.permission_resource
+			}));
+
+		return {
+			id: group.group_key,
+			label: group.group_label,
+			permissions
+		};
+	});
+}
 
 export const load: PageLoad = async () => {
-	// Mocking a delay
-	await new Promise((resolve) => setTimeout(resolve, 500));
+	const organizationResult = await getOrganizationProfile()
+		.then((response) => mapOrganizationProfile(response.data))
+		.catch(() => emptyOrganization);
+
+	const rolesResult = await listRoles()
+		.then((response) => response.data)
+		.catch(() => [] as ListRolesApiResponse[]);
+
+	const permissionGroupsResult = await listPermissionGroups()
+		.then((response) => mapPermissionGroups(response.data))
+		.catch(() => [] as PermissionGroup[]);
+
+	const departmentsResult = await listDepartments()
+		.then((response) => response.data.map(mapDepartment))
+		.catch(() => [] as Department[]);
+
+	const employeesResult = await listEmployees({ page: 1, page_size: 100 })
+		.then((response) =>
+			response.data.results.map((employee: EmployeeListItem) => ({
+				id: employee.id,
+				name: `${employee.first_name} ${employee.last_name}`.trim()
+			}))
+		)
+		.catch(() => [] as EmployeeOption[]);
+
+	const rolePermissionsByRoleId: Record<string, string[]> = {};
+	if (rolesResult.length > 0) {
+		const firstRole = rolesResult[0];
+		const permissions = await listRolePermissions(firstRole.id)
+			.then((response) => response.data.map((item) => item.permission_id))
+			.catch(() => [] as string[]);
+		rolePermissionsByRoleId[firstRole.id] = permissions;
+	}
 
 	const systemSettings: SystemSettings = {
-		organization: {
-			name: 'MaiCare Care Solutions',
-			timezone: 'Europe/Amsterdam',
-			address: {
-				street: 'Zorglaan',
-				number: '42',
-				postalCode: '1234 AB',
-				city: 'Utrecht',
-				country: 'Netherlands'
-			},
-			contact: {
-				email: 'admin@maicare.com',
-				phone: '+31 30 123 4567',
-				website: 'https://maicare.com'
-			}
-		},
-		roles: [
-			{
-				id: '1',
-				name: 'Administrator',
-				description: 'Full system access with all permissions.',
-				permissions: ['ALL'],
-				userCount: 3
-			},
-			{
-				id: '2',
-				name: 'Manager',
-				description: 'Can manage employees and view reports.',
-				permissions: ['EMPLOYEE.VIEW', 'EMPLOYEE.EDIT', 'REPORT.VIEW'],
-				userCount: 8
-			},
-			{
-				id: '3',
-				name: 'Caregiver',
-				description: 'Standard access for care coordination.',
-				permissions: ['CLIENT.VIEW', 'CLIENT.EDIT', 'CARE.VIEW'],
-				userCount: 45
-			}
-		],
-		departments: [
-			{
-				id: '1',
-				name: 'Medical',
-				description: 'Nursing and clinical staff.',
-				head: 'Dr. Sarah Jansen',
-				employeeCount: 24
-			},
-			{
-				id: '2',
-				name: 'Administration',
-				description: 'Human resources and office management.',
-				head: 'Mark de Vries',
-				employeeCount: 6
-			},
-			{
-				id: '3',
-				name: 'Support',
-				description: 'IT and facility management.',
-				head: 'Elena Petrova',
-				employeeCount: 4
-			}
-		],
+		organization: organizationResult,
+		roles: rolesResult.map((role) => mapRole(role, rolePermissionsByRoleId[role.id] ?? [])),
+		departments: departmentsResult,
 		security: {
 			auditLogRetentionDays: 90,
 			sessionTimeoutMinutes: 30,
@@ -104,6 +178,9 @@ export const load: PageLoad = async () => {
 
 	return {
 		systemSettings,
+		permissionGroups: permissionGroupsResult,
+		rolePermissionsByRoleId,
+		employees: employeesResult,
 		loadError: null as string | null
 	};
 };

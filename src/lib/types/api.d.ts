@@ -9,3 +9,4 @@ export * from './api/evaluations';
 export * from './api/incidents';
 export * from './api/schedules';
 export * from './api/employees';
+export * from './api/settings';

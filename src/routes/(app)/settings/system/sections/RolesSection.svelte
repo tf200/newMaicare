@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Role } from '../types';
+	import type { PermissionGroup, PermissionItem, Role } from '../types';
 	import {
 		ShieldCheck,
 		Plus,
@@ -20,143 +20,89 @@
 		Save
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import { fade, slide } from 'svelte/transition';
+	import { onMount } from 'svelte';
 
-	let { roles = $bindable() }: { roles: Role[] } = $props();
+	let {
+		roles = $bindable(),
+		permissionGroups = [],
+		initialRolePermissions = {},
+		onCreateRole,
+		onFetchRolePermissions,
+		onSaveRolePermissions
+	}: {
+		roles: Role[];
+		permissionGroups?: PermissionGroup[];
+		initialRolePermissions?: Record<string, string[]>;
+		onCreateRole?: (payload: { name: string; description?: string }) => Promise<Role>;
+		onFetchRolePermissions?: (roleId: string) => Promise<string[]>;
+		onSaveRolePermissions?: (roleId: string, permissionIds: string[]) => Promise<void>;
+	} = $props();
 
 	let selectedRoleId = $state(roles[0]?.id);
 	let searchQuery = $state('');
 	let permissionSearch = $state('');
 
-	const permissionGroups = [
-		{
-			id: 'client',
-			label: 'Client Management',
-			icon: Users,
-			permissions: [
-				{
-					id: 'client.read',
-					label: 'View Clients',
-					description: 'Can view client profiles and lists'
-				},
-				{
-					id: 'client.write',
-					label: 'Manage Clients',
-					description: 'Can create and edit client profiles'
-				},
-				{
-					id: 'client.delete',
-					label: 'Delete Clients',
-					description: 'Can remove client records'
-				},
-				{
-					id: 'client.export',
-					label: 'Export Data',
-					description: 'Can export client lists to CSV/Excel'
-				}
-			]
-		},
-		{
-			id: 'employee',
-			label: 'Employee Management',
-			icon: ShieldCheck,
-			permissions: [
-				{
-					id: 'employee.read',
-					label: 'View Employees',
-					description: 'Can view employee directory'
-				},
-				{
-					id: 'employee.write',
-					label: 'Manage Employees',
-					description: 'Can hire and edit employee data'
-				},
-				{
-					id: 'employee.schedule',
-					label: 'Manage Schedules',
-					description: 'Can assign shifts to employees'
-				},
-				{
-					id: 'employee.delete',
-					label: 'Terminate Employees',
-					description: 'Can remove employee records'
-				}
-			]
-		},
-		{
-			id: 'finance',
-			label: 'Finance & Billing',
-			icon: LayoutGrid,
-			permissions: [
-				{
-					id: 'finance.read',
-					label: 'View Billing',
-					description: 'Can view invoices and payments'
-				},
-				{
-					id: 'finance.write',
-					label: 'Manage Invoices',
-					description: 'Can create and edit invoices'
-				},
-				{
-					id: 'finance.approve',
-					label: 'Approve Expenses',
-					description: 'Can approve employee expense claims'
-				},
-				{
-					id: 'finance.reports',
-					label: 'Financial Reports',
-					description: 'Can access financial dashboards'
-				}
-			]
-		},
-		{
-			id: 'schedule',
-			label: 'Scheduling & Rota',
-			icon: List,
-			permissions: [
-				{ id: 'schedule.read', label: 'View Rota', description: 'Can view the shared schedule' },
-				{
-					id: 'schedule.write',
-					label: 'Edit Rota',
-					description: 'Can modify shifts and assignments'
-				},
-				{
-					id: 'schedule.publish',
-					label: 'Publish Rota',
-					description: 'Can finalize and send out schedules'
-				}
-			]
-		},
-		{
-			id: 'settings',
-			label: 'System Administration',
-			icon: ShieldCheck,
-			permissions: [
-				{
-					id: 'settings.read',
-					label: 'View Settings',
-					description: 'Can view system configuration'
-				},
-				{
-					id: 'settings.write',
-					label: 'Edit Settings',
-					description: 'Can modify system-wide options'
-				},
-				{ id: 'settings.audit', label: 'Audit Logs', description: 'Can view system activity logs' }
-			]
-		}
-	];
+	let permissionsByRoleId = $state<Record<string, string[]>>({});
+	let isLoadingPermissions = $state(false);
+	let permissionLoadError = $state('');
+
+	const groupIcons: Record<string, typeof Users> = {
+		client: Users,
+		employee: ShieldCheck,
+		finance: LayoutGrid,
+		schedule: List,
+		settings: ShieldCheck
+	};
 
 	const selectedRole = $derived(roles.find((r) => r.id === selectedRoleId));
+	const selectedRolePermissions: string[] = $derived(
+		selectedRoleId
+			? permissionsByRoleId[selectedRoleId] ?? selectedRole?.permissions ?? []
+			: selectedRole?.permissions ?? []
+	);
 
-	const filteredGroups = $derived.by(() => {
+	async function loadRolePermissions(roleId: string) {
+		if (!onFetchRolePermissions) return;
+		isLoadingPermissions = true;
+		permissionLoadError = '';
+		try {
+			const permissions = await onFetchRolePermissions(roleId);
+			permissionsByRoleId = {
+				...permissionsByRoleId,
+				[roleId]: permissions
+			};
+		} catch (error) {
+			permissionLoadError =
+				error instanceof Error ? error.message : 'Failed to load role permissions';
+		} finally {
+			isLoadingPermissions = false;
+		}
+	}
+
+	function selectRole(roleId: string) {
+		selectedRoleId = roleId;
+		if (!permissionsByRoleId[roleId] && onFetchRolePermissions) {
+			void loadRolePermissions(roleId);
+		}
+	}
+
+	onMount(() => {
+		permissionsByRoleId = { ...initialRolePermissions };
+		if (roles[0]?.id) {
+			selectRole(roles[0].id);
+		}
+	});
+
+	const filteredGroups = $derived.by((): PermissionGroup[] => {
 		if (!permissionSearch) return permissionGroups;
 		return permissionGroups
 			.map((group) => ({
 				...group,
 				permissions: group.permissions.filter(
-					(p) =>
+					(p: PermissionItem) =>
 						p.label.toLowerCase().includes(permissionSearch.toLowerCase()) ||
 						p.description.toLowerCase().includes(permissionSearch.toLowerCase())
 				)
@@ -164,55 +110,117 @@
 			.filter((group) => group.permissions.length > 0);
 	});
 
-	function togglePermission(permissionId: string) {
-		if (!selectedRole) return;
+	function setRolePermissions(roleId: string, permissions: string[]) {
+		permissionsByRoleId = { ...permissionsByRoleId, [roleId]: permissions };
+		roles = roles.map((role) =>
+			role.id === roleId
+				? {
+						...role,
+						permissions,
+						permissionCount: permissions.length
+					}
+				: role
+		);
+	}
 
-		const index = selectedRole.permissions.indexOf(permissionId);
+	function togglePermission(permissionId: string) {
+		if (!selectedRoleId) return;
+		const current = permissionsByRoleId[selectedRoleId] ?? selectedRolePermissions;
+		const index = current.indexOf(permissionId);
 		if (index === -1) {
-			selectedRole.permissions = [...selectedRole.permissions, permissionId];
+			setRolePermissions(selectedRoleId, [...current, permissionId]);
 		} else {
-			selectedRole.permissions = selectedRole.permissions.filter((id) => id !== permissionId);
+			setRolePermissions(
+				selectedRoleId,
+				current.filter((id) => id !== permissionId)
+			);
 		}
 	}
 
 	function toggleGroup(groupId: string, select: boolean) {
-		if (!selectedRole) return;
+		if (!selectedRoleId) return;
 
 		const group = permissionGroups.find((g) => g.id === groupId);
 		if (!group) return;
 
-		const groupPermissionIds = group.permissions.map((p) => p.id);
+		const groupPermissionIds = group.permissions.map((p: PermissionItem) => p.id);
+		const current = permissionsByRoleId[selectedRoleId] ?? selectedRolePermissions;
 
 		if (select) {
-			// Add all missing permissions
-			const newPermissions = [...new Set([...selectedRole.permissions, ...groupPermissionIds])];
-			selectedRole.permissions = newPermissions;
+			const newPermissions = [...new Set([...current, ...groupPermissionIds])];
+			setRolePermissions(selectedRoleId, newPermissions);
 		} else {
-			// Remove all group permissions
-			selectedRole.permissions = selectedRole.permissions.filter(
-				(id) => !groupPermissionIds.includes(id)
+			setRolePermissions(
+				selectedRoleId,
+				current.filter((id) => !groupPermissionIds.includes(id))
 			);
 		}
 	}
 
 	function getGroupSelectedCount(groupId: string) {
-		if (!selectedRole) return 0;
 		const group = permissionGroups.find((g) => g.id === groupId);
 		if (!group) return 0;
-		return group.permissions.filter((p) => selectedRole.permissions.includes(p.id)).length;
+		return group.permissions.filter((p: PermissionItem) => selectedRolePermissions.includes(p.id)).length;
 	}
 
-	const totalSelectedCount = $derived(selectedRole?.permissions.length ?? 0);
+	const totalSelectedCount = $derived(selectedRolePermissions.length ?? 0);
+
+	function getRolePermissionCount(role: Role) {
+		return permissionsByRoleId[role.id]?.length ?? role.permissionCount ?? role.permissions.length;
+	}
 
 	let isSaving = $state(false);
 	let saveSuccess = $state(false);
 
 	async function handleSave() {
+		if (!selectedRoleId) return;
 		isSaving = true;
-		await new Promise((resolve) => setTimeout(resolve, 800));
-		isSaving = false;
-		saveSuccess = true;
-		setTimeout(() => (saveSuccess = false), 3000);
+		try {
+			if (onSaveRolePermissions) {
+				await onSaveRolePermissions(selectedRoleId, selectedRolePermissions);
+			}
+			saveSuccess = true;
+			setTimeout(() => (saveSuccess = false), 3000);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	let isCreateOpen = $state(false);
+	let createName = $state('');
+	let createDescription = $state('');
+	let isCreating = $state(false);
+	let createError = $state('');
+
+	function openCreateRole() {
+		createName = '';
+		createDescription = '';
+		createError = '';
+		isCreateOpen = true;
+	}
+
+	async function handleCreateRole() {
+		if (!onCreateRole) return;
+		if (!createName.trim()) {
+			createError = 'Role name is required.';
+			return;
+		}
+		isCreating = true;
+		createError = '';
+		try {
+			const created = await onCreateRole({
+				name: createName.trim(),
+				description: createDescription.trim() || undefined
+			});
+			roles = [...roles, created];
+			permissionsByRoleId = { ...permissionsByRoleId, [created.id]: [] };
+			selectRole(created.id);
+			isCreateOpen = false;
+		} catch (error) {
+			createError = error instanceof Error ? error.message : 'Failed to create role.';
+		} finally {
+			isCreating = false;
+		}
 	}
 </script>
 
@@ -221,7 +229,7 @@
 	<aside class="space-y-6 lg:col-span-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-bold text-text">Access Roles</h3>
-			<Button variant="ghost" class="h-8 rounded-xl px-2 text-brand">
+			<Button variant="ghost" class="h-8 rounded-xl px-2 text-brand" onclick={openCreateRole}>
 				<Plus class="mr-1 h-3.5 w-3.5" />
 				New Role
 			</Button>
@@ -230,7 +238,7 @@
 		<div class="space-y-2">
 			{#each roles as role (role.id)}
 				<button
-					onclick={() => (selectedRoleId = role.id)}
+					onclick={() => selectRole(role.id)}
 					class="group relative flex w-full flex-col gap-1 rounded-2xl border p-4 text-left transition-all duration-200
 					{selectedRoleId === role.id
 						? 'border-brand bg-brand/5 ring-1 ring-brand/20'
@@ -260,7 +268,7 @@
 							class="flex items-center gap-1 text-[10px] font-bold tracking-wider text-text-subtle uppercase"
 						>
 							<ShieldCheck class="h-3 w-3" />
-							{role.permissions.length} permissions
+							{getRolePermissionCount(role)} permissions
 						</div>
 					</div>
 				</button>
@@ -322,16 +330,26 @@
 					/>
 				</div>
 
-				<div class="space-y-4">
-					{#each filteredGroups as group (group.id)}
-						<div class="overflow-hidden rounded-2xl border border-border/50 bg-surface/30">
-							<div
-								class="flex items-center justify-between border-b border-border/50 bg-surface/50 px-5 py-4"
-							>
-								<div class="flex items-center gap-3">
-									<div class="rounded-lg bg-text/5 p-2 text-text">
-										<group.icon class="h-4 w-4" />
-									</div>
+				{#if isLoadingPermissions}
+					<div class="rounded-2xl border border-border/50 bg-surface/40 p-6 text-sm text-text-muted">
+						Loading permissions for {selectedRole.name}...
+					</div>
+				{:else if permissionLoadError}
+					<div class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600">
+						{permissionLoadError}
+					</div>
+				{:else}
+					<div class="space-y-4">
+						{#each filteredGroups as group (group.id)}
+							{@const GroupIcon = groupIcons[group.id] ?? ShieldCheck}
+							<div class="overflow-hidden rounded-2xl border border-border/50 bg-surface/30">
+								<div
+									class="flex items-center justify-between border-b border-border/50 bg-surface/50 px-5 py-4"
+								>
+									<div class="flex items-center gap-3">
+										<div class="rounded-lg bg-text/5 p-2 text-text">
+											<GroupIcon class="h-4 w-4" />
+										</div>
 									<div>
 										<h4 class="text-sm font-bold text-text">{group.label}</h4>
 										<p class="text-[10px] font-medium text-text-muted">
@@ -356,9 +374,9 @@
 								</div>
 							</div>
 
-							<div class="grid grid-cols-1 gap-px bg-border/50 sm:grid-cols-2">
-								{#each group.permissions as perm (perm.id)}
-									{@const isSelected = selectedRole.permissions.includes(perm.id)}
+								<div class="grid grid-cols-1 gap-px bg-border/50 sm:grid-cols-2">
+									{#each group.permissions as perm (perm.id)}
+										{@const isSelected = selectedRolePermissions.includes(perm.id)}
 									<button
 										onclick={() => togglePermission(perm.id)}
 										class="group relative flex items-start gap-4 bg-surface p-5 text-left transition-colors hover:bg-brand/[0.02]"
@@ -392,29 +410,30 @@
 								{/each}
 							</div>
 						</div>
-					{/each}
+						{/each}
 
-					{#if filteredGroups.length === 0}
-						<div
-							class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center"
-						>
-							<div class="mb-4 rounded-full bg-surface p-4 shadow-sm">
-								<Search class="h-8 w-8 text-text-subtle" />
-							</div>
-							<p class="text-lg font-bold text-text">No permissions found</p>
-							<p class="text-sm text-text-muted">
-								Try adjusting your search query to find what you're looking for.
-							</p>
-							<Button
-								variant="ghost"
-								class="mt-4 text-brand"
-								onclick={() => (permissionSearch = '')}
+						{#if filteredGroups.length === 0}
+							<div
+								class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center"
 							>
-								Clear Search
-							</Button>
-						</div>
-					{/if}
-				</div>
+								<div class="mb-4 rounded-full bg-surface p-4 shadow-sm">
+									<Search class="h-8 w-8 text-text-subtle" />
+								</div>
+								<p class="text-lg font-bold text-text">No permissions found</p>
+								<p class="text-sm text-text-muted">
+									Try adjusting your search query to find what you're looking for.
+								</p>
+								<Button
+									variant="ghost"
+									class="mt-4 text-brand"
+									onclick={() => (permissionSearch = '')}
+								>
+									Clear Search
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		{:else}
 			<div
@@ -428,3 +447,23 @@
 		{/if}
 	</div>
 </div>
+
+<Modal bind:open={isCreateOpen} title="Create Role" description="Add a new access role">
+	<div class="space-y-4">
+		<Input label="Role name" bind:value={createName} placeholder="e.g. Care Coordinator" />
+		<Input label="Description" bind:value={createDescription} placeholder="What can this role do?" />
+		{#if createError}
+			<p class="text-xs font-medium text-rose-600">{createError}</p>
+		{/if}
+	</div>
+	{#snippet footer()}
+		<div class="flex items-center justify-end gap-2">
+			<Button variant="ghost" onclick={() => (isCreateOpen = false)}>
+				Cancel
+			</Button>
+			<Button onclick={handleCreateRole} isLoading={isCreating} class="px-4">
+				Create Role
+			</Button>
+		</div>
+	{/snippet}
+</Modal>
