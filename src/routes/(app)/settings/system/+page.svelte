@@ -10,15 +10,22 @@
 		ChevronLeft
 	} from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
-	import { goto } from '$app/navigation';
-	import type { PageData } from './$types';
+	import { localizeHref } from '$lib/paraglide/runtime';
 	import OrganizationSection from './sections/OrganizationSection.svelte';
 	import RolesSection from './sections/RolesSection.svelte';
 	import DepartmentsSection from './sections/DepartmentsSection.svelte';
 	import SecuritySection from './sections/SecuritySection.svelte';
 	import IntegrationsSection from './sections/IntegrationsSection.svelte';
-	import type { Department, EmployeeOption, OrganizationProfile, PermissionGroup, Role } from './types';
+	import type {
+		Department,
+		EmployeeOption,
+		OrganizationProfile,
+		PermissionGroup,
+		Role
+	} from './types';
 	import type { GetOrganizationProfileResponse } from '$lib/types/api';
+	import { createInitialSystemSettings } from './+page';
+	import type { SystemSettingsLoadResult, SystemSettingsPageData } from './+page';
 	import {
 		addPermissionsToRole,
 		createDepartment,
@@ -28,14 +35,48 @@
 		updateOrganizationProfile
 	} from '$lib/api/settings';
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: SystemSettingsPageData } = $props();
 
-	const systemSettings = $derived(data.systemSettings);
-	const permissionGroups = $derived<PermissionGroup[]>(data.permissionGroups ?? []);
+	const initial = $derived(data.initial);
+	const systemDataPromise = $derived(data.systemData);
+
+	let systemState = $state<SystemSettingsLoadResult>(createInitialSystemSettings());
+	let systemPending = $state(true);
+	let systemRequestToken = 0;
+
+	$effect(() => {
+		const nextInitial = initial;
+		const promise = systemDataPromise;
+		const requestToken = ++systemRequestToken;
+
+		systemState = nextInitial;
+		systemPending = true;
+
+		void promise
+			.then((result) => {
+				if (requestToken !== systemRequestToken) return;
+				systemState = result;
+			})
+			.catch((error) => {
+				if (requestToken !== systemRequestToken) return;
+				systemState = {
+					...nextInitial,
+					loadError: error instanceof Error ? error.message : 'Failed to load system settings.'
+				};
+			})
+			.finally(() => {
+				if (requestToken === systemRequestToken) {
+					systemPending = false;
+				}
+			});
+	});
+
+	const systemSettings = $derived(systemState.systemSettings);
+	const permissionGroups = $derived<PermissionGroup[]>(systemState.permissionGroups ?? []);
 	const initialRolePermissionsByRoleId = $derived<Record<string, string[]>>(
-		data.rolePermissionsByRoleId ?? {}
+		systemState.rolePermissionsByRoleId ?? {}
 	);
-	const employees = $derived<EmployeeOption[]>(data.employees ?? []);
+	const employees = $derived<EmployeeOption[]>(systemState.employees ?? []);
 
 	const tabs = [
 		{ id: 'organization', label: 'Organization', icon: Building2 },
@@ -162,14 +203,13 @@
 <div class="mx-auto max-w-6xl space-y-8 pb-20">
 	<header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 		<div class="space-y-2">
-			<button
-				type="button"
-				onclick={() => goto('/dashboard')}
+			<a
+				href={localizeHref('/dashboard')}
 				class="flex items-center gap-2 text-xs font-bold tracking-widest text-text-muted uppercase transition hover:text-brand"
 			>
 				<ChevronLeft class="h-3 w-3" />
 				Back to Dashboard
-			</button>
+			</a>
 			<div class="flex items-center gap-4">
 				<h1 class="text-4xl font-bold tracking-tight text-text">System Settings</h1>
 			</div>
@@ -185,6 +225,14 @@
 			</Button>
 		</div>
 	</header>
+
+	{#if systemState.loadError}
+		<div
+			class="rounded-2xl border border-amber-400/30 bg-amber-50/80 p-4 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+		>
+			{systemState.loadError}
+		</div>
+	{/if}
 
 	<nav class="no-scrollbar flex overflow-x-auto border-b border-border/50 pb-px">
 		<div class="flex min-w-full gap-1">
@@ -208,7 +256,27 @@
 	</nav>
 
 	<main class="min-h-[600px]">
-		{#if activeTab === 'organization'}
+		{#if systemPending}
+			<div class="space-y-6" aria-busy="true">
+				<div class="grid gap-4 md:grid-cols-3">
+					{#each [1, 2, 3] as item (item)}
+						<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+							<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+							<div class="mt-4 h-8 w-full animate-pulse rounded bg-border/70"></div>
+							<div class="mt-3 h-8 w-3/4 animate-pulse rounded bg-border/70"></div>
+						</div>
+					{/each}
+				</div>
+				<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+					<div class="h-4 w-40 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-6 space-y-3">
+						{#each [1, 2, 3, 4] as row (row)}
+							<div class="h-12 w-full animate-pulse rounded-2xl bg-border/70"></div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{:else if activeTab === 'organization'}
 			<div in:fade={{ duration: 300 }}>
 				<OrganizationSection
 					organization={systemSettings.organization}
@@ -219,7 +287,7 @@
 			<div in:fade={{ duration: 300 }}>
 				<RolesSection
 					roles={systemSettings.roles}
-					permissionGroups={permissionGroups}
+					{permissionGroups}
 					initialRolePermissions={initialRolePermissionsByRoleId}
 					onCreateRole={handleCreateRole}
 					onFetchRolePermissions={handleFetchRolePermissions}
@@ -230,7 +298,7 @@
 			<div in:fade={{ duration: 300 }}>
 				<DepartmentsSection
 					departments={systemSettings.departments}
-					employees={employees}
+					{employees}
 					onCreateDepartment={handleCreateDepartment}
 					onUpdateDepartment={handleUpdateDepartment}
 				/>

@@ -103,84 +103,131 @@ function mapPermissionGroups(groups: PermissionGroupResponse[]): PermissionGroup
 	});
 }
 
-export const load: PageLoad = async () => {
-	const organizationResult = await getOrganizationProfile()
-		.then((response) => mapOrganizationProfile(response.data))
-		.catch(() => emptyOrganization);
+export interface SystemSettingsLoadResult {
+	systemSettings: SystemSettings;
+	permissionGroups: PermissionGroup[];
+	rolePermissionsByRoleId: Record<string, string[]>;
+	employees: EmployeeOption[];
+	loadError: string | null;
+}
 
-	const rolesResult = await listRoles()
-		.then((response) => response.data)
-		.catch(() => [] as ListRolesApiResponse[]);
+export interface SystemSettingsPageData {
+	initial: SystemSettingsLoadResult;
+	systemData: Promise<SystemSettingsLoadResult>;
+}
 
-	const permissionGroupsResult = await listPermissionGroups()
-		.then((response) => mapPermissionGroups(response.data))
-		.catch(() => [] as PermissionGroup[]);
-
-	const departmentsResult = await listDepartments()
-		.then((response) => response.data.map(mapDepartment))
-		.catch(() => [] as Department[]);
-
-	const employeesResult = await listEmployees({ page: 1, page_size: 100 })
-		.then((response) =>
-			response.data.results.map((employee: EmployeeListItem) => ({
-				id: employee.id,
-				name: `${employee.first_name} ${employee.last_name}`.trim()
-			}))
-		)
-		.catch(() => [] as EmployeeOption[]);
-
-	const rolePermissionsByRoleId: Record<string, string[]> = {};
-	if (rolesResult.length > 0) {
-		const firstRole = rolesResult[0];
-		const permissions = await listRolePermissions(firstRole.id)
-			.then((response) => response.data.map((item) => item.permission_id))
-			.catch(() => [] as string[]);
-		rolePermissionsByRoleId[firstRole.id] = permissions;
+const defaultSecuritySettings: SystemSettings['security'] = {
+	auditLogRetentionDays: 90,
+	sessionTimeoutMinutes: 30,
+	requireTwoFactor: true,
+	passwordComplexity: {
+		minLength: 12,
+		requireNumbers: true,
+		requireSymbols: true,
+		requireUppercase: true
 	}
+};
 
-	const systemSettings: SystemSettings = {
-		organization: organizationResult,
-		roles: rolesResult.map((role) => mapRole(role, rolePermissionsByRoleId[role.id] ?? [])),
-		departments: departmentsResult,
-		security: {
-			auditLogRetentionDays: 90,
-			sessionTimeoutMinutes: 30,
-			requireTwoFactor: true,
-			passwordComplexity: {
-				minLength: 12,
-				requireNumbers: true,
-				requireSymbols: true,
-				requireUppercase: true
+const defaultIntegrations: SystemSettings['integrations'] = [
+	{
+		id: '1',
+		name: 'SendGrid',
+		status: 'connected',
+		lastSync: '2024-03-05T10:00:00Z',
+		description: 'Email delivery service for notifications and reports.'
+	},
+	{
+		id: '2',
+		name: 'Twilio',
+		status: 'disconnected',
+		description: 'SMS gateway for two-factor authentication and alerts.'
+	},
+	{
+		id: '3',
+		name: 'AFAS Sync',
+		status: 'pending',
+		description: 'External HR and payroll synchronization.'
+	}
+];
+
+export const createInitialSystemSettings = (): SystemSettingsLoadResult => ({
+	systemSettings: {
+		organization: emptyOrganization,
+		roles: [],
+		departments: [],
+		security: defaultSecuritySettings,
+		integrations: defaultIntegrations
+	},
+	permissionGroups: [],
+	rolePermissionsByRoleId: {},
+	employees: [],
+	loadError: null
+});
+
+export const load: PageLoad = () => {
+	const systemData: Promise<SystemSettingsLoadResult> = Promise.all([
+		getOrganizationProfile()
+			.then((response) => mapOrganizationProfile(response.data))
+			.catch(() => emptyOrganization),
+		listRoles()
+			.then((response) => response.data)
+			.catch(() => [] as ListRolesApiResponse[]),
+		listPermissionGroups()
+			.then((response) => mapPermissionGroups(response.data))
+			.catch(() => [] as PermissionGroup[]),
+		listDepartments()
+			.then((response) => response.data.map(mapDepartment))
+			.catch(() => [] as Department[]),
+		listEmployees({ page: 1, page_size: 100 })
+			.then((response) =>
+				response.data.results.map((employee: EmployeeListItem) => ({
+					id: employee.id,
+					name: `${employee.first_name} ${employee.last_name}`.trim()
+				}))
+			)
+			.catch(() => [] as EmployeeOption[])
+	])
+		.then(
+			async ([
+				organizationResult,
+				rolesResult,
+				permissionGroupsResult,
+				departmentsResult,
+				employeesResult
+			]) => {
+				const rolePermissionsByRoleId: Record<string, string[]> = {};
+				if (rolesResult.length > 0) {
+					const firstRole = rolesResult[0];
+					const permissions = await listRolePermissions(firstRole.id)
+						.then((response) => response.data.map((item) => item.permission_id))
+						.catch(() => [] as string[]);
+					rolePermissionsByRoleId[firstRole.id] = permissions;
+				}
+
+				return {
+					systemSettings: {
+						organization: organizationResult,
+						roles: rolesResult.map((role) => mapRole(role, rolePermissionsByRoleId[role.id] ?? [])),
+						departments: departmentsResult,
+						security: defaultSecuritySettings,
+						integrations: defaultIntegrations
+					},
+					permissionGroups: permissionGroupsResult,
+					rolePermissionsByRoleId,
+					employees: employeesResult,
+					loadError: null
+				} satisfies SystemSettingsLoadResult;
 			}
-		},
-		integrations: [
-			{
-				id: '1',
-				name: 'SendGrid',
-				status: 'connected',
-				lastSync: '2024-03-05T10:00:00Z',
-				description: 'Email delivery service for notifications and reports.'
-			},
-			{
-				id: '2',
-				name: 'Twilio',
-				status: 'disconnected',
-				description: 'SMS gateway for two-factor authentication and alerts.'
-			},
-			{
-				id: '3',
-				name: 'AFAS Sync',
-				status: 'pending',
-				description: 'External HR and payroll synchronization.'
-			}
-		]
-	};
+		)
+		.catch(
+			(error): SystemSettingsLoadResult => ({
+				...createInitialSystemSettings(),
+				loadError: error instanceof Error ? error.message : 'Failed to load system settings.'
+			})
+		);
 
 	return {
-		systemSettings,
-		permissionGroups: permissionGroupsResult,
-		rolePermissionsByRoleId,
-		employees: employeesResult,
-		loadError: null as string | null
-	};
+		initial: createInitialSystemSettings(),
+		systemData
+	} satisfies SystemSettingsPageData;
 };

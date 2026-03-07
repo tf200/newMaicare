@@ -7,18 +7,31 @@ export interface SettingsProfileLoadResult {
 	loadError: string | null;
 }
 
-export const load: PageLoad = async () => {
-	try {
-		const response = await getEmployeeProfileDetails();
+export interface SettingsProfilePageData {
+	initial: SettingsProfileLoadResult;
+	profileData: Promise<SettingsProfileLoadResult>;
+}
 
-		return {
+export const createInitialSettingsProfile = (): SettingsProfileLoadResult => ({
+	profile: null,
+	loadError: null
+});
+
+export const load: PageLoad = () => {
+	const profileData: Promise<SettingsProfileLoadResult> = getEmployeeProfileDetails()
+		.then((response) => ({
 			profile: response.data,
 			loadError: null
-		} satisfies SettingsProfileLoadResult;
-	} catch (error) {
-		return {
-			profile: null,
-			loadError: error instanceof Error ? error.message : 'Failed to load profile details.'
-		} satisfies SettingsProfileLoadResult;
-	}
+		}))
+		.catch(
+			(error): SettingsProfileLoadResult => ({
+				profile: null,
+				loadError: error instanceof Error ? error.message : 'Failed to load profile details.'
+			})
+		);
+
+	return {
+		initial: createInitialSettingsProfile(),
+		profileData
+	} satisfies SettingsProfilePageData;
 };

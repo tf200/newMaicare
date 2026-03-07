@@ -37,12 +37,47 @@
 	import { fade, slide, scale } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import type { ActiveSessionDetail } from '$lib/types/api';
-	import type { SettingsProfileLoadResult } from './+page';
+	import { createInitialSettingsProfile } from './+page';
+	import type { SettingsProfileLoadResult, SettingsProfilePageData } from './+page';
 
 	const auth = getAuthState();
-	let { data }: { data: SettingsProfileLoadResult } = $props();
+	let { data }: { data: SettingsProfilePageData } = $props();
 
-	const roleNames = $derived(data.profile?.roles.map((role) => role.name) ?? []);
+	const initial = $derived(data.initial);
+	const profileDataPromise = $derived(data.profileData);
+
+	let profileState = $state<SettingsProfileLoadResult>(createInitialSettingsProfile());
+	let profilePending = $state(true);
+	let profileRequestToken = 0;
+
+	$effect(() => {
+		const nextInitial = initial;
+		const promise = profileDataPromise;
+		const requestToken = ++profileRequestToken;
+
+		profileState = nextInitial;
+		profilePending = true;
+
+		void promise
+			.then((result) => {
+				if (requestToken !== profileRequestToken) return;
+				profileState = result;
+			})
+			.catch((error) => {
+				if (requestToken !== profileRequestToken) return;
+				profileState = {
+					profile: null,
+					loadError: error instanceof Error ? error.message : 'Failed to load profile details.'
+				};
+			})
+			.finally(() => {
+				if (requestToken === profileRequestToken) {
+					profilePending = false;
+				}
+			});
+	});
+
+	const roleNames = $derived(profileState.profile?.roles.map((role) => role.name) ?? []);
 	const isAdmin = $derived(roleNames.some((role) => role.toLowerCase().includes('admin')));
 
 	const tabs = $derived([
@@ -55,7 +90,7 @@
 	type TabId = 'personal' | 'security' | 'preferences' | 'appearance';
 	let activeTab = $state<TabId>('personal');
 
-	const profile = $derived(data.profile);
+	const profile = $derived(profileState.profile);
 	const fullName = $derived(
 		profile
 			? `${profile.first_name} ${profile.last_name}`.trim()
@@ -371,11 +406,19 @@
 		</div>
 	</header>
 
-	{#if data.loadError}
+	{#if profileState.loadError}
 		<div
 			class="rounded-2xl border border-amber-400/30 bg-amber-50/80 p-4 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
 		>
-			{data.loadError}
+			{profileState.loadError}
+		</div>
+	{/if}
+
+	{#if profilePending}
+		<div
+			class="rounded-2xl border border-brand/15 bg-brand/5 px-4 py-3 text-xs font-semibold tracking-wide text-brand uppercase"
+		>
+			Loading profile details...
 		</div>
 	{/if}
 
