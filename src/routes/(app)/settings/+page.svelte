@@ -37,7 +37,6 @@
 	import { fade, slide, scale } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import type { ActiveSessionDetail } from '$lib/types/api';
-	import { createInitialSettingsProfile } from './+page';
 	import type { SettingsProfileLoadResult, SettingsProfilePageData } from './+page';
 
 	const auth = getAuthState();
@@ -46,7 +45,10 @@
 	const initial = $derived(data.initial);
 	const profileDataPromise = $derived(data.profileData);
 
-	let profileState = $state<SettingsProfileLoadResult>(createInitialSettingsProfile());
+	let profileState = $state<SettingsProfileLoadResult>({
+		profile: null,
+		loadError: null
+	});
 	let profilePending = $state(true);
 	let profileRequestToken = 0;
 

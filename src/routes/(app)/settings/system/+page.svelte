@@ -24,7 +24,7 @@
 		Role
 	} from './types';
 	import type { GetOrganizationProfileResponse } from '$lib/types/api';
-	import { createInitialSystemSettings } from './+page';
+	import { _createInitialSystemSettings } from './+page';
 	import type { SystemSettingsLoadResult, SystemSettingsPageData } from './+page';
 	import {
 		addPermissionsToRole,
@@ -40,7 +40,7 @@
 	const initial = $derived(data.initial);
 	const systemDataPromise = $derived(data.systemData);
 
-	let systemState = $state<SystemSettingsLoadResult>(createInitialSystemSettings());
+	let systemState = $state<SystemSettingsLoadResult>(_createInitialSystemSettings());
 	let systemPending = $state(true);
 	let systemRequestToken = 0;
 

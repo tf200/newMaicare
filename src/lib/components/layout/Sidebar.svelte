@@ -3,10 +3,8 @@
 	import { goto } from '$app/navigation';
 	import {
 		LayoutDashboard,
-		Users,
 		UsersRound,
 		Calendar,
-		CalendarDays,
 		ClipboardCheck,
 		X,
 		HelpCircle,
@@ -15,7 +13,8 @@
 		ArrowLeft,
 		CircleUser,
 		BadgeEuro,
-		Settings2
+		Settings2,
+		BookOpen
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -39,6 +38,11 @@
 			icon: LayoutDashboard,
 			permission: 'DASHBOARD.VIEW'
 		},
+		{
+			label: m.my_handbook(),
+			href: '/handbook',
+			icon: BookOpen
+		},
 		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
 		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{
@@ -47,8 +51,15 @@
 			icon: ClipboardCheck,
 			permission: 'DASHBOARD.VIEW'
 		},
-		{ label: m.employees(), href: '/employees', icon: Users, permission: 'EMPLOYEE.VIEW' },
-		{ label: m.schedules(), href: '/schedules', icon: CalendarDays, permission: 'DASHBOARD.VIEW' },
+		{
+			label: 'People',
+			icon: CircleUser,
+			children: [
+				{ label: m.employees(), href: '/employees', permission: 'EMPLOYEE.VIEW' },
+				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
+				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' }
+			]
+		},
 		{
 			label: m.care_coordination(),
 			icon: HeartHandshake,

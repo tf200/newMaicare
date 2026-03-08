@@ -150,7 +150,7 @@ const defaultIntegrations: SystemSettings['integrations'] = [
 	}
 ];
 
-export const createInitialSystemSettings = (): SystemSettingsLoadResult => ({
+export const _createInitialSystemSettings = (): SystemSettingsLoadResult => ({
 	systemSettings: {
 		organization: emptyOrganization,
 		roles: [],
@@ -221,13 +221,13 @@ export const load: PageLoad = () => {
 		)
 		.catch(
 			(error): SystemSettingsLoadResult => ({
-				...createInitialSystemSettings(),
+				..._createInitialSystemSettings(),
 				loadError: error instanceof Error ? error.message : 'Failed to load system settings.'
 			})
 		);
 
 	return {
-		initial: createInitialSystemSettings(),
+		initial: _createInitialSystemSettings(),
 		systemData
 	} satisfies SystemSettingsPageData;
 };

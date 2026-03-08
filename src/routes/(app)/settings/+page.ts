@@ -12,7 +12,7 @@ export interface SettingsProfilePageData {
 	profileData: Promise<SettingsProfileLoadResult>;
 }
 
-export const createInitialSettingsProfile = (): SettingsProfileLoadResult => ({
+const createInitialSettingsProfile = (): SettingsProfileLoadResult => ({
 	profile: null,
 	loadError: null
 });

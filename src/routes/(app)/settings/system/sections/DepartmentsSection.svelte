@@ -5,7 +5,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
+	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
+	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 
 	let {
 		departments = $bindable(),
@@ -45,15 +46,63 @@
 	let formName = $state('');
 	let formDescription = $state('');
 	let formHeadId = $state('');
+	let formHeadDisplayValue = $state('');
+	let loadedEmployeeNameById = $state<Record<string, string>>({});
 
-	const employeeOptions = $derived([
-		{ label: 'Unassigned', value: '' },
-		...employees.map((employee) => ({ label: employee.name, value: employee.id }))
-	]);
+	interface DepartmentHeadOption {
+		id: string;
+		name: string;
+	}
+
+	const EMPLOYEE_PAGE_SIZE = 50;
+	const MAX_EMPLOYEE_OPTION_PAGES = 10;
+
+	const employeeNameById = $derived.by(() => {
+		const names: Record<string, string> = { ...loadedEmployeeNameById };
+		for (const employee of employees) {
+			names[employee.id] = employee.name;
+		}
+		return names;
+	});
 
 	function getEmployeeLabel(employeeId: string | null) {
 		if (!employeeId) return 'Unassigned';
-		return employees.find((employee) => employee.id === employeeId)?.name ?? employeeId;
+		return employeeNameById[employeeId] ?? employeeId;
+	}
+
+	function mapEmployeeToHeadOption(employee: EmployeeListItem): DepartmentHeadOption {
+		return {
+			id: employee.id,
+			name: `${employee.first_name} ${employee.last_name}`.trim()
+		};
+	}
+
+	async function loadDepartmentHeadOptions(query: string): Promise<DepartmentHeadOption[]> {
+		const options: DepartmentHeadOption[] = [];
+		let page = 1;
+		let hasNextPage = true;
+
+		while (hasNextPage && page <= MAX_EMPLOYEE_OPTION_PAGES) {
+			const response = await listEmployees({
+				page,
+				page_size: EMPLOYEE_PAGE_SIZE,
+				search: query.trim() || undefined
+			});
+
+			const mappedOptions = response.data.results.map(mapEmployeeToHeadOption);
+			options.push(...mappedOptions);
+
+			const pageEmployeeNames: Record<string, string> = {};
+			for (const option of mappedOptions) {
+				pageEmployeeNames[option.id] = option.name;
+			}
+			loadedEmployeeNameById = { ...loadedEmployeeNameById, ...pageEmployeeNames };
+
+			hasNextPage = Boolean(response.data.next);
+			page += 1;
+		}
+
+		return options;
 	}
 
 	function openCreateModal() {
@@ -61,6 +110,7 @@
 		formName = '';
 		formDescription = '';
 		formHeadId = '';
+		formHeadDisplayValue = '';
 		formError = '';
 		isModalOpen = true;
 	}
@@ -70,6 +120,7 @@
 		formName = department.name;
 		formDescription = department.description;
 		formHeadId = department.head ?? '';
+		formHeadDisplayValue = getEmployeeLabel(department.head);
 		formError = '';
 		isModalOpen = true;
 	}
@@ -184,10 +235,13 @@
 	<div class="space-y-4">
 		<Input label="Department name" bind:value={formName} />
 		<Input label="Description" bind:value={formDescription} />
-		<Select
+		<SearchSelect
 			label="Department head"
-			options={employeeOptions}
 			bind:value={formHeadId}
+			bind:displayValue={formHeadDisplayValue}
+			loadOptions={loadDepartmentHeadOptions}
+			labelFn={(employee) => employee.name}
+			valueFn={(employee) => employee.id}
 			placeholder="Select employee"
 		/>
 		{#if formError}
