@@ -196,8 +196,12 @@
 							<p class="text-xs font-bold text-text">{displayName || m.dashboard()}</p>
 							<p class="truncate text-[10px] text-text-muted">{displaySubtitle}</p>
 						</div>
-						<DropdownItem label={m.profile()} icon={User} href={localizeHref('/profile')} />
-						<DropdownItem label={m.settings()} icon={Settings} href={localizeHref('/settings')} />
+						<DropdownItem label="User Preferences" icon={User} href={localizeHref('/profile')} />
+						<DropdownItem
+							label={m.settings()}
+							icon={Settings}
+							href={localizeHref('/settings/system')}
+						/>
 						<div class="my-1 h-px bg-border/50"></div>
 						<DropdownItem
 							label={m.logout()}

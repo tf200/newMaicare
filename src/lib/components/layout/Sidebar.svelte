@@ -5,7 +5,6 @@
 		LayoutDashboard,
 		UsersRound,
 		Calendar,
-		ClipboardCheck,
 		X,
 		HelpCircle,
 		ChevronDown,
@@ -13,7 +12,6 @@
 		ArrowLeft,
 		CircleUser,
 		BadgeEuro,
-		Settings2,
 		BookOpen
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -46,16 +44,16 @@
 		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
 		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{
-			label: m.appointments(),
-			href: '/appointments',
-			icon: ClipboardCheck,
-			permission: 'DASHBOARD.VIEW'
-		},
-		{
 			label: 'People',
 			icon: CircleUser,
 			children: [
 				{ label: m.employees(), href: '/employees', permission: 'EMPLOYEE.VIEW' },
+				{
+					label: m.appointments(),
+					href: '/appointments',
+					permission: 'DASHBOARD.VIEW'
+				},
+				{ label: 'Templates', href: '/settings/handbooks' },
 				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
 				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' }
 			]
@@ -108,11 +106,6 @@
 				}
 			]
 		},
-		{
-			label: 'System Settings',
-			href: '/settings/system',
-			icon: Settings2
-		}
 	];
 
 	const items = $derived(sidebarState.scopedConfig?.items ?? defaultItems);
@@ -231,7 +224,7 @@
 					class:justify-center={collapsed}
 				>
 					<div
-						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand/20 to-brand/5 text-sm font-bold text-brand shadow-inner ring-1 ring-brand/10 transition-transform duration-300"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-brand/20 to-brand/5 text-sm font-bold text-brand shadow-inner ring-1 ring-brand/10 transition-transform duration-300"
 					>
 						{sidebarState.scopedConfig.initials || 'CP'}
 					</div>

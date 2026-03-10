@@ -24,16 +24,25 @@
 		Role
 	} from './types';
 	import type { GetOrganizationProfileResponse } from '$lib/types/api';
-	import { _createInitialSystemSettings } from './+page';
+	import {
+		_createInitialSystemSettings,
+		_mapDepartment,
+		_mapPermissionGroups,
+		_mapRole
+	} from './+page';
 	import type { SystemSettingsLoadResult, SystemSettingsPageData } from './+page';
 	import {
 		addPermissionsToRole,
 		createDepartment,
 		createRole,
+		listDepartments,
+		listPermissionGroups,
 		listRolePermissions,
+		listRoles,
 		updateDepartment,
 		updateOrganizationProfile
 	} from '$lib/api/settings';
+	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 
 	let { data }: { data: SystemSettingsPageData } = $props();
 
@@ -87,7 +96,17 @@
 	] as const;
 
 	type TabId = (typeof tabs)[number]['id'];
+	type TabLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
 	let activeTab = $state<TabId>('organization');
+	let tabStatus = $state<Record<TabId, TabLoadStatus>>({
+		organization: 'loaded',
+		roles: 'idle',
+		departments: 'idle',
+		security: 'loaded',
+		integrations: 'loaded'
+	});
+	let tabErrors = $state<Partial<Record<TabId, string>>>({});
 
 	function mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
 		const houseNumber = [data.hq_house_number, data.hq_house_number_addition]
@@ -111,6 +130,86 @@
 			}
 		};
 	}
+
+	async function loadRolesTabData(force = false) {
+		if (!force && tabStatus.roles !== 'idle') return;
+
+		tabStatus = { ...tabStatus, roles: 'loading' };
+		tabErrors = { ...tabErrors, roles: undefined };
+
+		try {
+			const [rolesResponse, permissionGroupsResponse] = await Promise.all([
+				listRoles(),
+				listPermissionGroups()
+			]);
+
+			const roles = rolesResponse.data.map((role) => _mapRole(role, []));
+			const permissionGroups = _mapPermissionGroups(permissionGroupsResponse.data);
+
+			systemState = {
+				...systemState,
+				systemSettings: {
+					...systemState.systemSettings,
+					roles
+				},
+				permissionGroups,
+				rolePermissionsByRoleId: systemState.rolePermissionsByRoleId ?? {}
+			};
+			tabStatus = { ...tabStatus, roles: 'loaded' };
+		} catch (error) {
+			tabStatus = { ...tabStatus, roles: 'error' };
+			tabErrors = {
+				...tabErrors,
+				roles: error instanceof Error ? error.message : 'Failed to load roles and permissions.'
+			};
+		}
+	}
+
+	async function loadDepartmentsTabData(force = false) {
+		if (!force && tabStatus.departments !== 'idle') return;
+
+		tabStatus = { ...tabStatus, departments: 'loading' };
+		tabErrors = { ...tabErrors, departments: undefined };
+
+		try {
+			const [departmentsResponse, employeesResponse] = await Promise.all([
+				listDepartments(),
+				listEmployees({ page: 1, page_size: 100 })
+			]);
+
+			const departments = departmentsResponse.data.results.map(_mapDepartment);
+			const employees = employeesResponse.data.results.map((employee: EmployeeListItem) => ({
+				id: employee.id,
+				name: `${employee.first_name} ${employee.last_name}`.trim()
+			}));
+
+			systemState = {
+				...systemState,
+				systemSettings: {
+					...systemState.systemSettings,
+					departments
+				},
+				employees
+			};
+			tabStatus = { ...tabStatus, departments: 'loaded' };
+		} catch (error) {
+			tabStatus = { ...tabStatus, departments: 'error' };
+			tabErrors = {
+				...tabErrors,
+				departments: error instanceof Error ? error.message : 'Failed to load departments.'
+			};
+		}
+	}
+
+	$effect(() => {
+		if (systemPending) return;
+		if (activeTab === 'roles') {
+			void loadRolesTabData();
+		}
+		if (activeTab === 'departments') {
+			void loadDepartmentsTabData();
+		}
+	});
 
 	async function handleSaveOrganization(profile: OrganizationProfile) {
 		const payload = {
@@ -285,23 +384,77 @@
 			</div>
 		{:else if activeTab === 'roles'}
 			<div in:fade={{ duration: 300 }}>
-				<RolesSection
-					roles={systemSettings.roles}
-					{permissionGroups}
-					initialRolePermissions={initialRolePermissionsByRoleId}
-					onCreateRole={handleCreateRole}
-					onFetchRolePermissions={handleFetchRolePermissions}
-					onSaveRolePermissions={handleSaveRolePermissions}
-				/>
+				{#if tabStatus.roles === 'loading' || tabStatus.roles === 'idle'}
+					<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+						<div class="h-5 w-40 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+							<div class="space-y-3">
+								{#each [1, 2, 3] as item (item)}
+									<div class="h-24 animate-pulse rounded-2xl bg-border/60"></div>
+								{/each}
+							</div>
+							<div class="space-y-3">
+								{#each [1, 2, 3] as item (item)}
+									<div class="h-28 animate-pulse rounded-2xl bg-border/60"></div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{:else if tabStatus.roles === 'error'}
+					<div
+						class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600"
+					>
+						<div>{tabErrors.roles ?? 'Failed to load roles and permissions.'}</div>
+						<div class="mt-4">
+							<Button onclick={() => void loadRolesTabData(true)} class="rounded-xl px-4 py-2">
+								Retry
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<RolesSection
+						roles={systemSettings.roles}
+						{permissionGroups}
+						initialRolePermissions={initialRolePermissionsByRoleId}
+						onCreateRole={handleCreateRole}
+						onFetchRolePermissions={handleFetchRolePermissions}
+						onSaveRolePermissions={handleSaveRolePermissions}
+					/>
+				{/if}
 			</div>
 		{:else if activeTab === 'departments'}
 			<div in:fade={{ duration: 300 }}>
-				<DepartmentsSection
-					departments={systemSettings.departments}
-					{employees}
-					onCreateDepartment={handleCreateDepartment}
-					onUpdateDepartment={handleUpdateDepartment}
-				/>
+				{#if tabStatus.departments === 'loading' || tabStatus.departments === 'idle'}
+					<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+						<div class="h-5 w-36 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-6 space-y-3">
+							{#each [1, 2, 3, 4] as item (item)}
+								<div class="h-14 animate-pulse rounded-2xl bg-border/60"></div>
+							{/each}
+						</div>
+					</div>
+				{:else if tabStatus.departments === 'error'}
+					<div
+						class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600"
+					>
+						<div>{tabErrors.departments ?? 'Failed to load departments.'}</div>
+						<div class="mt-4">
+							<Button
+								onclick={() => void loadDepartmentsTabData(true)}
+								class="rounded-xl px-4 py-2"
+							>
+								Retry
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<DepartmentsSection
+						departments={systemSettings.departments}
+						{employees}
+						onCreateDepartment={handleCreateDepartment}
+						onUpdateDepartment={handleUpdateDepartment}
+					/>
+				{/if}
 			</div>
 		{:else if activeTab === 'security'}
 			<div in:fade={{ duration: 300 }}>

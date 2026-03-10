@@ -1,7 +1,15 @@
 export interface ApiEnvelope<T> {
 	data: T;
 	message: string;
+	code?: string;
 	success: boolean;
+}
+
+export interface ApiErrorEnvelope {
+	message: string;
+	code?: string;
+	success?: boolean;
+	details?: unknown;
 }
 
 export interface PaginatedResponse<T> {

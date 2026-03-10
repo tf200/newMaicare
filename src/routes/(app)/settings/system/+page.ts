@@ -13,14 +13,7 @@ import type {
 	ListRolesApiResponse,
 	PermissionGroupResponse
 } from '$lib/types/api';
-import {
-	getOrganizationProfile,
-	listDepartments,
-	listPermissionGroups,
-	listRolePermissions,
-	listRoles
-} from '$lib/api/settings';
-import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
+import { getOrganizationProfile } from '$lib/api/settings';
 
 const emptyOrganization: OrganizationProfile = {
 	name: '',
@@ -39,7 +32,7 @@ const emptyOrganization: OrganizationProfile = {
 	}
 };
 
-function mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
+export function _mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
 	const houseNumber = [data.hq_house_number, data.hq_house_number_addition]
 		.filter(Boolean)
 		.join(' ');
@@ -62,7 +55,7 @@ function mapOrganizationProfile(data: GetOrganizationProfileResponse): Organizat
 	};
 }
 
-function mapRole(role: ListRolesApiResponse, permissions: string[]): Role {
+export function _mapRole(role: ListRolesApiResponse, permissions: string[]): Role {
 	return {
 		id: role.id,
 		name: role.role_name,
@@ -73,7 +66,7 @@ function mapRole(role: ListRolesApiResponse, permissions: string[]): Role {
 	};
 }
 
-function mapDepartment(item: DepartmentItem): Department {
+export function _mapDepartment(item: DepartmentItem): Department {
 	return {
 		id: item.id,
 		name: item.name,
@@ -83,7 +76,7 @@ function mapDepartment(item: DepartmentItem): Department {
 	};
 }
 
-function mapPermissionGroups(groups: PermissionGroupResponse[]): PermissionGroup[] {
+export function _mapPermissionGroups(groups: PermissionGroupResponse[]): PermissionGroup[] {
 	return groups.map((group) => {
 		const permissions = group.sections
 			.flatMap((section) => section.permissions)
@@ -165,60 +158,14 @@ export const _createInitialSystemSettings = (): SystemSettingsLoadResult => ({
 });
 
 export const load: PageLoad = () => {
-	const systemData: Promise<SystemSettingsLoadResult> = Promise.all([
-		getOrganizationProfile()
-			.then((response) => mapOrganizationProfile(response.data))
-			.catch(() => emptyOrganization),
-		listRoles()
-			.then((response) => response.data)
-			.catch(() => [] as ListRolesApiResponse[]),
-		listPermissionGroups()
-			.then((response) => mapPermissionGroups(response.data))
-			.catch(() => [] as PermissionGroup[]),
-		listDepartments()
-			.then((response) => response.data.map(mapDepartment))
-			.catch(() => [] as Department[]),
-		listEmployees({ page: 1, page_size: 100 })
-			.then((response) =>
-				response.data.results.map((employee: EmployeeListItem) => ({
-					id: employee.id,
-					name: `${employee.first_name} ${employee.last_name}`.trim()
-				}))
-			)
-			.catch(() => [] as EmployeeOption[])
-	])
-		.then(
-			async ([
-				organizationResult,
-				rolesResult,
-				permissionGroupsResult,
-				departmentsResult,
-				employeesResult
-			]) => {
-				const rolePermissionsByRoleId: Record<string, string[]> = {};
-				if (rolesResult.length > 0) {
-					const firstRole = rolesResult[0];
-					const permissions = await listRolePermissions(firstRole.id)
-						.then((response) => response.data.map((item) => item.permission_id))
-						.catch(() => [] as string[]);
-					rolePermissionsByRoleId[firstRole.id] = permissions;
-				}
-
-				return {
-					systemSettings: {
-						organization: organizationResult,
-						roles: rolesResult.map((role) => mapRole(role, rolePermissionsByRoleId[role.id] ?? [])),
-						departments: departmentsResult,
-						security: defaultSecuritySettings,
-						integrations: defaultIntegrations
-					},
-					permissionGroups: permissionGroupsResult,
-					rolePermissionsByRoleId,
-					employees: employeesResult,
-					loadError: null
-				} satisfies SystemSettingsLoadResult;
+	const systemData: Promise<SystemSettingsLoadResult> = getOrganizationProfile()
+		.then((response) => ({
+			..._createInitialSystemSettings(),
+			systemSettings: {
+				..._createInitialSystemSettings().systemSettings,
+				organization: _mapOrganizationProfile(response.data)
 			}
-		)
+		}))
 		.catch(
 			(error): SystemSettingsLoadResult => ({
 				..._createInitialSystemSettings(),

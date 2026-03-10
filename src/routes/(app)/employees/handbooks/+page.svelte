@@ -16,8 +16,12 @@
 	import Sheet from '$lib/components/ui/Sheet.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
-	import type { EmployeeHandbookAssignment, HandbookStatus, HandbooksLoadResult } from './+page';
+	import type {
+		EmployeeHandbookAssignment,
+		HandbookStatus,
+		HandbooksLoadResult,
+		HandbookTemplate
+	} from './+page';
 
 	let { data } = $props<{
 		data: {
@@ -123,6 +127,20 @@
 		if (progress > 0) return 'bg-blue-500';
 		return 'bg-zinc-200';
 	};
+
+	const getFilteredAssignments = (assignments: EmployeeHandbookAssignment[]) =>
+		assignments.filter((assignment: EmployeeHandbookAssignment) =>
+			assignment.employee_name.toLowerCase().includes(searchTerm.toLowerCase())
+		);
+
+	const getTemplateOptions = (templates: HandbookTemplate[]) =>
+		templates.map((template: HandbookTemplate) => ({
+			value: template.id,
+			label: `${template.title} (v${template.version})`
+		}));
+
+	const getSelectedTemplates = (templates: HandbookTemplate[], templateId: string) =>
+		templates.filter((template: HandbookTemplate) => template.id === templateId);
 
 	// Mock steps for detail view
 	const mockSteps = [
@@ -252,13 +270,16 @@
 		{/if}
 	{/snippet}
 
+	{#snippet assignedAtCell(row: EmployeeHandbookAssignment)}
+		<span>{formatDate(row.assigned_at)}</span>
+	{/snippet}
+
 	{#snippet actionsCell(row: EmployeeHandbookAssignment)}
 		<div class="flex items-center justify-end gap-2">
 			{#if row.status === 'no_assignment'}
 				<Button
 					variant="ghost"
-					size="sm"
-					class="text-brand"
+					class="px-3 py-1.5 text-brand"
 					onclick={() => handleOpenAssign(row.employee_id)}
 				>
 					Assign
@@ -299,9 +320,7 @@
 	{:then handbooksData}
 		<DataTable
 			{columns}
-			rows={handbooksData.assignments.filter((a) =>
-				a.employee_name.toLowerCase().includes(searchTerm.toLowerCase())
-			)}
+			rows={getFilteredAssignments(handbooksData.assignments)}
 			currentPage={handbooksData.pagination.page}
 			pageSize={handbooksData.pagination.pageSize}
 			totalCount={handbooksData.pagination.count}
@@ -315,7 +334,7 @@
 				status: statusCell,
 				template: templateCell,
 				progress: progressCell,
-				assigned_at: (row) => formatDate(row.assigned_at),
+				assigned_at: assignedAtCell,
 				actions: actionsCell
 			}}
 		/>
@@ -329,12 +348,13 @@
 			<div class="space-y-4 py-4">
 				<div class="space-y-2">
 					<label for="employee-select" class="text-sm font-semibold text-text">Employee</label>
-					<SearchSelect
+					<Select
 						id="employee-select"
+						className="w-full"
 						placeholder="Select employee..."
-						options={handbooksData.assignments.map((a) => ({
-							value: a.employee_id,
-							label: a.employee_name
+						options={handbooksData.assignments.map((assignment: EmployeeHandbookAssignment) => ({
+							value: assignment.employee_id,
+							label: assignment.employee_name
 						}))}
 						bind:value={selectedEmployeeId}
 					/>
@@ -347,14 +367,11 @@
 					<Select
 						id="template-select"
 						placeholder="Select template version..."
-						options={handbooksData.templates.map((t) => ({
-							value: t.id,
-							label: `${t.title} (v${t.version})`
-						}))}
+						options={getTemplateOptions(handbooksData.templates)}
 						bind:value={selectedTemplateId}
 					/>
 					{#if selectedTemplateId}
-						{#each handbooksData.templates.filter((t) => t.id === selectedTemplateId) as tmpl (tmpl.id)}
+						{#each getSelectedTemplates(handbooksData.templates, selectedTemplateId) as tmpl (tmpl.id)}
 							<p class="mt-1 text-xs text-text-muted">
 								{tmpl.description} • {tmpl.steps_count} steps
 							</p>
@@ -380,7 +397,7 @@
 						variant="secondary"
 						onclick={handleAssign}
 						disabled={!selectedEmployeeId || !selectedTemplateId || isAssigning}
-						loading={isAssigning}
+						isLoading={isAssigning}
 					>
 						Assign Handbook
 					</Button>
@@ -524,8 +541,8 @@
 					<!-- Actions -->
 					<div class="flex gap-3 pt-4">
 						<Button
-							variant="outline"
-							class="flex-1 gap-2"
+							variant="ghost"
+							class="flex-1 gap-2 border border-border"
 							onclick={() => handleOpenAssign(selectedAssignment?.employee_id)}
 						>
 							<Plus class="h-4 w-4" />

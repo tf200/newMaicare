@@ -2,7 +2,7 @@ import { PUBLIC_API_URL } from '$env/static/public';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 import { resolve } from '$app/paths';
-import type { ApiEnvelope, RefreshTokenData } from '$lib/types/api';
+import type { ApiEnvelope, ApiErrorEnvelope, RefreshTokenData } from '$lib/types/api';
 
 type FetchOptions = RequestInit & {
 	requiresAuth?: boolean;
@@ -12,6 +12,20 @@ type FetchOptions = RequestInit & {
 export interface BlobResponse {
 	blob: Blob;
 	headers: Headers;
+}
+
+export class ApiClientError extends Error {
+	code?: string;
+	status: number;
+	details?: unknown;
+
+	constructor(message: string, status: number, options?: { code?: string; details?: unknown }) {
+		super(message);
+		this.name = 'ApiClientError';
+		this.status = status;
+		this.code = options?.code;
+		this.details = options?.details;
+	}
 }
 
 class ApiClient {
@@ -127,10 +141,7 @@ class ApiClient {
 			}
 
 			if (!response.ok) {
-				const errorMessage =
-					(payload && typeof payload === 'object' && 'message' in payload && payload.message) ||
-					`API Error: ${response.statusText}`;
-				throw new Error(String(errorMessage));
+				throw this.createApiError(response.status, response.statusText, payload);
 			}
 
 			// Handle 204 No Content
@@ -144,8 +155,7 @@ class ApiClient {
 				'success' in payload &&
 				payload.success === false
 			) {
-				const errorMessage = ('message' in payload && payload.message) || 'Request failed';
-				throw new Error(String(errorMessage));
+				throw this.createApiError(response.status, 'Request failed', payload);
 			}
 
 			return (payload ?? {}) as T;
@@ -153,6 +163,23 @@ class ApiClient {
 			console.error('API Request Failed:', error);
 			throw error;
 		}
+	}
+
+	private createApiError(status: number, fallbackMessage: string, payload: unknown) {
+		const message =
+			payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string'
+				? payload.message
+				: `API Error: ${fallbackMessage}`;
+		const code =
+			payload && typeof payload === 'object' && 'code' in payload && typeof payload.code === 'string'
+				? payload.code
+				: undefined;
+		const details =
+			payload && typeof payload === 'object' && 'details' in payload
+				? (payload as ApiErrorEnvelope).details
+				: undefined;
+
+		return new ApiClientError(message, status, { code, details });
 	}
 
 	get<T>(endpoint: string, options?: FetchOptions) {
@@ -240,6 +267,8 @@ class ApiClient {
 			if (!response.ok) {
 				const contentType = response.headers.get('content-type') ?? '';
 				let errorMessage = `API Error: ${response.statusText}`;
+				let errorCode: string | undefined;
+				let errorDetails: unknown;
 
 				if (contentType.includes('application/json')) {
 					const payload = await response.json().catch(() => null);
@@ -251,9 +280,18 @@ class ApiClient {
 					) {
 						errorMessage = payload.message;
 					}
+					if (payload && typeof payload === 'object' && 'code' in payload && typeof payload.code === 'string') {
+						errorCode = payload.code;
+					}
+					if (payload && typeof payload === 'object' && 'details' in payload) {
+						errorDetails = (payload as ApiErrorEnvelope).details;
+					}
 				}
 
-				throw new Error(errorMessage);
+				throw new ApiClientError(errorMessage, response.status, {
+					code: errorCode,
+					details: errorDetails
+				});
 			}
 
 			return {

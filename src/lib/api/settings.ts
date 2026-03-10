@@ -7,8 +7,8 @@ import type {
 	CreateDepartmentResponse,
 	CreateRoleRequest,
 	CreateRoleResponse,
-	DepartmentItem,
 	GetOrganizationProfileResponse,
+	ListDepartmentsResponse,
 	ListAllRolePermissionsApiResponse,
 	ListRolesApiResponse,
 	PermissionGroupResponse,
@@ -22,7 +22,10 @@ export function getOrganizationProfile() {
 }
 
 export function updateOrganizationProfile(payload: UpdateOrganizationProfileRequest) {
-	return api.put<ApiEnvelope<GetOrganizationProfileResponse>>('/settings/organization-profile', payload);
+	return api.put<ApiEnvelope<GetOrganizationProfileResponse>>(
+		'/settings/organization-profile',
+		payload
+	);
 }
 
 export function listRoles() {
@@ -49,7 +52,7 @@ export function addPermissionsToRole(roleId: string, payload: AddPermissionsToRo
 }
 
 export function listDepartments() {
-	return api.get<ApiEnvelope<DepartmentItem[]>>('/settings/departments');
+	return api.get<ApiEnvelope<ListDepartmentsResponse>>('/settings/departments');
 }
 
 export function createDepartment(payload: CreateDepartmentRequest) {

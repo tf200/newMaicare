@@ -392,10 +392,14 @@
 	const valueClass = 'text-sm font-medium text-text';
 </script>
 
+<svelte:head>
+	<title>User Preferences | MaiCare</title>
+</svelte:head>
+
 <div class="mx-auto max-w-6xl space-y-8 pb-20">
 	<header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 		<div>
-			<h1 class="text-4xl font-bold tracking-tight text-text">{m.settings()}</h1>
+			<h1 class="text-4xl font-bold tracking-tight text-text">User Preferences</h1>
 			<p class="mt-2 text-text-muted">Manage your account, security, and preferences.</p>
 		</div>
 		<div class="hidden md:block">

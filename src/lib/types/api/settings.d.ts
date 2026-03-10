@@ -1,3 +1,5 @@
+import type { PaginatedResponse } from './common';
+
 export interface GetOrganizationProfileResponse {
 	created_at: string;
 	default_timezone: string;
@@ -41,9 +43,12 @@ export interface UpdateDepartmentRequest {
 export interface DepartmentItem {
 	department_head_employee_id?: string;
 	description?: string;
+	employee_count?: number;
 	id: string;
 	name: string;
 }
+
+export type ListDepartmentsResponse = PaginatedResponse<DepartmentItem>;
 
 export interface CreateDepartmentResponse {
 	department_head_employee_id?: string;

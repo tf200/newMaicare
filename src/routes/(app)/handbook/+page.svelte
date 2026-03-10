@@ -17,14 +17,21 @@
 
 	let { data } = $props<{ data: { handbook: Handbook | null } }>();
 
-	// Mock state for interactive demo - captures initial data for local mutation
-	let handbook = $state<Handbook | null>(
-		data.handbook ? JSON.parse(JSON.stringify(data.handbook)) : null
-	);
+	const handbookData = $derived(data.handbook);
+
+	// Mock state for interactive demo - syncs from loaded data for local mutation
+	let handbook = $state<Handbook | null>(null);
 
 	let currentStepIndex = $state(0);
 	let acknowledged = $state(false);
 	let quizAnswers = $state<Record<string, string>>({});
+
+	$effect(() => {
+		handbook = handbookData ? JSON.parse(JSON.stringify(handbookData)) : null;
+		currentStepIndex = 0;
+		acknowledged = false;
+		quizAnswers = {};
+	});
 
 	// Derived states
 	const currentStep = $derived(handbook?.steps[currentStepIndex] || null);
@@ -203,7 +210,11 @@
 			<p class="mx-auto mt-2 max-w-md text-text-muted">
 				{m.handbook_completed_description()}
 			</p>
-			<Button variant="outline" class="mt-8" onclick={() => (currentStepIndex = 0)}>
+			<Button
+				variant="ghost"
+				class="mt-8 border border-border"
+				onclick={() => (currentStepIndex = 0)}
+			>
 				Review Handbook
 			</Button>
 		</div>
@@ -358,7 +369,12 @@
 
 						<!-- Step Footer -->
 						<div class="flex items-center justify-between border-t border-border/50 p-6 lg:p-8">
-							<Button variant="outline" onclick={prevStep} disabled={currentStepIndex === 0}>
+							<Button
+								variant="ghost"
+								class="border border-border"
+								onclick={prevStep}
+								disabled={currentStepIndex === 0}
+							>
 								<ChevronLeft class="mr-2 h-4 w-4" />
 								{m.previous_step()}
 							</Button>
