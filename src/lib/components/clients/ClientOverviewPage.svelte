@@ -267,7 +267,7 @@
 
 	<!-- Quick Links -->
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-		{#each client.quickLinks as link (link.href)}
+		{#each client.quickLinks as link, index (`${link.href}-${index}`)}
 			<a
 				href={link.href}
 				class="group flex flex-col items-center justify-center rounded-2xl border border-border bg-surface p-4 text-center transition hover:border-brand/30 hover:shadow-md"
@@ -324,7 +324,7 @@
 						</div>
 					{:else}
 						<div class="grid gap-3">
-							{#each client.goals as goal (goal.title)}
+						{#each client.goals as goal, index (`${goal.title}-${index}`)}
 								<article
 									class="group relative overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm transition-all hover:border-brand/30 hover:shadow-md dark:bg-zinc-900/40"
 								>
@@ -384,7 +384,7 @@
 				<div
 					class="relative space-y-6 before:absolute before:top-2 before:bottom-2 before:left-[19px] before:w-0.5 before:bg-border/60"
 				>
-					{#each client.timeline as item (item.link)}
+					{#each client.timeline as item, index (`${item.link}-${index}`)}
 						<div class="relative pl-12">
 							<div
 								class="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white shadow-sm ring-4 ring-surface dark:bg-zinc-900"
@@ -440,7 +440,7 @@
 					<button class="text-xs font-bold text-brand">{m.add()}</button>
 				</div>
 				<div class="space-y-3">
-					{#each client.contacts as contact (contact.name)}
+					{#each client.contacts as contact, index (`${contact.name}-${index}`)}
 						<div class="rounded-2xl border border-border/50 bg-zinc-50/50 p-3 dark:bg-zinc-900/50">
 							<div class="flex items-center justify-between">
 								<p class="text-sm font-bold text-text">{contact.name}</p>
@@ -478,7 +478,7 @@
 					<h3 class="font-bold text-text">{m.required_documents()}</h3>
 				</div>
 				<div class="space-y-2">
-					{#each client.documentsChecklist as doc (doc.label)}
+					{#each client.documentsChecklist as doc, index (`${doc.label}-${index}`)}
 						<div
 							class="flex items-center justify-between rounded-xl border border-border/40 bg-white p-2.5 dark:bg-zinc-900/30"
 						>
@@ -593,7 +593,7 @@
 								{m.growth_areas()}
 							</p>
 							<div class="mt-2 flex flex-wrap gap-1.5">
-								{#each client.intakeSummary.lowestTopics as topic (topic)}
+							{#each client.intakeSummary.lowestTopics as topic, index (`${topic}-${index}`)}
 									<span
 										class="rounded-lg border border-border bg-white px-2 py-1 text-[10px] font-medium text-text-muted dark:bg-zinc-900"
 									>

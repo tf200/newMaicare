@@ -144,6 +144,20 @@
 		}
 		return false;
 	};
+
+	const getActiveChildHref = (item: NavItem) => {
+		if (!item.children) return null;
+		const path = deLocalizeUrl(page.url).pathname;
+		let activeHref: string | null = null;
+		for (const child of item.children) {
+			if (path === child.href || path.startsWith(`${child.href}/`)) {
+				if (!activeHref || child.href.length > activeHref.length) {
+					activeHref = child.href;
+				}
+			}
+		}
+		return activeHref;
+	};
 </script>
 
 <!-- Mobile Backdrop -->
@@ -257,6 +271,7 @@
 				{@const active = isItemActive(item)}
 				{@const hasChildren = item.children && item.children.length > 0}
 				{@const isExpanded = expandedItems[item.label] || (hasChildren && active && !collapsed)}
+				{@const activeChildHref = hasChildren ? getActiveChildHref(item) : null}
 
 				<PermissionGuard permission={item.permission}>
 					<div class="space-y-1">
@@ -299,13 +314,13 @@
 
 						{#if hasChildren && isExpanded && !collapsed}
 							<div class="ml-9 space-y-1" transition:slide={{ duration: 300 }}>
-								{#each item.children as child (child.label)}
-									<PermissionGuard permission={child.permission}>
-										{@const childActive = isActive(child.href)}
-										<button
-											onclick={() => goto(localizeHref(child.href))}
-											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
-											{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
+							{#each item.children as child (child.label)}
+								<PermissionGuard permission={child.permission}>
+									{@const childActive = activeChildHref === child.href}
+									<button
+										onclick={() => goto(localizeHref(child.href))}
+										class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
+										{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>
 											{child.label}
 										</button>
