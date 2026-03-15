@@ -12,12 +12,16 @@ import type {
 	HandbookAssignmentStatusApi,
 	HandbookTemplateApi,
 	HandbookTemplateStepApi,
+	GetMyActiveHandbookResponse,
 	ListEmployeeHandbookAssignmentsResponse,
 	ListEligibleHandbookEmployeesResponse,
 	ListDepartmentTemplatesResponse,
 	PublishHandbookTemplateRequest,
 	ReorderHandbookStepsRequest,
 	ReorderHandbookStepsResponse,
+	StartMyHandbookResponse,
+	CompleteMyHandbookStepRequest,
+	CompleteMyHandbookStepResponse,
 	UpdateHandbookStepRequest,
 	UpdateHandbookTemplateRequest,
 	WaiveHandbookAssignmentRequest,
@@ -166,6 +170,24 @@ export function listTemplateSteps(templateId: string) {
 export function reorderHandbookSteps(templateId: string, payload: ReorderHandbookStepsRequest) {
 	return api.post<ApiEnvelope<ReorderHandbookStepsResponse>>(
 		`/handbook/templates/${encodeURIComponent(templateId)}/steps/reorder`,
+		payload
+	);
+}
+
+export function getMyActiveHandbook(options: { fetchFn?: typeof fetch } = {}) {
+	return api.get<ApiEnvelope<GetMyActiveHandbookResponse>>('/handbook/me', options);
+}
+
+export function startMyHandbook() {
+	return api.post<ApiEnvelope<StartMyHandbookResponse>>('/handbook/me/start', {});
+}
+
+export function completeMyHandbookStep(
+	stepId: string,
+	payload: CompleteMyHandbookStepRequest
+) {
+	return api.post<ApiEnvelope<CompleteMyHandbookStepResponse>>(
+		`/handbook/me/steps/${encodeURIComponent(stepId)}/complete`,
 		payload
 	);
 }

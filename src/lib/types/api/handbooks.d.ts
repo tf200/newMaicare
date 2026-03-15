@@ -9,6 +9,7 @@ export type HandbookAssignmentStatusApi =
 	| 'completed'
 	| 'waived';
 export type HandbookAssignmentStepStatusApi = 'pending' | 'in_progress' | 'completed';
+export type MyHandbookStepStatusApi = 'pending' | 'completed' | 'skipped';
 export type HandbookAssignmentHistoryEventApi =
 	| 'assigned'
 	| 'reassigned'
@@ -85,6 +86,54 @@ export interface EmployeeHandbookAssignmentStepApi {
 	started_at: string | null;
 	completed_at: string | null;
 	response: Record<string, unknown> | string | null;
+}
+
+export interface MyActiveHandbookStepApi {
+	step_id: string;
+	sort_order: number;
+	kind: HandbookStepKindApi;
+	title: string;
+	body: string | null;
+	content: HandbookStepContentApi | Record<string, unknown> | null;
+	is_required: boolean;
+	status: MyHandbookStepStatusApi;
+	started_at: string | null;
+	completed_at: string | null;
+	response: Record<string, unknown> | string | null;
+}
+
+export interface GetMyActiveHandbookResponse {
+	handbook_id: string;
+	status: Exclude<HandbookAssignmentStatusApi, 'unassigned'>;
+	assigned_at: string | null;
+	started_at: string | null;
+	completed_at: string | null;
+	due_at: string | null;
+	template_id: string;
+	template_title: string;
+	template_description: string | null;
+	template_version: number;
+	department_id: string | null;
+	department_name: string | null;
+	steps: MyActiveHandbookStepApi[];
+}
+
+export interface StartMyHandbookResponse {
+	handbook_id: string;
+	status: Exclude<HandbookAssignmentStatusApi, 'unassigned'>;
+	started_at: string | null;
+}
+
+export interface CompleteMyHandbookStepRequest {
+	response: Record<string, unknown>;
+}
+
+export interface CompleteMyHandbookStepResponse {
+	handbook_id: string;
+	step_id: string;
+	step_status: MyHandbookStepStatusApi;
+	completed_at: string | null;
+	handbook_status: Exclude<HandbookAssignmentStatusApi, 'unassigned'>;
 }
 
 export interface EmployeeHandbookAssignmentDetailsApi {
