@@ -1368,7 +1368,7 @@
 	"placeholder_employee_number": "EMP-001",
 	"placeholder_employment_number": "100200300",
 	"placeholder_position": "Senior begeleider",
-	"placeholder_department": "Ambulante zorg",
+	"placeholder_department": "Selecteer afdeling",
 	"contract": "Contract",
 	"select_contract_type": "Selecteer type...",
 	"placeholder_contract_hours": "36",

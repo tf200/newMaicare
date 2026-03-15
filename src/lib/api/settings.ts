@@ -51,8 +51,18 @@ export function addPermissionsToRole(roleId: string, payload: AddPermissionsToRo
 	);
 }
 
-export function listDepartments() {
-	return api.get<ApiEnvelope<ListDepartmentsResponse>>('/settings/departments');
+export function listDepartments(
+	params: { page?: number; pageSize?: number } = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
+	const search = new URLSearchParams();
+	search.set('page', String(params.page ?? 1));
+	search.set('page_size', String(params.pageSize ?? 100));
+
+	return api.get<ApiEnvelope<ListDepartmentsResponse>>(
+		`/settings/departments?${search.toString()}`,
+		options
+	);
 }
 
 export function createDepartment(payload: CreateDepartmentRequest) {

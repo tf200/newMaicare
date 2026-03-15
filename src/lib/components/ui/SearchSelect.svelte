@@ -11,8 +11,8 @@
 
 	let {
 		label,
-		value = $bindable(''),
-		displayValue = $bindable(''),
+		value = $bindable(),
+		displayValue = $bindable(),
 		placeholder = undefined,
 		searchPlaceholder = undefined,
 		disabled = false,
@@ -27,8 +27,8 @@
 		valueFn = (opt: Option) => String(opt?.value ?? '')
 	} = $props<{
 		label?: string;
-		value?: string;
-		displayValue?: string;
+		value?: string | undefined;
+		displayValue?: string | undefined;
 		placeholder?: string;
 		searchPlaceholder?: string;
 		disabled?: boolean;
@@ -53,9 +53,11 @@
 
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_placeholder());
 	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
+	let currentValue = $derived(value ?? '');
+	let currentDisplayValue = $derived(displayValue ?? '');
 	let selectedLabel = $derived.by(() => {
-		const found = options.find((opt) => valueFn(opt) === value);
-		return found ? labelFn(found) : displayValue || resolvedPlaceholder;
+		const found = options.find((opt) => valueFn(opt) === currentValue);
+		return found ? labelFn(found) : currentDisplayValue || resolvedPlaceholder;
 	});
 
 	// Debounce search
@@ -163,7 +165,7 @@
 		>
 			<span class="truncate">{selectedLabel}</span>
 			<div class="flex items-center gap-2">
-				{#if value && !disabled}
+				{#if currentValue && !disabled}
 					<div
 						role="button"
 						tabindex="0"
@@ -216,7 +218,7 @@
 							<button
 								type="button"
 								onclick={() => select(option)}
-								class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-text-muted hover:bg-border/50 {value ===
+								class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-text-muted hover:bg-border/50 {currentValue ===
 								valueFn(option)
 									? 'bg-border/30 font-medium text-text'
 									: ''}"
@@ -228,7 +230,7 @@
 										<span class="truncate">{labelFn(option)}</span>
 									{/if}
 								</div>
-								{#if value === valueFn(option)}
+								{#if currentValue === valueFn(option)}
 									<Check class="ml-2 h-4 w-4 shrink-0 text-brand" />
 								{/if}
 							</button>

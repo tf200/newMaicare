@@ -72,7 +72,7 @@
 <div class="relative inline-block w-full text-left sm:w-auto" data-filter-root>
 	<button
 		onclick={toggleOpen}
-		class="group inline-flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-auto sm:justify-start {isOpen
+		class="group inline-flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-auto sm:justify-start {isOpen
 			? 'border-brand/50 text-text ring-2 ring-brand/20'
 			: ''} {activeFilterCount > 0 ? 'border-brand/20 bg-brand/5 text-brand' : ''}"
 	>

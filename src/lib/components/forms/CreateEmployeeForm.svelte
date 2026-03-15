@@ -11,11 +11,14 @@
 	import { createEmployee, type CreateEmployeeRequest } from '$lib/api/employees';
 	import { listRoles, type RoleListItem } from '$lib/api/roles';
 	import { listLocations } from '$lib/api/locations';
+	import { listDepartments } from '$lib/api/settings';
 	import type { OrganizationLocation } from '$lib/types/api';
+	import type { DepartmentItem } from '$lib/types/api';
 	import { EmployeeSchema, type EmployeeSchemaInput } from '$lib/schemas/employee';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { onMount } from 'svelte';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -24,6 +27,7 @@
 
 	let errorMessage = $state('');
 	let rolesCache = $state<RoleListItem[]>([]);
+	let departmentOptions = $state<Array<{ value: string; label: string }>>([]);
 	const formId = 'create-employee-form';
 	const toOptionalNumber = (value: string | number | undefined): number | undefined => {
 		if (typeof value === 'number') {
@@ -41,7 +45,8 @@
 		defaults(
 			{
 				gender: 'not_specified',
-				contract_type: 'none'
+				contract_type: 'none',
+				department_id: ''
 			} as unknown as EmployeeSchemaInput,
 			valibotClient(EmployeeSchema)
 		),
@@ -69,7 +74,7 @@
 							employment_number: trimToUndefined(form.data.employment_number),
 							location_id: trimToUndefined(form.data.location_id),
 							position: trimToUndefined(form.data.position),
-							department: trimToUndefined(form.data.department),
+							department_id: trimToUndefined(form.data.department_id),
 							private_email_address: trimToUndefined(form.data.private_email_address),
 							work_phone_number: trimToUndefined(form.data.work_phone_number),
 							private_phone_number: trimToUndefined(form.data.private_phone_number),
@@ -127,6 +132,21 @@
 		const res = await listLocations({ search: query, pageSize: 50 });
 		return res.data.results;
 	};
+
+	onMount(async () => {
+		try {
+			const res = await listDepartments({ pageSize: 100 });
+			departmentOptions = res.data.results
+				.map((department: DepartmentItem) => ({
+					value: department.id,
+					label: department.name
+				}))
+				.filter((department) => department.label.trim().length > 0);
+		} catch (error) {
+			console.error(error);
+			departmentOptions = [];
+		}
+	});
 </script>
 
 {#snippet roleItem(option: RoleListItem)}
@@ -324,10 +344,12 @@
 					placeholder={m.placeholder_position()}
 					bind:value={$form.position}
 				/>
-				<Input
+				<Select
 					label={m.department()}
 					placeholder={m.placeholder_department()}
-					bind:value={$form.department}
+					options={departmentOptions}
+					bind:value={$form.department_id}
+					error={formatFormError($errors.department_id)}
 				/>
 			</div>
 		</section>

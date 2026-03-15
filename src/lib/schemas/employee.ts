@@ -35,7 +35,7 @@ export const EmployeeSchema = v.object({
 	role_id: v.pipe(v.string(), v.minLength(1, 'Role is required')),
 	location_id: v.optional(v.string()),
 	position: v.optional(v.string()),
-	department: v.optional(v.string()),
+	department_id: v.optional(v.string()),
 
 	// Contract
 	contract_type: EmployeeContractTypeSchema,

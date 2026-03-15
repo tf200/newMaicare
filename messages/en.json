@@ -1411,7 +1411,7 @@
 	"placeholder_employment_number": "100200300",
 	"position": "Position",
 	"placeholder_position": "Senior Caregiver",
-	"placeholder_department": "Ambulant Care",
+	"placeholder_department": "Select department",
 	"contract": "Contract",
 	"select_contract_type": "Select type...",
 	"contract_hours": "Contract Hours",
