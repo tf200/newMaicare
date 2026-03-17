@@ -55,7 +55,9 @@
 				},
 				{ label: 'Templates', href: '/settings/handbooks' },
 				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
-				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' }
+				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
+				{ label: 'Dienst ruilen', href: '/dienst-ruilen' },
+				{ label: 'Verlof', href: '/verlof' }
 			]
 		},
 		{
