@@ -11,18 +11,22 @@
 		label,
 		options = [],
 		value = $bindable(''),
+		onchange,
 		placeholder = undefined,
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
-		className = ''
+		className = '',
+		size = 'md'
 	} = $props<{
 		label?: string;
 		options?: Option[];
 		value?: string;
+		onchange?: (value: string) => void;
 		placeholder?: string;
 		error?: string;
 		id?: string;
 		className?: string;
+		size?: 'sm' | 'md' | 'lg';
 	}>();
 
 	let isOpen = $state(false);
@@ -34,12 +38,25 @@
 		options.find((opt: Option) => opt.value === value)?.label || resolvedPlaceholder
 	);
 
+	const sizeClasses: Record<'sm' | 'md' | 'lg', string> = {
+		sm: 'py-2 px-3 text-xs',
+		md: 'py-2.5 px-4 text-sm',
+		lg: 'py-3.5 px-4 text-sm'
+	};
+
+	let sizeClass = $derived.by(() => {
+		if (size === 'sm') return sizeClasses.sm;
+		if (size === 'lg') return sizeClasses.lg;
+		return sizeClasses.md;
+	});
+
 	function toggle() {
 		isOpen = !isOpen;
 	}
 
 	function select(val: string) {
 		value = val;
+		onchange?.(val);
 		isOpen = false;
 	}
 
@@ -72,7 +89,7 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text transition-all hover:bg-surface/80 {error
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text transition-all hover:bg-surface/80 {sizeClass} {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}

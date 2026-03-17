@@ -32,6 +32,7 @@ export interface CreateEmployeeRequest {
 	employee_number?: string;
 	employment_number?: string;
 	location_id?: string;
+	department_id?: string;
 	first_name: string;
 	last_name: string;
 	bsn: string;
@@ -41,7 +42,6 @@ export interface CreateEmployeeRequest {
 	postal_code: string;
 	city: string;
 	position?: string;
-	department?: string;
 	private_email_address?: string;
 	work_email_address: string;
 	work_phone_number?: string;
@@ -80,14 +80,14 @@ export interface CreateEmployeeResponse {
 	is_archived: boolean;
 }
 
-	export function listEmployees(params: ListEmployeesParams = {}) {
-		const query = new URLSearchParams();
-		if (params.page != null) query.set('page', String(params.page));
-		if (params.page_size != null) {
-			query.set('page_size', String(params.page_size));
-		} else if (params.pageSize != null) {
-			query.set('page_size', String(params.pageSize));
-		}
+export function listEmployees(params: ListEmployeesParams = {}) {
+	const query = new URLSearchParams();
+	if (params.page != null) query.set('page', String(params.page));
+	if (params.page_size != null) {
+		query.set('page_size', String(params.page_size));
+	} else if (params.pageSize != null) {
+		query.set('page_size', String(params.pageSize));
+	}
 
 	if (params.isArchived != null) query.set('is_archived', String(params.isArchived));
 	if (params.outOfService != null) query.set('out_of_service', String(params.outOfService));
@@ -95,10 +95,10 @@ export interface CreateEmployeeResponse {
 	if (params.contractType) query.set('contract_type', params.contractType);
 	if (params.search) query.set('search', params.search);
 
-		const queryString = query.toString();
-		const endpoint = queryString ? `/employees?${queryString}` : '/employees';
-		return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(endpoint);
-	}
+	const queryString = query.toString();
+	const endpoint = queryString ? `/employees?${queryString}` : '/employees';
+	return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(endpoint);
+}
 
 export function createEmployee(payload: CreateEmployeeRequest) {
 	return api.post<ApiEnvelope<CreateEmployeeResponse>>('/employees', payload);

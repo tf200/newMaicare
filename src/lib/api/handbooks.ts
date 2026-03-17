@@ -2,17 +2,30 @@ import { api } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CloneHandbookTemplateRequest,
+	CreateHandbookAssignmentRequest,
+	CreateHandbookAssignmentResponse,
 	CreateHandbookStepRequest,
 	CreateHandbookTemplateRequest,
 	DeleteHandbookStepResponse,
+	EmployeeHandbookAssignmentDetailsApi,
+	HandbookAssignmentHistoryEntryApi,
+	HandbookAssignmentStatusApi,
 	HandbookTemplateApi,
 	HandbookTemplateStepApi,
+	GetMyActiveHandbookResponse,
+	ListEmployeeHandbookAssignmentsResponse,
+	ListEligibleHandbookEmployeesResponse,
 	ListDepartmentTemplatesResponse,
 	PublishHandbookTemplateRequest,
 	ReorderHandbookStepsRequest,
 	ReorderHandbookStepsResponse,
+	StartMyHandbookResponse,
+	CompleteMyHandbookStepRequest,
+	CompleteMyHandbookStepResponse,
 	UpdateHandbookStepRequest,
-	UpdateHandbookTemplateRequest
+	UpdateHandbookTemplateRequest,
+	WaiveHandbookAssignmentRequest,
+	WaiveHandbookAssignmentResponse
 } from '$lib/types/api';
 
 export function createHandbookTemplate(payload: CreateHandbookTemplateRequest) {
@@ -43,6 +56,90 @@ export function listDepartmentTemplates(
 	);
 }
 
+export interface ListEmployeeHandbookAssignmentsParams {
+	page?: number;
+	pageSize?: number;
+	departmentId?: string;
+	search?: string;
+	status?: HandbookAssignmentStatusApi;
+}
+
+export interface ListEligibleHandbookEmployeesParams {
+	page?: number;
+	pageSize?: number;
+	departmentId?: string;
+	search?: string;
+}
+
+export function listEmployeeHandbookAssignments(
+	params: ListEmployeeHandbookAssignmentsParams = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
+	const search = new URLSearchParams();
+	if (params.page != null) search.set('page', String(params.page));
+	if (params.pageSize != null) search.set('page_size', String(params.pageSize));
+	if (params.departmentId) search.set('department_id', params.departmentId);
+	if (params.search) search.set('search', params.search);
+	if (params.status) search.set('status', params.status);
+
+	const query = search.toString();
+	const endpoint = query ? `/handbook/assignments?${query}` : '/handbook/assignments';
+
+	return api.get<ApiEnvelope<ListEmployeeHandbookAssignmentsResponse>>(endpoint, options);
+}
+
+export function listEligibleHandbookEmployees(
+	params: ListEligibleHandbookEmployeesParams = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
+	const search = new URLSearchParams();
+	if (params.page != null) search.set('page', String(params.page));
+	if (params.pageSize != null) search.set('page_size', String(params.pageSize));
+	if (params.departmentId) search.set('department_id', params.departmentId);
+	if (params.search) search.set('search', params.search);
+
+	const query = search.toString();
+	const endpoint = query
+		? `/handbook/assignments/eligible-employees?${query}`
+		: '/handbook/assignments/eligible-employees';
+
+	return api.get<ApiEnvelope<ListEligibleHandbookEmployeesResponse>>(endpoint, options);
+}
+
+export function getEmployeeHandbookAssignment(
+	handbookId: string,
+	options: { fetchFn?: typeof fetch } = {}
+) {
+	return api.get<ApiEnvelope<EmployeeHandbookAssignmentDetailsApi>>(
+		`/handbook/assignments/${encodeURIComponent(handbookId)}`,
+		options
+	);
+}
+
+export function getEmployeeHandbookHistory(
+	employeeId: string,
+	options: { fetchFn?: typeof fetch } = {}
+) {
+	return api.get<ApiEnvelope<HandbookAssignmentHistoryEntryApi[]>>(
+		`/handbook/employees/${encodeURIComponent(employeeId)}/history`,
+		options
+	);
+}
+
+export function createHandbookAssignment(payload: CreateHandbookAssignmentRequest) {
+	return api.post<ApiEnvelope<CreateHandbookAssignmentResponse>>('/handbook/assignments', payload);
+}
+
+export function waiveHandbookAssignment(
+	handbookId: string,
+	payload?: WaiveHandbookAssignmentRequest
+) {
+	return api.post<ApiEnvelope<WaiveHandbookAssignmentResponse>>(
+		`/handbook/assignments/${encodeURIComponent(handbookId)}/waive`,
+		payload ?? {}
+	);
+}
+
 export function publishHandbookTemplate(payload: PublishHandbookTemplateRequest) {
 	return api.post<ApiEnvelope<HandbookTemplateApi>>('/handbook/templates/publish', payload);
 }
@@ -70,12 +167,27 @@ export function listTemplateSteps(templateId: string) {
 	);
 }
 
-export function reorderHandbookSteps(
-	templateId: string,
-	payload: ReorderHandbookStepsRequest
-) {
+export function reorderHandbookSteps(templateId: string, payload: ReorderHandbookStepsRequest) {
 	return api.post<ApiEnvelope<ReorderHandbookStepsResponse>>(
 		`/handbook/templates/${encodeURIComponent(templateId)}/steps/reorder`,
+		payload
+	);
+}
+
+export function getMyActiveHandbook(options: { fetchFn?: typeof fetch } = {}) {
+	return api.get<ApiEnvelope<GetMyActiveHandbookResponse>>('/handbook/me', options);
+}
+
+export function startMyHandbook() {
+	return api.post<ApiEnvelope<StartMyHandbookResponse>>('/handbook/me/start', {});
+}
+
+export function completeMyHandbookStep(
+	stepId: string,
+	payload: CompleteMyHandbookStepRequest
+) {
+	return api.post<ApiEnvelope<CompleteMyHandbookStepResponse>>(
+		`/handbook/me/steps/${encodeURIComponent(stepId)}/complete`,
 		payload
 	);
 }
