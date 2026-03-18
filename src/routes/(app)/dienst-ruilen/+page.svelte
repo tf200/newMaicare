@@ -359,11 +359,11 @@
 </svelte:head>
 
 <section class="flex flex-col gap-6">
-	<header class="rounded-3xl border border-border bg-surface/90 p-6 shadow-sm">
-		<div class="flex flex-col gap-6">
-			<!-- Header Top -->
+	<header class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm">
+		<div class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-brand/20 to-emerald-100/20 blur-2xl"></div>
+		<div class="relative flex flex-col gap-6">
 			<div class="flex flex-wrap items-start justify-between gap-6">
-				<div class="space-y-2">
+				<div class="space-y-3">
 					<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 							<ArrowLeftRight class="h-5 w-5" />
@@ -377,46 +377,61 @@
 				</div>
 			</div>
 
-			<!-- Quick Stats Row -->
-			<div class="grid gap-3 md:grid-cols-3">
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-warning/10 p-2 text-warning">
-						<Clock class="h-4 w-4" />
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
+						<Clock class="h-32 w-32" />
 					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Wacht op reactie</p>
-						<p class="text-lg font-bold text-text">{pendingRequests.length}</p>
-					</div>
-				</div>
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-brand/10 p-2 text-brand">
-						<AlertCircle class="h-4 w-4" />
-					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Te goedkeuren</p>
-						<p class="text-lg font-bold text-text">{awaitingApproval.length}</p>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Wacht op reactie
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{pendingRequests.length}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">In behandeling</p>
 					</div>
 				</div>
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-success/10 p-2 text-success">
-						<CheckCircle2 class="h-4 w-4" />
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-brand opacity-[0.04]">
+						<AlertCircle class="h-32 w-32" />
 					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Verwerkt</p>
-						<p class="text-lg font-bold text-text">{historyRequests.length}</p>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Te goedkeuren
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{awaitingApproval.length}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Wacht op planning</p>
+					</div>
+				</div>
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
+						<CheckCircle2 class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							Verwerkt
+						</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+							{historyRequests.length}
+						</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Afgehandeld</p>
 					</div>
 				</div>
 			</div>
 
-			<!-- Info boxes -->
-			<div class="grid gap-2 text-xs text-text-muted sm:grid-cols-2">
-				<div class="rounded-2xl border border-border/60 bg-surface px-3 py-2">
-					<p class="font-semibold text-text">Werkflow</p>
-					<p class="mt-1 text-xs">Collega akkoord → planning akkoord</p>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Workflow</p>
+					<p class="mt-2 text-sm font-semibold text-text">Collega akkoord → planning akkoord</p>
+					<p class="mt-1 text-xs text-text-muted">Ruilen pas actief na dubbele goedkeuring.</p>
 				</div>
-				<div class="rounded-2xl border border-border/60 bg-surface px-3 py-2">
-					<p class="font-semibold text-text">Tip</p>
-					<p class="mt-1 text-xs">Controleer bezetting in roosters</p>
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Tip</p>
+					<p class="mt-2 text-sm font-semibold text-text">Controleer bezetting in roosters</p>
+					<p class="mt-1 text-xs text-text-muted">Voorkom onderbezetting bij ruilen.</p>
 				</div>
 			</div>
 		</div>
@@ -424,57 +439,59 @@
 
 	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
 		<!-- Advanced filters -->
-		<div class="space-y-3 mb-6">
-			<!-- Search bar -->
-			<div class="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface-subtle/50 px-3 py-2">
-				<Search class="h-4 w-4 text-text-muted" />
-				<input
-					type="text"
-					placeholder="Zoek op naam..."
-					bind:value={searchQuery}
-					class="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted"
-				/>
-				{#if searchQuery}
-					<button
-						class="text-text-muted hover:text-text transition"
-						onclick={() => (searchQuery = '')}
+		<div class="space-y-4 mb-6">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+				<div class="relative w-full sm:w-64">
+					<Search
+						class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+					/>
+					<input
+						type="search"
+						class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+						placeholder="Zoek op naam..."
+						bind:value={searchQuery}
+					/>
+					{#if searchQuery}
+						<button
+							class="absolute top-1/2 right-3 -translate-y-1/2 text-text-muted hover:text-text transition"
+							onclick={() => (searchQuery = '')}
+						>
+							<X class="h-4 w-4" />
+						</button>
+					{/if}
+				</div>
+
+				<div class="flex flex-wrap items-center gap-2">
+					<select
+						bind:value={selectedDepartmentFilter}
+						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none"
 					>
-						<X class="h-4 w-4" />
-					</button>
-				{/if}
-			</div>
+						<option value={null}>Alle afdelingen</option>
+						{#each departments as dept}
+							<option value={dept}>{dept}</option>
+						{/each}
+					</select>
 
-			<!-- Filter chips -->
-			<div class="flex flex-wrap items-center gap-2">
-				<select
-					bind:value={selectedDepartmentFilter}
-					class="rounded-xl border border-border/60 bg-surface-subtle px-3 py-2 text-xs font-semibold text-text outline-none"
-				>
-					<option value={null}>Alle afdelingen</option>
-					{#each departments as dept}
-						<option value={dept}>{dept}</option>
-					{/each}
-				</select>
-
-				<select
-					bind:value={selectedShiftTypeFilter}
-					class="rounded-xl border border-border/60 bg-surface-subtle px-3 py-2 text-xs font-semibold text-text outline-none"
-				>
-					<option value={null}>Alle diensten</option>
-					{#each shiftTypes as type}
-						<option value={type}>{type}</option>
-					{/each}
-				</select>
-
-				{#if hasActiveFilters}
-					<button
-						class="ml-auto rounded-xl border border-warning/20 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning transition hover:bg-warning/10"
-						onclick={clearAllFilters}
+					<select
+						bind:value={selectedShiftTypeFilter}
+						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none"
 					>
-						<Filter class="inline h-3 w-3 mr-1" />
-						Filters wissen
-					</button>
-				{/if}
+						<option value={null}>Alle diensten</option>
+						{#each shiftTypes as type}
+							<option value={type}>{type}</option>
+						{/each}
+					</select>
+
+					{#if hasActiveFilters}
+						<button
+							class="h-9 rounded-full border border-warning/20 bg-warning/5 px-4 text-xs font-semibold text-warning transition hover:bg-warning/10"
+							onclick={clearAllFilters}
+						>
+							<Filter class="inline h-3 w-3 mr-1" />
+							Filters wissen
+						</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 
@@ -507,10 +524,10 @@
 					</div>
 				{:else}
 					{#each filteredPendingRequests as request}
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
+						<div class="rounded-3xl border border-border/60 bg-surface p-5 shadow-sm hover:shadow-md transition-shadow">
 							<div class="flex flex-col gap-4">
 								<!-- Status and request info row -->
-								<div class="flex items-start justify-between gap-4">
+								<div class="flex items-center justify-between gap-4">
 									<div>
 										<p class="text-xs font-semibold uppercase text-text-muted">Ruilverzoek</p>
 										<p class="mt-1 text-xs text-text-muted">{formatDateTime(request.createdAt)}</p>
@@ -525,34 +542,46 @@
 								</div>
 
 								<!-- Swap visualization -->
-								<div class="grid gap-4 sm:grid-cols-3 items-center">
-									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
-										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
-											{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+								<div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] items-stretch">
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+										<div class="flex items-center gap-3">
+											<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+												{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-text">{request.requesterName}</p>
+												<p class="text-xs text-text-muted">{formatDate(request.requesterShift.date)}</p>
+											</div>
 										</div>
-										<p class="font-semibold text-text text-sm">{request.requesterName}</p>
-										<p class="text-xs text-text-muted mt-2">{formatDate(request.requesterShift.date)}</p>
-										<div class="mt-3 space-y-1 text-xs">
-											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.requesterShift.service}</p>
-											<p class="font-semibold text-text">{request.requesterShift.shiftType}</p>
+										<div class="mt-3 grid gap-2 text-xs">
+											<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+												{request.requesterShift.service}
+											</div>
+											<div class="text-sm font-semibold text-text">{request.requesterShift.shiftType}</div>
 										</div>
 									</div>
 
-									<div class="flex justify-center">
-										<div class="rounded-xl bg-brand/10 p-2 text-brand">
+									<div class="flex items-center justify-center">
+										<div class="rounded-xl border border-brand/15 bg-brand/10 p-2 text-brand">
 											<ArrowLeftRight class="h-5 w-5" />
 										</div>
 									</div>
 
-									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
-										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
-											{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+										<div class="flex items-center gap-3">
+											<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+												{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-text">{request.targetName}</p>
+												<p class="text-xs text-text-muted">{formatDate(request.targetShift.date)}</p>
+											</div>
 										</div>
-										<p class="font-semibold text-text text-sm">{request.targetName}</p>
-										<p class="text-xs text-text-muted mt-2">{formatDate(request.targetShift.date)}</p>
-										<div class="mt-3 space-y-1 text-xs">
-											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.targetShift.service}</p>
-											<p class="font-semibold text-text">{request.targetShift.shiftType}</p>
+										<div class="mt-3 grid gap-2 text-xs">
+											<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+												{request.targetShift.service}
+											</div>
+											<div class="text-sm font-semibold text-text">{request.targetShift.shiftType}</div>
 										</div>
 									</div>
 								</div>
@@ -603,10 +632,10 @@
 					</div>
 				{:else}
 					{#each filteredApprovalRequests as request}
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
+						<div class="rounded-3xl border border-border/60 bg-surface p-5 shadow-sm hover:shadow-md transition-shadow">
 							<div class="flex flex-col gap-4">
 								<!-- Status and request info row -->
-								<div class="flex items-start justify-between gap-4">
+								<div class="flex items-center justify-between gap-4">
 									<div>
 										<p class="text-xs font-semibold uppercase text-text-muted">Wacht op goedkeuring</p>
 										<p class="mt-1 text-xs text-text-muted">{formatDateTime(request.createdAt)}</p>
@@ -621,34 +650,46 @@
 								</div>
 
 								<!-- Swap visualization -->
-								<div class="grid gap-4 sm:grid-cols-3 items-center">
-									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
-										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
-											{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+								<div class="grid gap-4 lg:grid-cols-[1fr_auto_1fr] items-stretch">
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+										<div class="flex items-center gap-3">
+											<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+												{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-text">{request.requesterName}</p>
+												<p class="text-xs text-text-muted">{formatDate(request.requesterShift.date)}</p>
+											</div>
 										</div>
-										<p class="font-semibold text-text text-sm">{request.requesterName}</p>
-										<p class="text-xs text-text-muted mt-2">{formatDate(request.requesterShift.date)}</p>
-										<div class="mt-3 space-y-1 text-xs">
-											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.requesterShift.service}</p>
-											<p class="font-semibold text-text">{request.requesterShift.shiftType}</p>
+										<div class="mt-3 grid gap-2 text-xs">
+											<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+												{request.requesterShift.service}
+											</div>
+											<div class="text-sm font-semibold text-text">{request.requesterShift.shiftType}</div>
 										</div>
 									</div>
 
-									<div class="flex justify-center">
-										<div class="rounded-xl bg-brand/10 p-2 text-brand">
+									<div class="flex items-center justify-center">
+										<div class="rounded-xl border border-brand/15 bg-brand/10 p-2 text-brand">
 											<ArrowLeftRight class="h-5 w-5" />
 										</div>
 									</div>
 
-									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
-										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
-											{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+										<div class="flex items-center gap-3">
+											<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+												{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-text">{request.targetName}</p>
+												<p class="text-xs text-text-muted">{formatDate(request.targetShift.date)}</p>
+											</div>
 										</div>
-										<p class="font-semibold text-text text-sm">{request.targetName}</p>
-										<p class="text-xs text-text-muted mt-2">{formatDate(request.targetShift.date)}</p>
-										<div class="mt-3 space-y-1 text-xs">
-											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.targetShift.service}</p>
-											<p class="font-semibold text-text">{request.targetShift.shiftType}</p>
+										<div class="mt-3 grid gap-2 text-xs">
+											<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+												{request.targetShift.service}
+											</div>
+											<div class="text-sm font-semibold text-text">{request.targetShift.shiftType}</div>
 										</div>
 									</div>
 								</div>
@@ -697,49 +738,62 @@
 					</div>
 				{:else}
 					{#each historyRequests as request}
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-							<div
-								class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"
-							>
-								<div class="flex flex-wrap items-center gap-6">
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.requesterName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.requesterShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.requesterShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.requesterShift.shiftType}</p>
+						<div class="rounded-3xl border border-border/60 bg-surface p-5 shadow-sm">
+							<div class="flex items-center justify-between gap-4">
+								<div>
+									<p class="text-xs font-semibold uppercase text-text-muted">Afgehandeld</p>
+									<p class="mt-1 text-xs text-text-muted">{formatDateTime(request.createdAt)}</p>
+								</div>
+								<span
+									class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {statusConfig[
+										request.status
+									].className}"
+								>
+									{statusConfig[request.status].label}
+								</span>
+							</div>
+
+							<div class="mt-4 grid gap-4 lg:grid-cols-[1fr_auto_1fr] items-stretch">
+								<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+									<div class="flex items-center gap-3">
+										<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+											{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<div>
+											<p class="text-sm font-semibold text-text">{request.requesterName}</p>
+											<p class="text-xs text-text-muted">{formatDate(request.requesterShift.date)}</p>
+										</div>
 									</div>
-									<ArrowLeftRight class="h-5 w-5 text-text-muted" />
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.targetName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.targetShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.targetShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.targetShift.shiftType}</p>
+									<div class="mt-3 grid gap-2 text-xs">
+										<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+											{request.requesterShift.service}
+										</div>
+										<div class="text-sm font-semibold text-text">{request.requesterShift.shiftType}</div>
 									</div>
 								</div>
 
-								<div class="flex flex-col gap-3 lg:items-end">
-									<span
-										class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {statusConfig[
-											request.status
-										].className}"
-									>
-										{statusConfig[request.status].label}
-									</span>
-									<p class="text-xs text-text-muted">
-										{formatDateTime(request.createdAt)}
-									</p>
+								<div class="flex items-center justify-center">
+									<div class="rounded-xl border border-brand/15 bg-brand/10 p-2 text-brand">
+										<ArrowLeftRight class="h-5 w-5" />
+									</div>
+								</div>
+
+								<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-4">
+									<div class="flex items-center gap-3">
+										<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand text-xs font-semibold">
+											{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<div>
+											<p class="text-sm font-semibold text-text">{request.targetName}</p>
+											<p class="text-xs text-text-muted">{formatDate(request.targetShift.date)}</p>
+										</div>
+									</div>
+									<div class="mt-3 grid gap-2 text-xs">
+										<div class="rounded-lg border border-border/60 bg-surface px-2 py-1 text-text-muted">
+											{request.targetShift.service}
+										</div>
+										<div class="text-sm font-semibold text-text">{request.targetShift.shiftType}</div>
+									</div>
 								</div>
 							</div>
 

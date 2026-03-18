@@ -244,6 +244,9 @@
 	const filteredRejectedCount = $derived.by(() =>
 		filteredRequests.filter((r) => r.status === 'rejected').length
 	);
+	const filteredSickCount = $derived.by(() =>
+		filteredRequests.filter((r) => r.type === 'sick').length
+	);
 	
 	const filteredRequests = $derived.by(() => {
 		let results = requestFilter === 'all' ? leaveRequests : leaveRequests.filter((r) => r.status === requestFilter);
@@ -733,43 +736,45 @@
 			</div>
 
 			<!-- Quick Stats Row -->
-			<div class="grid gap-3 md:grid-cols-4">
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-warning/10 p-2 text-warning">
-						<AlertCircle class="h-4 w-4" />
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
+						<Clock class="h-32 w-32" />
 					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Openstaand</p>
-						<p class="text-lg font-bold text-text">{pendingCount}</p>
-					</div>
-				</div>
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-success/10 p-2 text-success">
-						<CheckCircle class="h-4 w-4" />
-					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Goedgekeurd</p>
-						<p class="text-lg font-bold text-text">{approvedCount}</p>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Openstaand</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{pendingCount}</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">In behandeling</p>
 					</div>
 				</div>
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-error/10 p-2 text-error">
-						<XCircle class="h-4 w-4" />
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
+						<CheckCircle class="h-32 w-32" />
 					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Afgewezen</p>
-						<p class="text-lg font-bold text-text">{rejectedCount}</p>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Goedgekeurd</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{approvedCount}</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Afgehandeld</p>
 					</div>
 				</div>
-				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
-					<div class="rounded-xl bg-info/10 p-2 text-info">
-						<TrendingUp class="h-4 w-4" />
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
+						<XCircle class="h-32 w-32" />
 					</div>
-					<div class="min-w-0">
-						<p class="text-xs font-semibold uppercase text-text-muted">Ziekteverzuim</p>
-						<p class="text-lg font-bold text-text">
-							{((sickCount / Math.max(employees.length, 1)) * 100).toFixed(1)}%
-						</p>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Afgewezen</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{rejectedCount}</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Niet akkoord</p>
+					</div>
+				</div>
+				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
+						<Stethoscope class="h-32 w-32" />
+					</div>
+					<div class="relative">
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Ziekteverzuim</div>
+						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{sickCount}</div>
+						<p class="mt-1 text-xs font-medium text-text-muted">Ziekmeldingen</p>
 					</div>
 				</div>
 			</div>
@@ -968,12 +973,13 @@
 					{:else}
 						<!-- Guidelines shown before employee selection -->
 						<div class="space-y-4">
-							<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm">
-								<h3 class="font-semibold text-text flex items-center gap-2">
-									<AlertCircle class="h-4 w-4 text-brand" />
-									Richtlijnen
-								</h3>
-								<ul class="mt-4 space-y-3 text-sm text-text-muted">
+						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
+								<AlertCircle class="h-4 w-4 text-brand" />
+								Richtlijnen
+							</div>
+							<h3 class="mt-2 text-sm font-semibold text-text">Richtlijnen</h3>
+							<ul class="mt-4 space-y-3 text-sm text-text-muted">
 									<li class="flex gap-2">
 										<span class="text-brand font-bold">•</span>
 										<span>Controleer bezetting voordat je verlof aanvraagt.</span>
@@ -988,19 +994,19 @@
 									</li>
 								</ul>
 							</div>
-							<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm">
-								<p class="text-xs font-semibold uppercase text-text-muted mb-4">Snelle status</p>
-								<div class="space-y-3">
-									<div class="flex items-center justify-between p-3 rounded-xl bg-surface-subtle/50 border border-border/50">
-										<span class="text-sm text-text-muted">Openstaand</span>
-										<span class="font-bold text-warning text-lg">{pendingCount}</span>
-									</div>
-									<div class="flex items-center justify-between p-3 rounded-xl bg-surface-subtle/50 border border-border/50">
-										<span class="text-sm text-text-muted">Goedgekeurd</span>
-										<span class="font-bold text-success text-lg">{approvedCount}</span>
-									</div>
+						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+							<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase mb-4">Snelle status</p>
+							<div class="space-y-3">
+								<div class="flex items-center justify-between rounded-2xl border border-border/50 bg-surface-subtle/40 px-4 py-3">
+									<span class="text-sm text-text-muted">Openstaand</span>
+									<span class="font-bold text-warning text-lg">{pendingCount}</span>
+								</div>
+								<div class="flex items-center justify-between rounded-2xl border border-border/50 bg-surface-subtle/40 px-4 py-3">
+									<span class="text-sm text-text-muted">Goedgekeurd</span>
+									<span class="font-bold text-success text-lg">{approvedCount}</span>
 								</div>
 							</div>
+						</div>
 						</div>
 					{/if}
 				</form>
@@ -1054,11 +1060,12 @@
 							/>
 						</div>
 					{:else}
-						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
-							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
-								<AlertCircle class="h-4 w-4 text-error" />
-								Let op
-							</h3>
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
+						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
+							<AlertCircle class="h-4 w-4 text-error" />
+							Let op
+						</p>
+						<h3 class="mt-2 text-sm font-semibold text-text">Let op</h3>
 							<div class="space-y-4 text-sm text-text-muted">
 								<p>
 									Vul een hersteltijd in zodra de medewerker hersteld is.
@@ -1119,11 +1126,12 @@
 							/>
 						</div>
 					{:else}
-						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
-							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
-								<AlertCircle class="h-4 w-4 text-pink-600 dark:text-pink-400" />
-								Tip
-							</h3>
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
+						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
+							<AlertCircle class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+							Tip
+						</p>
+						<h3 class="mt-2 text-sm font-semibold text-text">Tip</h3>
 							<div class="space-y-4 text-sm text-text-muted">
 								<p>
 									Controleer of het verlof aansluit op het verlofsaldo. Pas de planning aan waar nodig.
@@ -1185,27 +1193,28 @@
 							/>
 						</div>
 					{:else}
-						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
-							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
-								<Clock class="h-4 w-4 text-warning" />
-								Recente meldingen
-							</h3>
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
+						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
+							<Clock class="h-4 w-4 text-warning" />
+							Recente meldingen
+						</p>
+						<h3 class="mt-2 text-sm font-semibold text-text">Recente meldingen</h3>
 							<div class="space-y-3">
 								{#each lateArrivals as item}
-									<div class="rounded-xl border border-border/50 bg-surface-subtle/50 p-3 text-sm">
-										<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-										<p class="text-xs text-text-muted mt-1">
-											{formatDate(item.date)} • {item.time}
-										</p>
-										{#if item.reason}
-											<p class="mt-2 text-xs text-text-muted bg-surface rounded px-2 py-1">{item.reason}</p>
-										{/if}
-									</div>
+								<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-3 text-sm">
+									<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
+									<p class="text-xs text-text-muted mt-1">
+										{formatDate(item.date)} • {item.time}
+									</p>
+									{#if item.reason}
+										<p class="mt-2 text-xs text-text-muted bg-surface rounded-lg px-2 py-1">{item.reason}</p>
+									{/if}
+								</div>
 								{/each}
 								{#if lateArrivals.length === 0}
-									<div class="rounded-xl border border-dashed border-border/40 bg-surface-subtle/30 p-4 text-center text-xs text-text-muted">
-										Geen recente meldingen
-									</div>
+								<div class="rounded-2xl border border-dashed border-border/40 bg-surface-subtle/30 p-4 text-center text-xs text-text-muted">
+									Geen recente meldingen
+								</div>
 								{/if}
 							</div>
 						</div>
@@ -1213,33 +1222,6 @@
 				</div>
 			{:else if activeTab === 'overzicht'}
 				<div class="space-y-4">
-					<div class="rounded-2xl border border-border/60 bg-surface p-5 shadow-sm">
-						<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<h2 class="text-lg font-semibold text-text">Overzicht aanvragen</h2>
-								<p class="text-xs text-text-muted">Snelle status op basis van je filters.</p>
-							</div>
-							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
-									<p class="text-xs text-text-muted">Totaal</p>
-									<p class="text-lg font-semibold text-text">{filteredRequests.length}</p>
-								</div>
-								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
-									<p class="text-xs text-text-muted">Open</p>
-									<p class="text-lg font-semibold text-warning">{filteredPendingCount}</p>
-								</div>
-								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
-									<p class="text-xs text-text-muted">Goedgekeurd</p>
-									<p class="text-lg font-semibold text-success">{filteredApprovedCount}</p>
-								</div>
-								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
-									<p class="text-xs text-text-muted">Afgewezen</p>
-									<p class="text-lg font-semibold text-error">{filteredRejectedCount}</p>
-								</div>
-							</div>
-						</div>
-					</div>
-
 					<DataTable
 						{columns}
 						rows={filteredRequests}
