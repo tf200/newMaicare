@@ -17,14 +17,21 @@
 		ChevronLeft,
 		ChevronRight,
 		Euro,
-		Trash2
+		Search,
+		Filter,
+		TrendingUp,
+		Zap
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
+	import EmployeeSearch from '$lib/components/forms/EmployeeSearch.svelte';
+	import ScheduleCalendar from '$lib/components/forms/ScheduleCalendar.svelte';
+	import type { EmployeeListItem } from '$lib/api/employees';
 
 	type LeaveType = 'vacation' | 'sick' | 'personal' | 'training' | 'pregnancy';
 	type LeaveStatus = 'pending' | 'approved' | 'rejected';
@@ -154,6 +161,14 @@
 		{ label: 'Scholing', value: 'training' }
 	];
 
+	const columns: DataTableColumn[] = [
+		{ key: 'employee', label: 'Medewerker' },
+		{ key: 'type', label: 'Type' },
+		{ key: 'period', label: 'Periode' },
+		{ key: 'status', label: 'Status', align: 'center' },
+		{ key: 'actions', label: '', align: 'right' }
+	];
+
 	let activeTab = $state<
 		| 'aanvragen'
 		| 'ziekmelding'
@@ -165,6 +180,11 @@
 		| 'contractwijzigingen'
 	>('aanvragen');
 	let requestFilter = $state<'all' | LeaveStatus>('all');
+	let searchQuery = $state('');
+	let selectedDepartmentFilter = $state<string | null>(null);
+	let selectedTypeFilter = $state<LeaveType | null>(null);
+	let dateRangeStart = $state('');
+	let dateRangeEnd = $state('');
 	let deleteDialogOpen = $state(false);
 	let selectedRequestId = $state<string | null>(null);
 	let currentMonth = $state(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -180,6 +200,14 @@
 		endDate: '',
 		reason: ''
 	});
+	let selectedEmployeeFromSearch = $state<EmployeeListItem | null>(null);
+	let selectedSickEmployee = $state<EmployeeListItem | null>(null);
+	let selectedPregnancyEmployee = $state<EmployeeListItem | null>(null);
+	let selectedLateEmployee = $state<EmployeeListItem | null>(null);
+	let sickCalendarStart = $state<string | null>(null);
+	let sickCalendarEnd = $state<string | null>(null);
+	let lateCalendarStart = $state<string | null>(null);
+	let lateCalendarEnd = $state<string | null>(null);
 
 	let sickRequest = $state({
 		employeeId: '',
@@ -206,9 +234,75 @@
 	const pendingCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'pending').length);
 	const approvedCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'approved').length);
 	const sickCount = $derived.by(() => leaveRequests.filter((r) => r.type === 'sick').length);
-	const filteredRequests = $derived.by(() =>
-		requestFilter === 'all' ? leaveRequests : leaveRequests.filter((r) => r.status === requestFilter)
+	const rejectedCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'rejected').length);
+	const filteredPendingCount = $derived.by(() =>
+		filteredRequests.filter((r) => r.status === 'pending').length
 	);
+	const filteredApprovedCount = $derived.by(() =>
+		filteredRequests.filter((r) => r.status === 'approved').length
+	);
+	const filteredRejectedCount = $derived.by(() =>
+		filteredRequests.filter((r) => r.status === 'rejected').length
+	);
+	
+	const filteredRequests = $derived.by(() => {
+		let results = requestFilter === 'all' ? leaveRequests : leaveRequests.filter((r) => r.status === requestFilter);
+		
+		// Apply search filter
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase();
+			results = results.filter((r) => 
+				getEmployeeName(r.employeeId).toLowerCase().includes(query)
+			);
+		}
+		
+		// Apply department filter
+		if (selectedDepartmentFilter) {
+			results = results.filter((r) => {
+				const emp = employees.find((e) => e.id === r.employeeId);
+				return emp?.department === selectedDepartmentFilter;
+			});
+		}
+		
+		// Apply type filter
+		if (selectedTypeFilter) {
+			results = results.filter((r) => r.type === selectedTypeFilter);
+		}
+		
+		// Apply date range filter
+		if (dateRangeStart && dateRangeEnd) {
+			const start = new Date(dateRangeStart);
+			const end = new Date(dateRangeEnd);
+			results = results.filter((r) => {
+				const reqStart = new Date(r.startDate);
+				const reqEnd = new Date(r.endDate);
+				return !(reqEnd < start || reqStart > end);
+			});
+		}
+		
+		return results;
+	});
+	
+	const departments = $derived.by(() => 
+		Array.from(new Set(employees.map((e) => e.department)))
+	);
+	
+	const hasActiveFilters = $derived.by(() => 
+		searchQuery.trim() !== '' || 
+		selectedDepartmentFilter !== null || 
+		selectedTypeFilter !== null || 
+		dateRangeStart !== '' || 
+		dateRangeEnd !== ''
+	);
+	
+	function clearAllFilters() {
+		searchQuery = '';
+		selectedDepartmentFilter = null;
+		selectedTypeFilter = null;
+		dateRangeStart = '';
+		dateRangeEnd = '';
+		requestFilter = 'all';
+	}
 
 	const leaveBalances = [
 		{ name: 'Sanne Jansen', department: 'Afdeling Noord', budget: 144, used: 32 },
@@ -395,83 +489,295 @@
 	<title>Verlof & Verzuim | MaiCare</title>
 </svelte:head>
 
-<section class="flex flex-col gap-6">
-	<header class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-		<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-			<div class="flex items-center gap-4">
-				<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-					<Calendar class="h-6 w-6" />
+{#snippet requestFilters()}
+	<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-4 space-y-3">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+			<div class="relative w-full sm:w-64">
+				<Search
+					class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				/>
+				<input
+					type="text"
+					placeholder="Zoek op medewerker..."
+					bind:value={searchQuery}
+					class="h-9 w-full rounded-xl border border-border bg-surface pr-9 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				/>
+				{#if searchQuery}
+					<button
+						class="absolute top-1/2 right-3 -translate-y-1/2 text-text-muted hover:text-text transition"
+						onclick={() => (searchQuery = '')}
+					>
+						<XCircle class="h-4 w-4" />
+					</button>
+				{/if}
+			</div>
+
+			<div class="flex flex-wrap items-center gap-2">
+				<button
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
+					'all'
+						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+						: 'border border-border text-text-muted hover:text-text'}"
+					onclick={() => (requestFilter = 'all')}
+				>
+					Alles
+				</button>
+				<button
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
+					'pending'
+						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+						: 'border border-border text-text-muted hover:text-text'}"
+					onclick={() => (requestFilter = 'pending')}
+				>
+					In behandeling
+					{#if pendingCount > 0}
+						<span
+							class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-warning/20 text-[11px] font-semibold text-warning"
+						>
+							{pendingCount}
+						</span>
+					{/if}
+				</button>
+				<button
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
+					'approved'
+						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+						: 'border border-border text-text-muted hover:text-text'}"
+					onclick={() => (requestFilter = 'approved')}
+				>
+					Goedgekeurd
+				</button>
+				<button
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
+					'rejected'
+						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+						: 'border border-border text-text-muted hover:text-text'}"
+					onclick={() => (requestFilter = 'rejected')}
+				>
+					Afgewezen
+				</button>
+
+				{#if hasActiveFilters}
+					<button
+						class="h-9 rounded-full border border-warning/20 bg-warning/5 px-4 text-xs font-semibold text-warning transition hover:bg-warning/10"
+						onclick={clearAllFilters}
+					>
+						<Filter class="inline h-3 w-3 mr-1" />
+						{#if selectedDepartmentFilter || selectedTypeFilter || dateRangeStart}
+							Filters wissen
+						{:else}
+							Zoekopdracht wissen
+						{/if}
+					</button>
+				{/if}
+			</div>
+		</div>
+
+		{#if activeTab === 'overzicht'}
+			<div class="grid gap-3 sm:grid-cols-3">
+				<div>
+					<label for="dept-filter" class="text-xs font-semibold uppercase text-text-muted">Afdeling</label>
+					<select
+						id="dept-filter"
+						bind:value={selectedDepartmentFilter}
+						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+					>
+						<option value={null}>Alle afdelingen</option>
+						{#each departments as dept}
+							<option value={dept}>{dept}</option>
+						{/each}
+					</select>
 				</div>
 				<div>
-					<h1 class="text-xl font-bold tracking-tight text-text">Verlof & Verzuim</h1>
-					<p class="text-sm text-text-muted">Beheer verlofaanvragen en ziekteverzuim</p>
+					<label for="type-filter" class="text-xs font-semibold uppercase text-text-muted">Type verlof</label>
+					<select
+						id="type-filter"
+						bind:value={selectedTypeFilter}
+						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+					>
+						<option value={null}>Alle types</option>
+						{#each leaveTypeOptions as type}
+							<option value={type.value}>{type.label}</option>
+						{/each}
+					</select>
+				</div>
+				<div>
+					<label for="date-filter" class="text-xs font-semibold uppercase text-text-muted">Van datum</label>
+					<input
+						id="date-filter"
+						type="date"
+						bind:value={dateRangeStart}
+						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+					/>
 				</div>
 			</div>
-			<div class="flex flex-wrap items-center gap-2">
-				<div class="flex items-center gap-1 rounded-2xl border border-border/60 bg-surface-subtle p-1">
-					<button
-						class="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-border/40 hover:text-text"
-						onclick={prevMonth}
-					>
-						<ChevronLeft class="h-4 w-4" />
-					</button>
-					<span class="min-w-[140px] text-center text-sm font-semibold capitalize text-text">
-						{formatMonth(currentMonth)}
-					</span>
-					<button
-						class="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-border/40 hover:text-text"
-						onclick={nextMonth}
-					>
-						<ChevronRight class="h-4 w-4" />
-					</button>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet requestActions()}
+	<Button variant="primary" class="gap-2 sm:ml-auto" onclick={() => (activeTab = 'aanvragen')}>
+		<CalendarPlus class="h-4 w-4" />
+		Nieuwe aanvraag
+	</Button>
+{/snippet}
+
+{#snippet employeeCell(row: LeaveRequest)}
+	<div class="flex items-center gap-3">
+		<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-xs font-semibold text-brand">
+			{getEmployeeName(row.employeeId)
+				.split(' ')
+				.map((part) => part[0])
+				.join('')
+				.slice(0, 2)
+				.toUpperCase()}
+		</div>
+		<div>
+			<p class="text-sm font-semibold text-text">{getEmployeeName(row.employeeId)}</p>
+			<p class="text-xs text-text-muted">
+				{employees.find((employee) => employee.id === row.employeeId)?.role ?? ''}
+			</p>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet typeCell(row: LeaveRequest)}
+	<span
+		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {leaveTypeConfig[
+			row.type
+		].className}"
+	>
+		{leaveTypeConfig[row.type].label}
+	</span>
+{/snippet}
+
+{#snippet periodCell(row: LeaveRequest)}
+	<div class="text-sm">
+		<p class="font-semibold text-text">
+			{formatDate(row.startDate)} - {formatDate(row.endDate)}
+		</p>
+		<p class="text-text-muted">
+			{row.days} {row.days === 1 ? 'dag' : 'dagen'} ({row.hours} uur)
+		</p>
+	</div>
+{/snippet}
+
+{#snippet statusCell(row: LeaveRequest)}
+	{@const statusMeta = statusConfig[row.status]}
+	<span class="inline-flex items-center gap-2 text-xs font-semibold {statusMeta.color}">
+		<statusMeta.icon class="h-4 w-4" />
+		{statusMeta.label}
+	</span>
+{/snippet}
+
+{#snippet actionsCell(row: LeaveRequest)}
+	<div class="flex items-center justify-end gap-2 text-xs font-semibold">
+		{#if row.status === 'pending'}
+			<button class="text-text-muted transition hover:text-text" onclick={() => handleReject(row.id)}>
+				Afwijzen
+			</button>
+			<button class="text-brand transition hover:text-brand" onclick={() => handleApprove(row.id)}>
+				Goedkeuren
+			</button>
+		{/if}
+		<button class="text-text-muted transition hover:text-text" onclick={() => handleDeleteClick(row.id)}>
+			Verwijderen
+		</button>
+	</div>
+{/snippet}
+
+<section class="space-y-6">
+	<header class="rounded-3xl border border-border bg-surface/90 p-6 shadow-sm">
+		<div class="flex flex-col gap-6">
+			<!-- Header Top -->
+			<div class="flex flex-wrap items-start justify-between gap-6">
+				<div class="space-y-2">
+					<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
+							<Calendar class="h-5 w-5" />
+						</span>
+						<span>Verlofbeheer</span>
+					</div>
+					<h1 class="text-3xl font-bold tracking-tighter text-text">Verlof & Verzuim</h1>
+					<p class="max-w-2xl text-sm font-medium text-text-muted">
+						Beheer verlofaanvragen, ziekteverzuim en balansoverzichten.
+					</p>
 				</div>
-				<Button variant="ghost" class="rounded-xl" onclick={handleDownloadPdf}>
-					<FileDown class="h-4 w-4" />
-					Export PDF
-				</Button>
-				<Button variant="ghost" class="rounded-xl" onclick={() => (emailDialogOpen = true)}>
-					<Mail class="h-4 w-4" />
-					E-mail
-				</Button>
+				<div class="flex flex-wrap items-center gap-2">
+					<div class="flex items-center gap-1 rounded-2xl border border-border/60 bg-surface p-1">
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-border/40 hover:text-text"
+							onclick={prevMonth}
+						>
+							<ChevronLeft class="h-4 w-4" />
+						</button>
+						<span class="min-w-[140px] text-center text-sm font-semibold capitalize text-text">
+							{formatMonth(currentMonth)}
+						</span>
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-border/40 hover:text-text"
+							onclick={nextMonth}
+						>
+							<ChevronRight class="h-4 w-4" />
+						</button>
+					</div>
+					<Button variant="ghost" class="rounded-xl" onclick={handleDownloadPdf}>
+						<FileDown class="h-4 w-4" />
+						Export PDF
+					</Button>
+					<Button variant="ghost" class="rounded-xl" onclick={() => (emailDialogOpen = true)}>
+						<Mail class="h-4 w-4" />
+						E-mail
+					</Button>
+				</div>
+			</div>
+
+			<!-- Quick Stats Row -->
+			<div class="grid gap-3 md:grid-cols-4">
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-warning/10 p-2 text-warning">
+						<AlertCircle class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Openstaand</p>
+						<p class="text-lg font-bold text-text">{pendingCount}</p>
+					</div>
+				</div>
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-success/10 p-2 text-success">
+						<CheckCircle class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Goedgekeurd</p>
+						<p class="text-lg font-bold text-text">{approvedCount}</p>
+					</div>
+				</div>
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-error/10 p-2 text-error">
+						<XCircle class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Afgewezen</p>
+						<p class="text-lg font-bold text-text">{rejectedCount}</p>
+					</div>
+				</div>
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-info/10 p-2 text-info">
+						<TrendingUp class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Ziekteverzuim</p>
+						<p class="text-lg font-bold text-text">
+							{((sickCount / Math.max(employees.length, 1)) * 100).toFixed(1)}%
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	</header>
 
-	<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Openstaande aanvragen</div>
-			<div class="mt-3 flex items-center gap-3">
-				<AlertCircle class="h-5 w-5 text-warning" />
-				<span class="text-2xl font-bold text-text">{pendingCount}</span>
-			</div>
-		</div>
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Goedgekeurd</div>
-			<div class="mt-3 flex items-center gap-3">
-				<CheckCircle class="h-5 w-5 text-success" />
-				<span class="text-2xl font-bold text-text">{approvedCount}</span>
-			</div>
-		</div>
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Ziekteverzuim</div>
-			<div class="mt-3 flex items-center gap-3">
-				<Calendar class="h-5 w-5 text-info" />
-				<span class="text-2xl font-bold text-text">
-					{((sickCount / Math.max(employees.length, 1)) * 100).toFixed(1)}%
-				</span>
-			</div>
-		</div>
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Totaal medewerkers</div>
-			<div class="mt-3 flex items-center gap-3">
-				<Users class="h-5 w-5 text-brand" />
-				<span class="text-2xl font-bold text-text">{employees.length}</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-		<div class="flex flex-wrap gap-2 rounded-2xl border border-border/50 bg-surface-subtle p-2">
+	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
+		<div class="flex flex-wrap gap-2 rounded-2xl border border-border/50 bg-surface-subtle/70 p-2">
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
 				'aanvragen'
@@ -563,326 +869,522 @@
 
 		<div class="mt-6">
 			{#if activeTab === 'aanvragen'}
-				<form class="grid gap-6 lg:grid-cols-[2fr_1fr]" onsubmit={handleCreateLeave}>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Nieuwe aanvraag</h2>
-						<p class="mt-1 text-sm text-text-muted">
-							Plan verlof, persoonlijke dagen of scholing.
-						</p>
-						<div class="mt-4 grid gap-4 sm:grid-cols-2">
-							<Select label="Medewerker" options={employeeOptions} bind:value={newRequest.employeeId} />
-							<Select label="Type" options={leaveTypeOptions} bind:value={newRequest.type} />
-							<Input label="Startdatum" type="date" bind:value={newRequest.startDate} />
-							<Input label="Einddatum" type="date" bind:value={newRequest.endDate} />
+				<form class="grid gap-6 {selectedEmployeeFromSearch ? 'lg:grid-cols-[1.5fr_1fr]' : 'lg:grid-cols-[2fr_1fr]'}" onsubmit={handleCreateLeave}>
+					<!-- Left: Form -->
+					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+						<div class="flex items-center gap-3 mb-5">
+							<div class="rounded-xl bg-brand/10 p-2 text-brand">
+								<CalendarPlus class="h-5 w-5" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-text">Nieuwe verlofaanvraag</h2>
+								<p class="text-xs text-text-muted">Plan verlof, persoonlijke dagen of scholing.</p>
+							</div>
 						</div>
-						<div class="mt-4">
-							<Textarea label="Reden (optioneel)" bind:value={newRequest.reason} />
-						</div>
-						<div class="mt-4 flex justify-end">
-							<Button type="submit">Aanvraag indienen</Button>
+						<div class="space-y-5">
+							<!-- Employee Search Component -->
+							<EmployeeSearch
+								labelText="Medewerker selecteren"
+								placeholder="Zoek op naam..."
+								bind:selectedId={newRequest.employeeId}
+								onSelect={(emp) => {
+									selectedEmployeeFromSearch = emp;
+								}}
+							/>
+							
+							{#if selectedEmployeeFromSearch}
+								<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-4 space-y-4">
+									<!-- Type Select -->
+									<div>
+										<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted">Type verlof</label>
+										<select
+											id="leave-type"
+											bind:value={newRequest.type}
+											class="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+										>
+											{#each leaveTypeOptions as type}
+												<option value={type.value}>{type.label}</option>
+											{/each}
+										</select>
+									</div>
+									
+									<!-- Date Range Display -->
+									<div class="space-y-2">
+										<div class="ml-1 text-xs font-semibold text-text-muted">Datumbereik</div>
+										<div class="grid gap-3 sm:grid-cols-2">
+											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
+												<p class="text-xs text-text-muted mb-1">Van</p>
+												<p class="font-semibold text-text">
+													{newRequest.startDate ? new Date(newRequest.startDate).toLocaleDateString('nl-NL') : 'Selecteren'}
+												</p>
+											</div>
+											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
+												<p class="text-xs text-text-muted mb-1">Tot</p>
+												<p class="font-semibold text-text">
+													{newRequest.endDate ? new Date(newRequest.endDate).toLocaleDateString('nl-NL') : 'Selecteren'}
+												</p>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<!-- Reason Textarea -->
+								<Textarea label="Reden (optioneel)" bind:value={newRequest.reason} placeholder="Beschrijf de reden voor verlof..." />
+
+								<!-- Days Calculator -->
+								<div class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand">
+									<div class="flex items-center gap-2">
+										<Zap class="h-4 w-4" />
+										<span>{calculateDays(newRequest.startDate, newRequest.endDate)} {calculateDays(newRequest.startDate, newRequest.endDate) === 1 ? 'dag' : 'dagen'}</span>
+									</div>
+									<span>{calculateDays(newRequest.startDate, newRequest.endDate) * 8} uur</span>
+								</div>
+
+								<!-- Submit Button -->
+								<Button type="submit" class="w-full gap-2 py-3">
+									<CheckCircle class="h-4 w-4" />
+									Aanvraag indienen
+								</Button>
+							{:else}
+								<div class="rounded-2xl border border-dashed border-border/50 bg-surface-subtle/30 px-4 py-8 text-center text-sm text-text-muted">
+									Selecteer eerst een medewerker om door te gaan
+								</div>
+							{/if}
 						</div>
 					</div>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h3 class="text-sm font-semibold text-text">Richtlijnen</h3>
-						<ul class="mt-3 space-y-2 text-sm text-text-muted">
-							<li>Controleer bezetting voordat je verlof aanvraagt.</li>
-							<li>Verlof wordt standaard per 8 uur per dag geboekt.</li>
-							<li>Een teamleider beoordeelt de aanvraag binnen 48 uur.</li>
-						</ul>
-					</div>
+
+					<!-- Right: Calendar or Guidelines -->
+					{#if selectedEmployeeFromSearch}
+						<!-- Calendar appears here when employee is selected -->
+						<ScheduleCalendar
+							selectedEmployee={selectedEmployeeFromSearch}
+							bind:selectedStartDate={newRequest.startDate}
+							bind:selectedEndDate={newRequest.endDate}
+							onDateRangeSelect={(start, end) => {
+								newRequest.startDate = start;
+								newRequest.endDate = end;
+							}}
+						/>
+					{:else}
+						<!-- Guidelines shown before employee selection -->
+						<div class="space-y-4">
+							<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm">
+								<h3 class="font-semibold text-text flex items-center gap-2">
+									<AlertCircle class="h-4 w-4 text-brand" />
+									Richtlijnen
+								</h3>
+								<ul class="mt-4 space-y-3 text-sm text-text-muted">
+									<li class="flex gap-2">
+										<span class="text-brand font-bold">•</span>
+										<span>Controleer bezetting voordat je verlof aanvraagt.</span>
+									</li>
+									<li class="flex gap-2">
+										<span class="text-brand font-bold">•</span>
+										<span>Verlof wordt standaard per 8 uur per dag geboekt.</span>
+									</li>
+									<li class="flex gap-2">
+										<span class="text-brand font-bold">•</span>
+										<span>Een teamleider beoordeelt binnen 48 uur.</span>
+									</li>
+								</ul>
+							</div>
+							<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm">
+								<p class="text-xs font-semibold uppercase text-text-muted mb-4">Snelle status</p>
+								<div class="space-y-3">
+									<div class="flex items-center justify-between p-3 rounded-xl bg-surface-subtle/50 border border-border/50">
+										<span class="text-sm text-text-muted">Openstaand</span>
+										<span class="font-bold text-warning text-lg">{pendingCount}</span>
+									</div>
+									<div class="flex items-center justify-between p-3 rounded-xl bg-surface-subtle/50 border border-border/50">
+										<span class="text-sm text-text-muted">Goedgekeurd</span>
+										<span class="font-bold text-success text-lg">{approvedCount}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
 				</form>
 			{:else if activeTab === 'ziekmelding'}
-				<form class="grid gap-6 lg:grid-cols-[2fr_1fr]" onsubmit={handleCreateSick}>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Ziekmelding registreren</h2>
-						<p class="mt-1 text-sm text-text-muted">
-							Leg ziekteverzuim vast inclusief hersteltijd.
-						</p>
-						<div class="mt-4 grid gap-4 sm:grid-cols-2">
-							<Select label="Medewerker" options={employeeOptions} bind:value={sickRequest.employeeId} />
+				<form class="grid gap-6 lg:grid-cols-[1.5fr_1fr]" onsubmit={handleCreateSick}>
+					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+						<div class="flex items-center gap-3 mb-4">
+							<div class="rounded-xl bg-error/10 p-2 text-error">
+								<Stethoscope class="h-5 w-5" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-text">Ziekmelding registreren</h2>
+								<p class="text-xs text-text-muted">Leg ziekteverzuim vast inclusief hersteltijd.</p>
+							</div>
+						</div>
+						<div class="mt-6 grid gap-4 sm:grid-cols-2">
+							<EmployeeSearch
+								labelText="Medewerker"
+								placeholder="Zoek medewerker..."
+								bind:selectedId={sickRequest.employeeId}
+								onSelect={(employee) => {
+									selectedSickEmployee = employee;
+									sickRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
 							<Input label="Datum" type="date" bind:value={sickRequest.date} />
 							<Input label="Starttijd" type="time" bind:value={sickRequest.startTime} />
 							<Input label="Hersteltijd" type="time" bind:value={sickRequest.endTime} />
 						</div>
 						<div class="mt-4">
-							<Textarea label="Toelichting" bind:value={sickRequest.reason} />
+							<Textarea label="Toelichting (optioneel)" bind:value={sickRequest.reason} placeholder="Voeg medische details in..." />
 						</div>
-						<div class="mt-4 flex justify-end">
-							<Button type="submit">Ziekmelding opslaan</Button>
+						<div class="mt-6 flex justify-end">
+							<Button type="submit" class="gap-2">
+								<CheckCircle class="h-4 w-4" />
+								Ziekmelding opslaan
+							</Button>
 						</div>
 					</div>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h3 class="text-sm font-semibold text-text">Let op</h3>
-						<p class="mt-3 text-sm text-text-muted">
-							Vul een hersteltijd in zodra de medewerker hersteld is. Bij langdurig verzuim
-							wordt automatisch een vervolgactie aangemaakt.
-						</p>
-					</div>
+					{#if selectedSickEmployee}
+						<div class="animate-in fade-in">
+							<ScheduleCalendar
+								selectedEmployee={selectedSickEmployee}
+								bind:selectedStartDate={sickCalendarStart}
+								bind:selectedEndDate={sickCalendarEnd}
+								onDateRangeSelect={(startDate) => {
+									sickRequest.date = startDate;
+									sickCalendarStart = startDate;
+									sickCalendarEnd = startDate;
+								}}
+							/>
+						</div>
+					{:else}
+						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
+							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
+								<AlertCircle class="h-4 w-4 text-error" />
+								Let op
+							</h3>
+							<div class="space-y-4 text-sm text-text-muted">
+								<p>
+									Vul een hersteltijd in zodra de medewerker hersteld is.
+								</p>
+								<div class="rounded-xl bg-error/5 border border-error/10 p-3">
+									<p class="font-semibold text-error text-xs mb-1">⚠️ Langdurig verzuim</p>
+									<p class="text-xs">Bij verzuim langer dan 2 dagen wordt automatisch een vervolgactie aangemaakt.</p>
+								</div>
+							</div>
+						</div>
+					{/if}
 				</form>
 			{:else if activeTab === 'zwangerschap'}
-				<form class="grid gap-6 lg:grid-cols-[2fr_1fr]" onsubmit={handleCreatePregnancy}>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Zwangerschapsverlof</h2>
-						<p class="mt-1 text-sm text-text-muted">
-							Registratie van zwangerschaps- en bevallingsverlof.
-						</p>
-						<div class="mt-4 grid gap-4 sm:grid-cols-2">
-							<Select label="Medewerker" options={employeeOptions} bind:value={pregnancyRequest.employeeId} />
+				<form class="grid gap-6 lg:grid-cols-[1.5fr_1fr]" onsubmit={handleCreatePregnancy}>
+					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+						<div class="flex items-center gap-3 mb-4">
+							<div class="rounded-xl bg-pink-100 dark:bg-pink-900/20 p-2 text-pink-600 dark:text-pink-400">
+								<Baby class="h-5 w-5" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-text">Zwangerschapsverlof</h2>
+								<p class="text-xs text-text-muted">Registratie van zwangerschaps- en bevallingsverlof.</p>
+							</div>
+						</div>
+						<div class="mt-6 grid gap-4 sm:grid-cols-2">
+							<EmployeeSearch
+								labelText="Medewerker"
+								placeholder="Zoek medewerker..."
+								bind:selectedId={pregnancyRequest.employeeId}
+								onSelect={(employee) => {
+									selectedPregnancyEmployee = employee;
+									pregnancyRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
 							<Input label="Startdatum" type="date" bind:value={pregnancyRequest.startDate} />
 							<Input label="Einddatum" type="date" bind:value={pregnancyRequest.endDate} />
 						</div>
 						<div class="mt-4">
-							<Textarea label="Opmerking" bind:value={pregnancyRequest.reason} />
+							<Textarea label="Opmerking (optioneel)" bind:value={pregnancyRequest.reason} placeholder="Relevante informatie..." />
 						</div>
-						<div class="mt-4 flex justify-end">
-							<Button type="submit">Verlof vastleggen</Button>
-						</div>
-					</div>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h3 class="text-sm font-semibold text-text">Tip</h3>
-						<p class="mt-3 text-sm text-text-muted">
-							Controleer of het verlof aansluit op het verlofsaldo. Pas de planning aan waar nodig.
-						</p>
-					</div>
-				</form>
-			{:else if activeTab === 'telaat'}
-				<div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
-					<form class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6" onsubmit={handleCreateLate}>
-						<h2 class="text-lg font-semibold text-text">Te laat registratie</h2>
-						<p class="mt-1 text-sm text-text-muted">Registreer een late aankomst met reden.</p>
-						<div class="mt-4 grid gap-4 sm:grid-cols-2">
-							<Select label="Medewerker" options={employeeOptions} bind:value={lateRequest.employeeId} />
-							<Input label="Datum" type="date" bind:value={lateRequest.date} />
-							<Input label="Tijd" type="time" bind:value={lateRequest.time} />
-						</div>
-						<div class="mt-4">
-							<Textarea label="Reden" bind:value={lateRequest.reason} />
-						</div>
-						<div class="mt-4 flex justify-end">
-							<Button type="submit">Registratie toevoegen</Button>
-						</div>
-					</form>
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h3 class="text-sm font-semibold text-text">Recente meldingen</h3>
-						<div class="mt-4 space-y-3">
-							{#each lateArrivals as item}
-								<div class="rounded-xl border border-border/60 bg-surface p-3 text-sm">
-									<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-									<p class="text-xs text-text-muted">
-										{formatDate(item.date)} • {item.time}
-									</p>
-									{#if item.reason}
-										<p class="mt-2 text-xs text-text-muted">{item.reason}</p>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-			{:else if activeTab === 'overzicht'}
-				<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-					<div class="flex flex-wrap items-center gap-2 rounded-2xl border border-border/50 bg-surface p-2">
-						<button
-							class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {requestFilter ===
-							'all'
-								? 'bg-surface-subtle text-text shadow-sm'
-								: 'text-text-muted hover:text-text'}"
-							onclick={() => (requestFilter = 'all')}
-						>
-							Alles
-						</button>
-						<button
-							class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {requestFilter ===
-							'pending'
-								? 'bg-surface-subtle text-text shadow-sm'
-								: 'text-text-muted hover:text-text'}"
-							onclick={() => (requestFilter = 'pending')}
-						>
-							In behandeling
-							{#if pendingCount > 0}
-								<span
-									class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-warning/20 text-[11px] font-semibold text-warning"
-								>
-									{pendingCount}
-								</span>
-							{/if}
-						</button>
-						<button
-							class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {requestFilter ===
-							'approved'
-								? 'bg-surface-subtle text-text shadow-sm'
-								: 'text-text-muted hover:text-text'}"
-							onclick={() => (requestFilter = 'approved')}
-						>
-							Goedgekeurd
-						</button>
-						<button
-							class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {requestFilter ===
-							'rejected'
-								? 'bg-surface-subtle text-text shadow-sm'
-								: 'text-text-muted hover:text-text'}"
-							onclick={() => (requestFilter = 'rejected')}
-						>
-							Afgewezen
-						</button>
-					</div>
-
-					{#if filteredRequests.length === 0}
-						<div class="flex flex-col items-center gap-3 py-12 text-sm text-text-muted">
-							<Calendar class="h-10 w-10 text-text-subtle" />
-							<p>Geen verlofaanvragen gevonden</p>
-							<Button onclick={() => (activeTab = 'aanvragen')}>
-								<CalendarPlus class="h-4 w-4" />
-								Nieuwe aanvraag maken
+						<div class="mt-6 flex justify-end">
+							<Button type="submit" class="gap-2">
+								<CheckCircle class="h-4 w-4" />
+								Verlof vastleggen
 							</Button>
 						</div>
+					</div>
+					{#if selectedPregnancyEmployee}
+						<div class="animate-in fade-in">
+							<ScheduleCalendar
+								selectedEmployee={selectedPregnancyEmployee}
+								bind:selectedStartDate={pregnancyRequest.startDate}
+								bind:selectedEndDate={pregnancyRequest.endDate}
+								onDateRangeSelect={(startDate, endDate) => {
+									pregnancyRequest.startDate = startDate;
+									pregnancyRequest.endDate = endDate;
+								}}
+							/>
+						</div>
 					{:else}
-						<div class="mt-4 divide-y divide-border/60">
-							{#each filteredRequests as request}
-								{@const statusMeta = statusConfig[request.status]}
-								{@const StatusIcon = statusMeta.icon}
-								<div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-									<div class="flex items-center gap-4">
-										<div
-											class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand"
-										>
-											{getEmployeeName(request.employeeId)
-												.split(' ')
-												.map((part) => part[0])
-												.join('')
-												.slice(0, 2)
-												.toUpperCase()}
-										</div>
-										<div>
-											<h3 class="font-semibold text-text">{getEmployeeName(request.employeeId)}</h3>
-											<p class="text-sm text-text-muted">
-												{employees.find((employee) => employee.id === request.employeeId)?.role ?? ''}
-											</p>
-										</div>
-									</div>
-
-									<div class="flex flex-wrap items-center gap-4">
-										<span
-											class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {leaveTypeConfig[
-												request.type
-											].className}"
-										>
-											{leaveTypeConfig[request.type].label}
-										</span>
-										<div class="text-sm">
-											<p class="font-semibold text-text">
-												{formatDate(request.startDate)} - {formatDate(request.endDate)}
-											</p>
-											<p class="text-text-muted">
-												{request.days} {request.days === 1 ? 'dag' : 'dagen'} ({request.hours} uur)
-											</p>
-										</div>
-									</div>
-
-									<div class="flex flex-wrap items-center gap-3">
-										<div class="flex items-center gap-2">
-											<StatusIcon class="h-4 w-4 {statusMeta.color}" />
-											<span class="text-sm font-semibold {statusMeta.color}">
-												{statusMeta.label}
-											</span>
-										</div>
-										<div class="flex items-center gap-2">
-											{#if request.status === 'pending'}
-												<Button
-													variant="ghost"
-													class="h-9"
-													onclick={() => handleReject(request.id)}
-												>
-													Afwijzen
-												</Button>
-												<Button class="h-9" onclick={() => handleApprove(request.id)}>
-													Goedkeuren
-												</Button>
-											{/if}
-											<Button
-												variant="ghost"
-												class="h-9"
-												onclick={() => handleDeleteClick(request.id)}
-											>
-												<Trash2 class="h-4 w-4" />
-											</Button>
-										</div>
-									</div>
+						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
+							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
+								<AlertCircle class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+								Tip
+							</h3>
+							<div class="space-y-4 text-sm text-text-muted">
+								<p>
+									Controleer of het verlof aansluit op het verlofsaldo. Pas de planning aan waar nodig.
+								</p>
+								<div class="rounded-xl bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-900/20 p-3">
+									<p class="font-semibold text-pink-700 dark:text-pink-300 text-xs mb-1">Wettelijke bepalingen</p>
+									<p class="text-xs">Raadpleeg de arbeidsrechtelijke bepalingen voor zwangerschapsverlof in uw regio.</p>
 								</div>
-							{/each}
+							</div>
+						</div>
+					{/if}
+				</form>
+			{:else if activeTab === 'telaat'}
+				<div class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+					<form class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm" onsubmit={handleCreateLate}>
+						<div class="flex items-center gap-3 mb-4">
+							<div class="rounded-xl bg-warning/10 p-2 text-warning">
+								<AlarmClock class="h-5 w-5" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-text">Te laat registratie</h2>
+								<p class="text-xs text-text-muted">Registreer een late aankomst met reden.</p>
+							</div>
+						</div>
+						<div class="mt-6 grid gap-4 sm:grid-cols-2">
+							<EmployeeSearch
+								labelText="Medewerker"
+								placeholder="Zoek medewerker..."
+								bind:selectedId={lateRequest.employeeId}
+								onSelect={(employee) => {
+									selectedLateEmployee = employee;
+									lateRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
+							<Input label="Datum" type="date" bind:value={lateRequest.date} />
+							<Input label="Aankomsttijd" type="time" bind:value={lateRequest.time} />
+						</div>
+						<div class="mt-4">
+							<Textarea label="Reden (optioneel)" bind:value={lateRequest.reason} placeholder="Beschrijf de reden..." />
+						</div>
+						<div class="mt-6 flex justify-end">
+							<Button type="submit" class="gap-2">
+								<CheckCircle class="h-4 w-4" />
+								Registratie toevoegen
+							</Button>
+						</div>
+					</form>
+					{#if selectedLateEmployee}
+						<div class="animate-in fade-in">
+							<ScheduleCalendar
+								selectedEmployee={selectedLateEmployee}
+								bind:selectedStartDate={lateCalendarStart}
+								bind:selectedEndDate={lateCalendarEnd}
+								onDateRangeSelect={(startDate) => {
+									lateRequest.date = startDate;
+									lateCalendarStart = startDate;
+									lateCalendarEnd = startDate;
+								}}
+							/>
+						</div>
+					{:else}
+						<div class="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
+							<h3 class="font-semibold text-text flex items-center gap-2 mb-4">
+								<Clock class="h-4 w-4 text-warning" />
+								Recente meldingen
+							</h3>
+							<div class="space-y-3">
+								{#each lateArrivals as item}
+									<div class="rounded-xl border border-border/50 bg-surface-subtle/50 p-3 text-sm">
+										<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
+										<p class="text-xs text-text-muted mt-1">
+											{formatDate(item.date)} • {item.time}
+										</p>
+										{#if item.reason}
+											<p class="mt-2 text-xs text-text-muted bg-surface rounded px-2 py-1">{item.reason}</p>
+										{/if}
+									</div>
+								{/each}
+								{#if lateArrivals.length === 0}
+									<div class="rounded-xl border border-dashed border-border/40 bg-surface-subtle/30 p-4 text-center text-xs text-text-muted">
+										Geen recente meldingen
+									</div>
+								{/if}
+							</div>
 						</div>
 					{/if}
 				</div>
-			{:else if activeTab === 'saldo'}
-				<div class="grid gap-4 md:grid-cols-2">
-					{#each leaveBalances as balance}
-						{@const available = balance.budget - balance.used}
-						<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-							<div class="flex items-center justify-between">
-								<div>
-									<p class="font-semibold text-text">{balance.name}</p>
-									<p class="text-xs text-text-muted">{balance.department}</p>
-								</div>
-								<span class="rounded-full border border-border/60 px-3 py-1 text-xs text-text-muted">
-									{available} uur beschikbaar
-								</span>
+			{:else if activeTab === 'overzicht'}
+				<div class="space-y-4">
+					<div class="rounded-2xl border border-border/60 bg-surface p-5 shadow-sm">
+						<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<h2 class="text-lg font-semibold text-text">Overzicht aanvragen</h2>
+								<p class="text-xs text-text-muted">Snelle status op basis van je filters.</p>
 							</div>
-							<div class="mt-4 space-y-2 text-sm text-text-muted">
-								<div class="flex items-center justify-between">
-									<span>Verlofbudget</span>
-									<span class="font-semibold text-text">{balance.budget} uur</span>
+							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
+									<p class="text-xs text-text-muted">Totaal</p>
+									<p class="text-lg font-semibold text-text">{filteredRequests.length}</p>
 								</div>
-								<div class="flex items-center justify-between">
-									<span>Opgenomen</span>
-									<span class="font-semibold text-text">{balance.used} uur</span>
+								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
+									<p class="text-xs text-text-muted">Open</p>
+									<p class="text-lg font-semibold text-warning">{filteredPendingCount}</p>
+								</div>
+								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
+									<p class="text-xs text-text-muted">Goedgekeurd</p>
+									<p class="text-lg font-semibold text-success">{filteredApprovedCount}</p>
+								</div>
+								<div class="rounded-xl border border-border/50 bg-surface-subtle/40 px-4 py-3 text-center">
+									<p class="text-xs text-text-muted">Afgewezen</p>
+									<p class="text-lg font-semibold text-error">{filteredRejectedCount}</p>
 								</div>
 							</div>
 						</div>
-					{/each}
+					</div>
+
+					<DataTable
+						{columns}
+						rows={filteredRequests}
+						rowKey="id"
+						title="Verlofaanvragen"
+						description="Overzicht van alle verlof- en verzuimaanvragen."
+						emptyTitle="Geen verlofaanvragen gevonden"
+						emptyDescription="Maak een nieuwe aanvraag of pas de filters aan."
+						emptyActionLabel="Nieuwe aanvraag"
+						emptyAction={() => (activeTab = 'aanvragen')}
+						filters={requestFilters}
+						actions={requestActions}
+						cells={{
+							employee: employeeCell,
+							type: typeCell,
+							period: periodCell,
+							status: statusCell,
+							actions: actionsCell
+						}}
+					/>
+				</div>
+			{:else if activeTab === 'saldo'}
+				<div class="space-y-4">
+					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
+						<h2 class="text-lg font-semibold text-text">Verlof saldo per medewerker</h2>
+						<p class="mt-1 text-sm text-text-muted">Budget, opgenomen en beschikbare verlofuren</p>
+					</div>
+					<div class="grid gap-4 md:grid-cols-2">
+						{#each leaveBalances as balance}
+							{@const available = balance.budget - balance.used}
+							{@const usagePercent = (balance.used / balance.budget) * 100}
+							<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+								<div class="flex items-start justify-between mb-4">
+									<div>
+										<p class="font-semibold text-text">{balance.name}</p>
+										<p class="text-xs text-text-muted">{balance.department}</p>
+									</div>
+									<span class="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+										{available} uur beschikbaar
+									</span>
+								</div>
+								
+								<!-- Progress bar -->
+								<div class="mb-4">
+									<div class="flex items-center justify-between mb-2">
+										<span class="text-xs font-semibold text-text-muted">Opname</span>
+										<span class="text-xs font-semibold text-text">{usagePercent.toFixed(0)}%</span>
+									</div>
+									<div class="h-2 w-full rounded-full bg-border/40 overflow-hidden">
+										<div
+											class="h-full bg-gradient-to-r from-brand to-brand/60 transition-all duration-300"
+											style="width: {Math.min(usagePercent, 100)}%"
+										></div>
+									</div>
+								</div>
+
+								<!-- Details grid -->
+								<div class="grid gap-2 text-sm">
+									<div class="flex items-center justify-between">
+										<span class="text-text-muted">Totaal budget</span>
+										<span class="font-semibold text-text">{balance.budget} uur</span>
+									</div>
+									<div class="flex items-center justify-between">
+										<span class="text-text-muted">Opgenomen</span>
+										<span class="font-semibold text-text">{balance.used} uur</span>
+									</div>
+									<div class="border-t border-border/50 pt-2 mt-2 flex items-center justify-between">
+										<span class="text-xs font-semibold text-text-muted">Beschikbaar</span>
+										<span class="font-bold text-text">{available} uur</span>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 			{:else if activeTab === 'uitbetalen'}
-				<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-					<h2 class="text-lg font-semibold text-text">Verlofuren uitbetalen</h2>
-					<p class="mt-1 text-sm text-text-muted">
-						Beheer aanvragen voor uitbetaling van verlofuren.
-					</p>
-					<div class="mt-4 grid gap-3">
+				<div class="space-y-4">
+					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
+						<h2 class="text-lg font-semibold text-text">Verlofuren uitbetalen</h2>
+						<p class="mt-1 text-sm text-text-muted">
+							Beheer aanvragen voor uitbetaling van verlofuren.
+						</p>
+					</div>
+					<div class="grid gap-3">
 						{#each payoutRequests as payout}
-							<div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/60 bg-surface p-4">
-								<div>
+							{@const isApproved = payout.status === 'Goedgekeurd'}
+							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm hover:shadow-md transition-shadow">
+								<div class="flex-1">
 									<p class="font-semibold text-text">{payout.employee}</p>
-									<p class="text-xs text-text-muted">{payout.hours} uur</p>
+									<p class="text-xs text-text-muted mt-1">{payout.hours} uur aangevraagd</p>
 								</div>
-								<span class="rounded-full border border-border/60 px-3 py-1 text-xs text-text-muted">
-									{payout.status}
-								</span>
+								<div class="flex items-center gap-3">
+									<span class={`rounded-full border px-3 py-1 text-xs font-semibold ${
+										isApproved 
+											? 'border-success/20 bg-success/10 text-success'
+											: 'border-warning/20 bg-warning/10 text-warning'
+									}`}>
+										{payout.status}
+									</span>
+									<Button variant="ghost" class="h-9 rounded-xl text-xs">Bekijken</Button>
+								</div>
 							</div>
 						{/each}
 					</div>
 				</div>
 			{:else if activeTab === 'contractwijzigingen'}
-				<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-					<h2 class="text-lg font-semibold text-text">Contractwijzigingen</h2>
-					<p class="mt-1 text-sm text-text-muted">
-						Overzicht van contracturenwijzigingen en impact op saldo.
-					</p>
-					<div class="mt-4 grid gap-3">
+				<div class="space-y-4">
+					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
+						<h2 class="text-lg font-semibold text-text">Contractwijzigingen</h2>
+						<p class="mt-1 text-sm text-text-muted">
+							Overzicht van contracturenwijzigingen en impact op saldo.
+						</p>
+					</div>
+					<div class="grid gap-3">
 						{#each contractChanges as change}
-							<div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/60 bg-surface p-4">
-								<div>
+							{@const isReduction = change.toHours < change.fromHours}
+							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm hover:shadow-md transition-shadow">
+								<div class="flex-1">
 									<p class="font-semibold text-text">{change.employee}</p>
-									<p class="text-xs text-text-muted">{formatDate(change.date)}</p>
+									<p class="text-xs text-text-muted mt-1">{formatDate(change.date)}</p>
 								</div>
-								<span class="rounded-full border border-border/60 px-3 py-1 text-xs text-text-muted">
-									{change.fromHours}u → {change.toHours}u
-								</span>
+								<div class="flex items-center gap-4">
+									<div class="text-right">
+										<p class="text-xs text-text-muted mb-1">Uren per week</p>
+										<div class="flex items-center gap-2">
+											<span class="text-sm font-semibold text-text-muted line-through">{change.fromHours}u</span>
+											<span class="text-xs text-text-muted">→</span>
+											<span class={`text-sm font-semibold ${isReduction ? 'text-error' : 'text-success'}`}>
+												{change.toHours}u
+											</span>
+										</div>
+									</div>
+									<div class={`rounded-full border px-3 py-1 text-xs font-semibold ${
+										isReduction 
+											? 'border-error/20 bg-error/10 text-error'
+											: 'border-success/20 bg-success/10 text-success'
+									}`}>
+										{isReduction ? '−' : '+'}{Math.abs(change.toHours - change.fromHours)}u
+									</div>
+								</div>
 							</div>
 						{/each}
 					</div>
 				</div>
 			{/if}
-		</div>
-	</div>
 </section>
 
 <Modal bind:open={deleteDialogOpen} title="Verlofaanvraag verwijderen" description="Deze actie kan niet ongedaan worden gemaakt." size="sm">
@@ -899,7 +1401,12 @@
 	{/snippet}
 </Modal>
 
-<Modal bind:open={emailDialogOpen} title="Verlofoverzicht versturen per e-mail" size="sm">
+<Modal
+	bind:open={emailDialogOpen}
+	title="Verlofoverzicht versturen per e-mail"
+	description="Verstuur het maandelijkse overzicht naar een e-mailadres."
+	size="sm"
+>
 	{#snippet children()}
 		<div class="space-y-4">
 			<Input

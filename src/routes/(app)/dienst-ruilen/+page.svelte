@@ -6,7 +6,13 @@
 		Clock,
 		AlertCircle,
 		CheckCircle2,
-		XCircle
+		XCircle,
+		Search,
+		Filter,
+		TrendingUp,
+		Zap,
+		Users,
+		Calendar
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -154,6 +160,9 @@
 	let successDialogOpen = $state(false);
 	let successAction = $state<'approved' | 'rejected' | null>(null);
 	let successRequest = $state<SwapRequest | null>(null);
+	let searchQuery = $state('');
+	let selectedDepartmentFilter = $state<string | null>(null);
+	let selectedShiftTypeFilter = $state<string | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -167,12 +176,92 @@
 	const selectedRequest = $derived.by(() =>
 		swapRequests.find((r) => r.id === selectedRequestId) ?? null
 	);
+	
+	// Derived filtered lists
+	const filteredPendingRequests = $derived.by(() => {
+		let results = pendingRequests;
+		
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase();
+			results = results.filter((r) =>
+				r.requesterName.toLowerCase().includes(query) ||
+				r.targetName.toLowerCase().includes(query)
+			);
+		}
+		
+		if (selectedDepartmentFilter) {
+			results = results.filter((r) =>
+				r.requesterShift.service === selectedDepartmentFilter ||
+				r.targetShift.service === selectedDepartmentFilter
+			);
+		}
+		
+		if (selectedShiftTypeFilter) {
+			results = results.filter((r) =>
+				r.requesterShift.shiftType === selectedShiftTypeFilter ||
+				r.targetShift.shiftType === selectedShiftTypeFilter
+			);
+		}
+		
+		return results;
+	});
+	
+	const filteredApprovalRequests = $derived.by(() => {
+		let results = awaitingApproval;
+		
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase();
+			results = results.filter((r) =>
+				r.requesterName.toLowerCase().includes(query) ||
+				r.targetName.toLowerCase().includes(query)
+			);
+		}
+		
+		if (selectedDepartmentFilter) {
+			results = results.filter((r) =>
+				r.requesterShift.service === selectedDepartmentFilter ||
+				r.targetShift.service === selectedDepartmentFilter
+			);
+		}
+		
+		return results;
+	});
+	
+	const departments = $derived.by(() => {
+		const depts = new Set<string>();
+		swapRequests.forEach((r) => {
+			depts.add(r.requesterShift.service);
+			depts.add(r.targetShift.service);
+		});
+		return Array.from(depts).sort();
+	});
+	
+	const shiftTypes = $derived.by(() => {
+		const types = new Set<string>();
+		swapRequests.forEach((r) => {
+			types.add(r.requesterShift.shiftType);
+			types.add(r.targetShift.shiftType);
+		});
+		return Array.from(types).sort();
+	});
+	
+	const hasActiveFilters = $derived.by(() => 
+		searchQuery.trim() !== '' || 
+		selectedDepartmentFilter !== null || 
+		selectedShiftTypeFilter !== null
+	);
+	
+	function clearAllFilters() {
+		searchQuery = '';
+		selectedDepartmentFilter = null;
+		selectedShiftTypeFilter = null;
+	}
 
-	const tabItems = [
-		{ value: 'pending', label: `Openstaand (${pendingRequests.length})` },
-		{ value: 'approval', label: `Te Goedkeuren (${awaitingApproval.length})` },
-		{ value: 'history', label: `Geschiedenis (${historyRequests.length})` }
-	] as const;
+	const getTabItems = $derived.by(() => [
+		{ value: 'pending' as const, label: `Openstaand (${pendingRequests.length})` },
+		{ value: 'approval' as const, label: `Te Goedkeuren (${awaitingApproval.length})` },
+		{ value: 'history' as const, label: `Geschiedenis (${historyRequests.length})` }
+	]);
 
 	function formatDate(value: string) {
 		return new Intl.DateTimeFormat('nl-NL', {
@@ -270,65 +359,137 @@
 </svelte:head>
 
 <section class="flex flex-col gap-6">
-	<header class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-4">
-				<div
-					class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand"
-				>
-					<ArrowLeftRight class="h-6 w-6" />
-				</div>
-				<div>
-					<h1 class="text-xl font-bold tracking-tight text-text">Dienst ruilen</h1>
-					<p class="text-sm text-text-muted">
-						Beheer ruilverzoeken tussen medewerkers
+	<header class="rounded-3xl border border-border bg-surface/90 p-6 shadow-sm">
+		<div class="flex flex-col gap-6">
+			<!-- Header Top -->
+			<div class="flex flex-wrap items-start justify-between gap-6">
+				<div class="space-y-2">
+					<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
+							<ArrowLeftRight class="h-5 w-5" />
+						</span>
+						<span>Dienstplanning</span>
+					</div>
+					<h1 class="text-3xl font-bold tracking-tighter text-text">Dienst ruilen</h1>
+					<p class="max-w-2xl text-sm font-medium text-text-muted">
+						Beheer ruilverzoeken tussen medewerkers en bewaak de bezetting.
 					</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-2 text-xs text-text-muted">
-				<span class="rounded-full border border-border/70 bg-surface-subtle px-3 py-1">
-					{pendingRequests.length} openstaand
-				</span>
-				<span class="rounded-full border border-border/70 bg-surface-subtle px-3 py-1">
-					{awaitingApproval.length} te beoordelen
-				</span>
+
+			<!-- Quick Stats Row -->
+			<div class="grid gap-3 md:grid-cols-3">
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-warning/10 p-2 text-warning">
+						<Clock class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Wacht op reactie</p>
+						<p class="text-lg font-bold text-text">{pendingRequests.length}</p>
+					</div>
+				</div>
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-brand/10 p-2 text-brand">
+						<AlertCircle class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Te goedkeuren</p>
+						<p class="text-lg font-bold text-text">{awaitingApproval.length}</p>
+					</div>
+				</div>
+				<div class="flex items-center gap-3 rounded-2xl border border-border/50 bg-surface-subtle/50 px-4 py-3">
+					<div class="rounded-xl bg-success/10 p-2 text-success">
+						<CheckCircle2 class="h-4 w-4" />
+					</div>
+					<div class="min-w-0">
+						<p class="text-xs font-semibold uppercase text-text-muted">Verwerkt</p>
+						<p class="text-lg font-bold text-text">{historyRequests.length}</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Info boxes -->
+			<div class="grid gap-2 text-xs text-text-muted sm:grid-cols-2">
+				<div class="rounded-2xl border border-border/60 bg-surface px-3 py-2">
+					<p class="font-semibold text-text">Werkflow</p>
+					<p class="mt-1 text-xs">Collega akkoord → planning akkoord</p>
+				</div>
+				<div class="rounded-2xl border border-border/60 bg-surface px-3 py-2">
+					<p class="font-semibold text-text">Tip</p>
+					<p class="mt-1 text-xs">Controleer bezetting in roosters</p>
+				</div>
 			</div>
 		</div>
 	</header>
 
-	<div class="grid gap-4 md:grid-cols-3">
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Wachtend op reactie</div>
-			<div class="mt-3 flex items-center gap-3">
-				<Clock class="h-5 w-5 text-warning" />
-				<span class="text-2xl font-bold text-text">{pendingRequests.length}</span>
+	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
+		<!-- Advanced filters -->
+		<div class="space-y-3 mb-6">
+			<!-- Search bar -->
+			<div class="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface-subtle/50 px-3 py-2">
+				<Search class="h-4 w-4 text-text-muted" />
+				<input
+					type="text"
+					placeholder="Zoek op naam..."
+					bind:value={searchQuery}
+					class="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted"
+				/>
+				{#if searchQuery}
+					<button
+						class="text-text-muted hover:text-text transition"
+						onclick={() => (searchQuery = '')}
+					>
+						<X class="h-4 w-4" />
+					</button>
+				{/if}
 			</div>
-		</div>
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Wachtend op goedkeuring</div>
-			<div class="mt-3 flex items-center gap-3">
-				<AlertCircle class="h-5 w-5 text-brand" />
-				<span class="text-2xl font-bold text-text">{awaitingApproval.length}</span>
-			</div>
-		</div>
-		<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-			<div class="text-xs font-semibold uppercase text-text-muted">Totaal verwerkt</div>
-			<div class="mt-3 flex items-center gap-3">
-				<CheckCircle2 class="h-5 w-5 text-success" />
-				<span class="text-2xl font-bold text-text">{historyRequests.length}</span>
-			</div>
-		</div>
-	</div>
 
-	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-		<div class="flex flex-wrap gap-2 rounded-2xl border border-border/50 bg-surface-subtle p-2">
-			{#each tabItems as tab}
+			<!-- Filter chips -->
+			<div class="flex flex-wrap items-center gap-2">
+				<select
+					bind:value={selectedDepartmentFilter}
+					class="rounded-xl border border-border/60 bg-surface-subtle px-3 py-2 text-xs font-semibold text-text outline-none"
+				>
+					<option value={null}>Alle afdelingen</option>
+					{#each departments as dept}
+						<option value={dept}>{dept}</option>
+					{/each}
+				</select>
+
+				<select
+					bind:value={selectedShiftTypeFilter}
+					class="rounded-xl border border-border/60 bg-surface-subtle px-3 py-2 text-xs font-semibold text-text outline-none"
+				>
+					<option value={null}>Alle diensten</option>
+					{#each shiftTypes as type}
+						<option value={type}>{type}</option>
+					{/each}
+				</select>
+
+				{#if hasActiveFilters}
+					<button
+						class="ml-auto rounded-xl border border-warning/20 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning transition hover:bg-warning/10"
+						onclick={clearAllFilters}
+					>
+						<Filter class="inline h-3 w-3 mr-1" />
+						Filters wissen
+					</button>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Tab navigation -->
+		<div class="flex flex-wrap gap-2 rounded-2xl border border-border/50 bg-surface-subtle/70 p-2 mb-6">
+			{#each getTabItems as tab}
 				<button
 					class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
 						tab.value
 						? 'bg-surface text-text shadow-sm'
 						: 'text-text-muted hover:text-text'}"
-					onclick={() => (activeTab = tab.value)}
+					onclick={() => {
+						const val = tab.value as 'pending' | 'approval' | 'history';
+						activeTab = val;
+					}}
 				>
 					{tab.label}
 				</button>
@@ -337,48 +498,23 @@
 
 		<div class="mt-6 space-y-4">
 			{#if activeTab === 'pending'}
-				{#if pendingRequests.length === 0}
+				{#if filteredPendingRequests.length === 0}
 					<div
 						class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-surface-subtle/40 px-6 py-10 text-sm text-text-muted"
 					>
 						<Clock class="h-10 w-10 text-text-subtle" />
-						<span>Geen openstaande ruilverzoeken</span>
+						<span>{hasActiveFilters ? 'Geen resultaten voor deze filters' : 'Geen openstaande ruilverzoeken'}</span>
 					</div>
 				{:else}
-					{#each pendingRequests as request}
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-							<div
-								class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"
-							>
-								<div class="flex flex-wrap items-center gap-6">
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.requesterName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.requesterShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.requesterShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.requesterShift.shiftType}</p>
+					{#each filteredPendingRequests as request}
+						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
+							<div class="flex flex-col gap-4">
+								<!-- Status and request info row -->
+								<div class="flex items-start justify-between gap-4">
+									<div>
+										<p class="text-xs font-semibold uppercase text-text-muted">Ruilverzoek</p>
+										<p class="mt-1 text-xs text-text-muted">{formatDateTime(request.createdAt)}</p>
 									</div>
-									<ArrowLeftRight class="h-5 w-5 text-text-muted" />
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.targetName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.targetShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.targetShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.targetShift.shiftType}</p>
-									</div>
-								</div>
-
-								<div class="flex flex-col gap-3 lg:items-end">
 									<span
 										class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {statusConfig[
 											request.status
@@ -386,46 +522,79 @@
 									>
 										{statusConfig[request.status].label}
 									</span>
-									<p class="text-xs text-text-muted">
-										{formatDateTime(request.createdAt)}
-									</p>
-									<div class="flex flex-wrap items-center gap-2">
-										<Button
-											class="h-9"
-											onclick={() => openAction(request.id, 'accept')}
-										>
-											<Check class="h-4 w-4" />
-											Accepteren
-										</Button>
-										<Button
-											variant="destructive"
-											class="h-9"
-											onclick={() => openAction(request.id, 'reject')}
-										>
-											<X class="h-4 w-4" />
-											Afwijzen
-										</Button>
-										<Button
-											variant="ghost"
-											class="h-9"
-											onclick={() => cancelSwap(request.id)}
-										>
-											Annuleren
-										</Button>
+								</div>
+
+								<!-- Swap visualization -->
+								<div class="grid gap-4 sm:grid-cols-3 items-center">
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
+										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
+											{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<p class="font-semibold text-text text-sm">{request.requesterName}</p>
+										<p class="text-xs text-text-muted mt-2">{formatDate(request.requesterShift.date)}</p>
+										<div class="mt-3 space-y-1 text-xs">
+											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.requesterShift.service}</p>
+											<p class="font-semibold text-text">{request.requesterShift.shiftType}</p>
+										</div>
+									</div>
+
+									<div class="flex justify-center">
+										<div class="rounded-xl bg-brand/10 p-2 text-brand">
+											<ArrowLeftRight class="h-5 w-5" />
+										</div>
+									</div>
+
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
+										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
+											{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<p class="font-semibold text-text text-sm">{request.targetName}</p>
+										<p class="text-xs text-text-muted mt-2">{formatDate(request.targetShift.date)}</p>
+										<div class="mt-3 space-y-1 text-xs">
+											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.targetShift.service}</p>
+											<p class="font-semibold text-text">{request.targetShift.shiftType}</p>
+										</div>
 									</div>
 								</div>
-							</div>
 
-							{#if request.reason}
-								<div class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
-									<span class="font-semibold">Reden:</span> {request.reason}
+								<!-- Request reason if available -->
+								{#if request.reason}
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-sm text-text">
+										<span class="font-semibold">Reden:</span> {request.reason}
+									</div>
+								{/if}
+
+								<!-- Action buttons -->
+								<div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
+									<Button
+										variant="ghost"
+										class="h-9 text-xs"
+										onclick={() => cancelSwap(request.id)}
+									>
+										Annuleren
+									</Button>
+									<Button
+										variant="destructive"
+										class="h-9 gap-1"
+										onclick={() => openAction(request.id, 'reject')}
+									>
+										<X class="h-3 w-3" />
+										<span class="hidden sm:inline">Afwijzen</span>
+									</Button>
+									<Button
+										class="h-9 gap-1"
+										onclick={() => openAction(request.id, 'accept')}
+									>
+										<Check class="h-3 w-3" />
+										<span class="hidden sm:inline">Accepteren</span>
+									</Button>
 								</div>
-							{/if}
+							</div>
 						</div>
 					{/each}
 				{/if}
 			{:else if activeTab === 'approval'}
-				{#if awaitingApproval.length === 0}
+				{#if filteredApprovalRequests.length === 0}
 					<div
 						class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-surface-subtle/40 px-6 py-10 text-sm text-text-muted"
 					>
@@ -433,40 +602,15 @@
 						<span>Geen verzoeken om goed te keuren</span>
 					</div>
 				{:else}
-					{#each awaitingApproval as request}
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-							<div
-								class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"
-							>
-								<div class="flex flex-wrap items-center gap-6">
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.requesterName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.requesterShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.requesterShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.requesterShift.shiftType}</p>
+					{#each filteredApprovalRequests as request}
+						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm hover:shadow-md transition-shadow">
+							<div class="flex flex-col gap-4">
+								<!-- Status and request info row -->
+								<div class="flex items-start justify-between gap-4">
+									<div>
+										<p class="text-xs font-semibold uppercase text-text-muted">Wacht op goedkeuring</p>
+										<p class="mt-1 text-xs text-text-muted">{formatDateTime(request.createdAt)}</p>
 									</div>
-									<ArrowLeftRight class="h-5 w-5 text-text-muted" />
-									<div class="text-center">
-										<p class="font-semibold text-text">{request.targetName}</p>
-										<p class="text-xs text-text-muted">
-											{formatDate(request.targetShift.date)}
-										</p>
-										<span
-											class="mt-2 inline-flex items-center rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-semibold text-text-muted"
-										>
-											{request.targetShift.service}
-										</span>
-										<p class="mt-1 text-xs text-text-subtle">{request.targetShift.shiftType}</p>
-									</div>
-								</div>
-
-								<div class="flex flex-col gap-3 lg:items-end">
 									<span
 										class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {statusConfig[
 											request.status
@@ -474,39 +618,72 @@
 									>
 										{statusConfig[request.status].label}
 									</span>
-									<p class="text-xs text-text-muted">
-										{formatDateTime(request.createdAt)}
-									</p>
-									<div class="flex flex-wrap items-center gap-2">
-										<Button
-											class="h-9"
-											onclick={() => openAction(request.id, 'approve')}
-										>
-											<Check class="h-4 w-4" />
-											Goedkeuren
-										</Button>
-										<Button
-											variant="destructive"
-											class="h-9"
-											onclick={() => openAction(request.id, 'deny')}
-										>
-											<X class="h-4 w-4" />
-											Afwijzen
-										</Button>
+								</div>
+
+								<!-- Swap visualization -->
+								<div class="grid gap-4 sm:grid-cols-3 items-center">
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
+										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
+											{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<p class="font-semibold text-text text-sm">{request.requesterName}</p>
+										<p class="text-xs text-text-muted mt-2">{formatDate(request.requesterShift.date)}</p>
+										<div class="mt-3 space-y-1 text-xs">
+											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.requesterShift.service}</p>
+											<p class="font-semibold text-text">{request.requesterShift.shiftType}</p>
+										</div>
+									</div>
+
+									<div class="flex justify-center">
+										<div class="rounded-xl bg-brand/10 p-2 text-brand">
+											<ArrowLeftRight class="h-5 w-5" />
+										</div>
+									</div>
+
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-center">
+										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand font-semibold mx-auto mb-2">
+											{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+										</div>
+										<p class="font-semibold text-text text-sm">{request.targetName}</p>
+										<p class="text-xs text-text-muted mt-2">{formatDate(request.targetShift.date)}</p>
+										<div class="mt-3 space-y-1 text-xs">
+											<p class="rounded border border-border/60 px-2 py-1 bg-surface text-text-muted">{request.targetShift.service}</p>
+											<p class="font-semibold text-text">{request.targetShift.shiftType}</p>
+										</div>
 									</div>
 								</div>
-							</div>
 
-							{#if request.reason}
-								<div class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
-									<span class="font-semibold">Reden:</span> {request.reason}
+								<!-- Request details -->
+								{#if request.reason}
+									<div class="rounded-2xl border border-border/50 bg-surface-subtle/50 p-4 text-sm text-text">
+										<span class="font-semibold text-text-muted">Reden:</span> {request.reason}
+									</div>
+								{/if}
+								{#if request.targetResponse}
+									<div class="rounded-2xl border border-success/20 bg-success/5 p-4 text-sm text-text">
+										<span class="font-semibold text-success">✓ Collega akkoord:</span> {request.targetResponse}
+									</div>
+								{/if}
+
+								<!-- Action buttons -->
+								<div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
+									<Button
+										variant="destructive"
+										class="h-9 gap-1"
+										onclick={() => openAction(request.id, 'deny')}
+									>
+										<X class="h-3 w-3" />
+										<span class="hidden sm:inline">Afwijzen</span>
+									</Button>
+									<Button
+										class="h-9 gap-1"
+										onclick={() => openAction(request.id, 'approve')}
+									>
+										<Check class="h-3 w-3" />
+										<span class="hidden sm:inline">Goedkeuren</span>
+									</Button>
 								</div>
-							{/if}
-							{#if request.targetResponse}
-								<div class="mt-2 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
-									<span class="font-semibold">Reactie collega:</span> {request.targetResponse}
-								</div>
-							{/if}
+							</div>
 						</div>
 					{/each}
 				{/if}
@@ -567,17 +744,17 @@
 							</div>
 
 							{#if request.reason}
-								<div class="mt-4 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
+								<div class="mt-4 rounded-2xl border border-border/50 bg-surface-subtle p-4 text-sm text-text">
 									<span class="font-semibold">Reden:</span> {request.reason}
 								</div>
 							{/if}
 							{#if request.targetResponse}
-								<div class="mt-2 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
+								<div class="mt-2 rounded-2xl border border-border/50 bg-surface-subtle p-4 text-sm text-text">
 									<span class="font-semibold">Reactie collega:</span> {request.targetResponse}
 								</div>
 							{/if}
 							{#if request.adminNotes}
-								<div class="mt-2 rounded-2xl bg-surface-subtle p-4 text-sm text-text">
+								<div class="mt-2 rounded-2xl border border-border/50 bg-surface-subtle p-4 text-sm text-text">
 									<span class="font-semibold">Admin notitie:</span> {request.adminNotes}
 								</div>
 							{/if}

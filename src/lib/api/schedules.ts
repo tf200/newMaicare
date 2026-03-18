@@ -8,6 +8,25 @@ import type {
 	ScheduleResponseItem
 } from '$lib/types/api';
 
+export interface GetEmployeeSchedulesParams {
+	employeeId: string;
+	startDate?: string;
+	endDate?: string;
+	locationId?: string;
+}
+
+export function getEmployeeSchedules(params: GetEmployeeSchedulesParams) {
+	const query = new URLSearchParams();
+	query.set('employee_id', params.employeeId);
+	if (params.startDate) query.set('start_date', params.startDate);
+	if (params.endDate) query.set('end_date', params.endDate);
+	if (params.locationId) query.set('location_id', params.locationId);
+
+	const queryString = query.toString();
+	const endpoint = `/schedules?${queryString}`;
+	return api.get<ApiEnvelope<ScheduleResponseItem[]>>(endpoint);
+}
+
 export function createSchedules(payload: CreateScheduleRequest) {
 	return api.post<ApiEnvelope<ScheduleResponseItem[]>>('/schedules', payload);
 }
