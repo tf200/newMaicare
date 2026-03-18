@@ -782,7 +782,8 @@
 	</header>
 
 	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
-		<div class="flex flex-wrap gap-2 rounded-2xl border border-border/50 bg-surface-subtle/70 p-2">
+		<div class="-mx-2 overflow-x-auto">
+			<div class="flex w-max gap-2 rounded-2xl border border-border/50 bg-surface-subtle/70 p-2">
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
 				'aanvragen'
@@ -791,7 +792,7 @@
 				onclick={() => (activeTab = 'aanvragen')}
 			>
 				<CalendarPlus class="h-4 w-4" />
-				Nieuwe aanvraag
+				Aanvraag
 			</button>
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
@@ -801,7 +802,7 @@
 				onclick={() => (activeTab = 'ziekmelding')}
 			>
 				<Stethoscope class="h-4 w-4" />
-				Ziekmelding
+				Ziek
 			</button>
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
@@ -811,7 +812,7 @@
 				onclick={() => (activeTab = 'zwangerschap')}
 			>
 				<Baby class="h-4 w-4 text-pink-500" />
-				Zwangerschapsverlof
+				Zwanger
 			</button>
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
@@ -848,7 +849,7 @@
 				onclick={() => (activeTab = 'saldo')}
 			>
 				<Users class="h-4 w-4" />
-				Verlof saldo
+				Saldo
 			</button>
 			<button
 				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
@@ -868,8 +869,9 @@
 				onclick={() => (activeTab = 'contractwijzigingen')}
 			>
 				<FileText class="h-4 w-4" />
-				Contractwijzigingen
+				Contract
 			</button>
+			</div>
 		</div>
 
 		<div class="mt-6">
