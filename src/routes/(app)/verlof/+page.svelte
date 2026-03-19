@@ -31,6 +31,7 @@
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import EmployeeSearch from '$lib/components/forms/EmployeeSearch.svelte';
 	import ScheduleCalendar from '$lib/components/forms/ScheduleCalendar.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { EmployeeListItem } from '$lib/api/employees';
 
 	type LeaveType = 'vacation' | 'sick' | 'personal' | 'training' | 'pregnancy';
@@ -63,18 +64,33 @@
 		reason?: string;
 	}
 
-	const leaveTypeConfig: Record<LeaveType, { label: string; className: string }> = {
-		vacation: { label: 'Vakantie', className: 'bg-info/10 text-info border-info/20' },
-		sick: { label: 'Ziekte', className: 'bg-error/10 text-error border-error/20' },
-		personal: { label: 'Persoonlijk', className: 'bg-warning/10 text-warning border-warning/20' },
-		training: { label: 'Scholing', className: 'bg-brand/10 text-brand border-brand/20' },
-		pregnancy: { label: 'Zwangerschapsverlof', className: 'bg-pink-500/10 text-pink-600 border-pink-400/40' }
+	const leaveTypeConfig: Record<LeaveType, { label: () => string; className: string }> = {
+		vacation: {
+			label: () => m.leave_type_vacation(),
+			className: 'bg-info/10 text-info border-info/20'
+		},
+		sick: { label: () => m.leave_type_sick(), className: 'bg-error/10 text-error border-error/20' },
+		personal: {
+			label: () => m.leave_type_personal(),
+			className: 'bg-warning/10 text-warning border-warning/20'
+		},
+		training: {
+			label: () => m.leave_type_training(),
+			className: 'bg-brand/10 text-brand border-brand/20'
+		},
+		pregnancy: {
+			label: () => m.leave_type_pregnancy(),
+			className: 'bg-pink-500/10 text-pink-600 border-pink-400/40'
+		}
 	};
 
-	const statusConfig: Record<LeaveStatus, { label: string; icon: typeof AlertCircle; color: string }> = {
-		pending: { label: 'In behandeling', icon: AlertCircle, color: 'text-warning' },
-		approved: { label: 'Goedgekeurd', icon: CheckCircle, color: 'text-success' },
-		rejected: { label: 'Afgewezen', icon: XCircle, color: 'text-error' }
+	const statusConfig: Record<
+		LeaveStatus,
+		{ label: () => string; icon: typeof AlertCircle; color: string }
+	> = {
+		pending: { label: () => m.leave_status_pending(), icon: AlertCircle, color: 'text-warning' },
+		approved: { label: () => m.leave_status_approved(), icon: CheckCircle, color: 'text-success' },
+		rejected: { label: () => m.leave_status_rejected(), icon: XCircle, color: 'text-error' }
 	};
 
 	const employees: Employee[] = [
@@ -155,11 +171,11 @@
 		value: employee.id
 	}));
 
-	const leaveTypeOptions = [
-		{ label: 'Vakantie', value: 'vacation' },
-		{ label: 'Persoonlijk', value: 'personal' },
-		{ label: 'Scholing', value: 'training' }
-	];
+	const leaveTypeOptions = $derived([
+		{ label: m.leave_type_vacation(), value: 'vacation' },
+		{ label: m.leave_type_personal(), value: 'personal' },
+		{ label: m.leave_type_training(), value: 'training' }
+	]);
 
 	const columns: DataTableColumn[] = [
 		{ key: 'employee', label: 'Medewerker' },
@@ -169,16 +185,26 @@
 		{ key: 'actions', label: '', align: 'right' }
 	];
 
-	let activeTab = $state<
-		| 'aanvragen'
-		| 'ziekmelding'
-		| 'zwangerschap'
-		| 'telaat'
-		| 'overzicht'
-		| 'saldo'
-		| 'uitbetalen'
-		| 'contractwijzigingen'
-	>('aanvragen');
+	const validTabs = ['aanvragen', 'ziekmelding', 'zwangerschap', 'telaat', 'overzicht', 'saldo', 'uitbetalen', 'contractwijzigingen'] as const;
+	type TabId = (typeof validTabs)[number];
+
+	function getInitialTab(): TabId {
+		if (typeof window !== 'undefined') {
+			const hash = window.location.hash.replace('#', '');
+			const params = new URLSearchParams(hash);
+			const tab = params.get('tab');
+			if (tab && (validTabs as readonly string[]).includes(tab)) return tab as TabId;
+		}
+		return 'aanvragen';
+	}
+
+	let activeTab = $state<TabId>(getInitialTab());
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			window.location.hash = `tab=${activeTab}`;
+		}
+	});
 	let requestFilter = $state<'all' | LeaveStatus>('all');
 	let searchQuery = $state('');
 	let selectedDepartmentFilter = $state<string | null>(null);
@@ -231,34 +257,41 @@
 		reason: ''
 	});
 
-	const pendingCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'pending').length);
-	const approvedCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'approved').length);
+	const pendingCount = $derived.by(
+		() => leaveRequests.filter((r) => r.status === 'pending').length
+	);
+	const approvedCount = $derived.by(
+		() => leaveRequests.filter((r) => r.status === 'approved').length
+	);
 	const sickCount = $derived.by(() => leaveRequests.filter((r) => r.type === 'sick').length);
-	const rejectedCount = $derived.by(() => leaveRequests.filter((r) => r.status === 'rejected').length);
-	const filteredPendingCount = $derived.by(() =>
-		filteredRequests.filter((r) => r.status === 'pending').length
+	const rejectedCount = $derived.by(
+		() => leaveRequests.filter((r) => r.status === 'rejected').length
 	);
-	const filteredApprovedCount = $derived.by(() =>
-		filteredRequests.filter((r) => r.status === 'approved').length
+	const filteredPendingCount = $derived.by(
+		() => filteredRequests.filter((r) => r.status === 'pending').length
 	);
-	const filteredRejectedCount = $derived.by(() =>
-		filteredRequests.filter((r) => r.status === 'rejected').length
+	const filteredApprovedCount = $derived.by(
+		() => filteredRequests.filter((r) => r.status === 'approved').length
 	);
-	const filteredSickCount = $derived.by(() =>
-		filteredRequests.filter((r) => r.type === 'sick').length
+	const filteredRejectedCount = $derived.by(
+		() => filteredRequests.filter((r) => r.status === 'rejected').length
 	);
-	
+	const filteredSickCount = $derived.by(
+		() => filteredRequests.filter((r) => r.type === 'sick').length
+	);
+
 	const filteredRequests = $derived.by(() => {
-		let results = requestFilter === 'all' ? leaveRequests : leaveRequests.filter((r) => r.status === requestFilter);
-		
+		let results =
+			requestFilter === 'all'
+				? leaveRequests
+				: leaveRequests.filter((r) => r.status === requestFilter);
+
 		// Apply search filter
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase();
-			results = results.filter((r) => 
-				getEmployeeName(r.employeeId).toLowerCase().includes(query)
-			);
+			results = results.filter((r) => getEmployeeName(r.employeeId).toLowerCase().includes(query));
 		}
-		
+
 		// Apply department filter
 		if (selectedDepartmentFilter) {
 			results = results.filter((r) => {
@@ -266,12 +299,12 @@
 				return emp?.department === selectedDepartmentFilter;
 			});
 		}
-		
+
 		// Apply type filter
 		if (selectedTypeFilter) {
 			results = results.filter((r) => r.type === selectedTypeFilter);
 		}
-		
+
 		// Apply date range filter
 		if (dateRangeStart && dateRangeEnd) {
 			const start = new Date(dateRangeStart);
@@ -282,22 +315,21 @@
 				return !(reqEnd < start || reqStart > end);
 			});
 		}
-		
+
 		return results;
 	});
-	
-	const departments = $derived.by(() => 
-		Array.from(new Set(employees.map((e) => e.department)))
+
+	const departments = $derived.by(() => Array.from(new Set(employees.map((e) => e.department))));
+
+	const hasActiveFilters = $derived.by(
+		() =>
+			searchQuery.trim() !== '' ||
+			selectedDepartmentFilter !== null ||
+			selectedTypeFilter !== null ||
+			dateRangeStart !== '' ||
+			dateRangeEnd !== ''
 	);
-	
-	const hasActiveFilters = $derived.by(() => 
-		searchQuery.trim() !== '' || 
-		selectedDepartmentFilter !== null || 
-		selectedTypeFilter !== null || 
-		dateRangeStart !== '' || 
-		dateRangeEnd !== ''
-	);
-	
+
 	function clearAllFilters() {
 		searchQuery = '';
 		selectedDepartmentFilter = null;
@@ -352,14 +384,14 @@
 	function addLeaveRequest(payload: Omit<LeaveRequest, 'id' | 'status'>) {
 		const id = crypto.randomUUID();
 		leaveRequests = [{ ...payload, id, status: 'pending' }, ...leaveRequests];
-		setToast('Verlofaanvraag toegevoegd.', 'success');
+		setToast(m.leave_toast_added(), 'success');
 	}
 
 	function handleCreateLeave(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(newRequest.startDate, newRequest.endDate);
 		if (!newRequest.employeeId || days === 0) {
-			setToast('Vul medewerker en datums in.', 'warning');
+			setToast(m.leave_toast_missing_employee_dates(), 'warning');
 			return;
 		}
 		addLeaveRequest({
@@ -377,7 +409,7 @@
 	function handleCreateSick(event: Event) {
 		event.preventDefault();
 		if (!sickRequest.employeeId || !sickRequest.date || !sickRequest.startTime) {
-			setToast('Vul medewerker, datum en starttijd in.', 'warning');
+			setToast(m.leave_toast_missing_sick_fields(), 'warning');
 			return;
 		}
 		const reasonDetail = sickRequest.reason
@@ -399,7 +431,7 @@
 		event.preventDefault();
 		const days = calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate);
 		if (!pregnancyRequest.employeeId || days === 0) {
-			setToast('Vul medewerker en datums in.', 'warning');
+			setToast(m.leave_toast_missing_pregnancy_fields(), 'warning');
 			return;
 		}
 		addLeaveRequest({
@@ -417,7 +449,7 @@
 	function handleCreateLate(event: Event) {
 		event.preventDefault();
 		if (!lateRequest.employeeId || !lateRequest.date || !lateRequest.time) {
-			setToast('Vul medewerker, datum en tijd in.', 'warning');
+			setToast(m.leave_toast_missing_late_fields(), 'warning');
 			return;
 		}
 		lateArrivals = [
@@ -430,7 +462,7 @@
 			},
 			...lateArrivals
 		];
-		setToast('Te laat registratie toegevoegd.', 'success');
+		setToast(m.leave_toast_late_added(), 'success');
 		lateRequest = { employeeId: '', date: '', time: '', reason: '' };
 	}
 
@@ -438,14 +470,14 @@
 		leaveRequests = leaveRequests.map((request) =>
 			request.id === id ? { ...request, status: 'approved' } : request
 		);
-		setToast('Verlof goedgekeurd.', 'success');
+		setToast(m.leave_toast_approved(), 'success');
 	}
 
 	function handleReject(id: string) {
 		leaveRequests = leaveRequests.map((request) =>
 			request.id === id ? { ...request, status: 'rejected' } : request
 		);
-		setToast('Verlof afgewezen.', 'warning');
+		setToast(m.leave_toast_rejected(), 'warning');
 	}
 
 	function handleDeleteClick(id: string) {
@@ -458,19 +490,19 @@
 		leaveRequests = leaveRequests.filter((request) => request.id !== selectedRequestId);
 		deleteDialogOpen = false;
 		selectedRequestId = null;
-		setToast('Verlofaanvraag verwijderd.', 'warning');
+		setToast(m.leave_toast_deleted(), 'warning');
 	}
 
 	function handleDownloadPdf() {
-		setToast('PDF export voorbereid.', 'success');
+		setToast(m.leave_toast_pdf_ready(), 'success');
 	}
 
 	function handleSendEmail() {
 		if (!emailAddress) {
-			setToast('Voer een e-mailadres in.', 'warning');
+			setToast(m.leave_toast_email_missing(), 'warning');
 			return;
 		}
-		setToast(`PDF verstuurd naar ${emailAddress}.`, 'success');
+		setToast(m.leave_toast_pdf_sent({ email: emailAddress }), 'success');
 		emailAddress = '';
 		emailDialogOpen = false;
 	}
@@ -489,25 +521,27 @@
 </script>
 
 <svelte:head>
-	<title>Verlof & Verzuim | MaiCare</title>
+	<title>{m.leave_page_title()} | MaiCare</title>
 </svelte:head>
 
 {#snippet requestFilters()}
-	<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-4 space-y-3">
+	<div class="space-y-4">
+		<!-- Search + Status pills row -->
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-			<div class="relative w-full sm:w-64">
+			<!-- Search input -->
+			<div class="relative w-full sm:w-72">
 				<Search
-					class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+					class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-text-subtle"
 				/>
 				<input
 					type="text"
-					placeholder="Zoek op medewerker..."
+					placeholder={m.search_employees()}
 					bind:value={searchQuery}
-					class="h-9 w-full rounded-xl border border-border bg-surface pr-9 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+					class="h-10 w-full rounded-xl border border-border/60 bg-surface pr-10 pl-10 text-sm font-medium text-text shadow-sm transition-all placeholder:text-text-subtle focus:border-brand focus:shadow-brand/10 focus:ring-2 focus:ring-brand/20 focus:outline-none"
 				/>
 				{#if searchQuery}
 					<button
-						class="absolute top-1/2 right-3 -translate-y-1/2 text-text-muted hover:text-text transition"
+						class="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-0.5 text-text-muted transition hover:bg-border/40 hover:text-text"
 						onclick={() => (searchQuery = '')}
 					>
 						<XCircle class="h-4 w-4" />
@@ -515,102 +549,77 @@
 				{/if}
 			</div>
 
-			<div class="flex flex-wrap items-center gap-2">
-				<button
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
-					'all'
-						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-						: 'border border-border text-text-muted hover:text-text'}"
-					onclick={() => (requestFilter = 'all')}
-				>
-					Alles
-				</button>
-				<button
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
-					'pending'
-						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-						: 'border border-border text-text-muted hover:text-text'}"
-					onclick={() => (requestFilter = 'pending')}
-				>
-					In behandeling
-					{#if pendingCount > 0}
-						<span
-							class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-warning/20 text-[11px] font-semibold text-warning"
-						>
-							{pendingCount}
-						</span>
-					{/if}
-				</button>
-				<button
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
-					'approved'
-						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-						: 'border border-border text-text-muted hover:text-text'}"
-					onclick={() => (requestFilter = 'approved')}
-				>
-					Goedgekeurd
-				</button>
-				<button
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {requestFilter ===
-					'rejected'
-						? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-						: 'border border-border text-text-muted hover:text-text'}"
-					onclick={() => (requestFilter = 'rejected')}
-				>
-					Afgewezen
-				</button>
+			<!-- Status filter pills -->
+			<div class="flex flex-wrap items-center gap-1.5">
+				{#each [
+					{ id: 'all', label: m.all(), color: 'brand', badge: null },
+					{ id: 'pending', label: m.pending(), color: 'warning', badge: pendingCount > 0 ? pendingCount : null },
+					{ id: 'approved', label: m.leave_stats_approved(), color: 'success', badge: null },
+					{ id: 'rejected', label: m.leave_stats_rejected(), color: 'error', badge: null }
+				] as pill}
+					<button
+						class="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all
+							{requestFilter === pill.id
+								? `bg-${pill.color}/10 text-${pill.color} shadow-sm ring-1 ring-${pill.color}/20`
+								: 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+						onclick={() => (requestFilter = pill.id)}
+					>
+						<span class="h-1.5 w-1.5 rounded-full {requestFilter === pill.id ? `bg-${pill.color}` : 'bg-text-subtle/30'}"></span>
+						{pill.label}
+						{#if pill.badge}
+							<span class="flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[9px] font-bold text-warning">{pill.badge}</span>
+						{/if}
+					</button>
+				{/each}
 
 				{#if hasActiveFilters}
 					<button
-						class="h-9 rounded-full border border-warning/20 bg-warning/5 px-4 text-xs font-semibold text-warning transition hover:bg-warning/10"
+						class="ml-1 flex h-8 items-center gap-1.5 rounded-lg border border-error/20 bg-error/5 px-3 text-xs font-semibold text-error transition-all hover:bg-error/10"
 						onclick={clearAllFilters}
 					>
-						<Filter class="inline h-3 w-3 mr-1" />
-						{#if selectedDepartmentFilter || selectedTypeFilter || dateRangeStart}
-							Filters wissen
-						{:else}
-							Zoekopdracht wissen
-						{/if}
+						<XCircle class="h-3.5 w-3.5" />
+						{m.swap_clear_filters()}
 					</button>
 				{/if}
 			</div>
 		</div>
 
+		<!-- Advanced dropdown filters -->
 		{#if activeTab === 'overzicht'}
-			<div class="grid gap-3 sm:grid-cols-3">
+			<div class="grid gap-3 rounded-xl border border-border/40 bg-surface-subtle/30 p-3 sm:grid-cols-3">
 				<div>
-					<label for="dept-filter" class="text-xs font-semibold uppercase text-text-muted">Afdeling</label>
+					<label for="dept-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.department()}</label>
 					<select
 						id="dept-filter"
 						bind:value={selectedDepartmentFilter}
-						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
 					>
-						<option value={null}>Alle afdelingen</option>
+						<option value={null}>{m.swap_all_departments()}</option>
 						{#each departments as dept}
 							<option value={dept}>{dept}</option>
 						{/each}
 					</select>
 				</div>
 				<div>
-					<label for="type-filter" class="text-xs font-semibold uppercase text-text-muted">Type verlof</label>
+					<label for="type-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.leave_type_label()}</label>
 					<select
 						id="type-filter"
 						bind:value={selectedTypeFilter}
-						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
 					>
-						<option value={null}>Alle types</option>
+						<option value={null}>{m.all()}</option>
 						{#each leaveTypeOptions as type}
 							<option value={type.value}>{type.label}</option>
 						{/each}
 					</select>
 				</div>
 				<div>
-					<label for="date-filter" class="text-xs font-semibold uppercase text-text-muted">Van datum</label>
+					<label for="date-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.leave_date_from()}</label>
 					<input
 						id="date-filter"
 						type="date"
 						bind:value={dateRangeStart}
-						class="mt-1 h-9 w-full rounded-xl border border-border/60 bg-surface px-3 text-sm text-text outline-none"
+						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
 					/>
 				</div>
 			</div>
@@ -619,15 +628,21 @@
 {/snippet}
 
 {#snippet requestActions()}
-	<Button variant="primary" class="gap-2 sm:ml-auto" onclick={() => (activeTab = 'aanvragen')}>
+	<Button
+		variant="primary"
+		class="gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30 sm:ml-auto"
+		onclick={() => (activeTab = 'aanvragen')}
+	>
 		<CalendarPlus class="h-4 w-4" />
-		Nieuwe aanvraag
+		{m.leave_table_empty_action()}
 	</Button>
 {/snippet}
 
 {#snippet employeeCell(row: LeaveRequest)}
 	<div class="flex items-center gap-3">
-		<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-xs font-semibold text-brand">
+		<div
+			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-xs font-semibold text-brand"
+		>
 			{getEmployeeName(row.employeeId)
 				.split(' ')
 				.map((part) => part[0])
@@ -650,7 +665,7 @@
 			row.type
 		].className}"
 	>
-		{leaveTypeConfig[row.type].label}
+		{leaveTypeConfig[row.type].label()}
 	</span>
 {/snippet}
 
@@ -660,7 +675,8 @@
 			{formatDate(row.startDate)} - {formatDate(row.endDate)}
 		</p>
 		<p class="text-text-muted">
-			{row.days} {row.days === 1 ? 'dag' : 'dagen'} ({row.hours} uur)
+			{row.days}
+			{row.days === 1 ? 'dag' : 'dagen'} ({row.hours} uur)
 		</p>
 	</div>
 {/snippet}
@@ -669,22 +685,33 @@
 	{@const statusMeta = statusConfig[row.status]}
 	<span class="inline-flex items-center gap-2 text-xs font-semibold {statusMeta.color}">
 		<statusMeta.icon class="h-4 w-4" />
-		{statusMeta.label}
+		{statusMeta.label()}
 	</span>
 {/snippet}
 
 {#snippet actionsCell(row: LeaveRequest)}
-	<div class="flex items-center justify-end gap-2 text-xs font-semibold">
+	<div class="flex items-center justify-end gap-1">
 		{#if row.status === 'pending'}
-			<button class="text-text-muted transition hover:text-text" onclick={() => handleReject(row.id)}>
-				Afwijzen
+			<button
+				class="flex h-6 items-center gap-0.5 rounded-md border border-error/20 bg-error/5 px-1.5 text-[10px] font-semibold text-error transition-all hover:bg-error/10"
+				onclick={() => handleReject(row.id)}
+			>
+				<XCircle class="h-2.5 w-2.5" />
+				{m.leave_action_reject()}
 			</button>
-			<button class="text-brand transition hover:text-brand" onclick={() => handleApprove(row.id)}>
-				Goedkeuren
+			<button
+				class="flex h-6 items-center gap-0.5 rounded-md border border-success/20 bg-success/5 px-1.5 text-[10px] font-semibold text-success transition-all hover:bg-success/10"
+				onclick={() => handleApprove(row.id)}
+			>
+				<CheckCircle class="h-2.5 w-2.5" />
+				{m.leave_action_approve()}
 			</button>
 		{/if}
-		<button class="text-text-muted transition hover:text-text" onclick={() => handleDeleteClick(row.id)}>
-			Verwijderen
+		<button
+			class="flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[10px] font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
+			onclick={() => handleDeleteClick(row.id)}
+		>
+			{m.leave_action_delete()}
 		</button>
 	</div>
 {/snippet}
@@ -699,11 +726,11 @@
 						<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 							<Calendar class="h-5 w-5" />
 						</span>
-						<span>Verlofbeheer</span>
+						<span>{m.leave_management_label()}</span>
 					</div>
-					<h1 class="text-3xl font-bold tracking-tighter text-text">Verlof & Verzuim</h1>
+					<h1 class="text-3xl font-bold tracking-tighter text-text">{m.leave_page_heading()}</h1>
 					<p class="max-w-2xl text-sm font-medium text-text-muted">
-						Beheer verlofaanvragen, ziekteverzuim en balansoverzichten.
+						{m.leave_page_subtitle()}
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
@@ -714,7 +741,7 @@
 						>
 							<ChevronLeft class="h-4 w-4" />
 						</button>
-						<span class="min-w-[140px] text-center text-sm font-semibold capitalize text-text">
+						<span class="min-w-[140px] text-center text-sm font-semibold text-text capitalize">
 							{formatMonth(currentMonth)}
 						</span>
 						<button
@@ -726,184 +753,257 @@
 					</div>
 					<Button variant="ghost" class="rounded-xl" onclick={handleDownloadPdf}>
 						<FileDown class="h-4 w-4" />
-						Export PDF
+						{m.export_pdf()}
 					</Button>
 					<Button variant="ghost" class="rounded-xl" onclick={() => (emailDialogOpen = true)}>
 						<Mail class="h-4 w-4" />
-						E-mail
+						{m.leave_email_action()}
 					</Button>
 				</div>
 			</div>
 
 			<!-- Quick Stats Row -->
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+				>
 					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
 						<Clock class="h-32 w-32" />
 					</div>
 					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Openstaand</div>
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							{m.leave_stats_open()}
+						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{pendingCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">In behandeling</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_open_sub()}</p>
 					</div>
 				</div>
-				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+				>
 					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
 						<CheckCircle class="h-32 w-32" />
 					</div>
 					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Goedgekeurd</div>
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							{m.leave_stats_approved()}
+						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{approvedCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Afgehandeld</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_approved_sub()}</p>
 					</div>
 				</div>
-				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+				>
 					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
 						<XCircle class="h-32 w-32" />
 					</div>
 					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Afgewezen</div>
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							{m.leave_stats_rejected()}
+						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{rejectedCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Niet akkoord</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_rejected_sub()}</p>
 					</div>
 				</div>
-				<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
+				>
 					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
 						<Stethoscope class="h-32 w-32" />
 					</div>
 					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">Ziekteverzuim</div>
+						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+							{m.leave_stats_sick()}
+						</div>
 						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{sickCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">Ziekmeldingen</p>
+						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_sick_sub()}</p>
 					</div>
 				</div>
 			</div>
 		</div>
 	</header>
+	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+		<div class="lg:flex">
+			<!-- ── Sidebar nav (desktop) / Horizontal scroll (mobile) ──── -->
+			<nav class="shrink-0 border-b border-border/60 lg:w-60 lg:border-r lg:border-b-0">
+				<!-- Mobile: horizontal scroll -->
+				<div class="flex gap-1 overflow-x-auto p-2 lg:hidden">
+					{#each [
+						{ id: 'aanvragen', icon: CalendarPlus, label: m.leave_tab_request(), color: 'brand' },
+						{ id: 'ziekmelding', icon: Stethoscope, label: m.leave_tab_sick(), color: 'error' },
+						{ id: 'zwangerschap', icon: Baby, label: m.leave_tab_pregnancy(), color: 'pink-500' },
+						{ id: 'telaat', icon: AlarmClock, label: m.leave_tab_late(), color: 'warning' },
+						{ id: 'overzicht', icon: List, label: m.leave_tab_overview(), color: 'brand' },
+						{ id: 'saldo', icon: Users, label: m.leave_tab_balance(), color: 'brand' },
+						{ id: 'uitbetalen', icon: Euro, label: m.leave_tab_payout(), color: 'brand' },
+						{ id: 'contractwijzigingen', icon: FileText, label: m.leave_tab_contract(), color: 'brand' }
+					] as tab}
+						<button
+							onclick={() => (activeTab = tab.id as any)}
+							class="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all
+								{activeTab === tab.id ? 'bg-brand/10 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+						>
+							<tab.icon class="h-3.5 w-3.5" />
+							{tab.label}
+							{#if tab.id === 'overzicht' && pendingCount > 0}
+								<span class="flex h-4 w-4 items-center justify-center rounded-full bg-warning/20 text-[9px] font-bold text-warning">{pendingCount}</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
 
-	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm animate-in fade-in">
-		<div class="-mx-2 overflow-x-auto">
-			<div class="flex w-max gap-2 rounded-2xl border border-border/50 bg-surface-subtle/70 p-2">
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'aanvragen'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'aanvragen')}
-			>
-				<CalendarPlus class="h-4 w-4" />
-				Aanvraag
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'ziekmelding'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'ziekmelding')}
-			>
-				<Stethoscope class="h-4 w-4" />
-				Ziek
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'zwangerschap'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'zwangerschap')}
-			>
-				<Baby class="h-4 w-4 text-pink-500" />
-				Zwanger
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'telaat'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'telaat')}
-			>
-				<AlarmClock class="h-4 w-4 text-warning" />
-				Te laat
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'overzicht'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'overzicht')}
-			>
-				<List class="h-4 w-4" />
-				Overzicht
-				{#if pendingCount > 0}
-					<span
-						class="flex h-5 w-5 items-center justify-center rounded-full bg-warning/20 text-[11px] font-semibold text-warning"
-					>
-						{pendingCount}
-					</span>
-				{/if}
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'saldo'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'saldo')}
-			>
-				<Users class="h-4 w-4" />
-				Saldo
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'uitbetalen'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'uitbetalen')}
-			>
-				<Euro class="h-4 w-4" />
-				Uitbetalen
-			</button>
-			<button
-				class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab ===
-				'contractwijzigingen'
-					? 'bg-surface text-text shadow-sm'
-					: 'text-text-muted hover:text-text'}"
-				onclick={() => (activeTab = 'contractwijzigingen')}
-			>
-				<FileText class="h-4 w-4" />
-				Contract
-			</button>
-			</div>
-		</div>
+				<!-- Desktop: vertical sidebar -->
+				<div class="hidden lg:block">
+					<!-- Form actions section -->
+					<div class="p-3">
+						<p class="mb-2 px-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">Acties</p>
+						<div class="space-y-0.5">
+							<button
+								onclick={() => (activeTab = 'aanvragen')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
+									{activeTab === 'aanvragen' ? 'bg-brand/8 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab === 'aanvragen' ? 'bg-brand/15 text-brand' : 'bg-surface-subtle text-text-muted group-hover:text-brand'} transition-colors">
+									<CalendarPlus class="h-4 w-4" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-sm font-semibold">{m.leave_tab_request()}</p>
+									<p class="truncate text-[10px] text-text-subtle">{m.leave_new_request_subtitle()}</p>
+								</div>
+							</button>
 
-		<div class="mt-6">
+							<button
+								onclick={() => (activeTab = 'ziekmelding')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
+									{activeTab === 'ziekmelding' ? 'bg-error/8 text-error shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab === 'ziekmelding' ? 'bg-error/15 text-error' : 'bg-surface-subtle text-text-muted group-hover:text-error'} transition-colors">
+									<Stethoscope class="h-4 w-4" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-sm font-semibold">{m.leave_tab_sick()}</p>
+									<p class="truncate text-[10px] text-text-subtle">{m.sick_report_subtitle()}</p>
+								</div>
+							</button>
+
+							<button
+								onclick={() => (activeTab = 'zwangerschap')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
+									{activeTab === 'zwangerschap' ? 'bg-pink-500/8 text-pink-600 shadow-sm dark:text-pink-400' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab === 'zwangerschap' ? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' : 'bg-surface-subtle text-text-muted group-hover:text-pink-500'} transition-colors">
+									<Baby class="h-4 w-4" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-sm font-semibold">{m.leave_tab_pregnancy()}</p>
+									<p class="truncate text-[10px] text-text-subtle">{m.pregnancy_subtitle()}</p>
+								</div>
+							</button>
+
+							<button
+								onclick={() => (activeTab = 'telaat')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
+									{activeTab === 'telaat' ? 'bg-warning/8 text-warning shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab === 'telaat' ? 'bg-warning/15 text-warning' : 'bg-surface-subtle text-text-muted group-hover:text-warning'} transition-colors">
+									<AlarmClock class="h-4 w-4" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-sm font-semibold">{m.leave_tab_late()}</p>
+									<p class="truncate text-[10px] text-text-subtle">{m.late_subtitle()}</p>
+								</div>
+							</button>
+						</div>
+					</div>
+
+					<div class="mx-3 border-t border-border/50"></div>
+
+					<!-- Data views section -->
+					<div class="p-3">
+						<p class="mb-2 px-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">Overzichten</p>
+						<div class="space-y-0.5">
+							<button
+								onclick={() => (activeTab = 'overzicht')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
+									{activeTab === 'overzicht' ? 'bg-brand/8 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<List class="h-4 w-4 shrink-0" />
+								<span class="truncate text-sm font-medium">{m.leave_tab_overview()}</span>
+								{#if pendingCount > 0}
+									<span class="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning/20 text-[10px] font-semibold text-warning">{pendingCount}</span>
+								{/if}
+							</button>
+
+							<button
+								onclick={() => (activeTab = 'saldo')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
+									{activeTab === 'saldo' ? 'bg-brand/8 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<Users class="h-4 w-4 shrink-0" />
+								<span class="truncate text-sm font-medium">{m.leave_tab_balance()}</span>
+							</button>
+
+							<button
+								onclick={() => (activeTab = 'uitbetalen')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
+									{activeTab === 'uitbetalen' ? 'bg-brand/8 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<Euro class="h-4 w-4 shrink-0" />
+								<span class="truncate text-sm font-medium">{m.leave_tab_payout()}</span>
+							</button>
+
+							<button
+								onclick={() => (activeTab = 'contractwijzigingen')}
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
+									{activeTab === 'contractwijzigingen' ? 'bg-brand/8 text-brand shadow-sm' : 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
+							>
+								<FileText class="h-4 w-4 shrink-0" />
+								<span class="truncate text-sm font-medium">{m.leave_tab_contract()}</span>
+							</button>
+						</div>
+					</div>
+				</div>
+			</nav>
+
+			<!-- ── Content pane ────────────────────────────────────────── -->
+			<div class="min-w-0 flex-1 p-6">
 			{#if activeTab === 'aanvragen'}
-				<form class="grid gap-6 {selectedEmployeeFromSearch ? 'lg:grid-cols-[1.5fr_1fr]' : 'lg:grid-cols-[2fr_1fr]'}" onsubmit={handleCreateLeave}>
+				<form
+					class="grid gap-6 {selectedEmployeeFromSearch
+						? 'lg:grid-cols-[1.5fr_1fr]'
+						: 'lg:grid-cols-[2fr_1fr]'}"
+					onsubmit={handleCreateLeave}
+				>
 					<!-- Left: Form -->
 					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-						<div class="flex items-center gap-3 mb-5">
+						<div class="mb-5 flex items-center gap-3">
 							<div class="rounded-xl bg-brand/10 p-2 text-brand">
 								<CalendarPlus class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-semibold text-text">Nieuwe verlofaanvraag</h2>
-								<p class="text-xs text-text-muted">Plan verlof, persoonlijke dagen of scholing.</p>
+								<h2 class="text-lg font-semibold text-text">{m.leave_new_request_title()}</h2>
+								<p class="text-xs text-text-muted">{m.leave_new_request_subtitle()}</p>
 							</div>
 						</div>
 						<div class="space-y-5">
 							<!-- Employee Search Component -->
 							<EmployeeSearch
-								labelText="Medewerker selecteren"
-								placeholder="Zoek op naam..."
+								labelText={m.leave_employee_select_label()}
+								placeholder={m.leave_employee_search_placeholder()}
 								bind:selectedId={newRequest.employeeId}
 								onSelect={(emp) => {
 									selectedEmployeeFromSearch = emp;
 								}}
 							/>
-							
+
 							{#if selectedEmployeeFromSearch}
-								<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-4 space-y-4">
+								<div class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4">
 									<!-- Type Select -->
 									<div>
-										<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted">Type verlof</label>
+										<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted"
+											>{m.leave_type_label()}</label
+										>
 										<select
 											id="leave-type"
 											bind:value={newRequest.type}
@@ -914,21 +1014,27 @@
 											{/each}
 										</select>
 									</div>
-									
+
 									<!-- Date Range Display -->
 									<div class="space-y-2">
-										<div class="ml-1 text-xs font-semibold text-text-muted">Datumbereik</div>
+										<div class="ml-1 text-xs font-semibold text-text-muted">
+											{m.leave_date_range_label()}
+										</div>
 										<div class="grid gap-3 sm:grid-cols-2">
 											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
-												<p class="text-xs text-text-muted mb-1">Van</p>
+												<p class="mb-1 text-xs text-text-muted">{m.leave_date_from()}</p>
 												<p class="font-semibold text-text">
-													{newRequest.startDate ? new Date(newRequest.startDate).toLocaleDateString('nl-NL') : 'Selecteren'}
+													{newRequest.startDate
+														? new Date(newRequest.startDate).toLocaleDateString('nl-NL')
+														: 'Selecteren'}
 												</p>
 											</div>
 											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
-												<p class="text-xs text-text-muted mb-1">Tot</p>
+												<p class="mb-1 text-xs text-text-muted">{m.leave_date_to()}</p>
 												<p class="font-semibold text-text">
-													{newRequest.endDate ? new Date(newRequest.endDate).toLocaleDateString('nl-NL') : 'Selecteren'}
+													{newRequest.endDate
+														? new Date(newRequest.endDate).toLocaleDateString('nl-NL')
+														: 'Selecteren'}
 												</p>
 											</div>
 										</div>
@@ -936,25 +1042,41 @@
 								</div>
 
 								<!-- Reason Textarea -->
-								<Textarea label="Reden (optioneel)" bind:value={newRequest.reason} placeholder="Beschrijf de reden voor verlof..." />
+								<Textarea
+									label={m.leave_reason_label()}
+									bind:value={newRequest.reason}
+									placeholder={m.leave_reason_placeholder()}
+								/>
 
 								<!-- Days Calculator -->
-								<div class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand">
+								<div
+									class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
+								>
 									<div class="flex items-center gap-2">
 										<Zap class="h-4 w-4" />
-										<span>{calculateDays(newRequest.startDate, newRequest.endDate)} {calculateDays(newRequest.startDate, newRequest.endDate) === 1 ? 'dag' : 'dagen'}</span>
+										<span
+											>{calculateDays(newRequest.startDate, newRequest.endDate)}
+											{calculateDays(newRequest.startDate, newRequest.endDate) === 1
+												? m.leave_day_singular()
+												: m.leave_day_plural()}</span
+										>
 									</div>
-									<span>{calculateDays(newRequest.startDate, newRequest.endDate) * 8} uur</span>
+									<span
+										>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
+										{m.leave_hours_short()}</span
+									>
 								</div>
 
 								<!-- Submit Button -->
 								<Button type="submit" class="w-full gap-2 py-3">
 									<CheckCircle class="h-4 w-4" />
-									Aanvraag indienen
+									{m.leave_submit_request()}
 								</Button>
 							{:else}
-								<div class="rounded-2xl border border-dashed border-border/50 bg-surface-subtle/30 px-4 py-8 text-center text-sm text-text-muted">
-									Selecteer eerst een medewerker om door te gaan
+								<div
+									class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
+								>
+									{m.leave_select_employee_prompt()}
 								</div>
 							{/if}
 						</div>
@@ -975,81 +1097,114 @@
 					{:else}
 						<!-- Guidelines shown before employee selection -->
 						<div class="space-y-4">
-						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
-								<AlertCircle class="h-4 w-4 text-brand" />
-								Richtlijnen
-							</div>
-							<h3 class="mt-2 text-sm font-semibold text-text">Richtlijnen</h3>
-							<ul class="mt-4 space-y-3 text-sm text-text-muted">
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<div
+									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+								>
+									<AlertCircle class="h-4 w-4 text-brand" />
+									{m.leave_guidelines_title()}
+								</div>
+								<h3 class="mt-2 text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
+								<ul class="mt-4 space-y-3 text-sm text-text-muted">
 									<li class="flex gap-2">
-										<span class="text-brand font-bold">•</span>
-										<span>Controleer bezetting voordat je verlof aanvraagt.</span>
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_1()}</span>
 									</li>
 									<li class="flex gap-2">
-										<span class="text-brand font-bold">•</span>
-										<span>Verlof wordt standaard per 8 uur per dag geboekt.</span>
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_2()}</span>
 									</li>
 									<li class="flex gap-2">
-										<span class="text-brand font-bold">•</span>
-										<span>Een teamleider beoordeelt binnen 48 uur.</span>
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_3()}</span>
 									</li>
 								</ul>
 							</div>
-						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-							<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase mb-4">Snelle status</p>
-							<div class="space-y-3">
-								<div class="flex items-center justify-between rounded-2xl border border-border/50 bg-surface-subtle/40 px-4 py-3">
-									<span class="text-sm text-text-muted">Openstaand</span>
-									<span class="font-bold text-warning text-lg">{pendingCount}</span>
-								</div>
-								<div class="flex items-center justify-between rounded-2xl border border-border/50 bg-surface-subtle/40 px-4 py-3">
-									<span class="text-sm text-text-muted">Goedgekeurd</span>
-									<span class="font-bold text-success text-lg">{approvedCount}</span>
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<p class="mb-4 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+									{m.leave_quick_status_title()}
+								</p>
+								<div class="space-y-3">
+									<div
+										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+									>
+										<span class="text-sm text-text-muted">{m.leave_stats_open()}</span>
+										<span class="text-lg font-bold text-warning">{pendingCount}</span>
+									</div>
+									<div
+										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+									>
+										<span class="text-sm text-text-muted">{m.leave_stats_approved()}</span>
+										<span class="text-lg font-bold text-success">{approvedCount}</span>
+									</div>
 								</div>
 							</div>
-						</div>
 						</div>
 					{/if}
 				</form>
 			{:else if activeTab === 'ziekmelding'}
-				<form class="grid gap-6 lg:grid-cols-[1.5fr_1fr]" onsubmit={handleCreateSick}>
-					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-						<div class="flex items-center gap-3 mb-4">
-							<div class="rounded-xl bg-error/10 p-2 text-error">
+				<form
+					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+					onsubmit={handleCreateSick}
+				>
+					<div class="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+						<!-- Accent banner -->
+						<div class="flex items-center gap-3 border-b border-error/15 bg-error/5 px-6 py-4">
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10 text-error"
+							>
 								<Stethoscope class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-semibold text-text">Ziekmelding registreren</h2>
-								<p class="text-xs text-text-muted">Leg ziekteverzuim vast inclusief hersteltijd.</p>
+								<h2 class="text-base font-semibold text-text">{m.sick_report_title()}</h2>
+								<p class="text-xs text-text-muted">{m.sick_report_subtitle()}</p>
 							</div>
 						</div>
-						<div class="mt-6 grid gap-4 sm:grid-cols-2">
-							<EmployeeSearch
-								labelText="Medewerker"
-								placeholder="Zoek medewerker..."
-								bind:selectedId={sickRequest.employeeId}
-								onSelect={(employee) => {
-									selectedSickEmployee = employee;
-									sickRequest.employeeId = employee?.id ?? '';
-								}}
+						<div class="space-y-5 p-6">
+							<!-- Employee + Date row -->
+							<div class="grid gap-4 sm:grid-cols-2">
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={sickRequest.employeeId}
+									onSelect={(employee) => {
+										selectedSickEmployee = employee;
+										sickRequest.employeeId = employee?.id ?? '';
+									}}
+								/>
+								<Input label={m.sick_date_label()} type="date" bind:value={sickRequest.date} />
+							</div>
+							<!-- Time range -->
+							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+								<p class="mb-3 text-xs font-semibold text-text-muted">
+									{m.sick_start_time_label()} — {m.sick_end_time_label()}
+								</p>
+								<div class="grid gap-3 sm:grid-cols-2">
+									<Input
+										label={m.sick_start_time_label()}
+										type="time"
+										bind:value={sickRequest.startTime}
+									/>
+									<Input
+										label={m.sick_end_time_label()}
+										type="time"
+										bind:value={sickRequest.endTime}
+									/>
+								</div>
+							</div>
+							<Textarea
+								label={m.sick_notes_label()}
+								bind:value={sickRequest.reason}
+								placeholder={m.sick_notes_placeholder()}
 							/>
-							<Input label="Datum" type="date" bind:value={sickRequest.date} />
-							<Input label="Starttijd" type="time" bind:value={sickRequest.startTime} />
-							<Input label="Hersteltijd" type="time" bind:value={sickRequest.endTime} />
-						</div>
-						<div class="mt-4">
-							<Textarea label="Toelichting (optioneel)" bind:value={sickRequest.reason} placeholder="Voeg medische details in..." />
-						</div>
-						<div class="mt-6 flex justify-end">
-							<Button type="submit" class="gap-2">
+							<Button type="submit" class="w-full gap-2 py-3">
 								<CheckCircle class="h-4 w-4" />
-								Ziekmelding opslaan
+								{m.sick_save()}
 							</Button>
 						</div>
 					</div>
 					{#if selectedSickEmployee}
-						<div class="animate-in fade-in">
+						<div class="animate-in fade-in slide-in-from-top-2">
 							<ScheduleCalendar
 								selectedEmployee={selectedSickEmployee}
 								bind:selectedStartDate={sickCalendarStart}
@@ -1062,61 +1217,114 @@
 							/>
 						</div>
 					{:else}
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
-						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
-							<AlertCircle class="h-4 w-4 text-error" />
-							Let op
-						</p>
-						<h3 class="mt-2 text-sm font-semibold text-text">Let op</h3>
-							<div class="space-y-4 text-sm text-text-muted">
-								<p>
-									Vul een hersteltijd in zodra de medewerker hersteld is.
+						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<div
+									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-error/70 uppercase"
+								>
+									<AlertCircle class="h-4 w-4" />
+									{m.sick_warning_title()}
+								</div>
+								<p class="mt-3 text-sm text-text-muted">{m.sick_warning_body()}</p>
+								<div class="mt-4 rounded-xl border border-error/15 bg-error/5 p-4">
+									<p class="text-xs font-semibold text-error">⚠️ {m.sick_warning_long_label()}</p>
+									<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
+								</div>
+							</div>
+							<!-- Quick stats -->
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+									{m.leave_stats_sick()}
 								</p>
-								<div class="rounded-xl bg-error/5 border border-error/10 p-3">
-									<p class="font-semibold text-error text-xs mb-1">⚠️ Langdurig verzuim</p>
-									<p class="text-xs">Bij verzuim langer dan 2 dagen wordt automatisch een vervolgactie aangemaakt.</p>
+								<div
+									class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+								>
+									<span class="text-sm text-text-muted">{m.leave_stats_sick()}</span>
+									<span class="text-2xl font-bold text-error">{sickCount}</span>
 								</div>
 							</div>
 						</div>
 					{/if}
 				</form>
 			{:else if activeTab === 'zwangerschap'}
-				<form class="grid gap-6 lg:grid-cols-[1.5fr_1fr]" onsubmit={handleCreatePregnancy}>
-					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-						<div class="flex items-center gap-3 mb-4">
-							<div class="rounded-xl bg-pink-100 dark:bg-pink-900/20 p-2 text-pink-600 dark:text-pink-400">
+				<form
+					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+					onsubmit={handleCreatePregnancy}
+				>
+					<div
+						class="overflow-hidden rounded-3xl border border-pink-200/60 bg-surface shadow-sm dark:border-pink-900/30"
+					>
+						<!-- Accent banner -->
+						<div
+							class="flex items-center gap-3 border-b border-pink-200/60 bg-pink-50/60 px-6 py-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+						>
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
+							>
 								<Baby class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-semibold text-text">Zwangerschapsverlof</h2>
-								<p class="text-xs text-text-muted">Registratie van zwangerschaps- en bevallingsverlof.</p>
+								<h2 class="text-base font-semibold text-text">{m.pregnancy_title()}</h2>
+								<p class="text-xs text-text-muted">{m.pregnancy_subtitle()}</p>
 							</div>
 						</div>
-						<div class="mt-6 grid gap-4 sm:grid-cols-2">
+						<div class="space-y-5 p-6">
+							<!-- Employee row -->
 							<EmployeeSearch
-								labelText="Medewerker"
-								placeholder="Zoek medewerker..."
+								labelText={m.employee()}
+								placeholder={m.leave_employee_search_placeholder()}
 								bind:selectedId={pregnancyRequest.employeeId}
 								onSelect={(employee) => {
 									selectedPregnancyEmployee = employee;
 									pregnancyRequest.employeeId = employee?.id ?? '';
 								}}
 							/>
-							<Input label="Startdatum" type="date" bind:value={pregnancyRequest.startDate} />
-							<Input label="Einddatum" type="date" bind:value={pregnancyRequest.endDate} />
-						</div>
-						<div class="mt-4">
-							<Textarea label="Opmerking (optioneel)" bind:value={pregnancyRequest.reason} placeholder="Relevante informatie..." />
-						</div>
-						<div class="mt-6 flex justify-end">
-							<Button type="submit" class="gap-2">
+							<!-- Date range inset -->
+							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+								<p class="mb-3 text-xs font-semibold text-text-muted">
+									{m.leave_date_range_label()}
+								</p>
+								<div class="grid gap-3 sm:grid-cols-2">
+									<Input
+										label={m.pregnancy_start_label()}
+										type="date"
+										bind:value={pregnancyRequest.startDate}
+									/>
+									<Input
+										label={m.pregnancy_end_label()}
+										type="date"
+										bind:value={pregnancyRequest.endDate}
+									/>
+								</div>
+								{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
+									<div
+										class="mt-3 flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
+									>
+										<span class="flex items-center gap-1.5"
+											><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
+										>
+										<span
+											>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
+											{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
+												? m.leave_day_singular()
+												: m.leave_day_plural()}</span
+										>
+									</div>
+								{/if}
+							</div>
+							<Textarea
+								label={m.pregnancy_notes_label()}
+								bind:value={pregnancyRequest.reason}
+								placeholder={m.pregnancy_notes_placeholder()}
+							/>
+							<Button type="submit" class="w-full gap-2 py-3">
 								<CheckCircle class="h-4 w-4" />
-								Verlof vastleggen
+								{m.pregnancy_save()}
 							</Button>
 						</div>
 					</div>
 					{#if selectedPregnancyEmployee}
-						<div class="animate-in fade-in">
+						<div class="animate-in fade-in slide-in-from-top-2">
 							<ScheduleCalendar
 								selectedEmployee={selectedPregnancyEmployee}
 								bind:selectedStartDate={pregnancyRequest.startDate}
@@ -1128,61 +1336,91 @@
 							/>
 						</div>
 					{:else}
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
-						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
-							<AlertCircle class="h-4 w-4 text-pink-600 dark:text-pink-400" />
-							Tip
-						</p>
-						<h3 class="mt-2 text-sm font-semibold text-text">Tip</h3>
-							<div class="space-y-4 text-sm text-text-muted">
-								<p>
-									Controleer of het verlof aansluit op het verlofsaldo. Pas de planning aan waar nodig.
-								</p>
-								<div class="rounded-xl bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-900/20 p-3">
-									<p class="font-semibold text-pink-700 dark:text-pink-300 text-xs mb-1">Wettelijke bepalingen</p>
-									<p class="text-xs">Raadpleeg de arbeidsrechtelijke bepalingen voor zwangerschapsverlof in uw regio.</p>
+						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<div
+									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-pink-500/70 uppercase"
+								>
+									<Baby class="h-4 w-4" />
+									{m.pregnancy_tip_title()}
+								</div>
+								<p class="mt-3 text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
+								<div
+									class="mt-4 rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+								>
+									<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
+										{m.pregnancy_law_title()}
+									</p>
+									<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
 								</div>
 							</div>
 						</div>
 					{/if}
 				</form>
 			{:else if activeTab === 'telaat'}
-				<div class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-					<form class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm" onsubmit={handleCreateLate}>
-						<div class="flex items-center gap-3 mb-4">
-							<div class="rounded-xl bg-warning/10 p-2 text-warning">
+				<div class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+					<form
+						class="overflow-hidden rounded-3xl border border-warning/20 bg-surface shadow-sm"
+						onsubmit={handleCreateLate}
+					>
+						<!-- Accent banner -->
+						<div class="flex items-center gap-3 border-b border-warning/15 bg-warning/5 px-6 py-4">
+							<div
+								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning"
+							>
 								<AlarmClock class="h-5 w-5" />
 							</div>
 							<div>
-								<h2 class="text-lg font-semibold text-text">Te laat registratie</h2>
-								<p class="text-xs text-text-muted">Registreer een late aankomst met reden.</p>
+								<h2 class="text-base font-semibold text-text">{m.late_title()}</h2>
+								<p class="text-xs text-text-muted">{m.late_subtitle()}</p>
 							</div>
 						</div>
-						<div class="mt-6 grid gap-4 sm:grid-cols-2">
-							<EmployeeSearch
-								labelText="Medewerker"
-								placeholder="Zoek medewerker..."
-								bind:selectedId={lateRequest.employeeId}
-								onSelect={(employee) => {
-									selectedLateEmployee = employee;
-									lateRequest.employeeId = employee?.id ?? '';
-								}}
+						<div class="space-y-5 p-6">
+							<!-- Employee + Date -->
+							<div class="grid gap-4 sm:grid-cols-2">
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={lateRequest.employeeId}
+									onSelect={(employee) => {
+										selectedLateEmployee = employee;
+										lateRequest.employeeId = employee?.id ?? '';
+									}}
+								/>
+								<Input label={m.sick_date_label()} type="date" bind:value={lateRequest.date} />
+							</div>
+							<!-- Arrival time inset -->
+							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+								<p class="mb-3 text-xs font-semibold text-text-muted">
+									{m.late_arrival_time_label()}
+								</p>
+								<Input
+									label={m.late_arrival_time_label()}
+									type="time"
+									bind:value={lateRequest.time}
+								/>
+								{#if lateRequest.time}
+									<div
+										class="mt-3 flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
+									>
+										<AlarmClock class="h-3.5 w-3.5" />
+										<span>Aankomsttijd: {lateRequest.time}</span>
+									</div>
+								{/if}
+							</div>
+							<Textarea
+								label={m.late_reason_label()}
+								bind:value={lateRequest.reason}
+								placeholder={m.late_reason_placeholder()}
 							/>
-							<Input label="Datum" type="date" bind:value={lateRequest.date} />
-							<Input label="Aankomsttijd" type="time" bind:value={lateRequest.time} />
-						</div>
-						<div class="mt-4">
-							<Textarea label="Reden (optioneel)" bind:value={lateRequest.reason} placeholder="Beschrijf de reden..." />
-						</div>
-						<div class="mt-6 flex justify-end">
-							<Button type="submit" class="gap-2">
+							<Button type="submit" class="w-full gap-2 py-3">
 								<CheckCircle class="h-4 w-4" />
-								Registratie toevoegen
+								{m.late_add()}
 							</Button>
 						</div>
 					</form>
 					{#if selectedLateEmployee}
-						<div class="animate-in fade-in">
+						<div class="animate-in fade-in slide-in-from-top-2">
 							<ScheduleCalendar
 								selectedEmployee={selectedLateEmployee}
 								bind:selectedStartDate={lateCalendarStart}
@@ -1195,44 +1433,65 @@
 							/>
 						</div>
 					{:else}
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm animate-in fade-in">
-						<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase flex items-center gap-2">
-							<Clock class="h-4 w-4 text-warning" />
-							Recente meldingen
-						</p>
-						<h3 class="mt-2 text-sm font-semibold text-text">Recente meldingen</h3>
-							<div class="space-y-3">
-								{#each lateArrivals as item}
-								<div class="rounded-2xl border border-border/50 bg-surface-subtle/40 p-3 text-sm">
-									<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-									<p class="text-xs text-text-muted mt-1">
-										{formatDate(item.date)} • {item.time}
-									</p>
-									{#if item.reason}
-										<p class="mt-2 text-xs text-text-muted bg-surface rounded-lg px-2 py-1">{item.reason}</p>
+						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+								<div
+									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-warning/70 uppercase"
+								>
+									<Clock class="h-4 w-4" />
+									{m.late_recent_title()}
+								</div>
+								<p class="mt-1 text-sm font-semibold text-text">{m.late_recent_title()}</p>
+								<div class="mt-4 space-y-2">
+									{#each lateArrivals as item}
+										<div
+											class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
+										>
+											<div>
+												<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
+												{#if item.reason}<p class="mt-0.5 text-xs text-text-muted">
+														{item.reason}
+													</p>{/if}
+											</div>
+											<span
+												class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"
+												>{formatDate(item.date)} {item.time}</span
+											>
+										</div>
+									{/each}
+									{#if lateArrivals.length === 0}
+										<div
+											class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/40 p-4 text-center text-xs text-text-muted"
+										>
+											{m.late_empty()}
+										</div>
 									{/if}
 								</div>
-								{/each}
-								{#if lateArrivals.length === 0}
-								<div class="rounded-2xl border border-dashed border-border/40 bg-surface-subtle/30 p-4 text-center text-xs text-text-muted">
-									Geen recente meldingen
-								</div>
-								{/if}
 							</div>
 						</div>
 					{/if}
 				</div>
 			{:else if activeTab === 'overzicht'}
-				<div class="space-y-4">
+				<div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
+					<!-- Section header -->
+					<div class="flex items-center gap-3">
+						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+							<List class="h-5 w-5" />
+						</div>
+						<div>
+							<h2 class="text-base font-semibold text-text">{m.leave_table_title()}</h2>
+							<p class="text-xs text-text-muted">{m.leave_table_description()}</p>
+						</div>
+					</div>
 					<DataTable
 						{columns}
 						rows={filteredRequests}
 						rowKey="id"
-						title="Verlofaanvragen"
-						description="Overzicht van alle verlof- en verzuimaanvragen."
-						emptyTitle="Geen verlofaanvragen gevonden"
-						emptyDescription="Maak een nieuwe aanvraag of pas de filters aan."
-						emptyActionLabel="Nieuwe aanvraag"
+						title={m.leave_table_title()}
+						description={m.leave_table_description()}
+						emptyTitle={m.leave_table_empty_title()}
+						emptyDescription={m.leave_table_empty_description()}
+						emptyActionLabel={m.leave_table_empty_action()}
 						emptyAction={() => (activeTab = 'aanvragen')}
 						filters={requestFilters}
 						actions={requestActions}
@@ -1246,53 +1505,77 @@
 					/>
 				</div>
 			{:else if activeTab === 'saldo'}
-				<div class="space-y-4">
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Verlof saldo per medewerker</h2>
-						<p class="mt-1 text-sm text-text-muted">Budget, opgenomen en beschikbare verlofuren</p>
+				<div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
+					<!-- Section header -->
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+								<Users class="h-5 w-5" />
+							</div>
+							<div>
+								<h2 class="text-base font-semibold text-text">{m.leave_balance_title()}</h2>
+								<p class="text-xs text-text-muted">{m.leave_balance_subtitle()}</p>
+							</div>
+						</div>
 					</div>
+
+					<!-- Balance cards grid -->
 					<div class="grid gap-4 md:grid-cols-2">
-						{#each leaveBalances as balance}
+						{#each leaveBalances as balance, i}
 							{@const available = balance.budget - balance.used}
 							{@const usagePercent = (balance.used / balance.budget) * 100}
-							<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-								<div class="flex items-start justify-between mb-4">
-									<div>
-										<p class="font-semibold text-text">{balance.name}</p>
-										<p class="text-xs text-text-muted">{balance.department}</p>
+							{@const isHigh = usagePercent > 80}
+							{@const isMedium = usagePercent > 50 && usagePercent <= 80}
+							<div
+								class="animate-in fade-in slide-in-from-bottom-2 group overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm transition-shadow hover:shadow-md"
+								style="animation-delay: {i * 75}ms"
+							>
+								<!-- Card header -->
+								<div class="flex items-center justify-between border-b border-border/40 px-5 py-3.5">
+									<div class="flex items-center gap-2.5">
+										<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+											<span class="text-xs font-bold">{balance.name.charAt(0)}</span>
+										</div>
+										<div>
+											<p class="text-sm font-semibold text-text">{balance.name}</p>
+											<p class="text-[10px] text-text-subtle">{balance.department}</p>
+										</div>
 									</div>
-									<span class="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
-										{available} uur beschikbaar
+									<span class="rounded-lg px-2.5 py-1 text-xs font-bold {isHigh ? 'bg-error/10 text-error' : isMedium ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}">
+										{available} {m.leave_hours_short()}
 									</span>
 								</div>
-								
-								<!-- Progress bar -->
-								<div class="mb-4">
-									<div class="flex items-center justify-between mb-2">
-										<span class="text-xs font-semibold text-text-muted">Opname</span>
-										<span class="text-xs font-semibold text-text">{usagePercent.toFixed(0)}%</span>
-									</div>
-									<div class="h-2 w-full rounded-full bg-border/40 overflow-hidden">
-										<div
-											class="h-full bg-gradient-to-r from-brand to-brand/60 transition-all duration-300"
-											style="width: {Math.min(usagePercent, 100)}%"
-										></div>
-									</div>
-								</div>
 
-								<!-- Details grid -->
-								<div class="grid gap-2 text-sm">
-									<div class="flex items-center justify-between">
-										<span class="text-text-muted">Totaal budget</span>
-										<span class="font-semibold text-text">{balance.budget} uur</span>
+								<!-- Card body -->
+								<div class="p-5">
+									<!-- Progress bar -->
+									<div class="mb-4">
+										<div class="mb-1.5 flex items-center justify-between text-[11px]">
+											<span class="font-medium text-text-muted">{m.leave_balance_usage_label()}</span>
+											<span class="font-bold {isHigh ? 'text-error' : isMedium ? 'text-warning' : 'text-text'}">{usagePercent.toFixed(0)}%</span>
+										</div>
+										<div class="h-2 w-full overflow-hidden rounded-full bg-border/30">
+											<div
+												class="h-full rounded-full transition-all duration-500 ease-out {isHigh ? 'bg-gradient-to-r from-error to-error/70' : isMedium ? 'bg-gradient-to-r from-warning to-warning/70' : 'bg-gradient-to-r from-brand to-brand/60'}"
+												style="width: {Math.min(usagePercent, 100)}%"
+											></div>
+										</div>
 									</div>
-									<div class="flex items-center justify-between">
-										<span class="text-text-muted">Opgenomen</span>
-										<span class="font-semibold text-text">{balance.used} uur</span>
-									</div>
-									<div class="border-t border-border/50 pt-2 mt-2 flex items-center justify-between">
-										<span class="text-xs font-semibold text-text-muted">Beschikbaar</span>
-										<span class="font-bold text-text">{available} uur</span>
+
+									<!-- Stat row -->
+									<div class="grid grid-cols-3 gap-2 rounded-xl bg-surface-subtle/50 p-2.5 text-center">
+										<div>
+											<p class="text-lg font-bold text-text">{balance.budget}</p>
+											<p class="text-[10px] text-text-subtle">{m.leave_balance_total_budget()}</p>
+										</div>
+										<div class="border-x border-border/40">
+											<p class="text-lg font-bold text-text">{balance.used}</p>
+											<p class="text-[10px] text-text-subtle">{m.leave_balance_used()}</p>
+										</div>
+										<div>
+											<p class="text-lg font-bold {isHigh ? 'text-error' : 'text-success'}">{available}</p>
+											<p class="text-[10px] text-text-subtle">{m.leave_balance_available_label()}</p>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -1300,117 +1583,165 @@
 					</div>
 				</div>
 			{:else if activeTab === 'uitbetalen'}
-				<div class="space-y-4">
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Verlofuren uitbetalen</h2>
-						<p class="mt-1 text-sm text-text-muted">
-							Beheer aanvragen voor uitbetaling van verlofuren.
-						</p>
+				<div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
+					<!-- Section header -->
+					<div class="flex items-center gap-3">
+						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+							<Euro class="h-5 w-5" />
+						</div>
+						<div>
+							<h2 class="text-base font-semibold text-text">{m.leave_payout_title()}</h2>
+							<p class="text-xs text-text-muted">{m.leave_payout_subtitle()}</p>
+						</div>
 					</div>
-					<div class="grid gap-3">
-						{#each payoutRequests as payout}
-							{@const isApproved = payout.status === 'Goedgekeurd'}
-							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm hover:shadow-md transition-shadow">
-								<div class="flex-1">
-									<p class="font-semibold text-text">{payout.employee}</p>
-									<p class="text-xs text-text-muted mt-1">{payout.hours} uur aangevraagd</p>
-								</div>
-								<div class="flex items-center gap-3">
-									<span class={`rounded-full border px-3 py-1 text-xs font-semibold ${
-										isApproved 
-											? 'border-success/20 bg-success/10 text-success'
-											: 'border-warning/20 bg-warning/10 text-warning'
-									}`}>
-										{payout.status}
-									</span>
-									<Button variant="ghost" class="h-9 rounded-xl text-xs">Bekijken</Button>
-								</div>
-							</div>
-						{/each}
+
+					<!-- Payout table -->
+					<div class="overflow-hidden rounded-2xl border border-border/60">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-border/60 bg-surface-subtle/50">
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">{m.employee()}</th>
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">{m.leave_hours_short()}</th>
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">Status</th>
+									<th class="px-4 py-3 text-right text-xs font-semibold tracking-wide text-text-muted uppercase"></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each payoutRequests as payout, i}
+									{@const isApproved = payout.status === 'Goedgekeurd'}
+									<tr class="border-b border-border/40 transition-colors last:border-0 hover:bg-surface-subtle/30 {i % 2 === 0 ? '' : 'bg-surface-subtle/20'}">
+										<td class="px-4 py-3.5">
+											<span class="font-semibold text-text">{payout.employee}</span>
+										</td>
+										<td class="px-4 py-3.5">
+											<span class="rounded-lg bg-brand/8 px-2 py-0.5 text-xs font-bold text-brand">{payout.hours}u</span>
+										</td>
+										<td class="px-4 py-3.5">
+											<span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold {isApproved ? 'border-success/20 bg-success/10 text-success' : 'border-warning/20 bg-warning/10 text-warning'}">
+												<span class="h-1.5 w-1.5 rounded-full {isApproved ? 'bg-success' : 'bg-warning'}"></span>
+												{payout.status}
+											</span>
+										</td>
+										<td class="px-4 py-3.5 text-right">
+											<Button variant="ghost" class="h-8 rounded-lg px-3 text-xs">{m.leave_payout_view()}</Button>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
 					</div>
 				</div>
 			{:else if activeTab === 'contractwijzigingen'}
-				<div class="space-y-4">
-					<div class="rounded-2xl border border-border/60 bg-surface-subtle/40 p-6">
-						<h2 class="text-lg font-semibold text-text">Contractwijzigingen</h2>
-						<p class="mt-1 text-sm text-text-muted">
-							Overzicht van contracturenwijzigingen en impact op saldo.
-						</p>
+				<div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
+					<!-- Section header -->
+					<div class="flex items-center gap-3">
+						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+							<FileText class="h-5 w-5" />
+						</div>
+						<div>
+							<h2 class="text-base font-semibold text-text">{m.leave_contract_changes_title()}</h2>
+							<p class="text-xs text-text-muted">{m.leave_contract_changes_subtitle()}</p>
+						</div>
 					</div>
-					<div class="grid gap-3">
-						{#each contractChanges as change}
-							{@const isReduction = change.toHours < change.fromHours}
-							<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-border/60 bg-surface p-4 shadow-sm hover:shadow-md transition-shadow">
-								<div class="flex-1">
-									<p class="font-semibold text-text">{change.employee}</p>
-									<p class="text-xs text-text-muted mt-1">{formatDate(change.date)}</p>
-								</div>
-								<div class="flex items-center gap-4">
-									<div class="text-right">
-										<p class="text-xs text-text-muted mb-1">Uren per week</p>
-										<div class="flex items-center gap-2">
-											<span class="text-sm font-semibold text-text-muted line-through">{change.fromHours}u</span>
-											<span class="text-xs text-text-muted">→</span>
-											<span class={`text-sm font-semibold ${isReduction ? 'text-error' : 'text-success'}`}>
-												{change.toHours}u
+
+					<!-- Contract changes table -->
+					<div class="overflow-hidden rounded-2xl border border-border/60">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-border/60 bg-surface-subtle/50">
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">{m.employee()}</th>
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">Datum</th>
+									<th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase">{m.leave_contract_hours_per_week()}</th>
+									<th class="px-4 py-3 text-right text-xs font-semibold tracking-wide text-text-muted uppercase">Verschil</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each contractChanges as change, i}
+									{@const isReduction = change.toHours < change.fromHours}
+									{@const diff = Math.abs(change.toHours - change.fromHours)}
+									<tr class="border-b border-border/40 transition-colors last:border-0 hover:bg-surface-subtle/30 {i % 2 === 0 ? '' : 'bg-surface-subtle/20'}">
+										<td class="px-4 py-3.5">
+											<span class="font-semibold text-text">{change.employee}</span>
+										</td>
+										<td class="px-4 py-3.5 text-text-muted">
+											{formatDate(change.date)}
+										</td>
+										<td class="px-4 py-3.5">
+											<div class="flex items-center gap-2 text-sm">
+												<span class="text-text-muted line-through">{change.fromHours}u</span>
+												<span class="text-text-subtle">→</span>
+												<span class="font-semibold {isReduction ? 'text-error' : 'text-success'}">{change.toHours}u</span>
+											</div>
+										</td>
+										<td class="px-4 py-3.5 text-right">
+											<span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold {isReduction ? 'border-error/20 bg-error/10 text-error' : 'border-success/20 bg-success/10 text-success'}">
+												{isReduction ? '−' : '+'}{diff}u
 											</span>
-										</div>
-									</div>
-									<div class={`rounded-full border px-3 py-1 text-xs font-semibold ${
-										isReduction 
-											? 'border-error/20 bg-error/10 text-error'
-											: 'border-success/20 bg-success/10 text-success'
-									}`}>
-										{isReduction ? '−' : '+'}{Math.abs(change.toHours - change.fromHours)}u
-									</div>
-								</div>
-							</div>
-						{/each}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
 					</div>
 				</div>
 			{/if}
+		</div>
+		</div>
+	</div>
 </section>
 
-<Modal bind:open={deleteDialogOpen} title="Verlofaanvraag verwijderen" description="Deze actie kan niet ongedaan worden gemaakt." size="sm">
+<Modal
+	bind:open={deleteDialogOpen}
+	title={m.leave_modal_delete_title()}
+	description={m.leave_modal_delete_description()}
+	size="sm"
+>
 	{#snippet children()}
 		<p class="text-sm text-text-muted">
-			Weet je zeker dat je deze verlofaanvraag wilt verwijderen?
+			{m.leave_modal_delete_body()}
 		</p>
 	{/snippet}
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (deleteDialogOpen = false)}>Annuleren</Button>
-			<Button variant="destructive" onclick={handleDeleteConfirm}>Verwijderen</Button>
+			<Button variant="ghost" onclick={() => (deleteDialogOpen = false)}
+				>{m.leave_modal_cancel()}</Button
+			>
+			<Button variant="destructive" onclick={handleDeleteConfirm}>{m.confirm_delete()}</Button>
 		</div>
 	{/snippet}
 </Modal>
 
 <Modal
 	bind:open={emailDialogOpen}
-	title="Verlofoverzicht versturen per e-mail"
-	description="Verstuur het maandelijkse overzicht naar een e-mailadres."
+	title={m.leave_modal_email_title()}
+	description={m.leave_modal_email_description()}
 	size="sm"
 >
 	{#snippet children()}
 		<div class="space-y-4">
 			<Input
-				label="E-mailadres"
+				label={m.leave_modal_email_label()}
 				type="email"
-				placeholder="voorbeeld@email.nl"
+				placeholder={m.leave_modal_email_placeholder()}
 				bind:value={emailAddress}
 			/>
 			<p class="text-sm text-text-muted">
-				Het verlofoverzicht voor <span class="font-semibold">{formatMonth(currentMonth)}</span> wordt
-				verstuurd naar dit adres.
+				{m.leave_modal_email_note({ month: formatMonth(currentMonth) })}
 			</p>
 		</div>
 	{/snippet}
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (emailDialogOpen = false)}>Annuleren</Button>
-			<Button onclick={handleSendEmail}>Versturen</Button>
+			<Button variant="ghost" onclick={() => (emailDialogOpen = false)}
+				>{m.leave_modal_cancel()}</Button
+			>
+			<Button onclick={handleSendEmail}>{m.leave_modal_send()}</Button>
 		</div>
 	{/snippet}
 </Modal>
 
-<Toast message={toast?.message ?? null} type={toast?.type ?? 'success'} onClose={() => (toast = null)} />
+<Toast
+	message={toast?.message ?? null}
+	type={toast?.type ?? 'success'}
+	onClose={() => (toast = null)}
+/>

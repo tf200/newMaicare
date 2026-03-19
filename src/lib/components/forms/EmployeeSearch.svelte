@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Search, X, Loader2 } from 'lucide-svelte';
+	import { Search, X, Loader2, ChevronDown, User } from 'lucide-svelte';
 	import { listEmployees } from '$lib/api/employees';
 	import type { EmployeeListItem } from '$lib/api/employees';
 
@@ -11,7 +11,7 @@
 	}
 
 	let {
-		labelText = 'Medewerker selecteren',
+		labelText = 'Medewerker',
 		placeholder = 'Zoek op naam...',
 		selectedId = $bindable<string | null>(null),
 		onSelect
@@ -22,41 +22,97 @@
 	let isLoading = $state(false);
 	let isOpen = $state(false);
 	let selectedEmployee = $state<EmployeeListItem | null>(null);
+	let highlightedIndex = $state(-1);
 	let searchInputEl = $state<HTMLInputElement | null>(null);
 	let dropdownEl = $state<HTMLDivElement | null>(null);
+	let containerEl = $state<HTMLDivElement | null>(null);
 
-	const inputId = 'employee-search-input';
+	/** Unique id for the input label association */
+	const inputId = `emp-search-${Math.random().toString(36).slice(2, 7)}`;
 
-	async function performSearch(query: string) {
-		const trimmed = query.trim();
-		if (trimmed.length < 2) {
-			employees = [];
-			return;
-		}
+	// ── Debounce helper ────────────────────────────────────────────────────────
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	function debounce(fn: () => void, ms: number) {
+		if (debounceTimer) clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(fn, ms);
+	}
 
+	// ── API calls ──────────────────────────────────────────────────────────────
+	async function fetchEmployees(query: string) {
 		isLoading = true;
 		try {
-			const response = await listEmployees({ search: trimmed, page_size: 10, page: 1 });
-			const results =
-				response?.data?.results ??
-				response?.data?.results ??
-				(response?.data as any)?.data ??
-				[];
+			const params = query.trim()
+				? { search: query.trim(), page_size: 20, page: 1 }
+				: { page_size: 50, page: 1 };
+			const response = await listEmployees(params);
+			const results = response?.data?.results ?? (response?.data as any)?.data ?? [];
 			employees = Array.isArray(results) ? results : [];
-		} catch (error) {
-			console.error('Failed to fetch employees:', error);
+		} catch {
 			employees = [];
 		} finally {
 			isLoading = false;
 		}
+		highlightedIndex = -1;
 	}
 
-	function handleSelectEmployee(employee: EmployeeListItem) {
+	// ── Input handling ─────────────────────────────────────────────────────────
+	function handleInput(e: Event) {
+		const value = (e.currentTarget as HTMLInputElement).value;
+		searchQuery = value;
+		isOpen = true;
+		debounce(() => fetchEmployees(value), 300);
+	}
+
+	function handleFocus() {
+		isOpen = true;
+		// Load full list immediately if not already loaded
+		if (employees.length === 0) {
+			fetchEmployees(searchQuery);
+		}
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if (!isOpen) {
+			if (e.key === 'ArrowDown' || e.key === 'Enter') {
+				isOpen = true;
+				if (employees.length === 0) fetchEmployees('');
+			}
+			return;
+		}
+
+		switch (e.key) {
+			case 'ArrowDown':
+				e.preventDefault();
+				highlightedIndex = Math.min(highlightedIndex + 1, employees.length - 1);
+				break;
+			case 'ArrowUp':
+				e.preventDefault();
+				highlightedIndex = Math.max(highlightedIndex - 1, -1);
+				break;
+			case 'Enter':
+				e.preventDefault();
+				if (highlightedIndex >= 0 && employees[highlightedIndex]) {
+					selectEmployee(employees[highlightedIndex]);
+				}
+				break;
+			case 'Escape':
+				isOpen = false;
+				highlightedIndex = -1;
+				break;
+			case 'Tab':
+				isOpen = false;
+				break;
+		}
+	}
+
+	// ── Selection ──────────────────────────────────────────────────────────────
+	function selectEmployee(employee: EmployeeListItem) {
 		selectedEmployee = employee;
 		selectedId = employee.id;
 		searchQuery = '';
 		isOpen = false;
 		employees = [];
+		highlightedIndex = -1;
 		onSelect?.(employee);
 	}
 
@@ -66,90 +122,70 @@
 		searchQuery = '';
 		employees = [];
 		isOpen = false;
-		if (searchInputEl) {
-			searchInputEl.focus();
-		}
+		highlightedIndex = -1;
 		onSelect?.(null);
+		// Slight delay so the input is rendered before focusing
+		setTimeout(() => searchInputEl?.focus(), 0);
 	}
 
-	function handleInputChange(value: string) {
-		searchQuery = value;
-	}
-
-	function applySearch() {
-		performSearch(searchQuery);
-		isOpen = true;
-	}
-
-	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			applySearch();
-			return;
-		}
-		if (e.key === 'Escape') {
-			isOpen = false;
-			searchQuery = '';
-		}
-	}
-
+	// ── Click outside ──────────────────────────────────────────────────────────
 	function handleClickOutside(event: MouseEvent) {
-		if (
-			dropdownEl &&
-			searchInputEl &&
-			!dropdownEl.contains(event.target as Node) &&
-			!searchInputEl.contains(event.target as Node)
-		) {
+		if (containerEl && !containerEl.contains(event.target as Node)) {
 			isOpen = false;
+			highlightedIndex = -1;
 		}
 	}
 
+	// ── Sync external selectedId reset ─────────────────────────────────────────
 	$effect(() => {
-		if (!selectedId) {
-			selectedEmployee = null;
-		}
+		if (!selectedId) selectedEmployee = null;
 	});
 </script>
 
 <svelte:window onmousedown={handleClickOutside} />
 
-<div class="space-y-2">
+<div class="space-y-2" bind:this={containerEl}>
 	{#if labelText}
-		<label for={inputId} class="ml-1 text-xs font-semibold text-text-muted">
+		<label for={inputId} class="block text-xs font-semibold text-text-muted">
 			{labelText}
 		</label>
 	{/if}
 
 	{#if selectedEmployee}
-		<div class="flex h-9 items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3">
-			<div class="flex min-w-0 items-center gap-3">
-				<div class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-border/60 text-[10px] font-semibold text-text">
+		<!-- Selected state pill -->
+		<div
+			class="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-3.5 text-sm shadow-sm"
+		>
+			<div class="flex min-w-0 items-center gap-2.5">
+				<div
+					class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand/10 text-[10px] font-bold text-brand"
+				>
 					{selectedEmployee.first_name[0]}{selectedEmployee.last_name[0]}
 				</div>
 				<div class="min-w-0">
 					<p class="truncate text-sm font-medium text-text">
-						{selectedEmployee.first_name} {selectedEmployee.last_name}
+						{selectedEmployee.first_name}
+						{selectedEmployee.last_name}
 					</p>
 					{#if selectedEmployee.department}
-						<p class="truncate text-xs text-text-muted">
-							{selectedEmployee.department}
-						</p>
+						<p class="truncate text-[10px] text-text-muted">{selectedEmployee.department}</p>
 					{/if}
 				</div>
 			</div>
 			<button
 				type="button"
 				onclick={clearSelection}
-				class="rounded-lg p-1 text-text-muted transition hover:bg-border/40 hover:text-text"
+				class="shrink-0 rounded-lg p-1 text-text-muted transition hover:bg-border/50 hover:text-text"
 				title="Wissen"
 			>
-				<X class="h-4 w-4" />
+				<X class="h-3.5 w-3.5" />
 			</button>
 		</div>
 	{:else}
+		<!-- Search input + dropdown -->
 		<div class="relative">
 			<Search
-				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
 				id={inputId}
@@ -157,50 +193,88 @@
 				type="text"
 				{placeholder}
 				value={searchQuery}
-				oninput={(e) => handleInputChange(e.currentTarget.value)}
-				onblur={applySearch}
-				onfocus={() => {
-					isOpen = true;
-				}}
+				oninput={handleInput}
+				onfocus={handleFocus}
 				onkeydown={handleKeyDown}
-				class="h-9 w-full rounded-xl border border-border bg-surface pr-9 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				class="w-full rounded-xl border border-border bg-surface py-3.5 pr-9 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 				autocomplete="off"
+				aria-expanded={isOpen}
+				aria-autocomplete="list"
 			/>
+			<!-- Right icon: spinner or chevron -->
 			{#if isLoading}
-				<Loader2 class="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-brand" />
+				<Loader2
+					class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin text-brand"
+				/>
+			{:else}
+				<ChevronDown
+					class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-text-subtle transition-transform {isOpen
+						? 'rotate-180'
+						: ''}"
+				/>
 			{/if}
 
+			<!-- Dropdown -->
 			{#if isOpen}
 				<div
 					bind:this={dropdownEl}
-					class="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+					class="absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-surface shadow-xl"
+					role="listbox"
 				>
 					{#if isLoading}
-						<div class="flex items-center justify-center gap-2 px-4 py-3">
-							<Loader2 class="h-4 w-4 animate-spin text-brand" />
-							<span class="text-xs text-text-muted">Laden...</span>
+						<div class="flex items-center justify-center gap-2 px-4 py-4 text-xs text-text-muted">
+							<Loader2 class="h-3.5 w-3.5 animate-spin text-brand" />
+							<span>Laden...</span>
 						</div>
-					{:else if searchQuery.trim().length < 2}
-						<div class="px-4 py-3 text-xs text-text-muted">Typ minimaal 2 letters</div>
 					{:else if employees.length === 0}
-						<div class="px-4 py-3 text-xs text-text-muted">Geen medewerkers gevonden</div>
+						<div class="flex flex-col items-center gap-2 px-4 py-6 text-center">
+							<User class="h-8 w-8 text-text-subtle" />
+							<p class="text-xs text-text-muted">
+								{searchQuery.trim() ? 'Geen medewerkers gevonden' : 'Geen medewerkers beschikbaar'}
+							</p>
+						</div>
 					{:else}
-						<div class="max-h-64 overflow-y-auto">
-							{#each employees as employee (employee.id)}
+						<div class="max-h-60 overflow-y-auto">
+							{#if searchQuery.trim()}
+								<div class="border-b border-border/40 px-3 py-1.5">
+									<p class="text-[10px] font-semibold tracking-widest text-text-subtle uppercase">
+										{employees.length} resultaten
+									</p>
+								</div>
+							{:else}
+								<div class="border-b border-border/40 px-3 py-1.5">
+									<p class="text-[10px] font-semibold tracking-widest text-text-subtle uppercase">
+										Alle medewerkers
+									</p>
+								</div>
+							{/if}
+							{#each employees as employee, i (employee.id)}
 								<button
 									type="button"
-									onclick={() => handleSelectEmployee(employee)}
-									class="flex w-full items-center gap-3 border-b border-border/50 px-4 py-2.5 text-left text-sm transition hover:bg-surface-subtle last:border-b-0"
+									onclick={() => selectEmployee(employee)}
+									onmouseenter={() => (highlightedIndex = i)}
+									class="flex w-full items-center gap-3 border-b border-border/30 px-3 py-2.5 text-left transition last:border-b-0 {highlightedIndex ===
+									i
+										? 'bg-brand/10 text-text'
+										: 'hover:bg-surface-subtle/60'}"
+									role="option"
+									aria-selected={highlightedIndex === i}
 								>
-									<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-semibold text-brand">
+									<div
+										class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg {highlightedIndex ===
+										i
+											? 'bg-brand/15 text-brand'
+											: 'bg-border/50 text-text-muted'} text-[10px] font-bold"
+									>
 										{employee.first_name[0]}{employee.last_name[0]}
 									</div>
 									<div class="min-w-0 flex-1">
 										<p class="text-sm font-medium text-text">
-											{employee.first_name} {employee.last_name}
+											{employee.first_name}
+											{employee.last_name}
 										</p>
 										{#if employee.department}
-											<p class="truncate text-xs text-text-muted">{employee.department}</p>
+											<p class="truncate text-[11px] text-text-muted">{employee.department}</p>
 										{/if}
 									</div>
 								</button>
