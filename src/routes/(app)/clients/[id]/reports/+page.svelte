@@ -8,8 +8,6 @@
 	} from '$lib/api/clients';
 	import {
 		FileText,
-		ArrowLeft,
-		ChevronRight,
 		Search,
 		Plus,
 		Eye,
@@ -34,6 +32,7 @@
 		BookOpen,
 		MoreHorizontal
 	} from 'lucide-svelte';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
@@ -55,6 +54,18 @@
 	}>();
 
 	let searchQuery = $state('');
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.clients(), href: '/clients' },
+			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${data.clientId}` },
+			{ label: m.reports() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
+
 	let activeFilters = $state<Record<string, any>>({});
 	let isCreateModalOpen = $state(false);
 	let isViewModalOpen = $state(false);
@@ -406,18 +417,7 @@
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
-				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-					<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
-						<ArrowLeft class="h-4 w-4" />
-						Clients
-					</a>
-					<ChevronRight class="h-4 w-4" />
-					<a href={`/clients/${data.clientId}`} class="transition-colors hover:text-text">
-						{data.clientName ?? 'Client Detail'}
-					</a>
-					<ChevronRight class="h-4 w-4" />
-					<span class="text-text">Progress Reports</span>
-				</nav>
+				<div class="hidden"></div>
 				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 						<FileText class="h-5 w-5" />

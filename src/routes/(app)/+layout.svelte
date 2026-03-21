@@ -3,9 +3,11 @@
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
 	import { setWebSocketState } from '$lib/api/ws.svelte';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { setBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 
 	const auth = getAuthState();
 	const ws = setWebSocketState();
+	const breadcrumbs = setBreadcrumbsState();
 
 	$effect(() => {
 		if (auth.isAuthenticated) {

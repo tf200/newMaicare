@@ -562,7 +562,7 @@
 							{requestFilter === pill.id
 								? `bg-${pill.color}/10 text-${pill.color} shadow-sm ring-1 ring-${pill.color}/20`
 								: 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
-						onclick={() => (requestFilter = pill.id)}
+						onclick={() => (requestFilter = pill.id as 'all' | LeaveStatus)}
 					>
 						<span class="h-1.5 w-1.5 rounded-full {requestFilter === pill.id ? `bg-${pill.color}` : 'bg-text-subtle/30'}"></span>
 						{pill.label}

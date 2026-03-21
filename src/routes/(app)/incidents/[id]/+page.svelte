@@ -10,8 +10,7 @@
 		FileText,
 		CheckCircle2,
 		XCircle,
-		ChevronRight,
-		ArrowLeft,
+
 		Mail,
 		Info,
 		Stethoscope,
@@ -22,6 +21,7 @@
 		Pencil
 	} from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { confirmIncident } from '$lib/api/incidents';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
@@ -57,6 +57,17 @@
 		confirmIncidentError = null;
 		isConfirmModalOpen = true;
 	};
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		const incident = data.incidentData;
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.incidents(), href: '/incidents' },
+			{ label: m.incident_detail() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
 
 	const closeConfirmModal = () => {
 		if (isConfirmingIncident) return;
@@ -281,14 +292,7 @@
 
 			<!-- Breadcrumbs & Actions -->
 			<div class="flex items-center justify-between">
-				<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-					<a href="/incidents" class="flex items-center gap-1 transition-colors hover:text-text">
-						<ArrowLeft class="h-4 w-4" />
-						{m.incidents()}
-					</a>
-					<ChevronRight class="h-4 w-4" />
-					<span class="text-text">{m.incident_detail()}</span>
-				</nav>
+				<div></div>
 
 				<div class="flex flex-wrap items-center justify-end gap-2">
 					<button

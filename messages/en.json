@@ -1,4 +1,4 @@
-﻿{
+{
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"my_handbook": "My Handbook",
 	"handbook_description": "Welcome to your employee handbook. Please complete all steps to familiarize yourself with our policies.",
@@ -1925,5 +1925,14 @@
 	"swap_toast_target_accepted": "Swap request accepted by colleague.",
 	"swap_toast_saved": "Swap request saved.",
 	"swap_toast_updated": "Swap request updated.",
-	"swap_toast_created": "Swap request created."
+	"swap_toast_created": "Swap request created.",
+	"breadcrumb_home": "Home",
+	"breadcrumb_medical": "Medical",
+	"breadcrumb_system_settings": "System Settings",
+	"breadcrumb_handbook_templates": "Handbook Templates",
+	"breadcrumb_new_invoice": "New Invoice",
+	"breadcrumb_registration_detail": "Registration Detail",
+	"breadcrumb_organization_detail": "Organization Detail",
+	"breadcrumb_client_detail": "Client Detail",
+	"breadcrumb_finances": "Finances"
 }

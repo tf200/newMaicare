@@ -10,8 +10,6 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import type { UpdateAppointmentCardRequest } from '$lib/types/api';
 	import {
-		ArrowLeft,
-		ChevronRight,
 		Briefcase,
 		BusFront,
 		ClipboardList,
@@ -24,6 +22,7 @@
 		Users
 	} from 'lucide-svelte';
 	import type { AppointmentCardLoadResult, AppointmentCardDocument } from './+page';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 
 	type AppointmentSectionKey =
 		| 'general_information'
@@ -53,6 +52,21 @@
 	}>();
 
 	const appointmentCardDataPromise = $derived(data.appointmentCardData);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		appointmentCardDataPromise.then((res: AppointmentCardLoadResult) => {
+			if (res.appointmentCard) {
+				breadcrumbs.items = [
+					{ label: m.breadcrumb_home(), href: '/dashboard' },
+					{ label: m.clients(), href: '/clients' },
+					{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${res.appointmentCard.client_id}` },
+					{ label: m.documents() }
+				];
+			}
+		});
+		return () => { breadcrumbs.items = []; };
+	});
 
 	const sections: AppointmentSection[] = [
 		{
@@ -264,21 +278,7 @@
 			<div class="relative space-y-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div class="space-y-2">
-						<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-							<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
-								<ArrowLeft class="h-4 w-4" />
-								Clients
-							</a>
-							<ChevronRight class="h-4 w-4" />
-							<a
-								href={`/clients/${appointmentCard.client_id}`}
-								class="transition-colors hover:text-text"
-							>
-								{data.clientName ?? 'Client Detail'}
-							</a>
-							<ChevronRight class="h-4 w-4" />
-							<span class="text-text">Appointment Card</span>
-						</nav>
+						<div class="hidden"></div>
 						<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 							<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 								<ClipboardList class="h-5 w-5" />

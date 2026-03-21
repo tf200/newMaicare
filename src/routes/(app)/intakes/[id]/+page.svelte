@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import {
-		ArrowLeft,
-		ChevronRight,
 		Calendar,
 		User,
 		Activity,
@@ -50,8 +49,15 @@
 	const canEditIntake = $derived(!intake.has_client);
 
 	// Sync state if data changes
+	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		intake = data.intake;
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.intakes(), href: '/intakes' },
+			{ label: m.intake_details() }
+		];
+		return () => { breadcrumbs.items = []; };
 	});
 
 	const handleSaveIntake = async () => {
@@ -151,14 +157,7 @@
 <!-- Header -->
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-			<a href="/intakes" class="flex items-center gap-1 transition-colors hover:text-text">
-				<ArrowLeft class="h-4 w-4" />
-				{m.intakes()}
-			</a>
-			<ChevronRight class="h-4 w-4" />
-			<span class="text-text">{m.intake_details()}</span>
-		</nav>
+		<div></div>
 
 		{#if canEditIntake}
 			<button

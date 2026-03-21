@@ -8,8 +8,7 @@
 		Phone,
 		Mail,
 		Clock,
-		ArrowLeft,
-		ChevronRight,
+
 		MapPin,
 		Briefcase,
 		HeartPulse,
@@ -27,6 +26,7 @@
 		Trash2
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import type {
 		GetRegistrationFormResponse,
 		ClientGender,
@@ -53,6 +53,16 @@
 	const registration = $derived(data.registration);
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.registrations(), href: '/registrations' },
+			{ label: m.breadcrumb_registration_detail() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
 
 	// Edit State
 	let isEditing = $state(false);
@@ -379,14 +389,7 @@
 <div class="space-y-6">
 	<!-- Breadcrumb / Actions -->
 	<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-			<a href="/registrations" class="flex items-center gap-1 transition-colors hover:text-text">
-				<ArrowLeft class="h-4 w-4" />
-				Registrations
-			</a>
-			<ChevronRight class="h-4 w-4" />
-			<span class="text-text">Registration Detail</span>
-		</nav>
+		<div class="hidden"></div>
 
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			{#if !isEditing}
