@@ -3,15 +3,14 @@
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
-		ArrowLeft,
 		Calendar,
-		ChevronRight,
 		Clock3,
 		HandCoins,
 		ShieldCheck,
 		ScrollText
 	} from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { ListClientContractsResponse } from '$lib/types/api';
 	import type { ClientContractsLoadResult } from './+page';
@@ -28,6 +27,17 @@
 
 	const contractsDataPromise = $derived(data.contractsData);
 	const initial = $derived(data.initial);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.clients(), href: '/clients' },
+			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{ label: m.contracts() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
 
 	const columns: DataTableColumn[] = [
 		{ key: 'care', label: m.care(), width: '260px' },
@@ -110,18 +120,7 @@
 			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-violet-100/20 blur-2xl"
 		></div>
 		<div class="relative space-y-2">
-			<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-				<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
-					<ArrowLeft class="h-4 w-4" />
-					Clients
-				</a>
-				<ChevronRight class="h-4 w-4" />
-				<a href={`/clients/${page.params.id}`} class="transition-colors hover:text-text"
-					>Client Detail</a
-				>
-				<ChevronRight class="h-4 w-4" />
-				<span class="text-text">Contracts</span>
-			</nav>
+			<div class="hidden"></div>
 			<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 				<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
 					<ScrollText class="h-5 w-5" />

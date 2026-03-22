@@ -1870,5 +1870,14 @@
 	"swap_toast_target_accepted": "Ruilverzoek geaccepteerd door collega.",
 	"swap_toast_saved": "Ruilverzoek opgeslagen.",
 	"swap_toast_updated": "Ruilverzoek bijgewerkt.",
-	"swap_toast_created": "Ruilverzoek aangemaakt."
+	"swap_toast_created": "Ruilverzoek aangemaakt.",
+	"breadcrumb_home": "Home",
+	"breadcrumb_medical": "Medisch",
+	"breadcrumb_system_settings": "Systeeminstellingen",
+	"breadcrumb_handbook_templates": "Handboeksjablonen",
+	"breadcrumb_new_invoice": "Nieuwe factuur",
+	"breadcrumb_registration_detail": "Registratiedetail",
+	"breadcrumb_organization_detail": "Organisatiedetail",
+	"breadcrumb_client_detail": "Cliëntdetail",
+	"breadcrumb_finances": "Financiën"
 }

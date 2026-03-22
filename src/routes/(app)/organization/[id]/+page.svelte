@@ -3,7 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
-		ArrowLeft,
+
 		Building2,
 		Pencil,
 		Plus,
@@ -13,6 +13,7 @@
 		Clock
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -46,6 +47,17 @@
 	const currentPage = $derived.by(() => data.initial.page);
 	const pageSize = $derived.by(() => data.initial.pageSize);
 	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.organizations(), href: '/organization' },
+			{ label: m.breadcrumb_organization_detail() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
+
 	let searchTerm = $state('');
 	let showCreateLocation = $state(false);
 	let showEditLocation = $state(false);
@@ -233,15 +245,7 @@
 {/snippet}
 
 <section class="space-y-8">
-	<div class="flex items-center">
-		<a
-			href="/organization"
-			class="inline-flex items-center gap-2 text-sm font-medium text-text-subtle transition-colors hover:text-text"
-		>
-			<ArrowLeft class="h-4 w-4" />
-			{m.back_to_organizations()}
-		</a>
-	</div>
+	<div class="hidden"></div>
 
 	{#await organizationDataPromise}
 		<header

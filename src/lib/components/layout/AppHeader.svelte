@@ -18,6 +18,9 @@
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import Breadcrumbs from '$lib/components/ui/Breadcrumbs.svelte';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { page } from '$app/state';
 
 	interface Props {
 		title?: string;
@@ -34,6 +37,41 @@
 	}: Props = $props();
 
 	const auth = getAuthState();
+	const breadcrumbsState = getBreadcrumbsState();
+
+	const fallbackBreadcrumbs = $derived.by(() => {
+		const segments = page.url.pathname.split('/').filter(Boolean);
+		if (segments.length === 0) {
+			return [
+				{ label: m.breadcrumb_home(), href: '/dashboard' },
+				{ label: m.dashboard() }
+			];
+		}
+		
+		const items: any[] = [{ label: m.breadcrumb_home(), href: '/dashboard' }];
+		let currentPath = '';
+		
+		for (let i = 0; i < segments.length; i++) {
+			const segment = segments[i];
+			if (segment.length === 36 && segment.includes('-')) {
+				currentPath += `/${segment}`;
+				items.push({ label: 'Detail' as any });
+				continue;
+			}
+			currentPath += `/${segment}`;
+			const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+			
+			items.push({
+				label: label as any,
+				...(i === segments.length - 1 ? {} : { href: currentPath })
+			});
+		}
+		return items;
+	});
+
+	const activeBreadcrumbs = $derived(
+		breadcrumbsState.items.length > 0 ? breadcrumbsState.items : fallbackBreadcrumbs
+	);
 
 	const handleLogout = async () => {
 		await auth.logout();
@@ -107,23 +145,9 @@
 			>
 				<PanelLeft class="h-4 w-4" />
 			</button>
-			<div
-				class="hidden min-w-0 items-center gap-2 text-sm font-medium text-text-muted sm:flex"
-				class:lg:hidden={collapsed}
-			>
-				<span class="truncate">{section}</span>
-				<ChevronRight class="h-4 w-4 shrink-0 opacity-50" />
-				<span class="truncate font-semibold text-text">{title}</span>
+			<div class="hidden min-w-0 sm:block" class:lg:hidden={collapsed}>
+				<Breadcrumbs items={activeBreadcrumbs} />
 			</div>
-			<div
-				class="hidden min-w-0 items-center text-sm font-semibold text-text"
-				class:lg:flex={collapsed}
-			>
-				<span class="truncate">{title}</span>
-			</div>
-			<h1 class="truncate text-lg font-bold tracking-tight text-text sm:hidden">
-				{title}
-			</h1>
 		</div>
 
 		<div class="flex shrink-0 items-center gap-2 sm:gap-4">

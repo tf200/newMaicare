@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import { onDestroy } from 'svelte';
 	import { AlertCircle, BookOpen, ChevronLeft, Plus } from 'lucide-svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -876,13 +878,7 @@
 <div class="mx-auto max-w-7xl space-y-8 pb-20">
 	<header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 		<div class="space-y-2">
-			<a
-				href={localizeHref('/settings/system')}
-				class="flex items-center gap-2 text-xs font-bold tracking-widest text-text-muted uppercase transition hover:text-brand"
-			>
-				<ChevronLeft class="h-3 w-3" />
-				Back to System Settings
-			</a>
+			<div class="hidden"></div>
 			<h1 class="text-4xl font-bold tracking-tight text-text">Handbook Templates</h1>
 			<p class="text-text-muted">
 				Manage department handbook versions, publish drafts, and maintain draft steps without

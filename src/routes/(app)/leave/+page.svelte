@@ -632,10 +632,10 @@ interface RequestFilterPill {
 			/>
 		</div>
 
-		<FilterDropdown
-			filters={overviewFilters}
-			groups={overviewFilterGroups}
-			title="Filters"
+			<FilterDropdown
+				filters={overviewFilters}
+				groups={overviewFilterGroups}
+				title="Filters"
 			buttonLabel="Filters"
 			clearLabel={m.swap_clear_filters()}
 			onUpdate={handleOverviewFilterUpdate}
@@ -657,9 +657,9 @@ interface RequestFilterPill {
 						>
 							{pill.badge}
 						</span>
-					{/if}
-				</button>
-			{/each}
+						{/if}
+					</button>
+				{/each}
 
 				{#if hasActiveFilters}
 					<button

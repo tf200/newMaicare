@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		Building2,
@@ -48,6 +50,16 @@
 
 	const initial = $derived(data.initial);
 	const systemDataPromise = $derived(data.systemData);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.settings(), href: '/settings/system' },
+			{ label: m.breadcrumb_system_settings() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
 
 	let systemState = $state<SystemSettingsLoadResult>(_createInitialSystemSettings());
 	let systemPending = $state(true);
@@ -302,13 +314,7 @@
 <div class="mx-auto max-w-6xl space-y-8 pb-20">
 	<header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 		<div class="space-y-2">
-			<a
-				href={localizeHref('/dashboard')}
-				class="flex items-center gap-2 text-xs font-bold tracking-widest text-text-muted uppercase transition hover:text-brand"
-			>
-				<ChevronLeft class="h-3 w-3" />
-				Back to Dashboard
-			</a>
+			<div class="hidden"></div>
 			<div class="flex items-center gap-4">
 				<h1 class="text-4xl font-bold tracking-tight text-text">System Settings</h1>
 			</div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -85,6 +86,16 @@
 	let status = $state<InvoiceStatus>('concept');
 	let extraContent = $state<string>('');
 	let clientContracts = $state<ListClientContractsResponse[]>([]);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.invoices(), href: '/finances/invoices' },
+			{ label: m.breadcrumb_new_invoice() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
 
 	// Lines State
 	interface DraftLine {
@@ -341,16 +352,12 @@
 		></div>
 		<div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-4">
-				<Button
-					variant="ghost"
-					class="h-10 w-10 shrink-0 !p-0 transition-all hover:scale-105 hover:bg-brand/10 hover:text-brand active:scale-95"
-					onclick={() => history.back()}
-				>
-					<ArrowLeft class="h-5 w-5" />
-				</Button>
-				<div>
-					<h1 class="text-2xl font-bold tracking-tight text-text">{m.draft_new_invoice()}</h1>
-					<p class="text-sm font-medium text-text-muted">{m.manually_construct_invoice()}</p>
+				<div class="space-y-4">
+					<div class="hidden"></div>
+					<div>
+						<h1 class="text-2xl font-bold tracking-tight text-text">{m.draft_new_invoice()}</h1>
+						<p class="text-sm font-medium text-text-muted">{m.manually_construct_invoice()}</p>
+					</div>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">

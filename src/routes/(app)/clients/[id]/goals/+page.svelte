@@ -4,8 +4,6 @@
 	import { page } from '$app/state';
 	import {
 		Target,
-		ArrowLeft,
-		ChevronRight,
 		CalendarClock,
 		Activity,
 		Plus,
@@ -18,6 +16,7 @@
 		ArrowRight,
 		TrendingUp
 	} from 'lucide-svelte';
+	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import GoalProgressModal from '$lib/components/clients/GoalProgressModal.svelte';
@@ -36,6 +35,18 @@
 	}>();
 
 	let progressModalOpen = $state(false);
+
+	const breadcrumbs = getBreadcrumbsState();
+	$effect(() => {
+		breadcrumbs.items = [
+			{ label: m.breadcrumb_home(), href: '/dashboard' },
+			{ label: m.clients(), href: '/clients' },
+			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{ label: m.goals() }
+		];
+		return () => { breadcrumbs.items = []; };
+	});
+
 	let selectedGoalTitle = $state('');
 	let selectedGoalId = $state<string | null>(null);
 
@@ -206,18 +217,7 @@
 
 			<div class="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-2">
-					<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-						<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
-							<ArrowLeft class="h-4 w-4" />
-							Clients
-						</a>
-						<ChevronRight class="h-4 w-4" />
-						<a href={`/clients/${page.params.id}`} class="transition-colors hover:text-text">
-							{data.clientName ?? 'Client Detail'}
-						</a>
-						<ChevronRight class="h-4 w-4" />
-						<span class="text-text">Goals &amp; Evaluations</span>
-					</nav>
+					<div class="hidden"></div>
 					<div
 						class="flex items-center gap-3 text-sm font-semibold text-teal-600 dark:text-teal-400"
 					>
