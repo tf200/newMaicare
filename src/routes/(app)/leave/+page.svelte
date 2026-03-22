@@ -18,12 +18,12 @@
 		ChevronRight,
 		Euro,
 		Search,
-		Filter,
 		TrendingUp,
 		Zap
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -63,6 +63,14 @@
 		time: string;
 		reason?: string;
 	}
+
+	type RequestFilter = 'all' | LeaveStatus;
+
+interface RequestFilterPill {
+	id: RequestFilter;
+	label: string;
+	badge: number | null;
+}
 
 	const leaveTypeConfig: Record<LeaveType, { label: () => string; className: string }> = {
 		vacation: {
@@ -205,7 +213,7 @@
 			window.location.hash = `tab=${activeTab}`;
 		}
 	});
-	let requestFilter = $state<'all' | LeaveStatus>('all');
+	let requestFilter = $state<RequestFilter>('all');
 	let searchQuery = $state('');
 	let selectedDepartmentFilter = $state<string | null>(null);
 	let selectedTypeFilter = $state<LeaveType | null>(null);
@@ -280,6 +288,13 @@
 		() => filteredRequests.filter((r) => r.type === 'sick').length
 	);
 
+	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
+		{ id: 'all', label: m.all(), badge: null },
+		{ id: 'pending', label: m.pending(), badge: pendingCount || null },
+		{ id: 'approved', label: m.leave_stats_approved(), badge: approvedCount || null },
+		{ id: 'rejected', label: m.leave_stats_rejected(), badge: rejectedCount || null }
+	]);
+
 	const filteredRequests = $derived.by(() => {
 		let results =
 			requestFilter === 'all'
@@ -329,6 +344,85 @@
 			dateRangeStart !== '' ||
 			dateRangeEnd !== ''
 	);
+
+	type OverviewFilterState = Record<string, boolean | string | number | undefined>;
+	type OverviewFilterItem = { key: string; label: string; type?: 'checkbox' | 'date' };
+	type OverviewFilterGroup = { label: string; items: OverviewFilterItem[] };
+
+	const overviewFilterGroups = $derived.by<OverviewFilterGroup[]>(() => [
+		{
+			label: m.department(),
+			items: departments.map((department) => ({
+				key: `department_${department}`,
+				label: department
+			}))
+		},
+		{
+			label: m.leave_type_label(),
+			items: leaveTypeOptions.map((type) => ({
+				key: `type_${type.value}`,
+				label: type.label
+			}))
+		},
+		{
+			label: m.leave_date_range_label(),
+			items: [
+				{ key: 'date_from', label: m.leave_date_from(), type: 'date' },
+				{ key: 'date_to', label: m.leave_date_to(), type: 'date' }
+			]
+		}
+	]);
+
+	const overviewFilters = $derived.by<OverviewFilterState>(() => {
+		const filters: OverviewFilterState = {
+			date_from: dateRangeStart,
+			date_to: dateRangeEnd
+		};
+
+		for (const department of departments) {
+			filters[`department_${department}`] = selectedDepartmentFilter === department || undefined;
+		}
+
+		for (const type of leaveTypeOptions) {
+			filters[`type_${type.value}`] = selectedTypeFilter === type.value || undefined;
+		}
+
+		return filters;
+	});
+
+	function handleOverviewFilterUpdate(nextFilters: OverviewFilterState) {
+		const nextDepartment =
+			departments.find((department) => Boolean(nextFilters[`department_${department}`])) ?? null;
+		const nextType =
+			(leaveTypeOptions.find((type) => Boolean(nextFilters[`type_${type.value}`]))?.value as LeaveType | undefined) ??
+			null;
+
+		selectedDepartmentFilter = nextDepartment;
+		selectedTypeFilter = nextType;
+		dateRangeStart = typeof nextFilters.date_from === 'string' ? nextFilters.date_from : '';
+		dateRangeEnd = typeof nextFilters.date_to === 'string' ? nextFilters.date_to : '';
+	}
+
+	function getFilterPillClass(pillId: RequestFilter) {
+		if (pillId === 'all') {
+			return requestFilter === pillId
+				? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		if (pillId === 'pending') {
+			return requestFilter === pillId
+				? 'border border-amber-600/40 bg-amber-500 text-white shadow-sm shadow-amber-600/25'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		if (pillId === 'approved') {
+			return requestFilter === pillId
+				? 'border border-emerald-700/40 bg-emerald-600 text-white shadow-sm shadow-emerald-700/25'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		return requestFilter === pillId
+			? 'border border-rose-700/40 bg-rose-600 text-white shadow-sm shadow-rose-700/25'
+			: 'border border-border text-text-muted hover:text-text';
+	}
 
 	function clearAllFilters() {
 		searchQuery = '';
@@ -525,117 +619,58 @@
 </svelte:head>
 
 {#snippet requestFilters()}
-	<div class="space-y-4">
-		<!-- Search + Status pills row -->
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-			<!-- Search input -->
-			<div class="relative w-full sm:w-72">
-				<Search
-					class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-text-subtle"
-				/>
-				<input
-					type="text"
-					placeholder={m.search_employees()}
-					bind:value={searchQuery}
-					class="h-10 w-full rounded-xl border border-border/60 bg-surface pr-10 pl-10 text-sm font-medium text-text shadow-sm transition-all placeholder:text-text-subtle focus:border-brand focus:shadow-brand/10 focus:ring-2 focus:ring-brand/20 focus:outline-none"
-				/>
-				{#if searchQuery}
-					<button
-						class="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-0.5 text-text-muted transition hover:bg-border/40 hover:text-text"
-						onclick={() => (searchQuery = '')}
-					>
-						<XCircle class="h-4 w-4" />
-					</button>
-				{/if}
-			</div>
+	<div class="flex w-full flex-wrap items-center justify-start gap-4">
+		<div class="relative w-full sm:w-64">
+			<Search
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+			/>
+			<input
+				type="search"
+				placeholder={m.search_employees()}
+				bind:value={searchQuery}
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+			/>
+		</div>
 
-			<!-- Status filter pills -->
-			<div class="flex flex-wrap items-center gap-1.5">
-				{#each [
-					{ id: 'all', label: m.all(), color: 'brand', badge: null },
-					{ id: 'pending', label: m.pending(), color: 'warning', badge: pendingCount > 0 ? pendingCount : null },
-					{ id: 'approved', label: m.leave_stats_approved(), color: 'success', badge: null },
-					{ id: 'rejected', label: m.leave_stats_rejected(), color: 'error', badge: null }
-				] as pill}
-					<button
-						class="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all
-							{requestFilter === pill.id
-								? `bg-${pill.color}/10 text-${pill.color} shadow-sm ring-1 ring-${pill.color}/20`
-								: 'text-text-muted hover:bg-surface-subtle hover:text-text'}"
-						onclick={() => (requestFilter = pill.id)}
-					>
-						<span class="h-1.5 w-1.5 rounded-full {requestFilter === pill.id ? `bg-${pill.color}` : 'bg-text-subtle/30'}"></span>
-						{pill.label}
-						{#if pill.badge}
-							<span class="flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[9px] font-bold text-warning">{pill.badge}</span>
-						{/if}
-					</button>
-				{/each}
+		<FilterDropdown
+			filters={overviewFilters}
+			groups={overviewFilterGroups}
+			title="Filters"
+			buttonLabel="Filters"
+			clearLabel={m.swap_clear_filters()}
+			onUpdate={handleOverviewFilterUpdate}
+			onClear={clearAllFilters}
+		/>
+
+		<div class="hidden h-6 w-px bg-border sm:block"></div>
+
+		<div class="flex flex-wrap items-center gap-2">
+			{#each requestFilterPills as pill}
+				<button
+					onclick={() => (requestFilter = pill.id)}
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(pill.id)}"
+				>
+					{pill.label}
+					{#if pill.badge}
+						<span
+							class="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-black/10 px-1 text-[9px] font-bold text-current"
+						>
+							{pill.badge}
+						</span>
+					{/if}
+				</button>
+			{/each}
 
 				{#if hasActiveFilters}
 					<button
-						class="ml-1 flex h-8 items-center gap-1.5 rounded-lg border border-error/20 bg-error/5 px-3 text-xs font-semibold text-error transition-all hover:bg-error/10"
+						class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
 						onclick={clearAllFilters}
 					>
-						<XCircle class="h-3.5 w-3.5" />
 						{m.swap_clear_filters()}
 					</button>
 				{/if}
-			</div>
 		</div>
-
-		<!-- Advanced dropdown filters -->
-		{#if activeTab === 'overzicht'}
-			<div class="grid gap-3 rounded-xl border border-border/40 bg-surface-subtle/30 p-3 sm:grid-cols-3">
-				<div>
-					<label for="dept-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.department()}</label>
-					<select
-						id="dept-filter"
-						bind:value={selectedDepartmentFilter}
-						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-					>
-						<option value={null}>{m.swap_all_departments()}</option>
-						{#each departments as dept}
-							<option value={dept}>{dept}</option>
-						{/each}
-					</select>
-				</div>
-				<div>
-					<label for="type-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.leave_type_label()}</label>
-					<select
-						id="type-filter"
-						bind:value={selectedTypeFilter}
-						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-					>
-						<option value={null}>{m.all()}</option>
-						{#each leaveTypeOptions as type}
-							<option value={type.value}>{type.label}</option>
-						{/each}
-					</select>
-				</div>
-				<div>
-					<label for="date-filter" class="mb-1.5 block text-[10px] font-bold tracking-wider text-text-subtle uppercase">{m.leave_date_from()}</label>
-					<input
-						id="date-filter"
-						type="date"
-						bind:value={dateRangeStart}
-						class="h-9 w-full rounded-lg border border-border/50 bg-surface px-3 text-sm text-text shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-					/>
-				</div>
-			</div>
-		{/if}
 	</div>
-{/snippet}
-
-{#snippet requestActions()}
-	<Button
-		variant="primary"
-		class="gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30 sm:ml-auto"
-		onclick={() => (activeTab = 'aanvragen')}
-	>
-		<CalendarPlus class="h-4 w-4" />
-		{m.leave_table_empty_action()}
-	</Button>
 {/snippet}
 
 {#snippet employeeCell(row: LeaveRequest)}
@@ -762,67 +797,58 @@
 				</div>
 			</div>
 
-			<!-- Quick Stats Row -->
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-				<div
-					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-				>
-					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
-						<Clock class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.leave_stats_open()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{pendingCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_open_sub()}</p>
-					</div>
-				</div>
-				<div
-					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-				>
-					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
-						<CheckCircle class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.leave_stats_approved()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{approvedCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_approved_sub()}</p>
-					</div>
-				</div>
-				<div
-					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-				>
-					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
-						<XCircle class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.leave_stats_rejected()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{rejectedCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_rejected_sub()}</p>
-					</div>
-				</div>
-				<div
-					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-				>
-					<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
-						<Stethoscope class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.leave_stats_sick()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">{sickCount}</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_sick_sub()}</p>
-					</div>
-				</div>
-			</div>
 		</div>
 	</header>
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+		<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
+				<Clock class="h-32 w-32" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.leave_stats_open()}
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">{pendingCount}</div>
+				<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_open_sub()}</p>
+			</div>
+		</div>
+		<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
+				<CheckCircle class="h-32 w-32" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.leave_stats_approved()}
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">{approvedCount}</div>
+				<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_approved_sub()}</p>
+			</div>
+		</div>
+		<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
+				<XCircle class="h-32 w-32" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.leave_stats_rejected()}
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">{rejectedCount}</div>
+				<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_rejected_sub()}</p>
+			</div>
+		</div>
+		<div class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm">
+			<div class="absolute -right-4 -bottom-4 text-error opacity-[0.04]">
+				<Stethoscope class="h-32 w-32" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.leave_stats_sick()}
+				</div>
+				<div class="mt-2 text-3xl font-bold tracking-tight text-text">{sickCount}</div>
+				<p class="mt-1 text-xs font-medium text-text-muted">{m.leave_stats_sick_sub()}</p>
+			</div>
+		</div>
+	</div>
 	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
 		<div class="lg:flex">
 			<!-- ── Sidebar nav (desktop) / Horizontal scroll (mobile) ──── -->
@@ -1472,17 +1498,7 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'overzicht'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
-					<!-- Section header -->
-					<div class="flex items-center gap-3">
-						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-							<List class="h-5 w-5" />
-						</div>
-						<div>
-							<h2 class="text-base font-semibold text-text">{m.leave_table_title()}</h2>
-							<p class="text-xs text-text-muted">{m.leave_table_description()}</p>
-						</div>
-					</div>
+				<div class="animate-in fade-in slide-in-from-bottom-2">
 					<DataTable
 						{columns}
 						rows={filteredRequests}
@@ -1494,7 +1510,7 @@
 						emptyActionLabel={m.leave_table_empty_action()}
 						emptyAction={() => (activeTab = 'aanvragen')}
 						filters={requestFilters}
-						actions={requestActions}
+						surface="plain"
 						cells={{
 							employee: employeeCell,
 							type: typeCell,

@@ -40,6 +40,7 @@
 		onPageChange?: (page: number) => void;
 		onRowClick?: (row: any) => void;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
+		surface?: 'card' | 'plain';
 		class?: string;
 	}
 
@@ -66,6 +67,7 @@
 		onPageChange,
 		onRowClick,
 		onSort,
+		surface = 'card',
 		class: className = ''
 	}: Props = $props();
 
@@ -120,10 +122,16 @@
 	const loadingRows = $derived.by(() => Math.max(1, pageSize));
 </script>
 
-<section class="rounded-3xl border border-border bg-surface shadow-sm {className}">
+<section
+	class="{surface === 'card'
+		? 'rounded-3xl border border-border bg-surface shadow-sm'
+		: ''} {className}"
+>
 	{#if showHeader()}
 		<div
-			class="flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:pb-6"
+			class="flex flex-col gap-4 p-4 sm:px-6 sm:pb-6 {surface === 'card'
+				? 'sm:flex-row sm:items-end sm:justify-between'
+				: ''}"
 		>
 			<div>
 				{#if title}
