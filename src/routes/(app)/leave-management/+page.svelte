@@ -11,12 +11,12 @@
 		Search,
 		Zap
 	} from 'lucide-svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import EmployeeSearch from '$lib/components/forms/EmployeeSearch.svelte';
@@ -25,25 +25,15 @@
 	import LeaveStatsCards from './_components/LeaveStatsCards.svelte';
 	import LeaveTabsNav from './_components/LeaveTabsNav.svelte';
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
-	import { listLeaveRequests, createLeaveRequest } from '$lib/api/leave';
+	import LeavePayoutTab from './_components/LeavePayoutTab.svelte';
+	import LeaveContractChangesTab from './_components/LeaveContractChangesTab.svelte';
+	import { listLeaveRequests } from '$lib/api/leave';
 	import { m } from '$lib/paraglide/messages';
 	import type { EmployeeListItem } from '$lib/api/employees';
-	import type {
-		LeaveRequestListItemResponse,
-		LeaveRequestStatus,
-		CreateLeaveRequestPayload
-	} from '$lib/types/api';
+	import type { LeaveRequestListItemResponse, LeaveRequestStatus } from '$lib/types/api';
+	import type { LeaveManagementPageData } from './+page';
 
-	type LeaveType =
-		| 'vacation'
-		| 'personal'
-		| 'sick'
-		| 'pregnancy'
-		| 'late'
-		| 'unpaid'
-		| 'other'
-		| 'training';
-	type CreatableLeaveType = CreateLeaveRequestPayload['leave_type'];
+	type LeaveType = 'vacation' | 'sick' | 'personal' | 'training' | 'pregnancy';
 	type LeaveStatus = LeaveRequestStatus;
 
 	interface Employee {
@@ -103,25 +93,13 @@
 			label: () => m.leave_type_personal(),
 			className: 'bg-warning/10 text-warning border-warning/20'
 		},
-		unpaid: {
-			label: () => 'Onbetaald',
-			className: 'bg-brand/10 text-brand border-brand/20'
-		},
-		other: {
-			label: () => 'Overig',
-			className: 'bg-brand/10 text-brand border-brand/20'
-		},
 		training: {
-			label: () => 'Training',
-			className: 'bg-indigo-500/10 text-indigo-600 border-indigo-400/40'
+			label: () => m.leave_type_training(),
+			className: 'bg-brand/10 text-brand border-brand/20'
 		},
 		pregnancy: {
 			label: () => m.leave_type_pregnancy(),
 			className: 'bg-pink-500/10 text-pink-600 border-pink-400/40'
-		},
-		late: {
-			label: () => m.leave_tab_late(),
-			className: 'bg-warning/10 text-warning border-warning/20'
 		}
 	};
 
@@ -212,18 +190,18 @@
 	const leaveTypeOptions = $derived([
 		{ label: m.leave_type_vacation(), value: 'vacation' },
 		{ label: m.leave_type_personal(), value: 'personal' },
-		{ label: 'Onbetaald', value: 'unpaid' },
-		{ label: 'Overig', value: 'other' }
+		{ label: m.leave_type_training(), value: 'training' }
 	]);
 
 	const columns: DataTableColumn[] = [
+		{ key: 'employee', label: 'Medewerker' },
 		{ key: 'type', label: 'Type' },
 		{ key: 'period', label: 'Periode' },
 		{ key: 'status', label: 'Status', align: 'center' },
 		{ key: 'actions', label: '', align: 'right' }
 	];
 
-	const validTabs = ['aanvragen', 'ziekmelding', 'zwangerschap', 'telaat', 'overzicht', 'saldo'] as const;
+	const validTabs = ['aanvragen', 'ziekmelding', 'zwangerschap', 'telaat', 'overzicht', 'saldo', 'uitbetalen', 'contractwijzigingen'] as const;
 	type TabId = (typeof validTabs)[number];
 
 	function getInitialTab(): TabId {
@@ -233,10 +211,18 @@
 			const tab = params.get('tab');
 			if (tab && (validTabs as readonly string[]).includes(tab)) return tab as TabId;
 		}
-		return 'aanvragen';
+		return 'overzicht';
 	}
 
+	let { data } = $props<{ data: LeaveManagementPageData }>();
+
 	let activeTab = $state<TabId>(getInitialTab());
+
+	const leaveBalancesDataPromise = $derived.by(() => data.leaveBalancesData);
+	const leaveBalancesInitial = $derived.by(() => data.initial);
+	const appliedBalanceSearch = $derived.by(() => leaveBalancesInitial.filters.employeeSearch);
+	const appliedBalanceYear = $derived.by(() => leaveBalancesInitial.filters.year);
+	const balancePageSize = $derived.by(() => leaveBalancesInitial.pageSize);
 
 	$effect(() => {
 		if (typeof window !== 'undefined') {
@@ -244,6 +230,7 @@
 		}
 	});
 	let requestFilter = $state<RequestFilter>('all');
+	let searchQuery = $state('');
 	let overviewCurrentPage = $state(1);
 	let overviewPageSize = $state(20);
 	let overviewRows = $state<LeaveRequestListItemResponse[]>([]);
@@ -260,33 +247,23 @@
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let newRequest = $state({
-		employeeId: 'emp-1',
-		type: 'vacation' as CreatableLeaveType,
+		employeeId: '',
+		type: 'vacation' as LeaveType,
 		startDate: '',
 		endDate: '',
 		reason: ''
 	});
-	let loggedInEmployee: EmployeeListItem = {
-		id: 'emp-1',
-		first_name: 'Sanne',
-		last_name: 'Jansen',
-		bsn: '123456789',
-		contract_type: 'loondienst',
-		department: 'Afdeling Noord',
-		location_address: null,
-		contract_end_date: null
-	};
-	let selectedEmployeeFromSearch = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedSickEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedPregnancyEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedLateEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
+	let selectedEmployeeFromSearch = $state<EmployeeListItem | null>(null);
+	let selectedSickEmployee = $state<EmployeeListItem | null>(null);
+	let selectedPregnancyEmployee = $state<EmployeeListItem | null>(null);
+	let selectedLateEmployee = $state<EmployeeListItem | null>(null);
 	let sickCalendarStart = $state<string | null>(null);
 	let sickCalendarEnd = $state<string | null>(null);
 	let lateCalendarStart = $state<string | null>(null);
 	let lateCalendarEnd = $state<string | null>(null);
 
 	let sickRequest = $state({
-		employeeId: 'emp-1',
+		employeeId: '',
 		date: '',
 		startTime: '',
 		endTime: '',
@@ -294,14 +271,14 @@
 	});
 
 	let pregnancyRequest = $state({
-		employeeId: 'emp-1',
+		employeeId: '',
 		startDate: '',
 		endDate: '',
 		reason: ''
 	});
 
 	let lateRequest = $state({
-		employeeId: 'emp-1',
+		employeeId: '',
 		date: '',
 		time: '',
 		reason: ''
@@ -324,7 +301,8 @@
 		{ id: 'rejected', label: m.leave_stats_rejected() }
 	]);
 
-	const hasActiveFilters = $derived.by(() => requestFilter !== 'all');
+	const hasActiveFilters = $derived.by(() => searchQuery.trim() !== '' || requestFilter !== 'all');
+	const normalizedOverviewSearch = $derived.by(() => searchQuery.trim().slice(0, 120));
 
 	const overviewTableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		overviewRows.map((row) => {
@@ -378,7 +356,7 @@
 		if (activeTab !== 'overzicht') return;
 
 		const timer = setTimeout(() => {
-			void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
+			void loadOverviewRequests(overviewCurrentPage, requestFilter, normalizedOverviewSearch);
 		}, 250);
 
 		return () => {
@@ -408,12 +386,55 @@
 	}
 
 	function clearAllFilters() {
+		searchQuery = '';
 		requestFilter = 'all';
 		overviewCurrentPage = 1;
 	}
 
-	const leaveBalances = [
-		{ name: 'Sanne Jansen', department: 'Afdeling Noord', budget: 144, used: 32 }
+	const buildBalanceQuery = (
+		pageValue: number,
+		employeeSearchValue: string,
+		yearValue: number | null
+	) => {
+		const params = new URLSearchParams();
+		params.set('page', String(pageValue));
+		params.set('page_size', String(balancePageSize));
+		if (employeeSearchValue) params.set('employee_search', employeeSearchValue);
+		if (yearValue != null) params.set('year', String(yearValue));
+		return params.toString();
+	};
+
+	const updateBalanceQuery = (
+		pageValue: number,
+		employeeSearchValue: string,
+		yearValue: number | null
+	) => {
+		const nextQuery = buildBalanceQuery(pageValue, employeeSearchValue.trim(), yearValue);
+		if (page.url.searchParams.toString() === nextQuery) return;
+		const hash = page.url.hash || '';
+		goto(`?${nextQuery}${hash}`, { replaceState: true, keepFocus: true, noScroll: true });
+	};
+
+	const handleBalanceSearch = (employeeSearchValue: string) => {
+		updateBalanceQuery(1, employeeSearchValue, appliedBalanceYear);
+	};
+
+	const handleBalanceYearChange = (yearValue: number | null) => {
+		updateBalanceQuery(1, appliedBalanceSearch, yearValue);
+	};
+
+	const handleBalancePageChange = (nextPage: number) => {
+		updateBalanceQuery(nextPage, appliedBalanceSearch, appliedBalanceYear);
+	};
+
+	const payoutRequests = [
+		{ id: 'pay-1', employee: 'Ravi Singh', hours: 24, status: 'In behandeling' },
+		{ id: 'pay-2', employee: 'Nina Visser', hours: 12, status: 'Goedgekeurd' }
+	];
+
+	const contractChanges = [
+		{ id: 'change-1', employee: 'Sanne Jansen', fromHours: 24, toHours: 32, date: '2026-02-15' },
+		{ id: 'change-2', employee: 'Milan de Vries', fromHours: 36, toHours: 32, date: '2026-02-28' }
 	];
 
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
@@ -442,102 +463,69 @@
 		return diff > 0 ? diff : 0;
 	}
 
-	function refreshOverviewIfActive() {
-		if (activeTab === 'overzicht') {
-			void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
-		}
+	function addLeaveRequest(payload: Omit<LeaveRequest, 'id' | 'status'>) {
+		const id = crypto.randomUUID();
+		leaveRequests = [{ ...payload, id, status: 'pending' }, ...leaveRequests];
+		setToast(m.leave_toast_added(), 'success');
 	}
 
-	async function handleCreateLeave(event: Event) {
+	function handleCreateLeave(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(newRequest.startDate, newRequest.endDate);
 		if (!newRequest.employeeId || days === 0) {
 			setToast(m.leave_toast_missing_employee_dates(), 'warning');
 			return;
 		}
-
-		try {
-			await createLeaveRequest({
-				leave_type: newRequest.type,
-				start_date: newRequest.startDate,
-				end_date: newRequest.endDate,
-				reason: newRequest.reason || undefined
-			});
-
-			setToast(m.leave_toast_added(), 'success');
-			newRequest = {
-				employeeId: loggedInEmployee.id,
-				type: 'vacation',
-				startDate: '',
-				endDate: '',
-				reason: ''
-			};
-			refreshOverviewIfActive();
-		} catch (error) {
-			setToast('Er is een fout opgetreden bij het aanvragen.', 'error');
-		}
+		addLeaveRequest({
+			employeeId: newRequest.employeeId,
+			type: newRequest.type,
+			startDate: newRequest.startDate,
+			endDate: newRequest.endDate,
+			days,
+			hours: days * 8,
+			reason: newRequest.reason
+		});
+		newRequest = { employeeId: '', type: 'vacation', startDate: '', endDate: '', reason: '' };
 	}
 
-	async function handleCreateSick(event: Event) {
+	function handleCreateSick(event: Event) {
 		event.preventDefault();
 		if (!sickRequest.employeeId || !sickRequest.date || !sickRequest.startTime) {
 			setToast(m.leave_toast_missing_sick_fields(), 'warning');
 			return;
 		}
-
 		const reasonDetail = sickRequest.reason
 			? `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}. ${sickRequest.reason}`
 			: `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}.`;
-
-		try {
-			await createLeaveRequest({
-				leave_type: 'sick',
-				start_date: sickRequest.date,
-				end_date: sickRequest.date,
-				reason: reasonDetail
-			});
-
-			setToast(m.leave_toast_added(), 'success');
-			sickRequest = {
-				employeeId: loggedInEmployee.id,
-				date: '',
-				startTime: '',
-				endTime: '',
-				reason: ''
-			};
-			refreshOverviewIfActive();
-		} catch (error) {
-			setToast('Er is een fout opgetreden bij de ziekmelding.', 'error');
-		}
+		addLeaveRequest({
+			employeeId: sickRequest.employeeId,
+			type: 'sick',
+			startDate: sickRequest.date,
+			endDate: sickRequest.date,
+			days: 1,
+			hours: 8,
+			reason: reasonDetail
+		});
+		sickRequest = { employeeId: '', date: '', startTime: '', endTime: '', reason: '' };
 	}
 
-	async function handleCreatePregnancy(event: Event) {
+	function handleCreatePregnancy(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate);
 		if (!pregnancyRequest.employeeId || days === 0) {
 			setToast(m.leave_toast_missing_pregnancy_fields(), 'warning');
 			return;
 		}
-
-		try {
-			await createLeaveRequest({
-				leave_type: 'pregnancy',
-				start_date: pregnancyRequest.startDate,
-				end_date: pregnancyRequest.endDate,
-				reason: pregnancyRequest.reason || undefined
-			});
-
-			setToast(m.leave_toast_added(), 'success');
-			pregnancyRequest = {
-				employeeId: loggedInEmployee.id,
-				startDate: '',
-				endDate: '',
-				reason: ''
-			};
-			refreshOverviewIfActive();
-		} catch (error) {
-			setToast('Er is een fout opgetreden bij de zwangerschapsverlof aanvraag.', 'error');
-		}
+		addLeaveRequest({
+			employeeId: pregnancyRequest.employeeId,
+			type: 'pregnancy',
+			startDate: pregnancyRequest.startDate,
+			endDate: pregnancyRequest.endDate,
+			days,
+			hours: days * 8,
+			reason: pregnancyRequest.reason
+		});
+		pregnancyRequest = { employeeId: '', startDate: '', endDate: '', reason: '' };
 	}
 
 	function handleCreateLate(event: Event) {
@@ -557,7 +545,7 @@
 			...lateArrivals
 		];
 		setToast(m.leave_toast_late_added(), 'success');
-		lateRequest = { employeeId: loggedInEmployee.id, date: '', time: '', reason: '' };
+		lateRequest = { employeeId: '', date: '', time: '', reason: '' };
 	}
 
 	function handleApproveOverview(id: string) {
@@ -625,7 +613,23 @@
 
 {#snippet requestFilters()}
 	<div class="flex w-full flex-wrap items-center justify-end gap-3">
-		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+		<div class="relative w-full sm:w-56">
+			<Search
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+			/>
+			<input
+				type="search"
+				placeholder={m.search_employees()}
+				value={searchQuery}
+				oninput={(event) => {
+					searchQuery = (event.target as HTMLInputElement).value;
+					overviewCurrentPage = 1;
+				}}
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+			/>
+		</div>
+
+			<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
 			{#each requestFilterPills as pill}
 				<button
 					onclick={() => {
@@ -646,6 +650,25 @@
 						{m.swap_clear_filters()}
 					</button>
 				{/if}
+		</div>
+	</div>
+{/snippet}
+
+{#snippet employeeCell(row: OverviewLeaveRequestRow)}
+	<div class="flex items-center gap-3">
+		<div
+			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-xs font-semibold text-brand"
+		>
+			{row.employeeName
+				.split(' ')
+				.map((part) => part[0])
+				.join('')
+				.slice(0, 2)
+				.toUpperCase()}
+		</div>
+		<div>
+			<p class="text-sm font-semibold text-text">{row.employeeName}</p>
+			<p class="text-xs text-text-muted">{row.employeeId}</p>
 		</div>
 	</div>
 {/snippet}
@@ -684,6 +707,22 @@
 
 {#snippet actionsCell(row: OverviewLeaveRequestRow)}
 	<div class="flex items-center justify-end gap-1">
+		{#if row.status === 'pending'}
+			<button
+				class="flex h-6 items-center gap-0.5 rounded-md border border-error/20 bg-error/5 px-1.5 text-[10px] font-semibold text-error transition-all hover:bg-error/10"
+				onclick={() => handleRejectOverview(row.id)}
+			>
+				<XCircle class="h-2.5 w-2.5" />
+				{m.leave_action_reject()}
+			</button>
+			<button
+				class="flex h-6 items-center gap-0.5 rounded-md border border-success/20 bg-success/5 px-1.5 text-[10px] font-semibold text-success transition-all hover:bg-success/10"
+				onclick={() => handleApproveOverview(row.id)}
+			>
+				<CheckCircle class="h-2.5 w-2.5" />
+				{m.leave_action_approve()}
+			</button>
+		{/if}
 		<button
 			class="flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[10px] font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
 			onclick={() => handleDeleteClick(row.id)}
@@ -706,6 +745,7 @@
 		<div class="lg:flex">
 			<LeaveTabsNav
 				{activeTab}
+				{pendingCount}
 				onTabChange={(tab) => {
 					activeTab = tab;
 				}}
@@ -732,19 +772,33 @@
 							</div>
 						</div>
 						<div class="space-y-5">
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-								<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-								<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-							</div>
+							<!-- Employee Search Component -->
+							<EmployeeSearch
+								labelText={m.leave_employee_select_label()}
+								placeholder={m.leave_employee_search_placeholder()}
+								bind:selectedId={newRequest.employeeId}
+								onSelect={(emp) => {
+									selectedEmployeeFromSearch = emp;
+								}}
+							/>
 
 							{#if selectedEmployeeFromSearch}
 								<div class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4">
 									<!-- Type Select -->
-									<Select
-										label={m.leave_type_label()}
-										options={leaveTypeOptions}
-										bind:value={newRequest.type}
-									/>
+									<div>
+										<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted"
+											>{m.leave_type_label()}</label
+										>
+										<select
+											id="leave-type"
+											bind:value={newRequest.type}
+											class="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+										>
+											{#each leaveTypeOptions as type}
+												<option value={type.value}>{type.label}</option>
+											{/each}
+										</select>
+									</div>
 
 									<!-- Date Range Display -->
 									<div class="space-y-2">
@@ -752,16 +806,22 @@
 											{m.leave_date_range_label()}
 										</div>
 										<div class="grid gap-3 sm:grid-cols-2">
-											<DatePicker
-												label={m.leave_date_from()}
-												bind:value={newRequest.startDate}
-												compact
-											/>
-											<DatePicker
-												label={m.leave_date_to()}
-												bind:value={newRequest.endDate}
-												compact
-											/>
+											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
+												<p class="mb-1 text-xs text-text-muted">{m.leave_date_from()}</p>
+												<p class="font-semibold text-text">
+													{newRequest.startDate
+														? new Date(newRequest.startDate).toLocaleDateString('nl-NL')
+														: 'Selecteren'}
+												</p>
+											</div>
+											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
+												<p class="mb-1 text-xs text-text-muted">{m.leave_date_to()}</p>
+												<p class="font-semibold text-text">
+													{newRequest.endDate
+														? new Date(newRequest.endDate).toLocaleDateString('nl-NL')
+														: 'Selecteren'}
+												</p>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -888,11 +948,16 @@
 						<div class="space-y-5 p-6">
 							<!-- Employee + Date row -->
 							<div class="grid gap-4 sm:grid-cols-2">
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-									<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-									<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-								</div>
-								<DatePicker label={m.sick_date_label()} bind:value={sickRequest.date} />
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={sickRequest.employeeId}
+									onSelect={(employee) => {
+										selectedSickEmployee = employee;
+										sickRequest.employeeId = employee?.id ?? '';
+									}}
+								/>
+								<Input label={m.sick_date_label()} type="date" bind:value={sickRequest.date} />
 							</div>
 							<!-- Time range -->
 							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
@@ -990,25 +1055,30 @@
 						</div>
 						<div class="space-y-5 p-6">
 							<!-- Employee row -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-								<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-								<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-							</div>
+							<EmployeeSearch
+								labelText={m.employee()}
+								placeholder={m.leave_employee_search_placeholder()}
+								bind:selectedId={pregnancyRequest.employeeId}
+								onSelect={(employee) => {
+									selectedPregnancyEmployee = employee;
+									pregnancyRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
 							<!-- Date range inset -->
 							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
 								<p class="mb-3 text-xs font-semibold text-text-muted">
 									{m.leave_date_range_label()}
 								</p>
 								<div class="grid gap-3 sm:grid-cols-2">
-									<DatePicker
+									<Input
 										label={m.pregnancy_start_label()}
+										type="date"
 										bind:value={pregnancyRequest.startDate}
-										compact
 									/>
-									<DatePicker
+									<Input
 										label={m.pregnancy_end_label()}
+										type="date"
 										bind:value={pregnancyRequest.endDate}
-										compact
 									/>
 								</div>
 								{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
@@ -1093,11 +1163,16 @@
 						<div class="space-y-5 p-6">
 							<!-- Employee + Date -->
 							<div class="grid gap-4 sm:grid-cols-2">
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-									<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-									<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-								</div>
-								<DatePicker label={m.sick_date_label()} bind:value={lateRequest.date} />
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={lateRequest.employeeId}
+									onSelect={(employee) => {
+										selectedLateEmployee = employee;
+										lateRequest.employeeId = employee?.id ?? '';
+									}}
+								/>
+								<Input label={m.sick_date_label()} type="date" bind:value={lateRequest.date} />
 							</div>
 							<!-- Arrival time inset -->
 							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
@@ -1211,6 +1286,7 @@
 							overviewCurrentPage = page;
 						}}
 						cells={{
+							employee: employeeCell,
 							type: typeCell,
 							period: periodCell,
 							status: statusCell,
@@ -1219,7 +1295,23 @@
 					/>
 				</div>
 			{:else if activeTab === 'saldo'}
-				<LeaveBalancesTab {leaveBalances} />
+				{#await leaveBalancesDataPromise}
+					<div class="animate-in fade-in slide-in-from-bottom-2 rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm">
+						Loading leave balances...
+					</div>
+				{:then leaveBalancesData}
+					<LeaveBalancesTab
+						data={leaveBalancesData}
+						onSearch={handleBalanceSearch}
+						onYearChange={handleBalanceYearChange}
+						onPageChange={handleBalancePageChange}
+						onRetry={() => invalidateAll()}
+					/>
+				{/await}
+			{:else if activeTab === 'uitbetalen'}
+				<LeavePayoutTab {payoutRequests} />
+			{:else if activeTab === 'contractwijzigingen'}
+				<LeaveContractChangesTab {contractChanges} {formatDate} />
 			{/if}
 		</div>
 		</div>

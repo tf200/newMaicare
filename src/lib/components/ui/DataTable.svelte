@@ -41,6 +41,7 @@
 		onRowClick?: (row: any) => void;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		surface?: 'card' | 'plain';
+		headerInline?: boolean;
 		class?: string;
 	}
 
@@ -68,6 +69,7 @@
 		onRowClick,
 		onSort,
 		surface = 'card',
+		headerInline = false,
 		class: className = ''
 	}: Props = $props();
 
@@ -131,7 +133,7 @@
 		<div
 			class="flex flex-col gap-4 p-4 sm:px-6 sm:pb-6 {surface === 'card'
 				? 'sm:flex-row sm:items-end sm:justify-between'
-				: ''}"
+				: ''} {headerInline ? 'sm:flex-row sm:items-end sm:justify-between' : ''}"
 		>
 			<div>
 				{#if title}

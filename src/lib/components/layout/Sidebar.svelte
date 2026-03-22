@@ -57,7 +57,8 @@
 				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
 				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
 				{ label: m.swap_page_title(), href: '/shift-swaps' },
-				{ label: m.leave(), href: '/leave' }
+				{ label: m.leave(), href: '/leave' },
+				{ label: m.leave_management_label(), href: '/leave-management', permission: 'EMPLOYEE.VIEW' }
 			]
 		},
 		{
