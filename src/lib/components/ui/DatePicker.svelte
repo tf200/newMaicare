@@ -5,6 +5,7 @@
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	let {
 		label,
@@ -12,6 +13,7 @@
 		onchange,
 		error = undefined,
 		minDate = undefined,
+		size = 'md',
 		compact = false,
 		id = `date-${Math.random().toString(36).substr(2, 9)}`
 	} = $props<{
@@ -20,6 +22,8 @@
 		onchange?: (value: string) => void;
 		error?: string;
 		minDate?: string;
+		size?: SelectSize;
+		/** @deprecated Use size="sm" instead */
 		compact?: boolean;
 		id?: string;
 	}>();
@@ -51,6 +55,8 @@
 	let isOpen = $state(false);
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
+	let resolvedSize = $derived(compact ? 'sm' : size);
+	let sizeClass = $derived(selectSizeClasses[resolvedSize as SelectSize]);
 	let viewDate = $state(parseDateValue(value) ?? new Date());
 	let view = $state<View>('days');
 
@@ -176,15 +182,13 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={() => (isOpen = !isOpen)}
-			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface {compact
-				? 'px-3 py-2.5'
-				: 'px-4 py-3.5'} text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-left text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20"
 		>
-			<CalendarIcon class="h-4 w-4 text-text-muted" />
+			<CalendarIcon class="h-4 w-4 text-text-subtle" />
 			{#if formattedValue}
 				<span class="font-medium">{formattedValue}</span>
 			{:else}
-				<span class="text-text-muted">{m.select_date_placeholder()}</span>
+				<span class="text-text-subtle">{m.select_date_placeholder()}</span>
 			{/if}
 		</button>
 
@@ -193,7 +197,7 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl }}
-				class="z-[9999] mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
+				class="z-[9999] mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
 				transition:scale={{ start: 0.95, duration: 150 }}
 			>
 				<div class="w-72 p-4">

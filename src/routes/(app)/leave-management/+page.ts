@@ -70,8 +70,7 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies LeaveBalancesLoadResult;
 		})
 		.catch((error): LeaveBalancesLoadResult => {
-			const message =
-				error instanceof Error ? error.message : 'Failed to load leave balances.';
+			const message = error instanceof Error ? error.message : 'Failed to load leave balances.';
 
 			return {
 				balances: [],

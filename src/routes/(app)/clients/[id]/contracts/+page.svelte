@@ -2,13 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
-	import {
-		Calendar,
-		Clock3,
-		HandCoins,
-		ShieldCheck,
-		ScrollText
-	} from 'lucide-svelte';
+	import { Calendar, Clock3, HandCoins, ShieldCheck, ScrollText } from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -33,10 +27,15 @@
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.clients(), href: '/clients' },
-			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{
+				label: data.clientName ?? m.breadcrumb_client_detail(),
+				href: `/clients/${page.params.id}`
+			},
 			{ label: m.contracts() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	const columns: DataTableColumn[] = [

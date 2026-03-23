@@ -324,7 +324,7 @@
 						</div>
 					{:else}
 						<div class="grid gap-3">
-						{#each client.goals as goal, index (`${goal.title}-${index}`)}
+							{#each client.goals as goal, index (`${goal.title}-${index}`)}
 								<article
 									class="group relative overflow-hidden rounded-2xl border border-border/50 bg-white shadow-sm transition-all hover:border-brand/30 hover:shadow-md dark:bg-zinc-900/40"
 								>
@@ -593,7 +593,7 @@
 								{m.growth_areas()}
 							</p>
 							<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each client.intakeSummary.lowestTopics as topic, index (`${topic}-${index}`)}
+								{#each client.intakeSummary.lowestTopics as topic, index (`${topic}-${index}`)}
 									<span
 										class="rounded-lg border border-border bg-white px-2 py-1 text-[10px] font-medium text-text-muted dark:bg-zinc-900"
 									>

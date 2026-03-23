@@ -58,7 +58,9 @@
 			{ label: m.settings(), href: '/settings/system' },
 			{ label: m.breadcrumb_system_settings() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let systemState = $state<SystemSettingsLoadResult>(_createInitialSystemSettings());

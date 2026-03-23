@@ -369,17 +369,17 @@
 			<p class="mx-auto mt-2 max-w-md text-text-muted">
 				{m.handbook_completed_description()}
 			</p>
-				<Button
-					variant="ghost"
-					class="mt-8 border border-border"
-					onclick={() => {
-						showCompletionPanel = false;
-						currentStepIndex = 0;
-						resetStepState();
-					}}
-				>
-					Review Handbook
-				</Button>
+			<Button
+				variant="ghost"
+				class="mt-8 border border-border"
+				onclick={() => {
+					showCompletionPanel = false;
+					currentStepIndex = 0;
+					resetStepState();
+				}}
+			>
+				Review Handbook
+			</Button>
 		</div>
 	{:else}
 		<div class="grid gap-8 lg:grid-cols-12">
@@ -556,7 +556,8 @@
 							<div class="flex items-center gap-3">
 								{#if currentStep.status !== 'pending'}
 									<span
-										class="flex items-center gap-2 text-sm font-bold {currentStep.status === 'completed'
+										class="flex items-center gap-2 text-sm font-bold {currentStep.status ===
+										'completed'
 											? 'text-emerald-500'
 											: 'text-amber-600'}"
 									>

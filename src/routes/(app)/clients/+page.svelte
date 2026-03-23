@@ -513,6 +513,18 @@
 			rowKey="id"
 			title={m.clients()}
 			description={m.clients_table_description()}
+			emptyTitle={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_title()
+				: m.empty_clients_title()}
+			emptyDescription={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_description()
+				: m.empty_clients_description()}
+			emptyActionLabel={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_action()
+				: m.empty_clients_action()}
+			emptyAction={appliedSearch || appliedStatus || appliedLocationId
+				? () => updateQuery(1, '', '', '')
+				: () => goto('/clients')}
 			filters={tableFilters}
 			cells={{
 				client: clientCell,

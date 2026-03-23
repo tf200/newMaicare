@@ -282,6 +282,12 @@
 			rowKey="id"
 			title={m.employee_roster()}
 			description="Track active coverage, leave status, and team ownership in real time."
+			emptyTitle={appliedSearch ? m.empty_no_results_title() : m.empty_employees_title()}
+			emptyDescription={appliedSearch
+				? m.empty_no_results_description()
+				: m.empty_employees_description()}
+			emptyActionLabel={appliedSearch ? m.empty_no_results_action() : m.empty_employees_action()}
+			emptyAction={appliedSearch ? clearFilters : () => (showCreateEmployee = true)}
 			filters={tableFilters}
 			cells={{ name: nameCell, contractType: contractTypeCell, actions: actionsCell }}
 		/>

@@ -8,7 +8,6 @@
 		Stethoscope,
 		Baby,
 		AlarmClock,
-		Search,
 		Zap
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -19,7 +18,6 @@
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
-	import EmployeeSearch from '$lib/components/forms/EmployeeSearch.svelte';
 	import ScheduleCalendar from '$lib/components/forms/ScheduleCalendar.svelte';
 	import LeavePageHeader from './_components/LeavePageHeader.svelte';
 	import LeaveStatsCards from './_components/LeaveStatsCards.svelte';
@@ -27,6 +25,8 @@
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
 	import { listLeaveRequests, createLeaveRequest } from '$lib/api/leave';
 	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
+	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { EmployeeListItem } from '$lib/api/employees';
 	import type {
 		LeaveRequestListItemResponse,
@@ -104,15 +104,15 @@
 			className: 'bg-warning/10 text-warning border-warning/20'
 		},
 		unpaid: {
-			label: () => 'Onbetaald',
+			label: () => m.leave_type_unpaid(),
 			className: 'bg-brand/10 text-brand border-brand/20'
 		},
 		other: {
-			label: () => 'Overig',
+			label: () => m.leave_type_other(),
 			className: 'bg-brand/10 text-brand border-brand/20'
 		},
 		training: {
-			label: () => 'Training',
+			label: () => m.leave_type_training(),
 			className: 'bg-indigo-500/10 text-indigo-600 border-indigo-400/40'
 		},
 		pregnancy: {
@@ -132,8 +132,8 @@
 		pending: { label: () => m.leave_status_pending(), icon: AlertCircle, color: 'text-warning' },
 		approved: { label: () => m.leave_status_approved(), icon: CheckCircle, color: 'text-success' },
 		rejected: { label: () => m.leave_status_rejected(), icon: XCircle, color: 'text-error' },
-		cancelled: { label: () => 'Cancelled', icon: XCircle, color: 'text-text-muted' },
-		expired: { label: () => 'Expired', icon: Clock, color: 'text-text-muted' }
+		cancelled: { label: () => m.leave_status_cancelled(), icon: XCircle, color: 'text-text-muted' },
+		expired: { label: () => m.leave_status_expired(), icon: Clock, color: 'text-text-muted' }
 	};
 
 	const employees: Employee[] = [
@@ -212,18 +212,27 @@
 	const leaveTypeOptions = $derived([
 		{ label: m.leave_type_vacation(), value: 'vacation' },
 		{ label: m.leave_type_personal(), value: 'personal' },
-		{ label: 'Onbetaald', value: 'unpaid' },
-		{ label: 'Overig', value: 'other' }
+		{ label: m.leave_type_unpaid(), value: 'unpaid' },
+		{ label: m.leave_type_other(), value: 'other' }
 	]);
 
+	const auth = getAuthState();
+
 	const columns: DataTableColumn[] = [
-		{ key: 'type', label: 'Type' },
-		{ key: 'period', label: 'Periode' },
-		{ key: 'status', label: 'Status', align: 'center' },
+		{ key: 'type', label: m.type() },
+		{ key: 'period', label: m.period() },
+		{ key: 'status', label: m.status(), align: 'center' },
 		{ key: 'actions', label: '', align: 'right' }
 	];
 
-	const validTabs = ['aanvragen', 'ziekmelding', 'zwangerschap', 'telaat', 'overzicht', 'saldo'] as const;
+	const validTabs = [
+		'aanvragen',
+		'ziekmelding',
+		'zwangerschap',
+		'telaat',
+		'overzicht',
+		'saldo'
+	] as const;
 	type TabId = (typeof validTabs)[number];
 
 	function getInitialTab(): TabId {
@@ -260,51 +269,63 @@
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let newRequest = $state({
-		employeeId: 'emp-1',
 		type: 'vacation' as CreatableLeaveType,
 		startDate: '',
 		endDate: '',
 		reason: ''
 	});
-	let loggedInEmployee: EmployeeListItem = {
-		id: 'emp-1',
-		first_name: 'Sanne',
-		last_name: 'Jansen',
-		bsn: '123456789',
-		contract_type: 'loondienst',
-		department: 'Afdeling Noord',
-		location_address: null,
-		contract_end_date: null
-	};
-	let selectedEmployeeFromSearch = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedSickEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedPregnancyEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
-	let selectedLateEmployee = $state<EmployeeListItem | null>(loggedInEmployee);
-	let sickCalendarStart = $state<string | null>(null);
-	let sickCalendarEnd = $state<string | null>(null);
+	const loggedInEmployee = $derived.by<EmployeeListItem>(() => {
+		const user = auth.user;
+		return {
+			id: user?.employee_id ?? '',
+			first_name: user?.first_name ?? '',
+			last_name: user?.last_name ?? '',
+			bsn: '',
+			contract_type: 'none',
+			department: null,
+			location_address: null,
+			contract_end_date: null
+		};
+	});
+	const loggedInEmployeeFullName = $derived.by(() => {
+		const fullName = [loggedInEmployee.first_name, loggedInEmployee.last_name]
+			.filter(Boolean)
+			.join(' ')
+			.trim();
+		return fullName || m.employee();
+	});
+	const calendarEmployee = $derived.by<EmployeeListItem | null>(() =>
+		loggedInEmployee.id ? loggedInEmployee : null
+	);
+	const hasLoggedInEmployee = $derived.by(() => Boolean(loggedInEmployee.id));
+	const selectedLateEmployee = $derived.by<EmployeeListItem | null>(() =>
+		loggedInEmployee.id ? loggedInEmployee : null
+	);
 	let lateCalendarStart = $state<string | null>(null);
 	let lateCalendarEnd = $state<string | null>(null);
 
 	let sickRequest = $state({
-		employeeId: 'emp-1',
-		date: '',
-		startTime: '',
-		endTime: '',
+		startDate: '',
+		endDate: '',
 		reason: ''
 	});
 
 	let pregnancyRequest = $state({
-		employeeId: 'emp-1',
 		startDate: '',
 		endDate: '',
 		reason: ''
 	});
 
 	let lateRequest = $state({
-		employeeId: 'emp-1',
+		employeeId: '',
 		date: '',
 		time: '',
 		reason: ''
+	});
+
+	$effect(() => {
+		if (!loggedInEmployee.id) return;
+		lateRequest.employeeId = loggedInEmployee.id;
 	});
 
 	const pendingCount = $derived.by(
@@ -366,7 +387,7 @@
 			if (requestId !== overviewRequestSequence) return;
 			overviewRows = [];
 			overviewTotalCount = 0;
-			overviewError = error instanceof Error ? error.message : 'Could not load leave requests.';
+			overviewError = error instanceof Error ? error.message : m.leave_load_error();
 		} finally {
 			if (requestId === overviewRequestSequence) {
 				overviewLoading = false;
@@ -394,16 +415,16 @@
 		}
 		if (pillId === 'pending') {
 			return requestFilter === pillId
-				? 'border border-amber-600/40 bg-amber-500 text-white shadow-sm shadow-amber-600/25'
+				? 'bg-amber-500 text-white'
 				: 'border border-border text-text-muted hover:text-text';
 		}
 		if (pillId === 'approved') {
 			return requestFilter === pillId
-				? 'border border-emerald-700/40 bg-emerald-600 text-white shadow-sm shadow-emerald-700/25'
+				? 'bg-emerald-600 text-white'
 				: 'border border-border text-text-muted hover:text-text';
 		}
 		return requestFilter === pillId
-			? 'border border-rose-700/40 bg-rose-600 text-white shadow-sm shadow-rose-700/25'
+			? 'bg-rose-600 text-white'
 			: 'border border-border text-text-muted hover:text-text';
 	}
 
@@ -425,13 +446,17 @@
 	}
 
 	function formatMonth(date: Date) {
-		return new Intl.DateTimeFormat('nl-NL', { month: 'long', year: 'numeric' }).format(date);
+		return new Intl.DateTimeFormat(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
+			month: 'long',
+			year: 'numeric'
+		}).format(date);
 	}
 
 	function formatDate(dateText: string) {
-		return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(
-			new Date(dateText)
-		);
+		return new Intl.DateTimeFormat(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
+			day: 'numeric',
+			month: 'short'
+		}).format(new Date(`${dateText}T00:00:00`));
 	}
 
 	function calculateDays(startDate: string, endDate: string) {
@@ -442,101 +467,162 @@
 		return diff > 0 ? diff : 0;
 	}
 
-	function refreshOverviewIfActive() {
-		if (activeTab === 'overzicht') {
-			void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
-		}
+	function isValidDateYmd(value: string) {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+		const date = new Date(`${value}T00:00:00`);
+		return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+	}
+
+	function normalizeReason(value: string) {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	}
+
+	function addLocalLeaveRequest(
+		type: LeaveType,
+		startDate: string,
+		endDate: string,
+		reason?: string
+	) {
+		const days = calculateDays(startDate, endDate);
+		if (days === 0) return;
+
+		leaveRequests = [
+			{
+				id: crypto.randomUUID(),
+				employeeId: loggedInEmployee.id || 'self',
+				type,
+				startDate,
+				endDate,
+				days,
+				hours: days * 8,
+				reason,
+				status: 'pending'
+			},
+			...leaveRequests
+		];
+	}
+
+	function refreshOverview() {
+		void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
 	}
 
 	async function handleCreateLeave(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(newRequest.startDate, newRequest.endDate);
-		if (!newRequest.employeeId || days === 0) {
+		if (
+			!hasLoggedInEmployee ||
+			days === 0 ||
+			!isValidDateYmd(newRequest.startDate) ||
+			!isValidDateYmd(newRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_employee_dates(), 'warning');
 			return;
 		}
+
+		const normalizedReason = normalizeReason(newRequest.reason);
 
 		try {
 			await createLeaveRequest({
 				leave_type: newRequest.type,
 				start_date: newRequest.startDate,
 				end_date: newRequest.endDate,
-				reason: newRequest.reason || undefined
+				reason: normalizedReason
 			});
 
+			addLocalLeaveRequest(newRequest.type, newRequest.startDate, newRequest.endDate, normalizedReason);
 			setToast(m.leave_toast_added(), 'success');
 			newRequest = {
-				employeeId: loggedInEmployee.id,
 				type: 'vacation',
 				startDate: '',
 				endDate: '',
 				reason: ''
 			};
-			refreshOverviewIfActive();
+			refreshOverview();
 		} catch (error) {
-			setToast('Er is een fout opgetreden bij het aanvragen.', 'error');
+			setToast(m.leave_toast_request_error(), 'error');
 		}
 	}
 
 	async function handleCreateSick(event: Event) {
 		event.preventDefault();
-		if (!sickRequest.employeeId || !sickRequest.date || !sickRequest.startTime) {
+		const days = calculateDays(sickRequest.startDate, sickRequest.endDate);
+		if (
+			!hasLoggedInEmployee ||
+			days === 0 ||
+			!isValidDateYmd(sickRequest.startDate) ||
+			!isValidDateYmd(sickRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_sick_fields(), 'warning');
 			return;
 		}
 
-		const reasonDetail = sickRequest.reason
-			? `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}. ${sickRequest.reason}`
-			: `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}.`;
+		const normalizedReason = normalizeReason(sickRequest.reason);
 
 		try {
 			await createLeaveRequest({
 				leave_type: 'sick',
-				start_date: sickRequest.date,
-				end_date: sickRequest.date,
-				reason: reasonDetail
+				start_date: sickRequest.startDate,
+				end_date: sickRequest.endDate,
+				reason: normalizedReason
 			});
 
+			addLocalLeaveRequest(
+				'sick',
+				sickRequest.startDate,
+				sickRequest.endDate,
+				normalizedReason
+			);
 			setToast(m.leave_toast_added(), 'success');
 			sickRequest = {
-				employeeId: loggedInEmployee.id,
-				date: '',
-				startTime: '',
-				endTime: '',
+				startDate: '',
+				endDate: '',
 				reason: ''
 			};
-			refreshOverviewIfActive();
+			refreshOverview();
 		} catch (error) {
-			setToast('Er is een fout opgetreden bij de ziekmelding.', 'error');
+			setToast(m.leave_toast_sick_error(), 'error');
 		}
 	}
 
 	async function handleCreatePregnancy(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate);
-		if (!pregnancyRequest.employeeId || days === 0) {
+		if (
+			!hasLoggedInEmployee ||
+			days === 0 ||
+			!isValidDateYmd(pregnancyRequest.startDate) ||
+			!isValidDateYmd(pregnancyRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_pregnancy_fields(), 'warning');
 			return;
 		}
+
+		const normalizedReason = normalizeReason(pregnancyRequest.reason);
 
 		try {
 			await createLeaveRequest({
 				leave_type: 'pregnancy',
 				start_date: pregnancyRequest.startDate,
 				end_date: pregnancyRequest.endDate,
-				reason: pregnancyRequest.reason || undefined
+				reason: normalizedReason
 			});
 
+			addLocalLeaveRequest(
+				'pregnancy',
+				pregnancyRequest.startDate,
+				pregnancyRequest.endDate,
+				normalizedReason
+			);
 			setToast(m.leave_toast_added(), 'success');
 			pregnancyRequest = {
-				employeeId: loggedInEmployee.id,
 				startDate: '',
 				endDate: '',
 				reason: ''
 			};
-			refreshOverviewIfActive();
+			refreshOverview();
 		} catch (error) {
-			setToast('Er is een fout opgetreden bij de zwangerschapsverlof aanvraag.', 'error');
+			setToast(m.leave_toast_pregnancy_error(), 'error');
 		}
 	}
 
@@ -615,7 +701,10 @@
 	}
 
 	function getEmployeeName(employeeId: string) {
-		return employees.find((employee) => employee.id === employeeId)?.name ?? 'Onbekend';
+		if (employeeId === loggedInEmployee.id) {
+			return loggedInEmployeeFullName;
+		}
+		return employees.find((employee) => employee.id === employeeId)?.name ?? m.unknown();
 	}
 </script>
 
@@ -626,26 +715,28 @@
 {#snippet requestFilters()}
 	<div class="flex w-full flex-wrap items-center justify-end gap-3">
 		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-			{#each requestFilterPills as pill}
+			{#each requestFilterPills as pill (pill.id)}
 				<button
 					onclick={() => {
 						requestFilter = pill.id;
 						overviewCurrentPage = 1;
 					}}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(pill.id)}"
-					>
-						{pill.label}
-					</button>
-				{/each}
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
+						pill.id
+					)}"
+				>
+					{pill.label}
+				</button>
+			{/each}
 
-				{#if hasActiveFilters}
-					<button
-						class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
-						onclick={clearAllFilters}
-					>
-						{m.swap_clear_filters()}
-					</button>
-				{/if}
+			{#if hasActiveFilters}
+				<button
+					class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
+					onclick={clearAllFilters}
+				>
+					{m.swap_clear_filters()}
+				</button>
+			{/if}
 		</div>
 	</div>
 {/snippet}
@@ -656,7 +747,7 @@
 	<span
 		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {typeMeta
 			? typeMeta.className
-			: 'border-border bg-surface-subtle text-text-muted'}"
+			: 'bg-surface-subtle border-border text-text-muted'}"
 	>
 		{typeMeta ? typeMeta.label() : row.leaveType}
 	</span>
@@ -669,7 +760,7 @@
 		</p>
 		<p class="text-text-muted">
 			{row.days}
-			{row.days === 1 ? 'dag' : 'dagen'} ({row.hours} uur)
+			{row.days === 1 ? m.leave_day_singular() : m.leave_day_plural()} ({row.hours} {m.leave_hours_short()})
 		</p>
 	</div>
 {/snippet}
@@ -685,7 +776,7 @@
 {#snippet actionsCell(row: OverviewLeaveRequestRow)}
 	<div class="flex items-center justify-end gap-1">
 		<button
-			class="flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[10px] font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
+			class="flex h-6 items-center gap-0.5 rounded-md px-1.5 text-xs font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
 			onclick={() => handleDeleteClick(row.id)}
 		>
 			{m.leave_action_delete()}
@@ -702,7 +793,9 @@
 		onOpenEmail={() => (emailDialogOpen = true)}
 	/>
 	<LeaveStatsCards {pendingCount} {approvedCount} {rejectedCount} {sickCount} />
-	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+	<div
+		class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm"
+	>
 		<div class="lg:flex">
 			<LeaveTabsNav
 				{activeTab}
@@ -713,124 +806,78 @@
 
 			<!-- ── Content pane ────────────────────────────────────────── -->
 			<div class="min-w-0 flex-1 p-6">
-			{#if activeTab === 'aanvragen'}
-				<form
-					class="grid gap-6 {selectedEmployeeFromSearch
-						? 'lg:grid-cols-[1.5fr_1fr]'
-						: 'lg:grid-cols-[2fr_1fr]'}"
-					onsubmit={handleCreateLeave}
-				>
-					<!-- Left: Form -->
-					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-						<div class="mb-5 flex items-center gap-3">
-							<div class="rounded-xl bg-brand/10 p-2 text-brand">
-								<CalendarPlus class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-lg font-semibold text-text">{m.leave_new_request_title()}</h2>
-								<p class="text-xs text-text-muted">{m.leave_new_request_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5">
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-								<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-								<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-							</div>
+				{#if activeTab === 'aanvragen'}
+					<form class="grid gap-6 lg:grid-cols-[1.5fr_1fr]" onsubmit={handleCreateLeave}>
+						<!-- Left: Form -->
+						<div class="space-y-5 border-b border-brand/10 pb-5">
+							<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
+							<p class="text-sm font-medium text-text">
+								{loggedInEmployeeFullName}
+							</p>
 
-							{#if selectedEmployeeFromSearch}
-								<div class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4">
-									<!-- Type Select -->
-									<Select
-										label={m.leave_type_label()}
-										options={leaveTypeOptions}
-										bind:value={newRequest.type}
-									/>
+							<!-- Type Select -->
+							<Select label={m.leave_type_label()} options={leaveTypeOptions} bind:value={newRequest.type} />
 
-									<!-- Date Range Display -->
-									<div class="space-y-2">
-										<div class="ml-1 text-xs font-semibold text-text-muted">
-											{m.leave_date_range_label()}
-										</div>
-										<div class="grid gap-3 sm:grid-cols-2">
-											<DatePicker
-												label={m.leave_date_from()}
-												bind:value={newRequest.startDate}
-												compact
-											/>
-											<DatePicker
-												label={m.leave_date_to()}
-												bind:value={newRequest.endDate}
-												compact
-											/>
-										</div>
-									</div>
+							<!-- Date Range -->
+							<div class="space-y-2">
+								<div class="ml-1 text-xs font-semibold text-text-muted">
+									{m.leave_date_range_label()}
 								</div>
+								<div class="grid gap-3 sm:grid-cols-2">
+									<DatePicker label={m.leave_date_from()} bind:value={newRequest.startDate} compact />
+									<DatePicker label={m.leave_date_to()} bind:value={newRequest.endDate} compact />
+								</div>
+							</div>
 
-								<!-- Reason Textarea -->
-								<Textarea
-									label={m.leave_reason_label()}
-									bind:value={newRequest.reason}
-									placeholder={m.leave_reason_placeholder()}
-								/>
+							<!-- Reason Textarea -->
+							<Textarea
+								label={m.leave_reason_label()}
+								bind:value={newRequest.reason}
+								placeholder={m.leave_reason_placeholder()}
+							/>
 
-								<!-- Days Calculator -->
-								<div
-									class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
-								>
-									<div class="flex items-center gap-2">
-										<Zap class="h-4 w-4" />
-										<span
-											>{calculateDays(newRequest.startDate, newRequest.endDate)}
-											{calculateDays(newRequest.startDate, newRequest.endDate) === 1
-												? m.leave_day_singular()
-												: m.leave_day_plural()}</span
-										>
-									</div>
+							<!-- Days Calculator -->
+							<div
+								class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
+							>
+								<div class="flex items-center gap-2">
+									<Zap class="h-4 w-4" />
 									<span
-										>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
-										{m.leave_hours_short()}</span
+										>{calculateDays(newRequest.startDate, newRequest.endDate)}
+										{calculateDays(newRequest.startDate, newRequest.endDate) === 1
+											? m.leave_day_singular()
+											: m.leave_day_plural()}</span
 									>
 								</div>
-
-								<!-- Submit Button -->
-								<Button type="submit" class="w-full gap-2 py-3">
-									<CheckCircle class="h-4 w-4" />
-									{m.leave_submit_request()}
-								</Button>
-							{:else}
-								<div
-									class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
+								<span
+									>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
+									{m.leave_hours_short()}</span
 								>
-									{m.leave_select_employee_prompt()}
-								</div>
-							{/if}
+							</div>
+
+							<!-- Submit Button -->
+							<Button type="submit" class="w-full gap-2 py-3">
+								<CheckCircle class="h-4 w-4" />
+								{m.leave_submit_request()}
+							</Button>
 						</div>
-					</div>
 
-					<!-- Right: Calendar or Guidelines -->
-					{#if selectedEmployeeFromSearch}
-						<!-- Calendar appears here when employee is selected -->
-						<ScheduleCalendar
-							selectedEmployee={selectedEmployeeFromSearch}
-							bind:selectedStartDate={newRequest.startDate}
-							bind:selectedEndDate={newRequest.endDate}
-							onDateRangeSelect={(start, end) => {
-								newRequest.startDate = start;
-								newRequest.endDate = end;
-							}}
-						/>
-					{:else}
-						<!-- Guidelines shown before employee selection -->
-						<div class="space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-								>
-									<AlertCircle class="h-4 w-4 text-brand" />
-									{m.leave_guidelines_title()}
-								</div>
-								<h3 class="mt-2 text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
-								<ul class="mt-4 space-y-3 text-sm text-text-muted">
+						<!-- Right: Calendar or Guidelines -->
+						{#if calendarEmployee}
+							<ScheduleCalendar
+								selectedEmployee={calendarEmployee}
+								bind:selectedStartDate={newRequest.startDate}
+								bind:selectedEndDate={newRequest.endDate}
+								onDateRangeSelect={(start, end) => {
+									newRequest.startDate = start;
+									newRequest.endDate = end;
+								}}
+							/>
+						{:else}
+							<!-- Guidelines shown before employee selection -->
+							<div class="space-y-4">
+								<h3 class="text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
+								<ul class="space-y-3 text-sm text-text-muted">
 									<li class="flex gap-2">
 										<span class="font-bold text-brand">•</span>
 										<span>{m.leave_guideline_1()}</span>
@@ -845,223 +892,150 @@
 									</li>
 								</ul>
 							</div>
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<p class="mb-4 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									{m.leave_quick_status_title()}
-								</p>
-								<div class="space-y-3">
-									<div
-										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-									>
-										<span class="text-sm text-text-muted">{m.leave_stats_open()}</span>
-										<span class="text-lg font-bold text-warning">{pendingCount}</span>
-									</div>
-									<div
-										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-									>
-										<span class="text-sm text-text-muted">{m.leave_stats_approved()}</span>
-										<span class="text-lg font-bold text-success">{approvedCount}</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'ziekmelding'}
-				<form
-					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
-					onsubmit={handleCreateSick}
-				>
-					<div class="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
-						<!-- Accent banner -->
-						<div class="flex items-center gap-3 border-b border-error/15 bg-error/5 px-6 py-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10 text-error"
-							>
-								<Stethoscope class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.sick_report_title()}</h2>
-								<p class="text-xs text-text-muted">{m.sick_report_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
-							<!-- Employee + Date row -->
-							<div class="grid gap-4 sm:grid-cols-2">
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
-									<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-									<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-								</div>
-								<DatePicker label={m.sick_date_label()} bind:value={sickRequest.date} />
-							</div>
-							<!-- Time range -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
-									{m.sick_start_time_label()} — {m.sick_end_time_label()}
-								</p>
-								<div class="grid gap-3 sm:grid-cols-2">
-									<Input
-										label={m.sick_start_time_label()}
-										type="time"
-										bind:value={sickRequest.startTime}
-									/>
-									<Input
-										label={m.sick_end_time_label()}
-										type="time"
-										bind:value={sickRequest.endTime}
-									/>
-								</div>
-							</div>
-							<Textarea
-								label={m.sick_notes_label()}
-								bind:value={sickRequest.reason}
-								placeholder={m.sick_notes_placeholder()}
-							/>
-							<Button type="submit" class="w-full gap-2 py-3">
-								<CheckCircle class="h-4 w-4" />
-								{m.sick_save()}
-							</Button>
-						</div>
-					</div>
-					{#if selectedSickEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedSickEmployee}
-								bind:selectedStartDate={sickCalendarStart}
-								bind:selectedEndDate={sickCalendarEnd}
-								onDateRangeSelect={(startDate) => {
-									sickRequest.date = startDate;
-									sickCalendarStart = startDate;
-									sickCalendarEnd = startDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-error/70 uppercase"
-								>
-									<AlertCircle class="h-4 w-4" />
-									{m.sick_warning_title()}
-								</div>
-								<p class="mt-3 text-sm text-text-muted">{m.sick_warning_body()}</p>
-								<div class="mt-4 rounded-xl border border-error/15 bg-error/5 p-4">
-									<p class="text-xs font-semibold text-error">⚠️ {m.sick_warning_long_label()}</p>
-									<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
-								</div>
-							</div>
-							<!-- Quick stats -->
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									{m.leave_stats_sick()}
-								</p>
-								<div
-									class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-								>
-									<span class="text-sm text-text-muted">{m.leave_stats_sick()}</span>
-									<span class="text-2xl font-bold text-error">{sickCount}</span>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'zwangerschap'}
-				<form
-					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
-					onsubmit={handleCreatePregnancy}
-				>
-					<div
-						class="overflow-hidden rounded-3xl border border-pink-200/60 bg-surface shadow-sm dark:border-pink-900/30"
-					>
-						<!-- Accent banner -->
-						<div
-							class="flex items-center gap-3 border-b border-pink-200/60 bg-pink-50/60 px-6 py-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+						{/if}
+					</form>
+				{:else if activeTab === 'ziekmelding'}
+					<form
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+						onsubmit={handleCreateSick}
 						>
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
-							>
-								<Baby class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.pregnancy_title()}</h2>
-								<p class="text-xs text-text-muted">{m.pregnancy_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
-							<!-- Employee row -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
+							<div class="space-y-5 border-b border-error/10 pb-5">
 								<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-								<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
-							</div>
-							<!-- Date range inset -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
+								<p class="text-sm font-medium text-text">
+									{loggedInEmployeeFullName}
+								</p>
+								<p class="text-xs font-semibold text-text-muted">
 									{m.leave_date_range_label()}
 								</p>
 								<div class="grid gap-3 sm:grid-cols-2">
 									<DatePicker
-										label={m.pregnancy_start_label()}
-										bind:value={pregnancyRequest.startDate}
+										label={m.leave_date_from()}
+										bind:value={sickRequest.startDate}
 										compact
 									/>
-									<DatePicker
-										label={m.pregnancy_end_label()}
-										bind:value={pregnancyRequest.endDate}
-										compact
-									/>
+									<DatePicker label={m.leave_date_to()} bind:value={sickRequest.endDate} compact />
 								</div>
-								{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
+								{#if sickRequest.startDate && sickRequest.endDate}
 									<div
-										class="mt-3 flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
+										class="flex items-center justify-between rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
 									>
-										<span class="flex items-center gap-1.5"
-											><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
-										>
-										<span
-											>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
-											{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
+										<span class="flex items-center gap-1.5">
+											<Stethoscope class="h-3.5 w-3.5" />
+											{m.leave_date_range_label()}
+										</span>
+										<span>
+											{calculateDays(sickRequest.startDate, sickRequest.endDate)}
+											{calculateDays(sickRequest.startDate, sickRequest.endDate) === 1
 												? m.leave_day_singular()
-												: m.leave_day_plural()}</span
-										>
+												: m.leave_day_plural()}
+										</span>
 									</div>
 								{/if}
+								<Textarea
+									label={m.sick_notes_label()}
+									bind:value={sickRequest.reason}
+								placeholder={m.sick_notes_placeholder()}
+							/>
+							<Button type="submit" class="w-full gap-2 bg-error py-3 text-white hover:bg-error/90">
+								<CheckCircle class="h-4 w-4" />
+								{m.sick_save()}
+							</Button>
+						</div>
+						{#if calendarEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={calendarEmployee}
+									bind:selectedStartDate={sickRequest.startDate}
+									bind:selectedEndDate={sickRequest.endDate}
+									onDateRangeSelect={(startDate, endDate) => {
+										sickRequest.startDate = startDate;
+										sickRequest.endDate = endDate;
+									}}
+								/>
 							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<p class="text-sm font-semibold text-text">{m.sick_warning_title()}</p>
+								<p class="text-sm text-text-muted">{m.sick_warning_body()}</p>
+								<div class="rounded-xl border border-error/15 bg-error/5 p-4">
+									<p class="text-xs font-semibold text-error">{m.sick_warning_long_label()}</p>
+									<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
+								</div>
+							</div>
+						{/if}
+					</form>
+				{:else if activeTab === 'zwangerschap'}
+					<form
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+						onsubmit={handleCreatePregnancy}
+					>
+						<div class="space-y-5 border-b border-pink-200/40 pb-5">
+							<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
+							<p class="text-sm font-medium text-text">
+								{loggedInEmployeeFullName}
+							</p>
+							<!-- Date range -->
+							<p class="text-xs font-semibold text-text-muted">
+								{m.leave_date_range_label()}
+							</p>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<DatePicker
+									label={m.pregnancy_start_label()}
+									bind:value={pregnancyRequest.startDate}
+									compact
+								/>
+								<DatePicker
+									label={m.pregnancy_end_label()}
+									bind:value={pregnancyRequest.endDate}
+									compact
+								/>
+							</div>
+							{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
+								<div
+									class="flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
+								>
+									<span class="flex items-center gap-1.5"
+										><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
+									>
+									<span
+										>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
+										{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
+											? m.leave_day_singular()
+											: m.leave_day_plural()}</span
+									>
+								</div>
+							{/if}
 							<Textarea
 								label={m.pregnancy_notes_label()}
 								bind:value={pregnancyRequest.reason}
 								placeholder={m.pregnancy_notes_placeholder()}
 							/>
-							<Button type="submit" class="w-full gap-2 py-3">
+							<Button
+								type="submit"
+								class="w-full gap-2 bg-pink-600 py-3 text-white hover:bg-pink-600/90"
+							>
 								<CheckCircle class="h-4 w-4" />
 								{m.pregnancy_save()}
 							</Button>
 						</div>
-					</div>
-					{#if selectedPregnancyEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedPregnancyEmployee}
-								bind:selectedStartDate={pregnancyRequest.startDate}
-								bind:selectedEndDate={pregnancyRequest.endDate}
-								onDateRangeSelect={(startDate, endDate) => {
-									pregnancyRequest.startDate = startDate;
-									pregnancyRequest.endDate = endDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+						{#if calendarEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={calendarEmployee}
+									bind:selectedStartDate={pregnancyRequest.startDate}
+									bind:selectedEndDate={pregnancyRequest.endDate}
+									onDateRangeSelect={(startDate, endDate) => {
+										pregnancyRequest.startDate = startDate;
+										pregnancyRequest.endDate = endDate;
+									}}
+								/>
+							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<p class="text-sm font-semibold text-text">{m.pregnancy_tip_title()}</p>
+								<p class="text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
 								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-pink-500/70 uppercase"
-								>
-									<Baby class="h-4 w-4" />
-									{m.pregnancy_tip_title()}
-								</div>
-								<p class="mt-3 text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
-								<div
-									class="mt-4 rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+									class="rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
 								>
 									<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
 										{m.pregnancy_law_title()}
@@ -1069,91 +1043,71 @@
 									<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
 								</div>
 							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'telaat'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-					<form
-						class="overflow-hidden rounded-3xl border border-warning/20 bg-surface shadow-sm"
-						onsubmit={handleCreateLate}
+						{/if}
+					</form>
+				{:else if activeTab === 'telaat'}
+					<div
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
 					>
-						<!-- Accent banner -->
-						<div class="flex items-center gap-3 border-b border-warning/15 bg-warning/5 px-6 py-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning"
-							>
-								<AlarmClock class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.late_title()}</h2>
-								<p class="text-xs text-text-muted">{m.late_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
+						<form class="space-y-5 border-b border-warning/10 pb-5" onsubmit={handleCreateLate}>
 							<!-- Employee + Date -->
 							<div class="grid gap-4 sm:grid-cols-2">
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/60 p-4">
+								<div>
 									<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-									<p class="mt-1 text-sm font-medium text-text">{loggedInEmployee.first_name} {loggedInEmployee.last_name}</p>
+									<p class="mt-1 text-sm font-medium text-text">
+										{loggedInEmployeeFullName}
+									</p>
 								</div>
 								<DatePicker label={m.sick_date_label()} bind:value={lateRequest.date} />
 							</div>
-							<!-- Arrival time inset -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
-									{m.late_arrival_time_label()}
-								</p>
-								<Input
-									label={m.late_arrival_time_label()}
-									type="time"
-									bind:value={lateRequest.time}
-								/>
-								{#if lateRequest.time}
-									<div
-										class="mt-3 flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
-									>
-										<AlarmClock class="h-3.5 w-3.5" />
-										<span>Aankomsttijd: {lateRequest.time}</span>
-									</div>
-								{/if}
-							</div>
+							<!-- Arrival time -->
+							<p class="text-xs font-semibold text-text-muted">
+								{m.late_arrival_time_label()}
+							</p>
+							<Input
+								label={m.late_arrival_time_label()}
+								type="time"
+								bind:value={lateRequest.time}
+							/>
+							{#if lateRequest.time}
+								<div
+									class="flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
+								>
+									<AlarmClock class="h-3.5 w-3.5" />
+									<span>{m.late_arrival_summary({ time: lateRequest.time })}</span>
+								</div>
+							{/if}
 							<Textarea
 								label={m.late_reason_label()}
 								bind:value={lateRequest.reason}
 								placeholder={m.late_reason_placeholder()}
 							/>
-							<Button type="submit" class="w-full gap-2 py-3">
+							<Button
+								type="submit"
+								class="w-full gap-2 bg-warning py-3 text-white hover:bg-warning/90"
+							>
 								<CheckCircle class="h-4 w-4" />
 								{m.late_add()}
 							</Button>
-						</div>
-					</form>
-					{#if selectedLateEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedLateEmployee}
-								bind:selectedStartDate={lateCalendarStart}
-								bind:selectedEndDate={lateCalendarEnd}
-								onDateRangeSelect={(startDate) => {
-									lateRequest.date = startDate;
-									lateCalendarStart = startDate;
-									lateCalendarEnd = startDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-warning/70 uppercase"
-								>
-									<Clock class="h-4 w-4" />
-									{m.late_recent_title()}
-								</div>
-								<p class="mt-1 text-sm font-semibold text-text">{m.late_recent_title()}</p>
-								<div class="mt-4 space-y-2">
-									{#each lateArrivals as item}
+						</form>
+						{#if selectedLateEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={selectedLateEmployee}
+									bind:selectedStartDate={lateCalendarStart}
+									bind:selectedEndDate={lateCalendarEnd}
+									onDateRangeSelect={(startDate) => {
+										lateRequest.date = startDate;
+										lateCalendarStart = startDate;
+										lateCalendarEnd = startDate;
+									}}
+								/>
+							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<p class="text-sm font-semibold text-text">{m.late_recent_title()}</p>
+								<div class="space-y-2">
+									{#each lateArrivals as item (item.id)}
 										<div
 											class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
 										>
@@ -1178,50 +1132,47 @@
 									{/if}
 								</div>
 							</div>
-						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'overzicht'}
-				<div class="animate-in fade-in slide-in-from-bottom-2">
-					{#if overviewError}
-						<div
-							class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error"
-						>
-							{overviewError}
-						</div>
-					{/if}
-					<DataTable
-						{columns}
-						rows={overviewTableRows}
-						loading={overviewLoading}
-						rowKey="id"
-						title={m.leave_table_title()}
-						description={m.leave_table_description()}
-						emptyTitle={m.leave_table_empty_title()}
-						emptyDescription={m.leave_table_empty_description()}
-						emptyActionLabel={m.leave_table_empty_action()}
-						emptyAction={() => (activeTab = 'aanvragen')}
+						{/if}
+					</div>
+				{:else if activeTab === 'overzicht'}
+					<div class="animate-in fade-in slide-in-from-bottom-2">
+						{#if overviewError}
+							<div
+								class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error"
+							>
+								{overviewError}
+							</div>
+						{/if}
+						<DataTable
+							{columns}
+							rows={overviewTableRows}
+							loading={overviewLoading}
+							rowKey="id"
+							emptyTitle={m.leave_table_empty_title()}
+							emptyDescription={m.leave_table_empty_description()}
+							emptyActionLabel={m.leave_table_empty_action()}
+							emptyAction={() => (activeTab = 'aanvragen')}
 							filters={requestFilters}
 							surface="plain"
 							headerInline
 							currentPage={overviewCurrentPage}
 							pageSize={overviewPageSize}
-						totalCount={overviewTotalCount}
-						onPageChange={(page) => {
-							overviewCurrentPage = page;
-						}}
-						cells={{
-							type: typeCell,
-							period: periodCell,
-							status: statusCell,
-							actions: actionsCell
-						}}
-					/>
-				</div>
-			{:else if activeTab === 'saldo'}
-				<LeaveBalancesTab {leaveBalances} />
-			{/if}
-		</div>
+							totalCount={overviewTotalCount}
+							onPageChange={(page) => {
+								overviewCurrentPage = page;
+							}}
+							cells={{
+								type: typeCell,
+								period: periodCell,
+								status: statusCell,
+								actions: actionsCell
+							}}
+						/>
+					</div>
+				{:else if activeTab === 'saldo'}
+					<LeaveBalancesTab {leaveBalances} />
+				{/if}
+			</div>
 		</div>
 	</div>
 </section>
@@ -1232,11 +1183,9 @@
 	description={m.leave_modal_delete_description()}
 	size="sm"
 >
-	{#snippet children()}
-		<p class="text-sm text-text-muted">
-			{m.leave_modal_delete_body()}
-		</p>
-	{/snippet}
+	<p class="text-sm text-text-muted">
+		{m.leave_modal_delete_body()}
+	</p>
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
 			<Button variant="ghost" onclick={() => (deleteDialogOpen = false)}
@@ -1253,19 +1202,17 @@
 	description={m.leave_modal_email_description()}
 	size="sm"
 >
-	{#snippet children()}
-		<div class="space-y-4">
-			<Input
-				label={m.leave_modal_email_label()}
-				type="email"
-				placeholder={m.leave_modal_email_placeholder()}
-				bind:value={emailAddress}
-			/>
-			<p class="text-sm text-text-muted">
-				{m.leave_modal_email_note({ month: formatMonth(currentMonth) })}
-			</p>
-		</div>
-	{/snippet}
+	<div class="space-y-4">
+		<Input
+			label={m.leave_modal_email_label()}
+			type="email"
+			placeholder={m.leave_modal_email_placeholder()}
+			bind:value={emailAddress}
+		/>
+		<p class="text-sm text-text-muted">
+			{m.leave_modal_email_note({ month: formatMonth(currentMonth) })}
+		</p>
+	</div>
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
 			<Button variant="ghost" onclick={() => (emailDialogOpen = false)}

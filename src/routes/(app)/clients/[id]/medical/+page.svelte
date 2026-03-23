@@ -2,13 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
-	import {
-		ClipboardList,
-		HeartPulse,
-		Plus,
-		Eye,
-		Pencil
-	} from 'lucide-svelte';
+	import { ClipboardList, HeartPulse, Plus, Eye, Pencil } from 'lucide-svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import CreateDiagnosisModal from '$lib/components/forms/CreateDiagnosisModal.svelte';
 	import CreateMedicationOrderModal from '$lib/components/forms/CreateMedicationOrderModal.svelte';
@@ -34,16 +28,21 @@
 	}>();
 
 	const medicalOverviewDataPromise = $derived(data.medicalOverviewData);
-	
+
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.clients(), href: '/clients' },
-			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{
+				label: data.clientName ?? m.breadcrumb_client_detail(),
+				href: `/clients/${page.params.id}`
+			},
 			{ label: m.breadcrumb_medical() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let showCreateDiagnosisModal = $state(false);

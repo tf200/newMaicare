@@ -5,8 +5,8 @@
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
-	// Generic option type
 	type Option = any;
 
 	let {
@@ -19,6 +19,7 @@
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = '',
+		size = 'md',
 		compact = false,
 		item,
 		loadOptions,
@@ -35,6 +36,8 @@
 		error?: string;
 		id?: string;
 		className?: string;
+		size?: SelectSize;
+		/** @deprecated Use size="sm" instead */
 		compact?: boolean;
 		item?: Snippet<[Option]>;
 		loadOptions: (query: string) => Promise<Option[]>;
@@ -59,8 +62,10 @@
 		const found = options.find((opt) => valueFn(opt) === currentValue);
 		return found ? labelFn(found) : currentDisplayValue || resolvedPlaceholder;
 	});
+	let hasValue = $derived(!!currentValue && currentValue !== '');
+	let resolvedSize = $derived(compact ? 'sm' : size);
+	let sizeClass = $derived(selectSizeClasses[resolvedSize as SelectSize]);
 
-	// Debounce search
 	let debounceTimer: ReturnType<typeof setTimeout>;
 
 	function handleSearch(e: Event) {
@@ -155,29 +160,27 @@
 			tabindex={disabled ? -1 : 0}
 			onclick={toggle}
 			onkeydown={handleKeydown}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface {compact
-				? 'px-3 py-2.5'
-				: 'px-4 py-3.5'} text-sm text-text transition-all {disabled
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {sizeClass} text-text {disabled
 				? 'cursor-not-allowed opacity-60'
-				: 'hover:bg-surface/80'} {error ? 'border-error' : ''}"
+				: 'hover:border-border'} {error ? 'border-error' : ''}"
 			aria-expanded={isOpen}
 			aria-disabled={disabled}
 		>
-			<span class="truncate">{selectedLabel}</span>
-			<div class="flex items-center gap-2">
-				{#if currentValue && !disabled}
-					<div
+			<span class="{hasValue ? 'font-medium' : 'text-text-subtle'} truncate">{selectedLabel}</span>
+			<div class="flex items-center gap-1.5">
+				{#if hasValue && !disabled}
+					<span
 						role="button"
-						tabindex="0"
+						tabindex="-1"
 						onclick={clear}
 						onkeydown={(e) => e.key === 'Enter' && clear(e)}
-						class="cursor-pointer text-text-muted hover:text-text"
+						class="rounded-full p-0.5 text-text-subtle transition-colors hover:text-text focus-visible:ring-2 focus-visible:ring-brand/30"
 						aria-label={m.clear_selection()}
 					>
-						<X class="h-4 w-4" />
-					</div>
+						<X class="h-3.5 w-3.5" />
+					</span>
 				{/if}
-				<ChevronsUpDown class="h-4 w-4 shrink-0 opacity-50" />
+				<ChevronsUpDown class="h-4 w-4 shrink-0 text-text-subtle" />
 			</div>
 		</button>
 
@@ -186,31 +189,31 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
-				class="z-[9999] mt-2 max-h-60 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg ring-1 ring-black/5"
-				transition:scale={{ start: 0.95, duration: 100 }}
+				class="z-[9999] mt-2 max-h-72 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
+				transition:scale={{ start: 0.95, duration: 150 }}
 			>
 				<div class="border-b border-border p-2">
 					<div class="relative">
-						<Search class="absolute top-2.5 left-2.5 h-4 w-4 text-text-muted" />
+						<Search class="absolute top-2.5 left-2.5 h-4 w-4 text-text-subtle" />
 						<input
 							bind:this={searchInput}
 							type="text"
 							value={searchQuery}
 							oninput={handleSearch}
 							placeholder={resolvedSearchPlaceholder}
-							class="bg-background w-full rounded-lg py-2 pr-4 pl-9 text-sm outline-none placeholder:text-text-muted focus:ring-2 focus:ring-brand/20"
+							class="w-full rounded-lg bg-bg py-2 pr-4 pl-9 text-sm text-text outline-hidden placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
 						/>
 					</div>
 				</div>
 
-				<div class="max-h-48 overflow-y-auto p-1">
+				<div class="max-h-56 overflow-y-auto p-1">
 					{#if isLoading}
-						<div class="flex items-center justify-center p-4 text-text-muted">
+						<div class="flex items-center justify-center p-4 text-text-subtle">
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							{m.loading()}...
 						</div>
 					{:else if options.length === 0}
-						<div class="p-3 text-center text-sm text-text-muted">
+						<div class="p-4 text-center text-sm text-text-muted">
 							{m.no_results_found()}
 						</div>
 					{:else}
@@ -218,10 +221,10 @@
 							<button
 								type="button"
 								onclick={() => select(option)}
-								class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-text-muted hover:bg-border/50 {currentValue ===
+								class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-100 {currentValue ===
 								valueFn(option)
-									? 'bg-border/30 font-medium text-text'
-									: ''}"
+									? 'bg-brand/10 font-semibold text-brand'
+									: 'text-text hover:bg-border/50'}"
 							>
 								<div class="flex-1 overflow-hidden">
 									{#if item}

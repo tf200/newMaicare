@@ -26,7 +26,7 @@
 <button
 	{...props}
 	disabled={isLoading || props.disabled}
-	class="relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-70 {variants[
+	class="relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-[opacity,transform,background-color] duration-200 ease-out active:scale-95 active:duration-75 disabled:opacity-70 {variants[
 		variant
 	]} {className}"
 >

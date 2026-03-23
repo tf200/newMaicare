@@ -60,12 +60,17 @@
 				breadcrumbs.items = [
 					{ label: m.breadcrumb_home(), href: '/dashboard' },
 					{ label: m.clients(), href: '/clients' },
-					{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${res.appointmentCard.client_id}` },
+					{
+						label: data.clientName ?? m.breadcrumb_client_detail(),
+						href: `/clients/${res.appointmentCard.client_id}`
+					},
 					{ label: m.documents() }
 				];
 			}
 		});
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	const sections: AppointmentSection[] = [

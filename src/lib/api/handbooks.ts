@@ -182,10 +182,7 @@ export function startMyHandbook() {
 	return api.post<ApiEnvelope<StartMyHandbookResponse>>('/handbook/me/start', {});
 }
 
-export function completeMyHandbookStep(
-	stepId: string,
-	payload: CompleteMyHandbookStepRequest
-) {
+export function completeMyHandbookStep(stepId: string, payload: CompleteMyHandbookStepRequest) {
 	return api.post<ApiEnvelope<CompleteMyHandbookStepResponse>>(
 		`/handbook/me/steps/${encodeURIComponent(stepId)}/complete`,
 		payload

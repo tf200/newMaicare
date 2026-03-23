@@ -201,7 +201,16 @@
 		{ key: 'actions', label: '', align: 'right' }
 	];
 
-	const validTabs = ['aanvragen', 'ziekmelding', 'zwangerschap', 'telaat', 'overzicht', 'saldo', 'uitbetalen', 'contractwijzigingen'] as const;
+	const validTabs = [
+		'aanvragen',
+		'ziekmelding',
+		'zwangerschap',
+		'telaat',
+		'overzicht',
+		'saldo',
+		'uitbetalen',
+		'contractwijzigingen'
+	] as const;
 	type TabId = (typeof validTabs)[number];
 
 	function getInitialTab(): TabId {
@@ -629,27 +638,29 @@
 			/>
 		</div>
 
-			<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
 			{#each requestFilterPills as pill}
 				<button
 					onclick={() => {
 						requestFilter = pill.id;
 						overviewCurrentPage = 1;
 					}}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(pill.id)}"
-					>
-						{pill.label}
-					</button>
-				{/each}
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
+						pill.id
+					)}"
+				>
+					{pill.label}
+				</button>
+			{/each}
 
-				{#if hasActiveFilters}
-					<button
-						class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
-						onclick={clearAllFilters}
-					>
-						{m.swap_clear_filters()}
-					</button>
-				{/if}
+			{#if hasActiveFilters}
+				<button
+					class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
+					onclick={clearAllFilters}
+				>
+					{m.swap_clear_filters()}
+				</button>
+			{/if}
 		</div>
 	</div>
 {/snippet}
@@ -679,7 +690,7 @@
 	<span
 		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {typeMeta
 			? typeMeta.className
-			: 'border-border bg-surface-subtle text-text-muted'}"
+			: 'bg-surface-subtle border-border text-text-muted'}"
 	>
 		{typeMeta ? typeMeta.label() : row.leaveType}
 	</span>
@@ -741,7 +752,9 @@
 		onOpenEmail={() => (emailDialogOpen = true)}
 	/>
 	<LeaveStatsCards {pendingCount} {approvedCount} {rejectedCount} {sickCount} />
-	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+	<div
+		class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm"
+	>
 		<div class="lg:flex">
 			<LeaveTabsNav
 				{activeTab}
@@ -753,567 +766,579 @@
 
 			<!-- ── Content pane ────────────────────────────────────────── -->
 			<div class="min-w-0 flex-1 p-6">
-			{#if activeTab === 'aanvragen'}
-				<form
-					class="grid gap-6 {selectedEmployeeFromSearch
-						? 'lg:grid-cols-[1.5fr_1fr]'
-						: 'lg:grid-cols-[2fr_1fr]'}"
-					onsubmit={handleCreateLeave}
-				>
-					<!-- Left: Form -->
-					<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-						<div class="mb-5 flex items-center gap-3">
-							<div class="rounded-xl bg-brand/10 p-2 text-brand">
-								<CalendarPlus class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-lg font-semibold text-text">{m.leave_new_request_title()}</h2>
-								<p class="text-xs text-text-muted">{m.leave_new_request_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5">
-							<!-- Employee Search Component -->
-							<EmployeeSearch
-								labelText={m.leave_employee_select_label()}
-								placeholder={m.leave_employee_search_placeholder()}
-								bind:selectedId={newRequest.employeeId}
-								onSelect={(emp) => {
-									selectedEmployeeFromSearch = emp;
-								}}
-							/>
-
-							{#if selectedEmployeeFromSearch}
-								<div class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4">
-									<!-- Type Select -->
-									<div>
-										<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted"
-											>{m.leave_type_label()}</label
-										>
-										<select
-											id="leave-type"
-											bind:value={newRequest.type}
-											class="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
-										>
-											{#each leaveTypeOptions as type}
-												<option value={type.value}>{type.label}</option>
-											{/each}
-										</select>
-									</div>
-
-									<!-- Date Range Display -->
-									<div class="space-y-2">
-										<div class="ml-1 text-xs font-semibold text-text-muted">
-											{m.leave_date_range_label()}
-										</div>
-										<div class="grid gap-3 sm:grid-cols-2">
-											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
-												<p class="mb-1 text-xs text-text-muted">{m.leave_date_from()}</p>
-												<p class="font-semibold text-text">
-													{newRequest.startDate
-														? new Date(newRequest.startDate).toLocaleDateString('nl-NL')
-														: 'Selecteren'}
-												</p>
-											</div>
-											<div class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm">
-												<p class="mb-1 text-xs text-text-muted">{m.leave_date_to()}</p>
-												<p class="font-semibold text-text">
-													{newRequest.endDate
-														? new Date(newRequest.endDate).toLocaleDateString('nl-NL')
-														: 'Selecteren'}
-												</p>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<!-- Reason Textarea -->
-								<Textarea
-									label={m.leave_reason_label()}
-									bind:value={newRequest.reason}
-									placeholder={m.leave_reason_placeholder()}
-								/>
-
-								<!-- Days Calculator -->
-								<div
-									class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
-								>
-									<div class="flex items-center gap-2">
-										<Zap class="h-4 w-4" />
-										<span
-											>{calculateDays(newRequest.startDate, newRequest.endDate)}
-											{calculateDays(newRequest.startDate, newRequest.endDate) === 1
-												? m.leave_day_singular()
-												: m.leave_day_plural()}</span
-										>
-									</div>
-									<span
-										>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
-										{m.leave_hours_short()}</span
-									>
-								</div>
-
-								<!-- Submit Button -->
-								<Button type="submit" class="w-full gap-2 py-3">
-									<CheckCircle class="h-4 w-4" />
-									{m.leave_submit_request()}
-								</Button>
-							{:else}
-								<div
-									class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
-								>
-									{m.leave_select_employee_prompt()}
-								</div>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Right: Calendar or Guidelines -->
-					{#if selectedEmployeeFromSearch}
-						<!-- Calendar appears here when employee is selected -->
-						<ScheduleCalendar
-							selectedEmployee={selectedEmployeeFromSearch}
-							bind:selectedStartDate={newRequest.startDate}
-							bind:selectedEndDate={newRequest.endDate}
-							onDateRangeSelect={(start, end) => {
-								newRequest.startDate = start;
-								newRequest.endDate = end;
-							}}
-						/>
-					{:else}
-						<!-- Guidelines shown before employee selection -->
-						<div class="space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-								>
-									<AlertCircle class="h-4 w-4 text-brand" />
-									{m.leave_guidelines_title()}
-								</div>
-								<h3 class="mt-2 text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
-								<ul class="mt-4 space-y-3 text-sm text-text-muted">
-									<li class="flex gap-2">
-										<span class="font-bold text-brand">•</span>
-										<span>{m.leave_guideline_1()}</span>
-									</li>
-									<li class="flex gap-2">
-										<span class="font-bold text-brand">•</span>
-										<span>{m.leave_guideline_2()}</span>
-									</li>
-									<li class="flex gap-2">
-										<span class="font-bold text-brand">•</span>
-										<span>{m.leave_guideline_3()}</span>
-									</li>
-								</ul>
-							</div>
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<p class="mb-4 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									{m.leave_quick_status_title()}
-								</p>
-								<div class="space-y-3">
-									<div
-										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-									>
-										<span class="text-sm text-text-muted">{m.leave_stats_open()}</span>
-										<span class="text-lg font-bold text-warning">{pendingCount}</span>
-									</div>
-									<div
-										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-									>
-										<span class="text-sm text-text-muted">{m.leave_stats_approved()}</span>
-										<span class="text-lg font-bold text-success">{approvedCount}</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'ziekmelding'}
-				<form
-					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
-					onsubmit={handleCreateSick}
-				>
-					<div class="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
-						<!-- Accent banner -->
-						<div class="flex items-center gap-3 border-b border-error/15 bg-error/5 px-6 py-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10 text-error"
-							>
-								<Stethoscope class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.sick_report_title()}</h2>
-								<p class="text-xs text-text-muted">{m.sick_report_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
-							<!-- Employee + Date row -->
-							<div class="grid gap-4 sm:grid-cols-2">
-								<EmployeeSearch
-									labelText={m.employee()}
-									placeholder={m.leave_employee_search_placeholder()}
-									bind:selectedId={sickRequest.employeeId}
-									onSelect={(employee) => {
-										selectedSickEmployee = employee;
-										sickRequest.employeeId = employee?.id ?? '';
-									}}
-								/>
-								<Input label={m.sick_date_label()} type="date" bind:value={sickRequest.date} />
-							</div>
-							<!-- Time range -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
-									{m.sick_start_time_label()} — {m.sick_end_time_label()}
-								</p>
-								<div class="grid gap-3 sm:grid-cols-2">
-									<Input
-										label={m.sick_start_time_label()}
-										type="time"
-										bind:value={sickRequest.startTime}
-									/>
-									<Input
-										label={m.sick_end_time_label()}
-										type="time"
-										bind:value={sickRequest.endTime}
-									/>
-								</div>
-							</div>
-							<Textarea
-								label={m.sick_notes_label()}
-								bind:value={sickRequest.reason}
-								placeholder={m.sick_notes_placeholder()}
-							/>
-							<Button type="submit" class="w-full gap-2 py-3">
-								<CheckCircle class="h-4 w-4" />
-								{m.sick_save()}
-							</Button>
-						</div>
-					</div>
-					{#if selectedSickEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedSickEmployee}
-								bind:selectedStartDate={sickCalendarStart}
-								bind:selectedEndDate={sickCalendarEnd}
-								onDateRangeSelect={(startDate) => {
-									sickRequest.date = startDate;
-									sickCalendarStart = startDate;
-									sickCalendarEnd = startDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-error/70 uppercase"
-								>
-									<AlertCircle class="h-4 w-4" />
-									{m.sick_warning_title()}
-								</div>
-								<p class="mt-3 text-sm text-text-muted">{m.sick_warning_body()}</p>
-								<div class="mt-4 rounded-xl border border-error/15 bg-error/5 p-4">
-									<p class="text-xs font-semibold text-error">⚠️ {m.sick_warning_long_label()}</p>
-									<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
-								</div>
-							</div>
-							<!-- Quick stats -->
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-									{m.leave_stats_sick()}
-								</p>
-								<div
-									class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-								>
-									<span class="text-sm text-text-muted">{m.leave_stats_sick()}</span>
-									<span class="text-2xl font-bold text-error">{sickCount}</span>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'zwangerschap'}
-				<form
-					class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
-					onsubmit={handleCreatePregnancy}
-				>
-					<div
-						class="overflow-hidden rounded-3xl border border-pink-200/60 bg-surface shadow-sm dark:border-pink-900/30"
-					>
-						<!-- Accent banner -->
-						<div
-							class="flex items-center gap-3 border-b border-pink-200/60 bg-pink-50/60 px-6 py-4 dark:border-pink-900/20 dark:bg-pink-900/10"
-						>
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
-							>
-								<Baby class="h-5 w-5" />
-							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.pregnancy_title()}</h2>
-								<p class="text-xs text-text-muted">{m.pregnancy_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
-							<!-- Employee row -->
-							<EmployeeSearch
-								labelText={m.employee()}
-								placeholder={m.leave_employee_search_placeholder()}
-								bind:selectedId={pregnancyRequest.employeeId}
-								onSelect={(employee) => {
-									selectedPregnancyEmployee = employee;
-									pregnancyRequest.employeeId = employee?.id ?? '';
-								}}
-							/>
-							<!-- Date range inset -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
-									{m.leave_date_range_label()}
-								</p>
-								<div class="grid gap-3 sm:grid-cols-2">
-									<Input
-										label={m.pregnancy_start_label()}
-										type="date"
-										bind:value={pregnancyRequest.startDate}
-									/>
-									<Input
-										label={m.pregnancy_end_label()}
-										type="date"
-										bind:value={pregnancyRequest.endDate}
-									/>
-								</div>
-								{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
-									<div
-										class="mt-3 flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
-									>
-										<span class="flex items-center gap-1.5"
-											><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
-										>
-										<span
-											>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
-											{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
-												? m.leave_day_singular()
-												: m.leave_day_plural()}</span
-										>
-									</div>
-								{/if}
-							</div>
-							<Textarea
-								label={m.pregnancy_notes_label()}
-								bind:value={pregnancyRequest.reason}
-								placeholder={m.pregnancy_notes_placeholder()}
-							/>
-							<Button type="submit" class="w-full gap-2 py-3">
-								<CheckCircle class="h-4 w-4" />
-								{m.pregnancy_save()}
-							</Button>
-						</div>
-					</div>
-					{#if selectedPregnancyEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedPregnancyEmployee}
-								bind:selectedStartDate={pregnancyRequest.startDate}
-								bind:selectedEndDate={pregnancyRequest.endDate}
-								onDateRangeSelect={(startDate, endDate) => {
-									pregnancyRequest.startDate = startDate;
-									pregnancyRequest.endDate = endDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-pink-500/70 uppercase"
-								>
-									<Baby class="h-4 w-4" />
-									{m.pregnancy_tip_title()}
-								</div>
-								<p class="mt-3 text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
-								<div
-									class="mt-4 rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
-								>
-									<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
-										{m.pregnancy_law_title()}
-									</p>
-									<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</form>
-			{:else if activeTab === 'telaat'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+				{#if activeTab === 'aanvragen'}
 					<form
-						class="overflow-hidden rounded-3xl border border-warning/20 bg-surface shadow-sm"
-						onsubmit={handleCreateLate}
+						class="grid gap-6 {selectedEmployeeFromSearch
+							? 'lg:grid-cols-[1.5fr_1fr]'
+							: 'lg:grid-cols-[2fr_1fr]'}"
+						onsubmit={handleCreateLeave}
 					>
-						<!-- Accent banner -->
-						<div class="flex items-center gap-3 border-b border-warning/15 bg-warning/5 px-6 py-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning"
-							>
-								<AlarmClock class="h-5 w-5" />
+						<!-- Left: Form -->
+						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+							<div class="mb-5 flex items-center gap-3">
+								<div class="rounded-xl bg-brand/10 p-2 text-brand">
+									<CalendarPlus class="h-5 w-5" />
+								</div>
+								<div>
+									<h2 class="text-lg font-semibold text-text">{m.leave_new_request_title()}</h2>
+									<p class="text-xs text-text-muted">{m.leave_new_request_subtitle()}</p>
+								</div>
 							</div>
-							<div>
-								<h2 class="text-base font-semibold text-text">{m.late_title()}</h2>
-								<p class="text-xs text-text-muted">{m.late_subtitle()}</p>
-							</div>
-						</div>
-						<div class="space-y-5 p-6">
-							<!-- Employee + Date -->
-							<div class="grid gap-4 sm:grid-cols-2">
+							<div class="space-y-5">
+								<!-- Employee Search Component -->
 								<EmployeeSearch
-									labelText={m.employee()}
+									labelText={m.leave_employee_select_label()}
 									placeholder={m.leave_employee_search_placeholder()}
-									bind:selectedId={lateRequest.employeeId}
-									onSelect={(employee) => {
-										selectedLateEmployee = employee;
-										lateRequest.employeeId = employee?.id ?? '';
+									bind:selectedId={newRequest.employeeId}
+									onSelect={(emp) => {
+										selectedEmployeeFromSearch = emp;
 									}}
 								/>
-								<Input label={m.sick_date_label()} type="date" bind:value={lateRequest.date} />
-							</div>
-							<!-- Arrival time inset -->
-							<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-								<p class="mb-3 text-xs font-semibold text-text-muted">
-									{m.late_arrival_time_label()}
-								</p>
-								<Input
-									label={m.late_arrival_time_label()}
-									type="time"
-									bind:value={lateRequest.time}
-								/>
-								{#if lateRequest.time}
+
+								{#if selectedEmployeeFromSearch}
 									<div
-										class="mt-3 flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
+										class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4"
 									>
-										<AlarmClock class="h-3.5 w-3.5" />
-										<span>Aankomsttijd: {lateRequest.time}</span>
-									</div>
-								{/if}
-							</div>
-							<Textarea
-								label={m.late_reason_label()}
-								bind:value={lateRequest.reason}
-								placeholder={m.late_reason_placeholder()}
-							/>
-							<Button type="submit" class="w-full gap-2 py-3">
-								<CheckCircle class="h-4 w-4" />
-								{m.late_add()}
-							</Button>
-						</div>
-					</form>
-					{#if selectedLateEmployee}
-						<div class="animate-in fade-in slide-in-from-top-2">
-							<ScheduleCalendar
-								selectedEmployee={selectedLateEmployee}
-								bind:selectedStartDate={lateCalendarStart}
-								bind:selectedEndDate={lateCalendarEnd}
-								onDateRangeSelect={(startDate) => {
-									lateRequest.date = startDate;
-									lateCalendarStart = startDate;
-									lateCalendarEnd = startDate;
-								}}
-							/>
-						</div>
-					{:else}
-						<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-							<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-								<div
-									class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-warning/70 uppercase"
-								>
-									<Clock class="h-4 w-4" />
-									{m.late_recent_title()}
-								</div>
-								<p class="mt-1 text-sm font-semibold text-text">{m.late_recent_title()}</p>
-								<div class="mt-4 space-y-2">
-									{#each lateArrivals as item}
-										<div
-											class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
-										>
-											<div>
-												<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-												{#if item.reason}<p class="mt-0.5 text-xs text-text-muted">
-														{item.reason}
-													</p>{/if}
+										<!-- Type Select -->
+										<div>
+											<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted"
+												>{m.leave_type_label()}</label
+											>
+											<select
+												id="leave-type"
+												bind:value={newRequest.type}
+												class="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+											>
+												{#each leaveTypeOptions as type}
+													<option value={type.value}>{type.label}</option>
+												{/each}
+											</select>
+										</div>
+
+										<!-- Date Range Display -->
+										<div class="space-y-2">
+											<div class="ml-1 text-xs font-semibold text-text-muted">
+												{m.leave_date_range_label()}
 											</div>
+											<div class="grid gap-3 sm:grid-cols-2">
+												<div
+													class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm"
+												>
+													<p class="mb-1 text-xs text-text-muted">{m.leave_date_from()}</p>
+													<p class="font-semibold text-text">
+														{newRequest.startDate
+															? new Date(newRequest.startDate).toLocaleDateString('nl-NL')
+															: 'Selecteren'}
+													</p>
+												</div>
+												<div
+													class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm"
+												>
+													<p class="mb-1 text-xs text-text-muted">{m.leave_date_to()}</p>
+													<p class="font-semibold text-text">
+														{newRequest.endDate
+															? new Date(newRequest.endDate).toLocaleDateString('nl-NL')
+															: 'Selecteren'}
+													</p>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Reason Textarea -->
+									<Textarea
+										label={m.leave_reason_label()}
+										bind:value={newRequest.reason}
+										placeholder={m.leave_reason_placeholder()}
+									/>
+
+									<!-- Days Calculator -->
+									<div
+										class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
+									>
+										<div class="flex items-center gap-2">
+											<Zap class="h-4 w-4" />
 											<span
-												class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"
-												>{formatDate(item.date)} {item.time}</span
+												>{calculateDays(newRequest.startDate, newRequest.endDate)}
+												{calculateDays(newRequest.startDate, newRequest.endDate) === 1
+													? m.leave_day_singular()
+													: m.leave_day_plural()}</span
 											>
 										</div>
-									{/each}
-									{#if lateArrivals.length === 0}
-										<div
-											class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/40 p-4 text-center text-xs text-text-muted"
+										<span
+											>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
+											{m.leave_hours_short()}</span
 										>
-											{m.late_empty()}
+									</div>
+
+									<!-- Submit Button -->
+									<Button type="submit" class="w-full gap-2 py-3">
+										<CheckCircle class="h-4 w-4" />
+										{m.leave_submit_request()}
+									</Button>
+								{:else}
+									<div
+										class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
+									>
+										{m.leave_select_employee_prompt()}
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Right: Calendar or Guidelines -->
+						{#if selectedEmployeeFromSearch}
+							<!-- Calendar appears here when employee is selected -->
+							<ScheduleCalendar
+								selectedEmployee={selectedEmployeeFromSearch}
+								bind:selectedStartDate={newRequest.startDate}
+								bind:selectedEndDate={newRequest.endDate}
+								onDateRangeSelect={(start, end) => {
+									newRequest.startDate = start;
+									newRequest.endDate = end;
+								}}
+							/>
+						{:else}
+							<!-- Guidelines shown before employee selection -->
+							<div class="space-y-4">
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<div
+										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>
+										<AlertCircle class="h-4 w-4 text-brand" />
+										{m.leave_guidelines_title()}
+									</div>
+									<h3 class="mt-2 text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
+									<ul class="mt-4 space-y-3 text-sm text-text-muted">
+										<li class="flex gap-2">
+											<span class="font-bold text-brand">•</span>
+											<span>{m.leave_guideline_1()}</span>
+										</li>
+										<li class="flex gap-2">
+											<span class="font-bold text-brand">•</span>
+											<span>{m.leave_guideline_2()}</span>
+										</li>
+										<li class="flex gap-2">
+											<span class="font-bold text-brand">•</span>
+											<span>{m.leave_guideline_3()}</span>
+										</li>
+									</ul>
+								</div>
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<p class="mb-4 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+										{m.leave_quick_status_title()}
+									</p>
+									<div class="space-y-3">
+										<div
+											class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+										>
+											<span class="text-sm text-text-muted">{m.leave_stats_open()}</span>
+											<span class="text-lg font-bold text-warning">{pendingCount}</span>
+										</div>
+										<div
+											class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+										>
+											<span class="text-sm text-text-muted">{m.leave_stats_approved()}</span>
+											<span class="text-lg font-bold text-success">{approvedCount}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</form>
+				{:else if activeTab === 'ziekmelding'}
+					<form
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+						onsubmit={handleCreateSick}
+					>
+						<div class="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+							<!-- Accent banner -->
+							<div class="flex items-center gap-3 border-b border-error/15 bg-error/5 px-6 py-4">
+								<div
+									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10 text-error"
+								>
+									<Stethoscope class="h-5 w-5" />
+								</div>
+								<div>
+									<h2 class="text-base font-semibold text-text">{m.sick_report_title()}</h2>
+									<p class="text-xs text-text-muted">{m.sick_report_subtitle()}</p>
+								</div>
+							</div>
+							<div class="space-y-5 p-6">
+								<!-- Employee + Date row -->
+								<div class="grid gap-4 sm:grid-cols-2">
+									<EmployeeSearch
+										labelText={m.employee()}
+										placeholder={m.leave_employee_search_placeholder()}
+										bind:selectedId={sickRequest.employeeId}
+										onSelect={(employee) => {
+											selectedSickEmployee = employee;
+											sickRequest.employeeId = employee?.id ?? '';
+										}}
+									/>
+									<Input label={m.sick_date_label()} type="date" bind:value={sickRequest.date} />
+								</div>
+								<!-- Time range -->
+								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+									<p class="mb-3 text-xs font-semibold text-text-muted">
+										{m.sick_start_time_label()} — {m.sick_end_time_label()}
+									</p>
+									<div class="grid gap-3 sm:grid-cols-2">
+										<Input
+											label={m.sick_start_time_label()}
+											type="time"
+											bind:value={sickRequest.startTime}
+										/>
+										<Input
+											label={m.sick_end_time_label()}
+											type="time"
+											bind:value={sickRequest.endTime}
+										/>
+									</div>
+								</div>
+								<Textarea
+									label={m.sick_notes_label()}
+									bind:value={sickRequest.reason}
+									placeholder={m.sick_notes_placeholder()}
+								/>
+								<Button type="submit" class="w-full gap-2 py-3">
+									<CheckCircle class="h-4 w-4" />
+									{m.sick_save()}
+								</Button>
+							</div>
+						</div>
+						{#if selectedSickEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={selectedSickEmployee}
+									bind:selectedStartDate={sickCalendarStart}
+									bind:selectedEndDate={sickCalendarEnd}
+									onDateRangeSelect={(startDate) => {
+										sickRequest.date = startDate;
+										sickCalendarStart = startDate;
+										sickCalendarEnd = startDate;
+									}}
+								/>
+							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<div
+										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-error/70 uppercase"
+									>
+										<AlertCircle class="h-4 w-4" />
+										{m.sick_warning_title()}
+									</div>
+									<p class="mt-3 text-sm text-text-muted">{m.sick_warning_body()}</p>
+									<div class="mt-4 rounded-xl border border-error/15 bg-error/5 p-4">
+										<p class="text-xs font-semibold text-error">⚠️ {m.sick_warning_long_label()}</p>
+										<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
+									</div>
+								</div>
+								<!-- Quick stats -->
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+										{m.leave_stats_sick()}
+									</p>
+									<div
+										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
+									>
+										<span class="text-sm text-text-muted">{m.leave_stats_sick()}</span>
+										<span class="text-2xl font-bold text-error">{sickCount}</span>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</form>
+				{:else if activeTab === 'zwangerschap'}
+					<form
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+						onsubmit={handleCreatePregnancy}
+					>
+						<div
+							class="overflow-hidden rounded-3xl border border-pink-200/60 bg-surface shadow-sm dark:border-pink-900/30"
+						>
+							<!-- Accent banner -->
+							<div
+								class="flex items-center gap-3 border-b border-pink-200/60 bg-pink-50/60 px-6 py-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+							>
+								<div
+									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
+								>
+									<Baby class="h-5 w-5" />
+								</div>
+								<div>
+									<h2 class="text-base font-semibold text-text">{m.pregnancy_title()}</h2>
+									<p class="text-xs text-text-muted">{m.pregnancy_subtitle()}</p>
+								</div>
+							</div>
+							<div class="space-y-5 p-6">
+								<!-- Employee row -->
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={pregnancyRequest.employeeId}
+									onSelect={(employee) => {
+										selectedPregnancyEmployee = employee;
+										pregnancyRequest.employeeId = employee?.id ?? '';
+									}}
+								/>
+								<!-- Date range inset -->
+								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+									<p class="mb-3 text-xs font-semibold text-text-muted">
+										{m.leave_date_range_label()}
+									</p>
+									<div class="grid gap-3 sm:grid-cols-2">
+										<Input
+											label={m.pregnancy_start_label()}
+											type="date"
+											bind:value={pregnancyRequest.startDate}
+										/>
+										<Input
+											label={m.pregnancy_end_label()}
+											type="date"
+											bind:value={pregnancyRequest.endDate}
+										/>
+									</div>
+									{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
+										<div
+											class="mt-3 flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
+										>
+											<span class="flex items-center gap-1.5"
+												><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
+											>
+											<span
+												>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
+												{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
+													? m.leave_day_singular()
+													: m.leave_day_plural()}</span
+											>
 										</div>
 									{/if}
 								</div>
+								<Textarea
+									label={m.pregnancy_notes_label()}
+									bind:value={pregnancyRequest.reason}
+									placeholder={m.pregnancy_notes_placeholder()}
+								/>
+								<Button type="submit" class="w-full gap-2 py-3">
+									<CheckCircle class="h-4 w-4" />
+									{m.pregnancy_save()}
+								</Button>
 							</div>
 						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'overzicht'}
-				<div class="animate-in fade-in slide-in-from-bottom-2">
-					{#if overviewError}
-						<div
-							class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error"
+						{#if selectedPregnancyEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={selectedPregnancyEmployee}
+									bind:selectedStartDate={pregnancyRequest.startDate}
+									bind:selectedEndDate={pregnancyRequest.endDate}
+									onDateRangeSelect={(startDate, endDate) => {
+										pregnancyRequest.startDate = startDate;
+										pregnancyRequest.endDate = endDate;
+									}}
+								/>
+							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<div
+										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-pink-500/70 uppercase"
+									>
+										<Baby class="h-4 w-4" />
+										{m.pregnancy_tip_title()}
+									</div>
+									<p class="mt-3 text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
+									<div
+										class="mt-4 rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+									>
+										<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
+											{m.pregnancy_law_title()}
+										</p>
+										<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</form>
+				{:else if activeTab === 'telaat'}
+					<div
+						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
+					>
+						<form
+							class="overflow-hidden rounded-3xl border border-warning/20 bg-surface shadow-sm"
+							onsubmit={handleCreateLate}
 						>
-							{overviewError}
-						</div>
-					{/if}
-					<DataTable
-						{columns}
-						rows={overviewTableRows}
-						loading={overviewLoading}
-						rowKey="id"
-						title={m.leave_table_title()}
-						description={m.leave_table_description()}
-						emptyTitle={m.leave_table_empty_title()}
-						emptyDescription={m.leave_table_empty_description()}
-						emptyActionLabel={m.leave_table_empty_action()}
-						emptyAction={() => (activeTab = 'aanvragen')}
+							<!-- Accent banner -->
+							<div
+								class="flex items-center gap-3 border-b border-warning/15 bg-warning/5 px-6 py-4"
+							>
+								<div
+									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning"
+								>
+									<AlarmClock class="h-5 w-5" />
+								</div>
+								<div>
+									<h2 class="text-base font-semibold text-text">{m.late_title()}</h2>
+									<p class="text-xs text-text-muted">{m.late_subtitle()}</p>
+								</div>
+							</div>
+							<div class="space-y-5 p-6">
+								<!-- Employee + Date -->
+								<div class="grid gap-4 sm:grid-cols-2">
+									<EmployeeSearch
+										labelText={m.employee()}
+										placeholder={m.leave_employee_search_placeholder()}
+										bind:selectedId={lateRequest.employeeId}
+										onSelect={(employee) => {
+											selectedLateEmployee = employee;
+											lateRequest.employeeId = employee?.id ?? '';
+										}}
+									/>
+									<Input label={m.sick_date_label()} type="date" bind:value={lateRequest.date} />
+								</div>
+								<!-- Arrival time inset -->
+								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
+									<p class="mb-3 text-xs font-semibold text-text-muted">
+										{m.late_arrival_time_label()}
+									</p>
+									<Input
+										label={m.late_arrival_time_label()}
+										type="time"
+										bind:value={lateRequest.time}
+									/>
+									{#if lateRequest.time}
+										<div
+											class="mt-3 flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
+										>
+											<AlarmClock class="h-3.5 w-3.5" />
+											<span>Aankomsttijd: {lateRequest.time}</span>
+										</div>
+									{/if}
+								</div>
+								<Textarea
+									label={m.late_reason_label()}
+									bind:value={lateRequest.reason}
+									placeholder={m.late_reason_placeholder()}
+								/>
+								<Button type="submit" class="w-full gap-2 py-3">
+									<CheckCircle class="h-4 w-4" />
+									{m.late_add()}
+								</Button>
+							</div>
+						</form>
+						{#if selectedLateEmployee}
+							<div class="animate-in fade-in slide-in-from-top-2">
+								<ScheduleCalendar
+									selectedEmployee={selectedLateEmployee}
+									bind:selectedStartDate={lateCalendarStart}
+									bind:selectedEndDate={lateCalendarEnd}
+									onDateRangeSelect={(startDate) => {
+										lateRequest.date = startDate;
+										lateCalendarStart = startDate;
+										lateCalendarEnd = startDate;
+									}}
+								/>
+							</div>
+						{:else}
+							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
+								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+									<div
+										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-warning/70 uppercase"
+									>
+										<Clock class="h-4 w-4" />
+										{m.late_recent_title()}
+									</div>
+									<p class="mt-1 text-sm font-semibold text-text">{m.late_recent_title()}</p>
+									<div class="mt-4 space-y-2">
+										{#each lateArrivals as item}
+											<div
+												class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
+											>
+												<div>
+													<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
+													{#if item.reason}<p class="mt-0.5 text-xs text-text-muted">
+															{item.reason}
+														</p>{/if}
+												</div>
+												<span
+													class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"
+													>{formatDate(item.date)} {item.time}</span
+												>
+											</div>
+										{/each}
+										{#if lateArrivals.length === 0}
+											<div
+												class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/40 p-4 text-center text-xs text-text-muted"
+											>
+												{m.late_empty()}
+											</div>
+										{/if}
+									</div>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{:else if activeTab === 'overzicht'}
+					<div class="animate-in fade-in slide-in-from-bottom-2">
+						{#if overviewError}
+							<div
+								class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error"
+							>
+								{overviewError}
+							</div>
+						{/if}
+						<DataTable
+							{columns}
+							rows={overviewTableRows}
+							loading={overviewLoading}
+							rowKey="id"
+							title={m.leave_table_title()}
+							description={m.leave_table_description()}
+							emptyTitle={m.leave_table_empty_title()}
+							emptyDescription={m.leave_table_empty_description()}
+							emptyActionLabel={m.leave_table_empty_action()}
+							emptyAction={() => (activeTab = 'aanvragen')}
 							filters={requestFilters}
 							surface="plain"
 							headerInline
 							currentPage={overviewCurrentPage}
 							pageSize={overviewPageSize}
-						totalCount={overviewTotalCount}
-						onPageChange={(page) => {
-							overviewCurrentPage = page;
-						}}
-						cells={{
-							employee: employeeCell,
-							type: typeCell,
-							period: periodCell,
-							status: statusCell,
-							actions: actionsCell
-						}}
-					/>
-				</div>
-			{:else if activeTab === 'saldo'}
-				{#await leaveBalancesDataPromise}
-					<div class="animate-in fade-in slide-in-from-bottom-2 rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm">
-						Loading leave balances...
+							totalCount={overviewTotalCount}
+							onPageChange={(page) => {
+								overviewCurrentPage = page;
+							}}
+							cells={{
+								employee: employeeCell,
+								type: typeCell,
+								period: periodCell,
+								status: statusCell,
+								actions: actionsCell
+							}}
+						/>
 					</div>
-				{:then leaveBalancesData}
-					<LeaveBalancesTab
-						data={leaveBalancesData}
-						onSearch={handleBalanceSearch}
-						onYearChange={handleBalanceYearChange}
-						onPageChange={handleBalancePageChange}
-						onRetry={() => invalidateAll()}
-					/>
-				{/await}
-			{:else if activeTab === 'uitbetalen'}
-				<LeavePayoutTab {payoutRequests} />
-			{:else if activeTab === 'contractwijzigingen'}
-				<LeaveContractChangesTab {contractChanges} {formatDate} />
-			{/if}
-		</div>
+				{:else if activeTab === 'saldo'}
+					{#await leaveBalancesDataPromise}
+						<div
+							class="animate-in fade-in slide-in-from-bottom-2 rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm"
+						>
+							Loading leave balances...
+						</div>
+					{:then leaveBalancesData}
+						<LeaveBalancesTab
+							data={leaveBalancesData}
+							onSearch={handleBalanceSearch}
+							onYearChange={handleBalanceYearChange}
+							onPageChange={handleBalancePageChange}
+							onRetry={() => invalidateAll()}
+						/>
+					{/await}
+				{:else if activeTab === 'uitbetalen'}
+					<LeavePayoutTab {payoutRequests} />
+				{:else if activeTab === 'contractwijzigingen'}
+					<LeaveContractChangesTab {contractChanges} {formatDate} />
+				{/if}
+			</div>
 		</div>
 	</div>
 </section>

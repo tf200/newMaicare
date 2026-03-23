@@ -4,6 +4,7 @@
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	type Option = { label: string; value: string };
 
@@ -14,6 +15,7 @@
 		placeholder = undefined,
 		error = undefined,
 		disabled = false,
+		size = 'md',
 		id = `select-${Math.random().toString(36).substr(2, 9)}`
 	} = $props<{
 		label?: string;
@@ -22,6 +24,7 @@
 		placeholder?: string;
 		error?: string;
 		disabled?: boolean;
+		size?: SelectSize;
 		id?: string;
 	}>();
 
@@ -30,6 +33,7 @@
 	let triggerEl = $state<HTMLElement>();
 	let dropdownEl = $state<HTMLElement>();
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_items_placeholder());
+	let sizeClass = $derived(selectSizeClasses[size as SelectSize]);
 	let filteredOptions = $derived(
 		options.filter((opt: Option) => opt.label.toLowerCase().includes(search.toLowerCase()))
 	);
@@ -83,7 +87,7 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text transition-all hover:bg-surface/80 {error
+			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}
@@ -110,7 +114,7 @@
 				{/each}
 			{/if}
 
-			<div class="ml-auto shrink-0 opacity-50">
+			<div class="ml-auto shrink-0 text-text-subtle">
 				<ChevronsUpDown class="h-4 w-4" />
 			</div>
 		</button>
@@ -120,18 +124,18 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
-				class="z-[9999] mt-2 max-h-60 w-full overflow-auto rounded-xl border border-border bg-surface p-1 shadow-lg ring-1 ring-black/5"
+				class="z-[9999] mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-xl"
 				transition:scale={{ start: 0.95, duration: 100 }}
 			>
 				{#each filteredOptions as option (option.value)}
 					<button
 						type="button"
 						onclick={() => select(option.value)}
-						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-border/50 {value.includes(
+						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-border/50 {value.includes(
 							option.value
 						)
-							? 'bg-border/30 font-medium text-text'
-							: ''}"
+							? 'bg-brand/10 font-semibold text-brand'
+							: 'text-text'}"
 					>
 						{option.label}
 						{#if value.includes(option.value)}

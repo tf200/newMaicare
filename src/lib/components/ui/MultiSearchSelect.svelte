@@ -4,6 +4,7 @@
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	type Option = any;
 
@@ -13,6 +14,7 @@
 		placeholder?: string;
 		searchPlaceholder?: string;
 		error?: string;
+		size?: SelectSize;
 		id?: string;
 		loadOptions: (query: string) => Promise<Option[]>;
 		labelFn?: (opt: Option) => string;
@@ -25,6 +27,7 @@
 		placeholder = undefined,
 		searchPlaceholder = undefined,
 		error = undefined,
+		size = 'md',
 		id = `multi-search-${Math.random().toString(36).substr(2, 9)}`,
 		loadOptions,
 		labelFn = (opt: Option) => String(opt?.label ?? ''),
@@ -40,6 +43,7 @@
 	let dropdownEl = $state<HTMLElement>();
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_items_placeholder());
 	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
+	let sizeClass = $derived(selectSizeClasses[size]);
 
 	let selectedOptions = $derived(options.filter((opt) => value.includes(valueFn(opt))));
 
@@ -117,7 +121,7 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text transition-all hover:bg-surface/80 {error
+			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}
@@ -144,7 +148,7 @@
 				{/each}
 			{/if}
 
-			<div class="ml-auto shrink-0 opacity-50">
+			<div class="ml-auto shrink-0 text-text-subtle">
 				<ChevronsUpDown class="h-4 w-4" />
 			</div>
 		</button>
@@ -154,26 +158,26 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
-				class="z-[9999] mt-2 max-h-60 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-lg ring-1 ring-black/5"
+				class="z-[9999] mt-2 max-h-60 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
 				transition:scale={{ start: 0.95, duration: 100 }}
 			>
 				<div class="border-b border-border p-2">
 					<div class="relative">
-						<Search class="absolute top-2.5 left-2.5 h-4 w-4 text-text-muted" />
+						<Search class="absolute top-2.5 left-2.5 h-4 w-4 text-text-subtle" />
 						<input
 							bind:this={searchInput}
 							type="text"
 							value={searchQuery}
 							oninput={handleSearch}
 							placeholder={resolvedSearchPlaceholder}
-							class="bg-background w-full rounded-lg py-2 pr-4 pl-9 text-sm outline-none placeholder:text-text-muted focus:ring-2 focus:ring-brand/20"
+							class="w-full rounded-lg bg-bg py-2 pr-4 pl-9 text-sm text-text outline-hidden placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
 						/>
 					</div>
 				</div>
 
 				<div class="max-h-48 overflow-y-auto p-1">
 					{#if isLoading}
-						<div class="flex items-center justify-center p-4 text-text-muted">
+						<div class="flex items-center justify-center p-4 text-text-subtle">
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							{m.loading()}...
 						</div>
@@ -186,11 +190,11 @@
 							<button
 								type="button"
 								onclick={() => select(option)}
-								class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-text-muted hover:bg-border/50 {value.includes(
+								class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-border/50 {value.includes(
 									valueFn(option)
 								)
-									? 'bg-border/30 font-medium text-text'
-									: ''}"
+									? 'bg-brand/10 font-semibold text-brand'
+									: 'text-text'}"
 							>
 								<span class="truncate">{labelFn(option)}</span>
 								{#if value.includes(valueFn(option))}

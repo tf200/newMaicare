@@ -94,7 +94,9 @@
 			{ label: m.invoices(), href: '/finances/invoices' },
 			{ label: m.breadcrumb_new_invoice() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	// Lines State

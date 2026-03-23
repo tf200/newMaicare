@@ -31,7 +31,7 @@
 	--radius-control: 12px;
 	--radius-pill: 999px;
 	--shadow-card: 0 10px 30px -20px rgba(24, 24, 27, 0.35);
-	--font-sans: Inter, system-ui, -apple-system, sans-serif;
+	--font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 /* Dark mode overrides - controlled by JS toggle which respects system preference on init */
@@ -63,4 +63,33 @@ body {
 	background: var(--color-bg);
 	color: var(--color-text);
 	font-family: var(--font-sans);
+}
+
+@keyframes shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	20% {
+		transform: translateX(-6px);
+	}
+	40% {
+		transform: translateX(5px);
+	}
+	60% {
+		transform: translateX(-3px);
+	}
+	80% {
+		transform: translateX(2px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

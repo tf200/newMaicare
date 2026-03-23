@@ -151,8 +151,7 @@
 		const activeStatusKey = [...statusFilterItems]
 			.reverse()
 			.find((item) => Boolean(nextFilters[item.key]))?.key;
-		const nextStatus =
-			statusFilterItems.find((item) => item.key === activeStatusKey)?.value ?? '';
+		const nextStatus = statusFilterItems.find((item) => item.key === activeStatusKey)?.value ?? '';
 
 		setFilters({
 			...withPendingSearch(appliedFilters),

@@ -56,7 +56,7 @@ export interface ListMyLeaveBalancesParams {
 }
 
 export interface CreateLeaveRequestPayload {
-	leave_type: 'vacation' | 'personal' | 'sick' | 'pregnancy' | 'late' | 'unpaid' | 'other';
+	leave_type: 'vacation' | 'personal' | 'sick' | 'pregnancy' | 'unpaid' | 'other';
 	start_date: string;
 	end_date: string;
 	reason?: string;

@@ -538,7 +538,9 @@
 		<div class="mt-4">
 			{#if activeTab === 'pending'}
 				{#if filteredPendingRequests.length === 0}
-					<div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-surface-subtle/40 px-6 py-12 text-sm text-text-muted">
+					<div
+						class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
+					>
 						<Clock class="h-10 w-10 text-text-subtle" />
 						<span>{hasActiveFilters ? m.swap_empty_filtered() : m.swap_empty_pending()}</span>
 					</div>
@@ -546,28 +548,54 @@
 					<div class="overflow-hidden rounded-2xl border border-border/60">
 						<table class="w-full text-sm">
 							<thead>
-								<tr class="border-b border-border/60 bg-surface-subtle/60">
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Verzocht door</th>
+								<tr class="bg-surface-subtle/60 border-b border-border/60">
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+										>Verzocht door</th
+									>
 									<th class="w-6 px-1 py-2.5"></th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Collega</th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Datum</th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Status</th>
-									<th class="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-text-subtle">Acties</th>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+										>Collega</th
+									>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+										>Datum</th
+									>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+										>Status</th
+									>
+									<th
+										class="px-4 py-2.5 text-right text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+										>Acties</th
+									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border/40 bg-surface">
 								{#each filteredPendingRequests as request}
-									<tr class="group transition-colors hover:bg-surface-subtle/40">
+									<tr class="group hover:bg-surface-subtle/40 transition-colors">
 										<td class="px-4 py-3">
 											<div class="flex items-center gap-2.5">
-												<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-[10px] font-bold text-brand">
-													{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+												<div
+													class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-[10px] font-bold text-brand"
+												>
+													{request.requesterName
+														.split(' ')
+														.map((n) => n[0])
+														.join('')
+														.slice(0, 2)}
 												</div>
 												<div>
 													<p class="text-xs font-semibold text-text">{request.requesterName}</p>
 													<div class="mt-0.5 flex items-center gap-1">
-														<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.requesterShift.shiftType}</span>
-														<span class="text-[10px] text-text-subtle">{formatDate(request.requesterShift.date)}</span>
+														<span
+															class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+															>{request.requesterShift.shiftType}</span
+														>
+														<span class="text-[10px] text-text-subtle"
+															>{formatDate(request.requesterShift.date)}</span
+														>
 													</div>
 												</div>
 											</div>
@@ -577,36 +605,68 @@
 										</td>
 										<td class="px-4 py-3">
 											<div class="flex items-center gap-2.5">
-												<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-[10px] font-bold text-text-muted">
-													{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+												<div
+													class="bg-surface-subtle flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-text-muted"
+												>
+													{request.targetName
+														.split(' ')
+														.map((n) => n[0])
+														.join('')
+														.slice(0, 2)}
 												</div>
 												<div>
 													<p class="text-xs font-semibold text-text">{request.targetName}</p>
 													<div class="mt-0.5 flex items-center gap-1">
-														<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.targetShift.shiftType}</span>
-														<span class="text-[10px] text-text-subtle">{formatDate(request.targetShift.date)}</span>
+														<span
+															class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+															>{request.targetShift.shiftType}</span
+														>
+														<span class="text-[10px] text-text-subtle"
+															>{formatDate(request.targetShift.date)}</span
+														>
 													</div>
 												</div>
 											</div>
 										</td>
-										<td class="px-4 py-3 text-[11px] text-text-muted">{formatDateTime(request.createdAt)}</td>
+										<td class="px-4 py-3 text-[11px] text-text-muted"
+											>{formatDateTime(request.createdAt)}</td
+										>
 										<td class="px-4 py-3">
-											<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold {statusConfig[request.status].className}">
+											<span
+												class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold {statusConfig[
+													request.status
+												].className}"
+											>
 												{statusConfig[request.status].label()}
 											</span>
 										</td>
 										<td class="px-4 py-3">
 											<div class="flex items-center justify-end gap-1">
-												<button class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/60 hover:text-text" title={m.swap_action_cancel()} onclick={() => cancelSwap(request.id)}><X class="h-3.5 w-3.5" /></button>
-												<button class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error" title={m.swap_action_reject()} onclick={() => openAction(request.id, 'reject')}><XCircle class="h-3.5 w-3.5" /></button>
-												<button class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success" title={m.swap_action_accept()} onclick={() => openAction(request.id, 'accept')}><CheckCircle2 class="h-3.5 w-3.5" /></button>
+												<button
+													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/60 hover:text-text"
+													title={m.swap_action_cancel()}
+													onclick={() => cancelSwap(request.id)}><X class="h-3.5 w-3.5" /></button
+												>
+												<button
+													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error"
+													title={m.swap_action_reject()}
+													onclick={() => openAction(request.id, 'reject')}
+													><XCircle class="h-3.5 w-3.5" /></button
+												>
+												<button
+													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success"
+													title={m.swap_action_accept()}
+													onclick={() => openAction(request.id, 'accept')}
+													><CheckCircle2 class="h-3.5 w-3.5" /></button
+												>
 											</div>
 										</td>
 									</tr>
 									{#if request.reason}
 										<tr class="bg-surface-subtle/20">
 											<td colspan="6" class="px-4 py-2 text-[11px] text-text-muted">
-												<span class="font-semibold">{m.swap_reason_label()}</span> {request.reason}
+												<span class="font-semibold">{m.swap_reason_label()}</span>
+												{request.reason}
 											</td>
 										</tr>
 									{/if}
@@ -615,10 +675,11 @@
 						</table>
 					</div>
 				{/if}
-
 			{:else if activeTab === 'approval'}
 				{#if filteredApprovalRequests.length === 0}
-					<div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-surface-subtle/40 px-6 py-12 text-sm text-text-muted">
+					<div
+						class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
+					>
 						<Check class="h-10 w-10 text-text-subtle" />
 						<span>{m.swap_empty_approval()}</span>
 					</div>
@@ -627,27 +688,53 @@
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="border-b border-brand/15 bg-brand/5">
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-brand/70">Verzocht door</th>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
+										>Verzocht door</th
+									>
 									<th class="w-6 px-1 py-2.5"></th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-brand/70">Collega</th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-brand/70">Datum</th>
-									<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-brand/70">Reactie collega</th>
-									<th class="px-4 py-2.5 text-right text-[10px] font-bold uppercase tracking-widest text-brand/70">Acties</th>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
+										>Collega</th
+									>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
+										>Datum</th
+									>
+									<th
+										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
+										>Reactie collega</th
+									>
+									<th
+										class="px-4 py-2.5 text-right text-[10px] font-bold tracking-widest text-brand/70 uppercase"
+										>Acties</th
+									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border/40 bg-surface">
 								{#each filteredApprovalRequests as request}
-									<tr class="group transition-colors hover:bg-surface-subtle/40">
+									<tr class="group hover:bg-surface-subtle/40 transition-colors">
 										<td class="px-4 py-3">
 											<div class="flex items-center gap-2.5">
-												<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-[10px] font-bold text-brand">
-													{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+												<div
+													class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-[10px] font-bold text-brand"
+												>
+													{request.requesterName
+														.split(' ')
+														.map((n) => n[0])
+														.join('')
+														.slice(0, 2)}
 												</div>
 												<div>
 													<p class="text-xs font-semibold text-text">{request.requesterName}</p>
 													<div class="mt-0.5 flex items-center gap-1">
-														<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.requesterShift.shiftType}</span>
-														<span class="text-[10px] text-text-subtle">{formatDate(request.requesterShift.date)}</span>
+														<span
+															class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+															>{request.requesterShift.shiftType}</span
+														>
+														<span class="text-[10px] text-text-subtle"
+															>{formatDate(request.requesterShift.date)}</span
+														>
 													</div>
 												</div>
 											</div>
@@ -657,19 +744,32 @@
 										</td>
 										<td class="px-4 py-3">
 											<div class="flex items-center gap-2.5">
-												<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-[10px] font-bold text-text-muted">
-													{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+												<div
+													class="bg-surface-subtle flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-text-muted"
+												>
+													{request.targetName
+														.split(' ')
+														.map((n) => n[0])
+														.join('')
+														.slice(0, 2)}
 												</div>
 												<div>
 													<p class="text-xs font-semibold text-text">{request.targetName}</p>
 													<div class="mt-0.5 flex items-center gap-1">
-														<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.targetShift.shiftType}</span>
-														<span class="text-[10px] text-text-subtle">{formatDate(request.targetShift.date)}</span>
+														<span
+															class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+															>{request.targetShift.shiftType}</span
+														>
+														<span class="text-[10px] text-text-subtle"
+															>{formatDate(request.targetShift.date)}</span
+														>
 													</div>
 												</div>
 											</div>
 										</td>
-										<td class="px-4 py-3 text-[11px] text-text-muted">{formatDateTime(request.createdAt)}</td>
+										<td class="px-4 py-3 text-[11px] text-text-muted"
+											>{formatDateTime(request.createdAt)}</td
+										>
 										<td class="px-4 py-3">
 											{#if request.targetResponse}
 												<span class="flex items-center gap-1 text-[11px] text-success">
@@ -681,8 +781,18 @@
 										</td>
 										<td class="px-4 py-3">
 											<div class="flex items-center justify-end gap-1">
-												<button class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error" title={m.swap_action_deny()} onclick={() => openAction(request.id, 'deny')}><XCircle class="h-3.5 w-3.5" /></button>
-												<button class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success" title={m.swap_action_approve()} onclick={() => openAction(request.id, 'approve')}><CheckCircle2 class="h-3.5 w-3.5" /></button>
+												<button
+													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error"
+													title={m.swap_action_deny()}
+													onclick={() => openAction(request.id, 'deny')}
+													><XCircle class="h-3.5 w-3.5" /></button
+												>
+												<button
+													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success"
+													title={m.swap_action_approve()}
+													onclick={() => openAction(request.id, 'approve')}
+													><CheckCircle2 class="h-3.5 w-3.5" /></button
+												>
 											</div>
 										</td>
 									</tr>
@@ -691,9 +801,10 @@
 						</table>
 					</div>
 				{/if}
-
 			{:else if historyRequests.length === 0}
-				<div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 bg-surface-subtle/40 px-6 py-12 text-sm text-text-muted">
+				<div
+					class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
+				>
 					<ArrowLeftRight class="h-10 w-10 text-text-subtle" />
 					<span>{m.swap_empty_history()}</span>
 				</div>
@@ -701,28 +812,54 @@
 				<div class="overflow-hidden rounded-2xl border border-border/60 opacity-90">
 					<table class="w-full text-sm">
 						<thead>
-							<tr class="border-b border-border/60 bg-surface-subtle/60">
-								<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Verzocht door</th>
+							<tr class="bg-surface-subtle/60 border-b border-border/60">
+								<th
+									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>Verzocht door</th
+								>
 								<th class="w-6 px-1 py-2.5"></th>
-								<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Collega</th>
-								<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Datum</th>
-								<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Reactie</th>
-								<th class="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-widest text-text-subtle">Status</th>
+								<th
+									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>Collega</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>Datum</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>Reactie</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
+									>Status</th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border/40 bg-surface">
 							{#each historyRequests as request}
-								<tr class="transition-colors hover:bg-surface-subtle/30">
+								<tr class="hover:bg-surface-subtle/30 transition-colors">
 									<td class="px-4 py-3">
 										<div class="flex items-center gap-2.5">
-											<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-[10px] font-bold text-text-muted">
-												{request.requesterName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											<div
+												class="bg-surface-subtle flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-text-muted"
+											>
+												{request.requesterName
+													.split(' ')
+													.map((n) => n[0])
+													.join('')
+													.slice(0, 2)}
 											</div>
 											<div>
 												<p class="text-xs font-semibold text-text">{request.requesterName}</p>
 												<div class="mt-0.5 flex items-center gap-1">
-													<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.requesterShift.shiftType}</span>
-													<span class="text-[10px] text-text-subtle">{formatDate(request.requesterShift.date)}</span>
+													<span
+														class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+														>{request.requesterShift.shiftType}</span
+													>
+													<span class="text-[10px] text-text-subtle"
+														>{formatDate(request.requesterShift.date)}</span
+													>
 												</div>
 											</div>
 										</div>
@@ -732,19 +869,32 @@
 									</td>
 									<td class="px-4 py-3">
 										<div class="flex items-center gap-2.5">
-											<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-[10px] font-bold text-text-muted">
-												{request.targetName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+											<div
+												class="bg-surface-subtle flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-text-muted"
+											>
+												{request.targetName
+													.split(' ')
+													.map((n) => n[0])
+													.join('')
+													.slice(0, 2)}
 											</div>
 											<div>
 												<p class="text-xs font-semibold text-text">{request.targetName}</p>
 												<div class="mt-0.5 flex items-center gap-1">
-													<span class="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">{request.targetShift.shiftType}</span>
-													<span class="text-[10px] text-text-subtle">{formatDate(request.targetShift.date)}</span>
+													<span
+														class="bg-surface-subtle rounded px-1.5 py-0.5 text-[10px] font-medium text-text-muted"
+														>{request.targetShift.shiftType}</span
+													>
+													<span class="text-[10px] text-text-subtle"
+														>{formatDate(request.targetShift.date)}</span
+													>
 												</div>
 											</div>
 										</div>
 									</td>
-									<td class="px-4 py-3 text-[11px] text-text-muted">{formatDateTime(request.createdAt)}</td>
+									<td class="px-4 py-3 text-[11px] text-text-muted"
+										>{formatDateTime(request.createdAt)}</td
+									>
 									<td class="max-w-[200px] px-4 py-3 text-[11px] text-text-muted">
 										{#if request.adminNotes}
 											<span class="truncate">{request.adminNotes}</span>
@@ -755,7 +905,11 @@
 										{/if}
 									</td>
 									<td class="px-4 py-3">
-										<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold {statusConfig[request.status].className}">
+										<span
+											class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold {statusConfig[
+												request.status
+											].className}"
+										>
 											{statusConfig[request.status].label()}
 										</span>
 									</td>

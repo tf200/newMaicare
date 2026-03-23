@@ -57,7 +57,9 @@
 			{ label: m.intakes(), href: '/intakes' },
 			{ label: m.intake_details() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	const handleSaveIntake = async () => {

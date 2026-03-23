@@ -30,8 +30,7 @@ export const handbookStatusConfig: Record<HandbookStatus, HandbookStatusConfig> 
 		dotClass: 'bg-emerald-500',
 		badgeClass:
 			'border border-emerald-500/15 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-		pillClass:
-			'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/20'
+		pillClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/20'
 	},
 	in_progress: {
 		label: 'In Progress',
@@ -48,8 +47,7 @@ export const handbookStatusConfig: Record<HandbookStatus, HandbookStatusConfig> 
 	waived: {
 		label: 'Waived',
 		dotClass: 'bg-orange-500',
-		badgeClass:
-			'border border-orange-500/15 bg-orange-500/10 text-orange-700 dark:text-orange-300',
+		badgeClass: 'border border-orange-500/15 bg-orange-500/10 text-orange-700 dark:text-orange-300',
 		pillClass: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/20'
 	}
 };

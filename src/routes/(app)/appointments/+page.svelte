@@ -15,6 +15,7 @@
 		X
 	} from 'lucide-svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -546,19 +547,13 @@
 					</div>
 				</div>
 			{:else}
-				<div
-					class="flex flex-col items-center justify-center rounded-3xl border border-border border-dashed bg-surface py-24 text-center"
-				>
-					<div
-						class="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-zinc-100 bg-zinc-50 shadow-sm dark:border-zinc-800 dark:bg-zinc-800/50"
-					>
-						<FolderClock class="h-10 w-10 text-text-muted" />
-					</div>
-					<h3 class="text-xl font-bold text-text">{m.no_appointments_to_review()}</h3>
-					<p class="mt-2 max-w-sm text-sm text-text-muted">
-						{m.no_matching_items()}
-					</p>
-				</div>
+				<EmptyState
+					icon={FolderClock}
+					title={m.no_appointments_to_review()}
+					description={m.no_matching_items()}
+					variant="dashed"
+					size="lg"
+				/>
 			{/each}
 		</div>
 

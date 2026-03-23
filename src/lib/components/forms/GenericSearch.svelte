@@ -112,16 +112,20 @@
 
 <div class="w-full space-y-2">
 	{#if labelText}
-		<label class="block text-sm font-semibold uppercase tracking-wide text-text">
+		<label class="block text-sm font-semibold tracking-wide text-text uppercase">
 			{labelText}
 		</label>
 	{/if}
 
 	{#if selectedItem}
 		<!-- Selected State -->
-		<div class="flex items-center justify-between gap-3 rounded-lg border-2 border-brand bg-brand/5 px-4 py-3">
+		<div
+			class="flex items-center justify-between gap-3 rounded-lg border-2 border-brand bg-brand/5 px-4 py-3"
+		>
 			<div class="flex items-center gap-3">
-				<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brand/20 text-sm font-bold text-brand">
+				<div
+					class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brand/20 text-sm font-bold text-brand"
+				>
 					{getInitials(selectedItem)}
 				</div>
 				<div>
@@ -138,7 +142,7 @@
 			<button
 				type="button"
 				onclick={clearSelection}
-				class="flex-shrink-0 rounded-lg p-1.5 transition hover:bg-error/10 text-text-muted hover:text-error"
+				class="flex-shrink-0 rounded-lg p-1.5 text-text-muted transition hover:bg-error/10 hover:text-error"
 				title="Change selection"
 			>
 				<X class="h-4 w-4" />
@@ -147,7 +151,9 @@
 	{:else}
 		<!-- Search Input -->
 		<div class="relative">
-			<div class="relative flex items-center gap-2 rounded-lg border-2 border-border/60 bg-surface px-3 py-2 shadow-sm transition-all focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
+			<div
+				class="relative flex items-center gap-2 rounded-lg border-2 border-border/60 bg-surface px-3 py-2 shadow-sm transition-all focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10"
+			>
 				<Search class="h-4 w-4 flex-shrink-0 text-text-muted" />
 				<input
 					bind:this={searchInputEl}
@@ -171,25 +177,28 @@
 
 			<!-- Dropdown -->
 			{#if isOpen && (items.length > 0 || isLoading)}
-				<div bind:this={dropdownEl} class="absolute top-full left-0 right-0 z-50 mt-2 rounded-lg border border-border/60 bg-surface shadow-lg">
+				<div
+					bind:this={dropdownEl}
+					class="absolute top-full right-0 left-0 z-50 mt-2 rounded-lg border border-border/60 bg-surface shadow-lg"
+				>
 					{#if isLoading}
 						<div class="flex items-center justify-center gap-2 px-4 py-3">
 							<Loader2 class="h-4 w-4 animate-spin text-brand" />
 							<span class="text-sm text-text-muted">Loading...</span>
 						</div>
 					{:else if items.length === 0}
-						<div class="px-4 py-3 text-sm text-text-muted text-center">
-							No items found
-						</div>
+						<div class="px-4 py-3 text-center text-sm text-text-muted">No items found</div>
 					{:else}
 						<div class="max-h-64 overflow-y-auto">
 							{#each items as item (item.id)}
 								<button
 									type="button"
 									onclick={() => handleSelectItem(item)}
-									class="w-full px-4 py-2.5 text-left text-sm transition hover:bg-surface-subtle border-b border-border/30 last:border-b-0 flex items-center gap-3"
+									class="hover:bg-surface-subtle flex w-full items-center gap-3 border-b border-border/30 px-4 py-2.5 text-left text-sm transition last:border-b-0"
 								>
-									<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand">
+									<div
+										class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand"
+									>
 										{getInitials(item)}
 									</div>
 									<div class="min-w-0 flex-1">

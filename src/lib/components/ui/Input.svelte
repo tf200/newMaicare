@@ -20,7 +20,7 @@
 		<input
 			{...props}
 			bind:value
-			class="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20 {className}"
+			class="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-[border-color,box-shadow] duration-200 placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 {className}"
 		/>
 	</div>
 	{#if error}

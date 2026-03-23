@@ -58,7 +58,11 @@
 				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
 				{ label: m.swap_page_title(), href: '/shift-swaps' },
 				{ label: m.leave(), href: '/leave' },
-				{ label: m.leave_management_label(), href: '/leave-management', permission: 'EMPLOYEE.VIEW' }
+				{
+					label: m.leave_management_label(),
+					href: '/leave-management',
+					permission: 'EMPLOYEE.VIEW'
+				}
 			]
 		},
 		{
@@ -108,7 +112,7 @@
 					permission: 'INVOICE.VIEW'
 				}
 			]
-		},
+		}
 	];
 
 	const items = $derived(sidebarState.scopedConfig?.items ?? defaultItems);
@@ -317,12 +321,12 @@
 
 						{#if hasChildren && isExpanded && !collapsed}
 							<div class="ml-9 space-y-1" transition:slide={{ duration: 300 }}>
-							{#each item.children as child (child.label)}
-								<PermissionGuard permission={child.permission}>
-									{@const childActive = activeChildHref === child.href}
-									<button
-										onclick={() => goto(localizeHref(child.href))}
-										class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
+								{#each item.children as child (child.label)}
+									<PermissionGuard permission={child.permission}>
+										{@const childActive = activeChildHref === child.href}
+										<button
+											onclick={() => goto(localizeHref(child.href))}
+											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
 										{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>
 											{child.label}

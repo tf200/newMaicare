@@ -41,10 +41,15 @@
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.clients(), href: '/clients' },
-			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{
+				label: data.clientName ?? m.breadcrumb_client_detail(),
+				href: `/clients/${page.params.id}`
+			},
 			{ label: m.goals() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let selectedGoalTitle = $state('');
