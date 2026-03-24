@@ -750,6 +750,7 @@
 	"required_field": "This field is required",
 	"select_option": "Select an option",
 	"add": "Add",
+	"add_employee": "Add employee",
 	"remove": "Remove",
 	"upload": "Upload",
 	"download": "Download",
