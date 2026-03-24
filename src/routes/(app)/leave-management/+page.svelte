@@ -1,22 +1,19 @@
 <script lang="ts">
 	import {
-		CalendarPlus,
-		Clock,
 		CheckCircle,
 		XCircle,
-		AlertCircle,
 		Stethoscope,
 		Baby,
 		AlarmClock,
-		Search,
 		Zap
 	} from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Button from '$lib/components/ui/Button.svelte';
-	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import EmployeeSearch from '$lib/components/forms/EmployeeSearch.svelte';
@@ -27,13 +24,32 @@
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
 	import LeavePayoutTab from './_components/LeavePayoutTab.svelte';
 	import LeaveContractChangesTab from './_components/LeaveContractChangesTab.svelte';
-	import { listLeaveRequests } from '$lib/api/leave';
+	import LeaveOverviewTab from './_components/LeaveOverviewTab.svelte';
+	import {
+		createLeaveRequestByAdmin,
+		listLeaveBalances,
+		listLeaveRequestStats,
+		listLeaveRequests
+	} from '$lib/api/leave';
 	import { m } from '$lib/paraglide/messages';
 	import type { EmployeeListItem } from '$lib/api/employees';
-	import type { LeaveRequestListItemResponse, LeaveRequestStatus } from '$lib/types/api';
-	import type { LeaveManagementPageData } from './+page';
+	import type {
+		CreateLeaveRequestByAdminPayload,
+		LeaveRequestListItemResponse,
+		LeaveRequestStatus,
+		MyLeaveRequestStatsResponse
+	} from '$lib/types/api';
+	import type { LeaveBalancesLoadResult, LeaveManagementPageData } from './+page';
 
-	type LeaveType = 'vacation' | 'sick' | 'personal' | 'training' | 'pregnancy';
+	type LeaveType =
+		| 'vacation'
+		| 'sick'
+		| 'personal'
+		| 'pregnancy'
+		| 'unpaid'
+		| 'other'
+		| 'training';
+	type CreatableLeaveType = CreateLeaveRequestByAdminPayload['leave_type'];
 	type LeaveStatus = LeaveRequestStatus;
 
 	interface Employee {
@@ -55,19 +71,6 @@
 		status: LeaveStatus;
 	}
 
-	interface OverviewLeaveRequestRow {
-		id: string;
-		employeeId: string;
-		employeeName: string;
-		leaveType: string;
-		startDate: string;
-		endDate: string;
-		days: number;
-		hours: number;
-		reason?: string;
-		status: LeaveStatus;
-	}
-
 	interface LateArrival {
 		id: string;
 		employeeId: string;
@@ -77,42 +80,6 @@
 	}
 
 	type RequestFilter = 'all' | LeaveStatus;
-
-	interface RequestFilterPill {
-		id: RequestFilter;
-		label: string;
-	}
-
-	const leaveTypeConfig: Record<LeaveType, { label: () => string; className: string }> = {
-		vacation: {
-			label: () => m.leave_type_vacation(),
-			className: 'bg-info/10 text-info border-info/20'
-		},
-		sick: { label: () => m.leave_type_sick(), className: 'bg-error/10 text-error border-error/20' },
-		personal: {
-			label: () => m.leave_type_personal(),
-			className: 'bg-warning/10 text-warning border-warning/20'
-		},
-		training: {
-			label: () => m.leave_type_training(),
-			className: 'bg-brand/10 text-brand border-brand/20'
-		},
-		pregnancy: {
-			label: () => m.leave_type_pregnancy(),
-			className: 'bg-pink-500/10 text-pink-600 border-pink-400/40'
-		}
-	};
-
-	const statusConfig: Record<
-		LeaveStatus,
-		{ label: () => string; icon: typeof AlertCircle; color: string }
-	> = {
-		pending: { label: () => m.leave_status_pending(), icon: AlertCircle, color: 'text-warning' },
-		approved: { label: () => m.leave_status_approved(), icon: CheckCircle, color: 'text-success' },
-		rejected: { label: () => m.leave_status_rejected(), icon: XCircle, color: 'text-error' },
-		cancelled: { label: () => 'Cancelled', icon: XCircle, color: 'text-text-muted' },
-		expired: { label: () => 'Expired', icon: Clock, color: 'text-text-muted' }
-	};
 
 	const employees: Employee[] = [
 		{
@@ -190,16 +157,9 @@
 	const leaveTypeOptions = $derived([
 		{ label: m.leave_type_vacation(), value: 'vacation' },
 		{ label: m.leave_type_personal(), value: 'personal' },
-		{ label: m.leave_type_training(), value: 'training' }
+		{ label: m.leave_type_unpaid(), value: 'unpaid' },
+		{ label: m.leave_type_other(), value: 'other' }
 	]);
-
-	const columns: DataTableColumn[] = [
-		{ key: 'employee', label: 'Medewerker' },
-		{ key: 'type', label: 'Type' },
-		{ key: 'period', label: 'Periode' },
-		{ key: 'status', label: 'Status', align: 'center' },
-		{ key: 'actions', label: '', align: 'right' }
-	];
 
 	const validTabs = [
 		'aanvragen',
@@ -227,7 +187,6 @@
 
 	let activeTab = $state<TabId>(getInitialTab());
 
-	const leaveBalancesDataPromise = $derived.by(() => data.leaveBalancesData);
 	const leaveBalancesInitial = $derived.by(() => data.initial);
 	const appliedBalanceSearch = $derived.by(() => leaveBalancesInitial.filters.employeeSearch);
 	const appliedBalanceYear = $derived.by(() => leaveBalancesInitial.filters.year);
@@ -247,6 +206,12 @@
 	let overviewLoading = $state(false);
 	let overviewError = $state<string | null>(null);
 	let overviewRequestSequence = 0;
+	let stats = $state<MyLeaveRequestStatsResponse | null>(null);
+	let statsRequestSequence = 0;
+	let leaveBalancesData = $state<LeaveBalancesLoadResult | null>(null);
+	let leaveBalancesLoading = $state(false);
+	let leaveBalancesRequestSequence = 0;
+	let leaveBalancesLastKey = $state('');
 	let deleteDialogOpen = $state(false);
 	let selectedRequestId = $state<string | null>(null);
 	let currentMonth = $state(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -257,7 +222,7 @@
 
 	let newRequest = $state({
 		employeeId: '',
-		type: 'vacation' as LeaveType,
+		type: 'vacation' as CreatableLeaveType,
 		startDate: '',
 		endDate: '',
 		reason: ''
@@ -266,16 +231,13 @@
 	let selectedSickEmployee = $state<EmployeeListItem | null>(null);
 	let selectedPregnancyEmployee = $state<EmployeeListItem | null>(null);
 	let selectedLateEmployee = $state<EmployeeListItem | null>(null);
-	let sickCalendarStart = $state<string | null>(null);
-	let sickCalendarEnd = $state<string | null>(null);
 	let lateCalendarStart = $state<string | null>(null);
 	let lateCalendarEnd = $state<string | null>(null);
 
 	let sickRequest = $state({
 		employeeId: '',
-		date: '',
-		startTime: '',
-		endTime: '',
+		startDate: '',
+		endDate: '',
 		reason: ''
 	});
 
@@ -294,42 +256,30 @@
 	});
 
 	const pendingCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'pending').length
+		() => stats?.open_requests ?? leaveRequests.filter((r) => r.status === 'pending').length
 	);
 	const approvedCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'approved').length
+		() => stats?.approved_requests ?? leaveRequests.filter((r) => r.status === 'approved').length
 	);
-	const sickCount = $derived.by(() => leaveRequests.filter((r) => r.type === 'sick').length);
+	const sickCount = $derived.by(
+		() => stats?.sickness_absence ?? leaveRequests.filter((r) => r.type === 'sick').length
+	);
 	const rejectedCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'rejected').length
+		() => stats?.rejected_requests ?? leaveRequests.filter((r) => r.status === 'rejected').length
 	);
-	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
-		{ id: 'all', label: m.all() },
-		{ id: 'pending', label: m.pending() },
-		{ id: 'approved', label: m.leave_stats_approved() },
-		{ id: 'rejected', label: m.leave_stats_rejected() }
-	]);
-
-	const hasActiveFilters = $derived.by(() => searchQuery.trim() !== '' || requestFilter !== 'all');
 	const normalizedOverviewSearch = $derived.by(() => searchQuery.trim().slice(0, 120));
 
-	const overviewTableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
-		overviewRows.map((row) => {
-			const days = calculateDays(row.start_date, row.end_date);
-			return {
-				id: row.id,
-				employeeId: row.employee_id,
-				employeeName: row.employee_name,
-				leaveType: row.leave_type,
-				startDate: row.start_date,
-				endDate: row.end_date,
-				days,
-				hours: days * 8,
-				reason: row.reason ?? undefined,
-				status: row.status
-			};
-		})
-	);
+	async function loadStats() {
+		const requestId = ++statsRequestSequence;
+		try {
+			const response = await listLeaveRequestStats();
+			if (requestId !== statsRequestSequence) return;
+			stats = response.data;
+		} catch {
+			if (requestId !== statsRequestSequence) return;
+			stats = null;
+		}
+	}
 
 	async function loadOverviewRequests(page: number, status: RequestFilter, employeeSearch: string) {
 		const requestId = ++overviewRequestSequence;
@@ -362,6 +312,10 @@
 	}
 
 	$effect(() => {
+		void loadStats();
+	});
+
+	$effect(() => {
 		if (activeTab !== 'overzicht') return;
 
 		const timer = setTimeout(() => {
@@ -373,32 +327,89 @@
 		};
 	});
 
-	function getFilterPillClass(pillId: RequestFilter) {
-		if (pillId === 'all') {
-			return requestFilter === pillId
-				? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-				: 'border border-border text-text-muted hover:text-text';
+	const getBalanceLoadParams = () => ({
+		page: leaveBalancesInitial.page,
+		pageSize: leaveBalancesInitial.pageSize,
+		employeeSearch: leaveBalancesInitial.filters.employeeSearch,
+		year: leaveBalancesInitial.filters.year
+	});
+
+	const getBalanceLoadKey = () => {
+		const params = getBalanceLoadParams();
+		return JSON.stringify(params);
+	};
+
+	async function loadLeaveBalances() {
+		const { page, pageSize, employeeSearch, year } = getBalanceLoadParams();
+		const requestId = ++leaveBalancesRequestSequence;
+		leaveBalancesLoading = true;
+
+		try {
+			const response = await listLeaveBalances({
+				page,
+				pageSize,
+				employeeSearch: employeeSearch || undefined,
+				year: year ?? undefined
+			});
+
+			if (requestId !== leaveBalancesRequestSequence) return;
+
+			const { count, next, previous, page_size, results } = response.data;
+			const effectivePageSize = page_size || pageSize;
+
+			leaveBalancesData = {
+				balances: results,
+				pagination: {
+					count,
+					page,
+					pageSize: effectivePageSize,
+					next,
+					previous,
+					filters: {
+						employeeSearch,
+						year
+					}
+				},
+				loadError: null
+			};
+		} catch (error) {
+			if (requestId !== leaveBalancesRequestSequence) return;
+			leaveBalancesData = {
+				balances: [],
+				pagination: {
+					count: 0,
+					page,
+					pageSize,
+					next: null,
+					previous: null,
+					filters: {
+						employeeSearch,
+						year
+					}
+				},
+				loadError: error instanceof Error ? error.message : 'Failed to load leave balances.'
+			};
+		} finally {
+			if (requestId === leaveBalancesRequestSequence) {
+				leaveBalancesLoading = false;
+			}
 		}
-		if (pillId === 'pending') {
-			return requestFilter === pillId
-				? 'border border-amber-600/40 bg-amber-500 text-white shadow-sm shadow-amber-600/25'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		if (pillId === 'approved') {
-			return requestFilter === pillId
-				? 'border border-emerald-700/40 bg-emerald-600 text-white shadow-sm shadow-emerald-700/25'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		return requestFilter === pillId
-			? 'border border-rose-700/40 bg-rose-600 text-white shadow-sm shadow-rose-700/25'
-			: 'border border-border text-text-muted hover:text-text';
 	}
 
-	function clearAllFilters() {
-		searchQuery = '';
-		requestFilter = 'all';
-		overviewCurrentPage = 1;
-	}
+	$effect(() => {
+		if (activeTab !== 'saldo') return;
+
+		const key = getBalanceLoadKey();
+		if (leaveBalancesLastKey === key && leaveBalancesData) return;
+
+		leaveBalancesLastKey = key;
+		void loadLeaveBalances();
+	});
+
+	const retryLeaveBalances = () => {
+		leaveBalancesLastKey = '';
+		void loadLeaveBalances();
+	};
 
 	const buildBalanceQuery = (
 		pageValue: number,
@@ -421,7 +432,11 @@
 		const nextQuery = buildBalanceQuery(pageValue, employeeSearchValue.trim(), yearValue);
 		if (page.url.searchParams.toString() === nextQuery) return;
 		const hash = page.url.hash || '';
-		goto(`?${nextQuery}${hash}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(`${page.url.pathname}?${nextQuery}${hash}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const handleBalanceSearch = (employeeSearchValue: string) => {
@@ -472,69 +487,158 @@
 		return diff > 0 ? diff : 0;
 	}
 
+	function isValidDateYmd(value: string) {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+		const [year, month, day] = value.split('-').map(Number);
+		if (!year || !month || !day) return false;
+		const date = new Date(year, month - 1, day);
+		return (
+			!Number.isNaN(date.getTime()) &&
+			date.getFullYear() === year &&
+			date.getMonth() === month - 1 &&
+			date.getDate() === day
+		);
+	}
+
+	function normalizeReason(value: string) {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : undefined;
+	}
+
 	function addLeaveRequest(payload: Omit<LeaveRequest, 'id' | 'status'>) {
 		const id = crypto.randomUUID();
 		leaveRequests = [{ ...payload, id, status: 'pending' }, ...leaveRequests];
 		setToast(m.leave_toast_added(), 'success');
 	}
 
-	function handleCreateLeave(event: Event) {
+	function refreshOverview() {
+		void loadOverviewRequests(overviewCurrentPage, requestFilter, normalizedOverviewSearch);
+	}
+
+	async function handleCreateLeave(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(newRequest.startDate, newRequest.endDate);
-		if (!newRequest.employeeId || days === 0) {
+		if (
+			!newRequest.employeeId ||
+			days === 0 ||
+			!isValidDateYmd(newRequest.startDate) ||
+			!isValidDateYmd(newRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_employee_dates(), 'warning');
 			return;
 		}
-		addLeaveRequest({
-			employeeId: newRequest.employeeId,
-			type: newRequest.type,
-			startDate: newRequest.startDate,
-			endDate: newRequest.endDate,
-			days,
-			hours: days * 8,
-			reason: newRequest.reason
-		});
-		newRequest = { employeeId: '', type: 'vacation', startDate: '', endDate: '', reason: '' };
+
+		const normalizedReason = normalizeReason(newRequest.reason);
+
+		try {
+			await createLeaveRequestByAdmin({
+				employee_id: newRequest.employeeId,
+				leave_type: newRequest.type,
+				start_date: newRequest.startDate,
+				end_date: newRequest.endDate,
+				reason: normalizedReason
+			});
+
+			addLeaveRequest({
+				employeeId: newRequest.employeeId,
+				type: newRequest.type,
+				startDate: newRequest.startDate,
+				endDate: newRequest.endDate,
+				days,
+				hours: days * 8,
+				reason: normalizedReason
+			});
+			newRequest = { employeeId: '', type: 'vacation', startDate: '', endDate: '', reason: '' };
+			selectedEmployeeFromSearch = null;
+			refreshOverview();
+			void loadStats();
+		} catch (error) {
+			setToast(m.leave_toast_request_error(), 'error');
+		}
 	}
 
-	function handleCreateSick(event: Event) {
+	async function handleCreateSick(event: Event) {
 		event.preventDefault();
-		if (!sickRequest.employeeId || !sickRequest.date || !sickRequest.startTime) {
+		const days = calculateDays(sickRequest.startDate, sickRequest.endDate);
+		if (
+			!sickRequest.employeeId ||
+			days === 0 ||
+			!isValidDateYmd(sickRequest.startDate) ||
+			!isValidDateYmd(sickRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_sick_fields(), 'warning');
 			return;
 		}
-		const reasonDetail = sickRequest.reason
-			? `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}. ${sickRequest.reason}`
-			: `Ziekmelding om ${sickRequest.startTime}${sickRequest.endTime ? ` - hersteld om ${sickRequest.endTime}` : ''}.`;
-		addLeaveRequest({
-			employeeId: sickRequest.employeeId,
-			type: 'sick',
-			startDate: sickRequest.date,
-			endDate: sickRequest.date,
-			days: 1,
-			hours: 8,
-			reason: reasonDetail
-		});
-		sickRequest = { employeeId: '', date: '', startTime: '', endTime: '', reason: '' };
+
+		const normalizedReason = normalizeReason(sickRequest.reason);
+
+		try {
+			await createLeaveRequestByAdmin({
+				employee_id: sickRequest.employeeId,
+				leave_type: 'sick',
+				start_date: sickRequest.startDate,
+				end_date: sickRequest.endDate,
+				reason: normalizedReason
+			});
+
+			addLeaveRequest({
+				employeeId: sickRequest.employeeId,
+				type: 'sick',
+				startDate: sickRequest.startDate,
+				endDate: sickRequest.endDate,
+				days,
+				hours: days * 8,
+				reason: normalizedReason
+			});
+			sickRequest = { employeeId: '', startDate: '', endDate: '', reason: '' };
+			selectedSickEmployee = null;
+			refreshOverview();
+			void loadStats();
+		} catch (error) {
+			setToast(m.leave_toast_sick_error(), 'error');
+		}
 	}
 
-	function handleCreatePregnancy(event: Event) {
+	async function handleCreatePregnancy(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate);
-		if (!pregnancyRequest.employeeId || days === 0) {
+		if (
+			!pregnancyRequest.employeeId ||
+			days === 0 ||
+			!isValidDateYmd(pregnancyRequest.startDate) ||
+			!isValidDateYmd(pregnancyRequest.endDate)
+		) {
 			setToast(m.leave_toast_missing_pregnancy_fields(), 'warning');
 			return;
 		}
-		addLeaveRequest({
-			employeeId: pregnancyRequest.employeeId,
-			type: 'pregnancy',
-			startDate: pregnancyRequest.startDate,
-			endDate: pregnancyRequest.endDate,
-			days,
-			hours: days * 8,
-			reason: pregnancyRequest.reason
-		});
-		pregnancyRequest = { employeeId: '', startDate: '', endDate: '', reason: '' };
+
+		const normalizedReason = normalizeReason(pregnancyRequest.reason);
+
+		try {
+			await createLeaveRequestByAdmin({
+				employee_id: pregnancyRequest.employeeId,
+				leave_type: 'pregnancy',
+				start_date: pregnancyRequest.startDate,
+				end_date: pregnancyRequest.endDate,
+				reason: normalizedReason
+			});
+
+			addLeaveRequest({
+				employeeId: pregnancyRequest.employeeId,
+				type: 'pregnancy',
+				startDate: pregnancyRequest.startDate,
+				endDate: pregnancyRequest.endDate,
+				days,
+				hours: days * 8,
+				reason: normalizedReason
+			});
+			pregnancyRequest = { employeeId: '', startDate: '', endDate: '', reason: '' };
+			selectedPregnancyEmployee = null;
+			refreshOverview();
+			void loadStats();
+		} catch (error) {
+			setToast(m.leave_toast_pregnancy_error(), 'error');
+		}
 	}
 
 	function handleCreateLate(event: Event) {
@@ -620,129 +724,6 @@
 	<title>{m.leave_page_title()} | MaiCare</title>
 </svelte:head>
 
-{#snippet requestFilters()}
-	<div class="flex w-full flex-wrap items-center justify-end gap-3">
-		<div class="relative w-full sm:w-56">
-			<Search
-				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
-			/>
-			<input
-				type="search"
-				placeholder={m.search_employees()}
-				value={searchQuery}
-				oninput={(event) => {
-					searchQuery = (event.target as HTMLInputElement).value;
-					overviewCurrentPage = 1;
-				}}
-				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
-			/>
-		</div>
-
-		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-			{#each requestFilterPills as pill}
-				<button
-					onclick={() => {
-						requestFilter = pill.id;
-						overviewCurrentPage = 1;
-					}}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
-						pill.id
-					)}"
-				>
-					{pill.label}
-				</button>
-			{/each}
-
-			{#if hasActiveFilters}
-				<button
-					class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
-					onclick={clearAllFilters}
-				>
-					{m.swap_clear_filters()}
-				</button>
-			{/if}
-		</div>
-	</div>
-{/snippet}
-
-{#snippet employeeCell(row: OverviewLeaveRequestRow)}
-	<div class="flex items-center gap-3">
-		<div
-			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-xs font-semibold text-brand"
-		>
-			{row.employeeName
-				.split(' ')
-				.map((part) => part[0])
-				.join('')
-				.slice(0, 2)
-				.toUpperCase()}
-		</div>
-		<div>
-			<p class="text-sm font-semibold text-text">{row.employeeName}</p>
-			<p class="text-xs text-text-muted">{row.employeeId}</p>
-		</div>
-	</div>
-{/snippet}
-
-{#snippet typeCell(row: OverviewLeaveRequestRow)}
-	{@const normalizedType = row.leaveType as LeaveType}
-	{@const typeMeta = leaveTypeConfig[normalizedType]}
-	<span
-		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {typeMeta
-			? typeMeta.className
-			: 'bg-surface-subtle border-border text-text-muted'}"
-	>
-		{typeMeta ? typeMeta.label() : row.leaveType}
-	</span>
-{/snippet}
-
-{#snippet periodCell(row: OverviewLeaveRequestRow)}
-	<div class="text-sm">
-		<p class="font-semibold text-text">
-			{formatDate(row.startDate)} - {formatDate(row.endDate)}
-		</p>
-		<p class="text-text-muted">
-			{row.days}
-			{row.days === 1 ? 'dag' : 'dagen'} ({row.hours} uur)
-		</p>
-	</div>
-{/snippet}
-
-{#snippet statusCell(row: OverviewLeaveRequestRow)}
-	{@const statusMeta = statusConfig[row.status]}
-	<span class="inline-flex items-center gap-2 text-xs font-semibold {statusMeta.color}">
-		<statusMeta.icon class="h-4 w-4" />
-		{statusMeta.label()}
-	</span>
-{/snippet}
-
-{#snippet actionsCell(row: OverviewLeaveRequestRow)}
-	<div class="flex items-center justify-end gap-1">
-		{#if row.status === 'pending'}
-			<button
-				class="flex h-6 items-center gap-0.5 rounded-md border border-error/20 bg-error/5 px-1.5 text-[10px] font-semibold text-error transition-all hover:bg-error/10"
-				onclick={() => handleRejectOverview(row.id)}
-			>
-				<XCircle class="h-2.5 w-2.5" />
-				{m.leave_action_reject()}
-			</button>
-			<button
-				class="flex h-6 items-center gap-0.5 rounded-md border border-success/20 bg-success/5 px-1.5 text-[10px] font-semibold text-success transition-all hover:bg-success/10"
-				onclick={() => handleApproveOverview(row.id)}
-			>
-				<CheckCircle class="h-2.5 w-2.5" />
-				{m.leave_action_approve()}
-			</button>
-		{/if}
-		<button
-			class="flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[10px] font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
-			onclick={() => handleDeleteClick(row.id)}
-		>
-			{m.leave_action_delete()}
-		</button>
-	</div>
-{/snippet}
-
 <section class="space-y-6">
 	<LeavePageHeader
 		currentMonthLabel={formatMonth(currentMonth)}
@@ -774,116 +755,78 @@
 						onsubmit={handleCreateLeave}
 					>
 						<!-- Left: Form -->
-						<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
-							<div class="mb-5 flex items-center gap-3">
-								<div class="rounded-xl bg-brand/10 p-2 text-brand">
-									<CalendarPlus class="h-5 w-5" />
-								</div>
-								<div>
-									<h2 class="text-lg font-semibold text-text">{m.leave_new_request_title()}</h2>
-									<p class="text-xs text-text-muted">{m.leave_new_request_subtitle()}</p>
-								</div>
-							</div>
-							<div class="space-y-5">
-								<!-- Employee Search Component -->
-								<EmployeeSearch
-									labelText={m.leave_employee_select_label()}
-									placeholder={m.leave_employee_search_placeholder()}
-									bind:selectedId={newRequest.employeeId}
-									onSelect={(emp) => {
-										selectedEmployeeFromSearch = emp;
-									}}
+						<div class="space-y-5 border-b border-brand/10 pb-5">
+							<!-- Employee Search Component -->
+							<EmployeeSearch
+								labelText={m.leave_employee_select_label()}
+								placeholder={m.leave_employee_search_placeholder()}
+								bind:selectedId={newRequest.employeeId}
+								onSelect={(emp) => {
+									selectedEmployeeFromSearch = emp;
+								}}
+							/>
+
+							{#if selectedEmployeeFromSearch}
+								<!-- Type Select -->
+								<Select
+									label={m.leave_type_label()}
+									options={leaveTypeOptions}
+									bind:value={newRequest.type}
 								/>
 
-								{#if selectedEmployeeFromSearch}
-									<div
-										class="bg-surface-subtle/40 space-y-4 rounded-2xl border border-border/60 p-4"
-									>
-										<!-- Type Select -->
-										<div>
-											<label for="leave-type" class="ml-1 text-xs font-semibold text-text-muted"
-												>{m.leave_type_label()}</label
-											>
-											<select
-												id="leave-type"
-												bind:value={newRequest.type}
-												class="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
-											>
-												{#each leaveTypeOptions as type}
-													<option value={type.value}>{type.label}</option>
-												{/each}
-											</select>
-										</div>
-
-										<!-- Date Range Display -->
-										<div class="space-y-2">
-											<div class="ml-1 text-xs font-semibold text-text-muted">
-												{m.leave_date_range_label()}
-											</div>
-											<div class="grid gap-3 sm:grid-cols-2">
-												<div
-													class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm"
-												>
-													<p class="mb-1 text-xs text-text-muted">{m.leave_date_from()}</p>
-													<p class="font-semibold text-text">
-														{newRequest.startDate
-															? new Date(newRequest.startDate).toLocaleDateString('nl-NL')
-															: 'Selecteren'}
-													</p>
-												</div>
-												<div
-													class="rounded-xl border border-border/60 bg-surface px-3 py-3 text-sm"
-												>
-													<p class="mb-1 text-xs text-text-muted">{m.leave_date_to()}</p>
-													<p class="font-semibold text-text">
-														{newRequest.endDate
-															? new Date(newRequest.endDate).toLocaleDateString('nl-NL')
-															: 'Selecteren'}
-													</p>
-												</div>
-											</div>
-										</div>
+								<!-- Date Range -->
+								<div class="space-y-2">
+									<div class="ml-1 text-xs font-semibold text-text-muted">
+										{m.leave_date_range_label()}
 									</div>
+									<div class="grid gap-3 sm:grid-cols-2">
+										<DatePicker
+											label={m.leave_date_from()}
+											bind:value={newRequest.startDate}
+											compact
+										/>
+										<DatePicker label={m.leave_date_to()} bind:value={newRequest.endDate} compact />
+									</div>
+								</div>
 
-									<!-- Reason Textarea -->
-									<Textarea
-										label={m.leave_reason_label()}
-										bind:value={newRequest.reason}
-										placeholder={m.leave_reason_placeholder()}
-									/>
+								<!-- Reason Textarea -->
+								<Textarea
+									label={m.leave_reason_label()}
+									bind:value={newRequest.reason}
+									placeholder={m.leave_reason_placeholder()}
+								/>
 
-									<!-- Days Calculator -->
-									<div
-										class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
-									>
-										<div class="flex items-center gap-2">
-											<Zap class="h-4 w-4" />
-											<span
-												>{calculateDays(newRequest.startDate, newRequest.endDate)}
-												{calculateDays(newRequest.startDate, newRequest.endDate) === 1
-													? m.leave_day_singular()
-													: m.leave_day_plural()}</span
-											>
-										</div>
+								<!-- Days Calculator -->
+								<div
+									class="flex items-center justify-between rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm font-semibold text-brand"
+								>
+									<div class="flex items-center gap-2">
+										<Zap class="h-4 w-4" />
 										<span
-											>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
-											{m.leave_hours_short()}</span
+											>{calculateDays(newRequest.startDate, newRequest.endDate)}
+											{calculateDays(newRequest.startDate, newRequest.endDate) === 1
+												? m.leave_day_singular()
+												: m.leave_day_plural()}</span
 										>
 									</div>
-
-									<!-- Submit Button -->
-									<Button type="submit" class="w-full gap-2 py-3">
-										<CheckCircle class="h-4 w-4" />
-										{m.leave_submit_request()}
-									</Button>
-								{:else}
-									<div
-										class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
+									<span
+										>{calculateDays(newRequest.startDate, newRequest.endDate) * 8}
+										{m.leave_hours_short()}</span
 									>
-										{m.leave_select_employee_prompt()}
-									</div>
-								{/if}
-							</div>
+								</div>
+
+								<!-- Submit Button -->
+								<Button type="submit" class="w-full gap-2 py-3">
+									<CheckCircle class="h-4 w-4" />
+									{m.leave_submit_request()}
+								</Button>
+							{:else}
+								<div
+									class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-text-muted"
+								>
+									{m.leave_select_employee_prompt()}
+								</div>
+							{/if}
 						</div>
 
 						<!-- Right: Calendar or Guidelines -->
@@ -901,48 +844,21 @@
 						{:else}
 							<!-- Guidelines shown before employee selection -->
 							<div class="space-y-4">
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<div
-										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>
-										<AlertCircle class="h-4 w-4 text-brand" />
-										{m.leave_guidelines_title()}
-									</div>
-									<h3 class="mt-2 text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
-									<ul class="mt-4 space-y-3 text-sm text-text-muted">
-										<li class="flex gap-2">
-											<span class="font-bold text-brand">•</span>
-											<span>{m.leave_guideline_1()}</span>
-										</li>
-										<li class="flex gap-2">
-											<span class="font-bold text-brand">•</span>
-											<span>{m.leave_guideline_2()}</span>
-										</li>
-										<li class="flex gap-2">
-											<span class="font-bold text-brand">•</span>
-											<span>{m.leave_guideline_3()}</span>
-										</li>
-									</ul>
-								</div>
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<p class="mb-4 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										{m.leave_quick_status_title()}
-									</p>
-									<div class="space-y-3">
-										<div
-											class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-										>
-											<span class="text-sm text-text-muted">{m.leave_stats_open()}</span>
-											<span class="text-lg font-bold text-warning">{pendingCount}</span>
-										</div>
-										<div
-											class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-										>
-											<span class="text-sm text-text-muted">{m.leave_stats_approved()}</span>
-											<span class="text-lg font-bold text-success">{approvedCount}</span>
-										</div>
-									</div>
-								</div>
+								<h3 class="text-sm font-semibold text-text">{m.leave_guidelines_title()}</h3>
+								<ul class="space-y-3 text-sm text-text-muted">
+									<li class="flex gap-2">
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_1()}</span>
+									</li>
+									<li class="flex gap-2">
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_2()}</span>
+									</li>
+									<li class="flex gap-2">
+										<span class="font-bold text-brand">•</span>
+										<span>{m.leave_guideline_3()}</span>
+									</li>
+								</ul>
 							</div>
 						{/if}
 					</form>
@@ -951,101 +867,72 @@
 						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
 						onsubmit={handleCreateSick}
 					>
-						<div class="overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
-							<!-- Accent banner -->
-							<div class="flex items-center gap-3 border-b border-error/15 bg-error/5 px-6 py-4">
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10 text-error"
-								>
-									<Stethoscope class="h-5 w-5" />
-								</div>
-								<div>
-									<h2 class="text-base font-semibold text-text">{m.sick_report_title()}</h2>
-									<p class="text-xs text-text-muted">{m.sick_report_subtitle()}</p>
-								</div>
-							</div>
-							<div class="space-y-5 p-6">
-								<!-- Employee + Date row -->
-								<div class="grid gap-4 sm:grid-cols-2">
-									<EmployeeSearch
-										labelText={m.employee()}
-										placeholder={m.leave_employee_search_placeholder()}
-										bind:selectedId={sickRequest.employeeId}
-										onSelect={(employee) => {
-											selectedSickEmployee = employee;
-											sickRequest.employeeId = employee?.id ?? '';
-										}}
-									/>
-									<Input label={m.sick_date_label()} type="date" bind:value={sickRequest.date} />
-								</div>
-								<!-- Time range -->
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-									<p class="mb-3 text-xs font-semibold text-text-muted">
-										{m.sick_start_time_label()} — {m.sick_end_time_label()}
-									</p>
-									<div class="grid gap-3 sm:grid-cols-2">
-										<Input
-											label={m.sick_start_time_label()}
-											type="time"
-											bind:value={sickRequest.startTime}
-										/>
-										<Input
-											label={m.sick_end_time_label()}
-											type="time"
-											bind:value={sickRequest.endTime}
-										/>
-									</div>
-								</div>
-								<Textarea
-									label={m.sick_notes_label()}
-									bind:value={sickRequest.reason}
-									placeholder={m.sick_notes_placeholder()}
+						<div class="space-y-5 border-b border-error/10 pb-5">
+							<EmployeeSearch
+								labelText={m.employee()}
+								placeholder={m.leave_employee_search_placeholder()}
+								bind:selectedId={sickRequest.employeeId}
+								onSelect={(employee) => {
+									selectedSickEmployee = employee;
+									sickRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
+							<p class="text-xs font-semibold text-text-muted">
+								{m.leave_date_range_label()}
+							</p>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<DatePicker
+									label={m.leave_date_from()}
+									bind:value={sickRequest.startDate}
+									compact
 								/>
-								<Button type="submit" class="w-full gap-2 py-3">
-									<CheckCircle class="h-4 w-4" />
-									{m.sick_save()}
-								</Button>
+								<DatePicker label={m.leave_date_to()} bind:value={sickRequest.endDate} compact />
 							</div>
+							{#if sickRequest.startDate && sickRequest.endDate}
+								<div
+									class="flex items-center justify-between rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
+								>
+									<span class="flex items-center gap-1.5">
+										<Stethoscope class="h-3.5 w-3.5" />
+										{m.leave_date_range_label()}
+									</span>
+									<span>
+										{calculateDays(sickRequest.startDate, sickRequest.endDate)}
+										{calculateDays(sickRequest.startDate, sickRequest.endDate) === 1
+											? m.leave_day_singular()
+											: m.leave_day_plural()}
+									</span>
+								</div>
+							{/if}
+							<Textarea
+								label={m.sick_notes_label()}
+								bind:value={sickRequest.reason}
+								placeholder={m.sick_notes_placeholder()}
+							/>
+							<Button type="submit" class="w-full gap-2 bg-error py-3 text-white hover:bg-error/90">
+								<CheckCircle class="h-4 w-4" />
+								{m.sick_save()}
+							</Button>
 						</div>
 						{#if selectedSickEmployee}
 							<div class="animate-in fade-in slide-in-from-top-2">
 								<ScheduleCalendar
 									selectedEmployee={selectedSickEmployee}
-									bind:selectedStartDate={sickCalendarStart}
-									bind:selectedEndDate={sickCalendarEnd}
-									onDateRangeSelect={(startDate) => {
-										sickRequest.date = startDate;
-										sickCalendarStart = startDate;
-										sickCalendarEnd = startDate;
+									bind:selectedStartDate={sickRequest.startDate}
+									bind:selectedEndDate={sickRequest.endDate}
+									onDateRangeSelect={(startDate, endDate) => {
+										sickRequest.startDate = startDate;
+										sickRequest.endDate = endDate;
 									}}
 								/>
 							</div>
 						{:else}
 							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<div
-										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-error/70 uppercase"
-									>
-										<AlertCircle class="h-4 w-4" />
-										{m.sick_warning_title()}
-									</div>
-									<p class="mt-3 text-sm text-text-muted">{m.sick_warning_body()}</p>
-									<div class="mt-4 rounded-xl border border-error/15 bg-error/5 p-4">
-										<p class="text-xs font-semibold text-error">⚠️ {m.sick_warning_long_label()}</p>
-										<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
-									</div>
-								</div>
-								<!-- Quick stats -->
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<p class="mb-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-										{m.leave_stats_sick()}
-									</p>
-									<div
-										class="bg-surface-subtle/40 flex items-center justify-between rounded-2xl border border-border/50 px-4 py-3"
-									>
-										<span class="text-sm text-text-muted">{m.leave_stats_sick()}</span>
-										<span class="text-2xl font-bold text-error">{sickCount}</span>
-									</div>
+								<p class="text-sm font-semibold text-text">{m.sick_warning_title()}</p>
+								<p class="text-sm text-text-muted">{m.sick_warning_body()}</p>
+								<div class="rounded-xl border border-error/15 bg-error/5 p-4">
+									<p class="text-xs font-semibold text-error">{m.sick_warning_long_label()}</p>
+									<p class="mt-1 text-xs text-text-muted">{m.sick_warning_long_body()}</p>
 								</div>
 							</div>
 						{/if}
@@ -1055,77 +942,60 @@
 						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
 						onsubmit={handleCreatePregnancy}
 					>
-						<div
-							class="overflow-hidden rounded-3xl border border-pink-200/60 bg-surface shadow-sm dark:border-pink-900/30"
-						>
-							<!-- Accent banner -->
-							<div
-								class="flex items-center gap-3 border-b border-pink-200/60 bg-pink-50/60 px-6 py-4 dark:border-pink-900/20 dark:bg-pink-900/10"
-							>
+						<div class="space-y-5 border-b border-pink-200/40 pb-5">
+							<!-- Employee row -->
+							<EmployeeSearch
+								labelText={m.employee()}
+								placeholder={m.leave_employee_search_placeholder()}
+								bind:selectedId={pregnancyRequest.employeeId}
+								onSelect={(employee) => {
+									selectedPregnancyEmployee = employee;
+									pregnancyRequest.employeeId = employee?.id ?? '';
+								}}
+							/>
+							<!-- Date range -->
+							<p class="text-xs font-semibold text-text-muted">
+								{m.leave_date_range_label()}
+							</p>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<DatePicker
+									label={m.pregnancy_start_label()}
+									bind:value={pregnancyRequest.startDate}
+									compact
+								/>
+								<DatePicker
+									label={m.pregnancy_end_label()}
+									bind:value={pregnancyRequest.endDate}
+									compact
+								/>
+							</div>
+							{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
+									class="flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
 								>
-									<Baby class="h-5 w-5" />
+									<span class="flex items-center gap-1.5"
+										><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
+									>
+									<span
+										>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
+										{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
+											? m.leave_day_singular()
+											: m.leave_day_plural()}</span
+									>
 								</div>
-								<div>
-									<h2 class="text-base font-semibold text-text">{m.pregnancy_title()}</h2>
-									<p class="text-xs text-text-muted">{m.pregnancy_subtitle()}</p>
-								</div>
-							</div>
-							<div class="space-y-5 p-6">
-								<!-- Employee row -->
-								<EmployeeSearch
-									labelText={m.employee()}
-									placeholder={m.leave_employee_search_placeholder()}
-									bind:selectedId={pregnancyRequest.employeeId}
-									onSelect={(employee) => {
-										selectedPregnancyEmployee = employee;
-										pregnancyRequest.employeeId = employee?.id ?? '';
-									}}
-								/>
-								<!-- Date range inset -->
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-									<p class="mb-3 text-xs font-semibold text-text-muted">
-										{m.leave_date_range_label()}
-									</p>
-									<div class="grid gap-3 sm:grid-cols-2">
-										<Input
-											label={m.pregnancy_start_label()}
-											type="date"
-											bind:value={pregnancyRequest.startDate}
-										/>
-										<Input
-											label={m.pregnancy_end_label()}
-											type="date"
-											bind:value={pregnancyRequest.endDate}
-										/>
-									</div>
-									{#if pregnancyRequest.startDate && pregnancyRequest.endDate}
-										<div
-											class="mt-3 flex items-center justify-between rounded-xl border border-pink-200/60 bg-pink-50/60 px-3 py-2 text-xs font-semibold text-pink-700 dark:border-pink-900/20 dark:bg-pink-900/10 dark:text-pink-400"
-										>
-											<span class="flex items-center gap-1.5"
-												><Baby class="h-3.5 w-3.5" />{m.leave_date_range_label()}</span
-											>
-											<span
-												>{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate)}
-												{calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate) === 1
-													? m.leave_day_singular()
-													: m.leave_day_plural()}</span
-											>
-										</div>
-									{/if}
-								</div>
-								<Textarea
-									label={m.pregnancy_notes_label()}
-									bind:value={pregnancyRequest.reason}
-									placeholder={m.pregnancy_notes_placeholder()}
-								/>
-								<Button type="submit" class="w-full gap-2 py-3">
-									<CheckCircle class="h-4 w-4" />
-									{m.pregnancy_save()}
-								</Button>
-							</div>
+							{/if}
+							<Textarea
+								label={m.pregnancy_notes_label()}
+								bind:value={pregnancyRequest.reason}
+								placeholder={m.pregnancy_notes_placeholder()}
+							/>
+							<Button
+								type="submit"
+								class="w-full gap-2 bg-pink-600 py-3 text-white hover:bg-pink-600/90"
+							>
+								<CheckCircle class="h-4 w-4" />
+								{m.pregnancy_save()}
+							</Button>
 						</div>
 						{#if selectedPregnancyEmployee}
 							<div class="animate-in fade-in slide-in-from-top-2">
@@ -1141,22 +1011,15 @@
 							</div>
 						{:else}
 							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<div
-										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-pink-500/70 uppercase"
-									>
-										<Baby class="h-4 w-4" />
-										{m.pregnancy_tip_title()}
-									</div>
-									<p class="mt-3 text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
-									<div
-										class="mt-4 rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
-									>
-										<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
-											{m.pregnancy_law_title()}
-										</p>
-										<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
-									</div>
+								<p class="text-sm font-semibold text-text">{m.pregnancy_tip_title()}</p>
+								<p class="text-sm text-text-muted">{m.pregnancy_tip_body()}</p>
+								<div
+									class="rounded-xl border border-pink-200/60 bg-pink-50/60 p-4 dark:border-pink-900/20 dark:bg-pink-900/10"
+								>
+									<p class="text-xs font-semibold text-pink-700 dark:text-pink-300">
+										{m.pregnancy_law_title()}
+									</p>
+									<p class="mt-1 text-xs text-text-muted">{m.pregnancy_law_body()}</p>
 								</div>
 							</div>
 						{/if}
@@ -1165,67 +1028,49 @@
 					<div
 						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
 					>
-						<form
-							class="overflow-hidden rounded-3xl border border-warning/20 bg-surface shadow-sm"
-							onsubmit={handleCreateLate}
-						>
-							<!-- Accent banner -->
-							<div
-								class="flex items-center gap-3 border-b border-warning/15 bg-warning/5 px-6 py-4"
-							>
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-warning"
-								>
-									<AlarmClock class="h-5 w-5" />
-								</div>
-								<div>
-									<h2 class="text-base font-semibold text-text">{m.late_title()}</h2>
-									<p class="text-xs text-text-muted">{m.late_subtitle()}</p>
-								</div>
-							</div>
-							<div class="space-y-5 p-6">
-								<!-- Employee + Date -->
-								<div class="grid gap-4 sm:grid-cols-2">
-									<EmployeeSearch
-										labelText={m.employee()}
-										placeholder={m.leave_employee_search_placeholder()}
-										bind:selectedId={lateRequest.employeeId}
-										onSelect={(employee) => {
-											selectedLateEmployee = employee;
-											lateRequest.employeeId = employee?.id ?? '';
-										}}
-									/>
-									<Input label={m.sick_date_label()} type="date" bind:value={lateRequest.date} />
-								</div>
-								<!-- Arrival time inset -->
-								<div class="bg-surface-subtle/40 rounded-2xl border border-border/50 p-4">
-									<p class="mb-3 text-xs font-semibold text-text-muted">
-										{m.late_arrival_time_label()}
-									</p>
-									<Input
-										label={m.late_arrival_time_label()}
-										type="time"
-										bind:value={lateRequest.time}
-									/>
-									{#if lateRequest.time}
-										<div
-											class="mt-3 flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
-										>
-											<AlarmClock class="h-3.5 w-3.5" />
-											<span>Aankomsttijd: {lateRequest.time}</span>
-										</div>
-									{/if}
-								</div>
-								<Textarea
-									label={m.late_reason_label()}
-									bind:value={lateRequest.reason}
-									placeholder={m.late_reason_placeholder()}
+						<form class="space-y-5 border-b border-warning/10 pb-5" onsubmit={handleCreateLate}>
+							<!-- Employee + Date -->
+							<div class="grid gap-4 sm:grid-cols-2">
+								<EmployeeSearch
+									labelText={m.employee()}
+									placeholder={m.leave_employee_search_placeholder()}
+									bind:selectedId={lateRequest.employeeId}
+									onSelect={(employee) => {
+										selectedLateEmployee = employee;
+										lateRequest.employeeId = employee?.id ?? '';
+									}}
 								/>
-								<Button type="submit" class="w-full gap-2 py-3">
-									<CheckCircle class="h-4 w-4" />
-									{m.late_add()}
-								</Button>
+								<DatePicker label={m.sick_date_label()} bind:value={lateRequest.date} />
 							</div>
+							<!-- Arrival time -->
+							<p class="text-xs font-semibold text-text-muted">
+								{m.late_arrival_time_label()}
+							</p>
+							<Input
+								label={m.late_arrival_time_label()}
+								type="time"
+								bind:value={lateRequest.time}
+							/>
+							{#if lateRequest.time}
+								<div
+									class="flex items-center gap-2 rounded-xl border border-warning/15 bg-warning/5 px-3 py-2 text-xs font-semibold text-warning"
+								>
+									<AlarmClock class="h-3.5 w-3.5" />
+									<span>{m.late_arrival_summary({ time: lateRequest.time })}</span>
+								</div>
+							{/if}
+							<Textarea
+								label={m.late_reason_label()}
+								bind:value={lateRequest.reason}
+								placeholder={m.late_reason_placeholder()}
+							/>
+							<Button
+								type="submit"
+								class="w-full gap-2 bg-warning py-3 text-white hover:bg-warning/90"
+							>
+								<CheckCircle class="h-4 w-4" />
+								{m.late_add()}
+							</Button>
 						</form>
 						{#if selectedLateEmployee}
 							<div class="animate-in fade-in slide-in-from-top-2">
@@ -1242,97 +1087,66 @@
 							</div>
 						{:else}
 							<div class="animate-in fade-in slide-in-from-top-2 space-y-4">
-								<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-									<div
-										class="flex items-center gap-2 text-[10px] font-bold tracking-widest text-warning/70 uppercase"
-									>
-										<Clock class="h-4 w-4" />
-										{m.late_recent_title()}
-									</div>
-									<p class="mt-1 text-sm font-semibold text-text">{m.late_recent_title()}</p>
-									<div class="mt-4 space-y-2">
-										{#each lateArrivals as item}
-											<div
-												class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
-											>
-												<div>
-													<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-													{#if item.reason}<p class="mt-0.5 text-xs text-text-muted">
-															{item.reason}
-														</p>{/if}
-												</div>
-												<span
-													class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"
-													>{formatDate(item.date)} {item.time}</span
-												>
+								<p class="text-sm font-semibold text-text">{m.late_recent_title()}</p>
+								<div class="space-y-2">
+									{#each lateArrivals as item (item.id)}
+										<div
+											class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
+										>
+											<div>
+												<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
+												{#if item.reason}<p class="mt-0.5 text-xs text-text-muted">
+														{item.reason}
+													</p>{/if}
 											</div>
-										{/each}
-										{#if lateArrivals.length === 0}
-											<div
-												class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/40 p-4 text-center text-xs text-text-muted"
+											<span
+												class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"
+												>{formatDate(item.date)} {item.time}</span
 											>
-												{m.late_empty()}
-											</div>
-										{/if}
-									</div>
+										</div>
+									{/each}
+									{#if lateArrivals.length === 0}
+										<div
+											class="bg-surface-subtle/30 rounded-2xl border border-dashed border-border/40 p-4 text-center text-xs text-text-muted"
+										>
+											{m.late_empty()}
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/if}
 					</div>
 				{:else if activeTab === 'overzicht'}
-					<div class="animate-in fade-in slide-in-from-bottom-2">
-						{#if overviewError}
-							<div
-								class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error"
-							>
-								{overviewError}
-							</div>
-						{/if}
-						<DataTable
-							{columns}
-							rows={overviewTableRows}
-							loading={overviewLoading}
-							rowKey="id"
-							title={m.leave_table_title()}
-							description={m.leave_table_description()}
-							emptyTitle={m.leave_table_empty_title()}
-							emptyDescription={m.leave_table_empty_description()}
-							emptyActionLabel={m.leave_table_empty_action()}
-							emptyAction={() => (activeTab = 'aanvragen')}
-							filters={requestFilters}
-							surface="plain"
-							headerInline
-							currentPage={overviewCurrentPage}
-							pageSize={overviewPageSize}
-							totalCount={overviewTotalCount}
-							onPageChange={(page) => {
-								overviewCurrentPage = page;
-							}}
-							cells={{
-								employee: employeeCell,
-								type: typeCell,
-								period: periodCell,
-								status: statusCell,
-								actions: actionsCell
-							}}
-						/>
-					</div>
+					<LeaveOverviewTab
+						rows={overviewRows}
+						loading={overviewLoading}
+						error={overviewError}
+						bind:requestFilter
+						bind:searchQuery
+						bind:currentPage={overviewCurrentPage}
+						pageSize={overviewPageSize}
+						totalCount={overviewTotalCount}
+						onApprove={handleApproveOverview}
+						onReject={handleRejectOverview}
+						onDelete={handleDeleteClick}
+						onCreateRequest={() => (activeTab = 'aanvragen')}
+					/>
 				{:else if activeTab === 'saldo'}
-					{#await leaveBalancesDataPromise}
+					{#if leaveBalancesLoading && !leaveBalancesData}
 						<div
 							class="animate-in fade-in slide-in-from-bottom-2 rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm"
 						>
 							Loading leave balances...
 						</div>
-					{:then leaveBalancesData}
+					{:else if leaveBalancesData}
 						<LeaveBalancesTab
 							data={leaveBalancesData}
 							onSearch={handleBalanceSearch}
 							onYearChange={handleBalanceYearChange}
 							onPageChange={handleBalancePageChange}
-							onRetry={() => invalidateAll()}
+							onRetry={retryLeaveBalances}
 						/>
-					{/await}
+					{/if}
 				{:else if activeTab === 'uitbetalen'}
 					<LeavePayoutTab {payoutRequests} />
 				{:else if activeTab === 'contractwijzigingen'}

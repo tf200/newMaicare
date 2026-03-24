@@ -3,15 +3,22 @@ import type {
 	ApiEnvelope,
 	LeaveBalanceListItemResponse,
 	ListLeaveRequestsParams,
+	ListMyLeaveRequestsParams,
 	LeaveRequestListItemResponse,
 	PaginatedResponse,
 	ListLeaveBalancesParams,
 	ListMyLeaveBalancesParams,
-	CreateLeaveRequestPayload
+	CreateLeaveRequestPayload,
+	CreateLeaveRequestByAdminPayload,
+	MyLeaveRequestStatsResponse
 } from '$lib/types/api';
 
 export function createLeaveRequest(data: CreateLeaveRequestPayload) {
 	return api.post<ApiEnvelope<LeaveRequestListItemResponse>>('/leave-requests', data);
+}
+
+export function createLeaveRequestByAdmin(data: CreateLeaveRequestByAdminPayload) {
+	return api.post<ApiEnvelope<LeaveRequestListItemResponse>>('/leave-requests/admin', data);
 }
 
 export function listLeaveRequests(params: ListLeaveRequestsParams) {
@@ -32,6 +39,29 @@ export function listLeaveRequests(params: ListLeaveRequestsParams) {
 	const endpoint = query ? `/leave-requests?${query}` : '/leave-requests';
 
 	return api.get<ApiEnvelope<PaginatedResponse<LeaveRequestListItemResponse>>>(endpoint);
+}
+
+export function listMyLeaveRequests(params: ListMyLeaveRequestsParams) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.pageSize));
+
+	if (params.status) {
+		searchParams.set('status', params.status);
+	}
+
+	const query = searchParams.toString();
+	const endpoint = query ? `/leave-requests/my?${query}` : '/leave-requests/my';
+
+	return api.get<ApiEnvelope<PaginatedResponse<LeaveRequestListItemResponse>>>(endpoint);
+}
+
+export function listMyLeaveRequestStats() {
+	return api.get<ApiEnvelope<MyLeaveRequestStatsResponse>>('/leave-requests/my/stats');
+}
+
+export function listLeaveRequestStats() {
+	return api.get<ApiEnvelope<MyLeaveRequestStatsResponse>>('/leave-requests/stats');
 }
 
 const buildLeaveBalancesQuery = (

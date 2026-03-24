@@ -294,7 +294,7 @@
 		<InlineErrorBanner message={pageLoadError} />
 	{/if}
 
-	<div class="rounded-3xl border border-border/60 bg-glass-surface p-8 shadow-sm backdrop-blur-xl">
+	<div class="rounded-2xl border border-border bg-surface p-6 lg:p-8">
 		<div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
 			<div>
 				<h1 class="text-3xl font-bold tracking-tight text-text">
@@ -344,26 +344,26 @@
 			<h2 class="text-xl font-bold text-text">{m.no_handbook_assigned()}</h2>
 		</div>
 	{:else if handbook.status === 'not_started'}
-		<div class="flex flex-col items-center justify-center py-20 text-center" in:fade>
+		<div class="flex flex-col items-center justify-center py-24 text-center" in:fade>
 			<div
-				class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-brand/10 text-brand"
+				class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-brand text-white shadow-xl shadow-brand/20 transition-transform duration-500 hover:scale-105"
 			>
 				<PlayCircle class="h-12 w-12" />
 			</div>
-			<h2 class="text-2xl font-bold text-text">{m.welcome_back()}!</h2>
-			<p class="mx-auto mt-2 max-w-md text-text-muted">
+			<h2 class="text-4xl font-extrabold tracking-tight text-text lg:text-5xl">{m.welcome_back()}!</h2>
+			<p class="mx-auto mt-4 max-w-lg text-lg text-text-muted">
 				{m.handbook_description()}
 			</p>
-			<Button class="mt-8 px-8 py-6 text-lg" onclick={startHandbook} disabled={isStarting}>
+			<Button class="mt-10 px-10 py-7 text-xl font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all" onclick={startHandbook} disabled={isStarting}>
 				{isStarting ? 'Starting...' : m.start_handbook()}
 			</Button>
 		</div>
 	{:else if showCompletionPanel && isAllCompleted && handbook.status === 'completed'}
 		<div class="flex flex-col items-center justify-center py-20 text-center" in:fade>
 			<div
-				class="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-500"
+				class="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-surface text-emerald-500 shadow-sm"
 			>
-				<CheckCircle2 class="h-12 w-12" />
+				<CheckCircle2 class="h-10 w-10" />
 			</div>
 			<h2 class="text-2xl font-bold text-text">{m.handbook_completed_title()}</h2>
 			<p class="mx-auto mt-2 max-w-md text-text-muted">
@@ -388,23 +388,23 @@
 					{#each handbook.steps as step, i (step.step_id)}
 						{@const StepIcon = getStepIcon(step.kind)}
 						<button
-							class="group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300
+							class="group flex w-full items-center gap-4 border p-4 text-left transition-all duration-300
                             {currentStepIndex === i
-								? 'border-brand bg-brand/5 shadow-md ring-1 ring-brand/20'
-								: 'border-border/40 bg-surface/40 hover:border-border hover:bg-surface/60'}"
+								? 'rounded-2xl border-brand bg-brand shadow-lg shadow-brand/20 scale-[1.02]'
+								: 'rounded-xl border-transparent hover:border-border hover:bg-surface/60'}"
 							onclick={() => {
 								currentStepIndex = i;
 								resetStepState();
 							}}
 						>
 							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300
                                 {step.status === 'completed'
 									? 'bg-emerald-500/10 text-emerald-500'
 									: step.status === 'skipped'
 										? 'bg-amber-500/10 text-amber-600'
 										: currentStepIndex === i
-											? 'bg-brand/10 text-brand'
+											? 'bg-white text-brand'
 											: 'bg-border/30 text-text-subtle'}"
 							>
 								{#if step.status === 'completed'}
@@ -416,15 +416,15 @@
 							<div class="flex-1 overflow-hidden">
 								<p
 									class="truncate text-sm font-bold {currentStepIndex === i
-										? 'text-text'
-										: 'text-text-muted'}"
+										? 'text-white'
+										: 'text-text'}"
 								>
 									{step.title}
 								</p>
-								<p class="text-xs font-medium text-text-subtle">{getStepKindLabel(step.kind)}</p>
+								<p class="text-xs font-medium {currentStepIndex === i ? 'text-white/80' : 'text-text-subtle'}">{getStepKindLabel(step.kind)}</p>
 							</div>
 							{#if currentStepIndex === i}
-								<ChevronRight class="h-4 w-4 text-brand" />
+								<ChevronRight class="h-5 w-5 text-white" />
 							{/if}
 						</button>
 					{/each}
@@ -435,13 +435,13 @@
 				{#if currentStep}
 					{@const CurrentStepIcon = getStepIcon(currentStep.kind)}
 					<div
-						class="flex flex-col rounded-3xl border border-border/60 bg-surface/80 shadow-lg backdrop-blur-sm"
-						in:slide={{ axis: 'y', duration: 400 }}
+						class="flex flex-col rounded-2xl border border-border bg-surface shadow-sm"
+						in:slide={{ axis: 'y', duration: 300 }}
 					>
 						<div class="border-b border-border/50 p-6 lg:p-8">
 							<div class="flex items-center gap-3">
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand"
+									class="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-text"
 								>
 									<CurrentStepIcon class="h-5 w-5" />
 								</div>
@@ -494,24 +494,24 @@
 												<div class="grid gap-3 sm:grid-cols-2">
 													{#each q.options as option (option)}
 														<button
-															class="flex items-center gap-3 rounded-xl border p-4 text-left transition-all
+															class="group flex items-center gap-4 rounded-xl border p-4 text-left transition-all duration-300
                                                             {quizAnswers[q.id] === option
-																? 'border-brand bg-brand/5 ring-1 ring-brand/20'
-																: 'border-border/50 hover:border-border'}"
+																? 'border-brand bg-brand text-white shadow-lg shadow-brand/20 scale-[1.02]'
+																: 'border-border/50 bg-surface hover:border-border hover:bg-surface-alt/60'}"
 															onclick={() => (quizAnswers[q.id] = option)}
 															disabled={currentStep.status !== 'pending'}
 														>
 															<div
-																class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border
+																class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all duration-300
                                                                 {quizAnswers[q.id] === option
-																	? 'border-brand bg-brand text-white'
-																	: 'border-border'}"
+																	? 'border-white bg-white ring-2 ring-white/30'
+																	: 'border-border group-hover:border-text-subtle'}"
 															>
 																{#if quizAnswers[q.id] === option}
-																	<div class="h-2 w-2 rounded-full bg-white"></div>
+																	<div class="h-2.5 w-2.5 rounded-full bg-brand scale-in-center"></div>
 																{/if}
 															</div>
-															<span class="text-sm font-medium">{option}</span>
+															<span class="text-sm font-semibold {quizAnswers[q.id] === option ? 'text-white' : 'text-text'}">{option}</span>
 														</button>
 													{/each}
 												</div>
@@ -526,15 +526,18 @@
 							</div>
 
 							{#if currentStep.kind === 'ack'}
-								<div class="mt-12 rounded-2xl border border-brand/20 bg-brand/5 p-6">
-									<label class="flex cursor-pointer items-center gap-4">
-										<input
-											type="checkbox"
-											bind:checked={acknowledged}
-											disabled={currentStep.status !== 'pending'}
-											class="h-6 w-6 rounded-lg border-border bg-surface text-brand focus:ring-brand/20"
-										/>
-										<span class="text-sm font-bold text-text">
+								<div class="mt-12 overflow-hidden rounded-2xl border border-brand bg-surface shadow-md">
+									<label class="group flex cursor-pointer items-center gap-4 p-6 transition-colors hover:bg-brand/5">
+										<div class="relative flex h-7 w-7 items-center justify-center">
+											<input
+												type="checkbox"
+												bind:checked={acknowledged}
+												disabled={currentStep.status !== 'pending'}
+												class="peer h-7 w-7 appearance-none rounded-lg border-2 border-border bg-surface transition-all checked:border-brand checked:bg-brand focus:outline-none focus:ring-4 focus:ring-brand/20 disabled:opacity-50"
+											/>
+											<CheckCircle2 class="absolute pointer-events-none h-4 w-4 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+										</div>
+										<span class="text-base font-bold text-text group-hover:text-brand transition-colors">
 											{m.acknowledge_handbook()}
 										</span>
 									</label>

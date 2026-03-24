@@ -70,3 +70,37 @@ export interface EmployeeProfileDetailsResponse {
 	contract_end_date: string | null;
 	contract_rate: number | null;
 }
+
+export type EmployeeScheduleTimelineItemType = 'shift' | 'event';
+
+export type EmployeeScheduleTimelineWorkApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface EmployeeScheduleTimelineShift {
+	schedule_id: string;
+	location_id: string;
+	location_name: string;
+}
+
+export interface EmployeeScheduleTimelineEvent {
+	event_id: string;
+	master_event_id: string | null;
+	title: string;
+	description: string | null;
+	location: string | null;
+	color: string | null;
+	work_approval_status: EmployeeScheduleTimelineWorkApprovalStatus;
+	recurrence_id: string | null;
+}
+
+export interface EmployeeScheduleTimelineItem {
+	item_type: EmployeeScheduleTimelineItemType;
+	start_time: string;
+	end_time: string;
+	shift: EmployeeScheduleTimelineShift | null;
+	event: EmployeeScheduleTimelineEvent | null;
+}
+
+export interface EmployeeScheduleTimelineDay {
+	date: string;
+	items: EmployeeScheduleTimelineItem[];
+}

@@ -4,7 +4,7 @@ export interface LeaveRequestListItemResponse {
 	id: string;
 	employee_id: string;
 	employee_name: string;
-	created_by_employee_id: string;
+	created_by_employee_id: string | null;
 	leave_type: string;
 	status: LeaveRequestStatus;
 	start_date: string;
@@ -42,6 +42,12 @@ export interface ListLeaveRequestsParams {
 	employeeSearch?: string;
 }
 
+export interface ListMyLeaveRequestsParams {
+	page: number;
+	pageSize: number;
+	status?: LeaveRequestStatus;
+}
+
 export interface ListLeaveBalancesParams {
 	page: number;
 	pageSize: number;
@@ -60,4 +66,19 @@ export interface CreateLeaveRequestPayload {
 	start_date: string;
 	end_date: string;
 	reason?: string;
+}
+
+export interface CreateLeaveRequestByAdminPayload {
+	employee_id: string;
+	leave_type: 'vacation' | 'personal' | 'sick' | 'pregnancy' | 'unpaid' | 'other';
+	start_date: string;
+	end_date: string;
+	reason?: string;
+}
+
+export interface MyLeaveRequestStatsResponse {
+	open_requests: number;
+	approved_requests: number;
+	rejected_requests: number;
+	sickness_absence: number;
 }

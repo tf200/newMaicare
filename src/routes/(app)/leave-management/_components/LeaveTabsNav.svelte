@@ -72,7 +72,7 @@
 	<div class="hidden lg:block">
 		<div class="p-3">
 			<p class="mb-2 px-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Acties
+				{m.actions()}
 			</p>
 			<div class="space-y-0.5">
 				<button
@@ -165,7 +165,7 @@
 
 		<div class="p-3">
 			<p class="mb-2 px-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-				Overzichten
+				{m.leave_nav_overviews()}
 			</p>
 			<div class="space-y-0.5">
 				<button

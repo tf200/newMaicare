@@ -23,7 +23,12 @@
 	import LeaveStatsCards from './_components/LeaveStatsCards.svelte';
 	import LeaveTabsNav from './_components/LeaveTabsNav.svelte';
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
-	import { listLeaveRequests, createLeaveRequest } from '$lib/api/leave';
+	import {
+		listMyLeaveRequests,
+		createLeaveRequest,
+		listMyLeaveRequestStats,
+		listMyLeaveBalances
+	} from '$lib/api/leave';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getAuthState } from '$lib/state/auth.svelte';
@@ -31,7 +36,9 @@
 	import type {
 		LeaveRequestListItemResponse,
 		LeaveRequestStatus,
-		CreateLeaveRequestPayload
+		CreateLeaveRequestPayload,
+		MyLeaveRequestStatsResponse,
+		LeaveBalanceListItemResponse
 	} from '$lib/types/api';
 
 	type LeaveType =
@@ -72,6 +79,7 @@
 		leaveType: string;
 		startDate: string;
 		endDate: string;
+		requestedAt: string;
 		days: number;
 		hours: number;
 		reason?: string;
@@ -221,6 +229,7 @@
 	const columns: DataTableColumn[] = [
 		{ key: 'type', label: m.type() },
 		{ key: 'period', label: m.period() },
+		{ key: 'requestedAt', label: m.submitted() },
 		{ key: 'status', label: m.status(), align: 'center' },
 		{ key: 'actions', label: '', align: 'right' }
 	];
@@ -260,6 +269,8 @@
 	let overviewLoading = $state(false);
 	let overviewError = $state<string | null>(null);
 	let overviewRequestSequence = 0;
+	let stats = $state<MyLeaveRequestStatsResponse | null>(null);
+	let statsRequestSequence = 0;
 	let deleteDialogOpen = $state(false);
 	let selectedRequestId = $state<string | null>(null);
 	let currentMonth = $state(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -328,24 +339,16 @@
 		lateRequest.employeeId = loggedInEmployee.id;
 	});
 
-	const pendingCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'pending').length
-	);
-	const approvedCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'approved').length
-	);
-	const sickCount = $derived.by(() => leaveRequests.filter((r) => r.type === 'sick').length);
-	const rejectedCount = $derived.by(
-		() => leaveRequests.filter((r) => r.status === 'rejected').length
-	);
+	const pendingCount = $derived.by(() => stats?.open_requests ?? 0);
+	const approvedCount = $derived.by(() => stats?.approved_requests ?? 0);
+	const sickCount = $derived.by(() => stats?.sickness_absence ?? 0);
+	const rejectedCount = $derived.by(() => stats?.rejected_requests ?? 0);
 	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
 		{ id: 'all', label: m.all() },
 		{ id: 'pending', label: m.pending() },
 		{ id: 'approved', label: m.leave_stats_approved() },
 		{ id: 'rejected', label: m.leave_stats_rejected() }
 	]);
-
-	const hasActiveFilters = $derived.by(() => requestFilter !== 'all');
 
 	const overviewTableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		overviewRows.map((row) => {
@@ -357,6 +360,7 @@
 				leaveType: row.leave_type,
 				startDate: row.start_date,
 				endDate: row.end_date,
+				requestedAt: row.requested_at,
 				days,
 				hours: days * 8,
 				reason: row.reason ?? undefined,
@@ -365,17 +369,16 @@
 		})
 	);
 
-	async function loadOverviewRequests(page: number, status: RequestFilter, employeeSearch: string) {
+	async function loadOverviewRequests(page: number, status: RequestFilter) {
 		const requestId = ++overviewRequestSequence;
 		overviewLoading = true;
 		overviewError = null;
 
 		try {
-			const response = await listLeaveRequests({
+			const response = await listMyLeaveRequests({
 				page,
 				pageSize: overviewPageSize,
-				status: status === 'all' ? undefined : status,
-				employeeSearch
+				status: status === 'all' ? undefined : status
 			});
 
 			if (requestId !== overviewRequestSequence) return;
@@ -395,11 +398,37 @@
 		}
 	}
 
+	async function loadStats() {
+		const requestId = ++statsRequestSequence;
+
+		try {
+			const response = await listMyLeaveRequestStats();
+			if (requestId !== statsRequestSequence) return;
+			stats = response.data;
+		} catch (error) {
+			if (requestId !== statsRequestSequence) return;
+			stats = {
+				open_requests: 0,
+				approved_requests: 0,
+				rejected_requests: 0,
+				sickness_absence: 0
+			};
+		}
+	}
+
+	$effect(() => {
+		void loadStats();
+	});
+
+	$effect(() => {
+		void loadMyLeaveBalance();
+	});
+
 	$effect(() => {
 		if (activeTab !== 'overzicht') return;
 
 		const timer = setTimeout(() => {
-			void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
+			void loadOverviewRequests(overviewCurrentPage, requestFilter);
 		}, 250);
 
 		return () => {
@@ -428,14 +457,16 @@
 			: 'border border-border text-text-muted hover:text-text';
 	}
 
-	function clearAllFilters() {
-		requestFilter = 'all';
-		overviewCurrentPage = 1;
-	}
+	let myLeaveBalances = $state<LeaveBalanceListItemResponse[]>([]);
 
-	const leaveBalances = [
-		{ name: 'Sanne Jansen', department: 'Afdeling Noord', budget: 144, used: 32 }
-	];
+	async function loadMyLeaveBalance() {
+		try {
+			const response = await listMyLeaveBalances({ page: 1, pageSize: 5 });
+			myLeaveBalances = response.data.results;
+		} catch {
+			myLeaveBalances = [];
+		}
+	}
 
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
 		toast = { message, type };
@@ -453,24 +484,56 @@
 	}
 
 	function formatDate(dateText: string) {
+		const parsedDate = parseDateInput(dateText);
+		if (!parsedDate) return dateText;
 		return new Intl.DateTimeFormat(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
 			day: 'numeric',
 			month: 'short'
-		}).format(new Date(`${dateText}T00:00:00`));
+		}).format(parsedDate);
+	}
+
+	function parseDateInput(value: string): Date | null {
+		if (!value) return null;
+		const ymdMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+		if (ymdMatch) {
+			const year = Number(ymdMatch[1]);
+			const month = Number(ymdMatch[2]);
+			const day = Number(ymdMatch[3]);
+			const date = new Date(year, month - 1, day);
+			if (
+				!Number.isNaN(date.getTime()) &&
+				date.getFullYear() === year &&
+				date.getMonth() === month - 1 &&
+				date.getDate() === day
+			) {
+				return date;
+			}
+			return null;
+		}
+		const isoDate = new Date(value);
+		return Number.isNaN(isoDate.getTime()) ? null : isoDate;
 	}
 
 	function calculateDays(startDate: string, endDate: string) {
 		if (!startDate || !endDate) return 0;
-		const start = new Date(startDate);
-		const end = new Date(endDate);
+		const start = parseDateInput(startDate);
+		const end = parseDateInput(endDate);
+		if (!start || !end) return 0;
 		const diff = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 		return diff > 0 ? diff : 0;
 	}
 
 	function isValidDateYmd(value: string) {
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-		const date = new Date(`${value}T00:00:00`);
-		return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+		const [year, month, day] = value.split('-').map(Number);
+		if (!year || !month || !day) return false;
+		const date = new Date(year, month - 1, day);
+		return (
+			!Number.isNaN(date.getTime()) &&
+			date.getFullYear() === year &&
+			date.getMonth() === month - 1 &&
+			date.getDate() === day
+		);
 	}
 
 	function normalizeReason(value: string) {
@@ -504,19 +567,19 @@
 	}
 
 	function refreshOverview() {
-		void loadOverviewRequests(overviewCurrentPage, requestFilter, '');
+		void loadOverviewRequests(overviewCurrentPage, requestFilter);
+		void loadStats();
 	}
 
 	async function handleCreateLeave(event: Event) {
 		event.preventDefault();
 		const days = calculateDays(newRequest.startDate, newRequest.endDate);
 		if (
-			!hasLoggedInEmployee ||
 			days === 0 ||
 			!isValidDateYmd(newRequest.startDate) ||
 			!isValidDateYmd(newRequest.endDate)
 		) {
-			setToast(m.leave_toast_missing_employee_dates(), 'warning');
+			setToast(m.leave_toast_missing_dates(), 'warning');
 			return;
 		}
 
@@ -530,7 +593,12 @@
 				reason: normalizedReason
 			});
 
-			addLocalLeaveRequest(newRequest.type, newRequest.startDate, newRequest.endDate, normalizedReason);
+			addLocalLeaveRequest(
+				newRequest.type,
+				newRequest.startDate,
+				newRequest.endDate,
+				normalizedReason
+			);
 			setToast(m.leave_toast_added(), 'success');
 			newRequest = {
 				type: 'vacation',
@@ -548,12 +616,11 @@
 		event.preventDefault();
 		const days = calculateDays(sickRequest.startDate, sickRequest.endDate);
 		if (
-			!hasLoggedInEmployee ||
 			days === 0 ||
 			!isValidDateYmd(sickRequest.startDate) ||
 			!isValidDateYmd(sickRequest.endDate)
 		) {
-			setToast(m.leave_toast_missing_sick_fields(), 'warning');
+			setToast(m.leave_toast_missing_sick_dates(), 'warning');
 			return;
 		}
 
@@ -567,12 +634,7 @@
 				reason: normalizedReason
 			});
 
-			addLocalLeaveRequest(
-				'sick',
-				sickRequest.startDate,
-				sickRequest.endDate,
-				normalizedReason
-			);
+			addLocalLeaveRequest('sick', sickRequest.startDate, sickRequest.endDate, normalizedReason);
 			setToast(m.leave_toast_added(), 'success');
 			sickRequest = {
 				startDate: '',
@@ -589,12 +651,11 @@
 		event.preventDefault();
 		const days = calculateDays(pregnancyRequest.startDate, pregnancyRequest.endDate);
 		if (
-			!hasLoggedInEmployee ||
 			days === 0 ||
 			!isValidDateYmd(pregnancyRequest.startDate) ||
 			!isValidDateYmd(pregnancyRequest.endDate)
 		) {
-			setToast(m.leave_toast_missing_pregnancy_fields(), 'warning');
+			setToast(m.leave_toast_missing_pregnancy_dates(), 'warning');
 			return;
 		}
 
@@ -728,15 +789,6 @@
 					{pill.label}
 				</button>
 			{/each}
-
-			{#if hasActiveFilters}
-				<button
-					class="h-9 shrink-0 rounded-full border border-error/20 bg-error/5 px-4 text-xs font-semibold text-error transition-all hover:bg-error/10"
-					onclick={clearAllFilters}
-				>
-					{m.swap_clear_filters()}
-				</button>
-			{/if}
 		</div>
 	</div>
 {/snippet}
@@ -760,9 +812,14 @@
 		</p>
 		<p class="text-text-muted">
 			{row.days}
-			{row.days === 1 ? m.leave_day_singular() : m.leave_day_plural()} ({row.hours} {m.leave_hours_short()})
+			{row.days === 1 ? m.leave_day_singular() : m.leave_day_plural()} ({row.hours}
+			{m.leave_hours_short()})
 		</p>
 	</div>
+{/snippet}
+
+{#snippet requestedAtCell(row: OverviewLeaveRequestRow)}
+	<span class="text-sm text-text-muted">{formatDate(row.requestedAt)}</span>
 {/snippet}
 
 {#snippet statusCell(row: OverviewLeaveRequestRow)}
@@ -816,7 +873,11 @@
 							</p>
 
 							<!-- Type Select -->
-							<Select label={m.leave_type_label()} options={leaveTypeOptions} bind:value={newRequest.type} />
+							<Select
+								label={m.leave_type_label()}
+								options={leaveTypeOptions}
+								bind:value={newRequest.type}
+							/>
 
 							<!-- Date Range -->
 							<div class="space-y-2">
@@ -824,7 +885,11 @@
 									{m.leave_date_range_label()}
 								</div>
 								<div class="grid gap-3 sm:grid-cols-2">
-									<DatePicker label={m.leave_date_from()} bind:value={newRequest.startDate} compact />
+									<DatePicker
+										label={m.leave_date_from()}
+										bind:value={newRequest.startDate}
+										compact
+									/>
 									<DatePicker label={m.leave_date_to()} bind:value={newRequest.endDate} compact />
 								</div>
 							</div>
@@ -898,42 +963,42 @@
 					<form
 						class="animate-in fade-in slide-in-from-bottom-2 grid gap-6 lg:grid-cols-[1.5fr_1fr]"
 						onsubmit={handleCreateSick}
-						>
-							<div class="space-y-5 border-b border-error/10 pb-5">
-								<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
-								<p class="text-sm font-medium text-text">
-									{loggedInEmployeeFullName}
-								</p>
-								<p class="text-xs font-semibold text-text-muted">
-									{m.leave_date_range_label()}
-								</p>
-								<div class="grid gap-3 sm:grid-cols-2">
-									<DatePicker
-										label={m.leave_date_from()}
-										bind:value={sickRequest.startDate}
-										compact
-									/>
-									<DatePicker label={m.leave_date_to()} bind:value={sickRequest.endDate} compact />
+					>
+						<div class="space-y-5 border-b border-error/10 pb-5">
+							<p class="text-xs font-semibold text-text-muted">{m.employee()}</p>
+							<p class="text-sm font-medium text-text">
+								{loggedInEmployeeFullName}
+							</p>
+							<p class="text-xs font-semibold text-text-muted">
+								{m.leave_date_range_label()}
+							</p>
+							<div class="grid gap-3 sm:grid-cols-2">
+								<DatePicker
+									label={m.leave_date_from()}
+									bind:value={sickRequest.startDate}
+									compact
+								/>
+								<DatePicker label={m.leave_date_to()} bind:value={sickRequest.endDate} compact />
+							</div>
+							{#if sickRequest.startDate && sickRequest.endDate}
+								<div
+									class="flex items-center justify-between rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
+								>
+									<span class="flex items-center gap-1.5">
+										<Stethoscope class="h-3.5 w-3.5" />
+										{m.leave_date_range_label()}
+									</span>
+									<span>
+										{calculateDays(sickRequest.startDate, sickRequest.endDate)}
+										{calculateDays(sickRequest.startDate, sickRequest.endDate) === 1
+											? m.leave_day_singular()
+											: m.leave_day_plural()}
+									</span>
 								</div>
-								{#if sickRequest.startDate && sickRequest.endDate}
-									<div
-										class="flex items-center justify-between rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs font-semibold text-error"
-									>
-										<span class="flex items-center gap-1.5">
-											<Stethoscope class="h-3.5 w-3.5" />
-											{m.leave_date_range_label()}
-										</span>
-										<span>
-											{calculateDays(sickRequest.startDate, sickRequest.endDate)}
-											{calculateDays(sickRequest.startDate, sickRequest.endDate) === 1
-												? m.leave_day_singular()
-												: m.leave_day_plural()}
-										</span>
-									</div>
-								{/if}
-								<Textarea
-									label={m.sick_notes_label()}
-									bind:value={sickRequest.reason}
+							{/if}
+							<Textarea
+								label={m.sick_notes_label()}
+								bind:value={sickRequest.reason}
 								placeholder={m.sick_notes_placeholder()}
 							/>
 							<Button type="submit" class="w-full gap-2 bg-error py-3 text-white hover:bg-error/90">
@@ -1164,13 +1229,14 @@
 							cells={{
 								type: typeCell,
 								period: periodCell,
+								requestedAt: requestedAtCell,
 								status: statusCell,
 								actions: actionsCell
 							}}
 						/>
 					</div>
 				{:else if activeTab === 'saldo'}
-					<LeaveBalancesTab {leaveBalances} />
+					<LeaveBalancesTab balances={myLeaveBalances} />
 				{/if}
 			</div>
 		</div>

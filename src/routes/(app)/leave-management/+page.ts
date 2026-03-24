@@ -1,5 +1,4 @@
 import type { PageLoad } from './$types';
-import { listLeaveBalances } from '$lib/api/leave';
 import type { LeaveBalanceListItemResponse } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
@@ -22,7 +21,6 @@ export interface LeaveManagementPageData {
 		pageSize: number;
 		filters: LeaveBalanceFilters;
 	};
-	leaveBalancesData: Promise<LeaveBalancesLoadResult>;
 }
 
 const parseYear = (value: string | null) => {
@@ -43,52 +41,6 @@ export const load: PageLoad = ({ url }) => {
 	const employeeSearch = (url.searchParams.get('employee_search') ?? '').trim().slice(0, 120);
 	const year = parseYear(url.searchParams.get('year'));
 
-	const leaveBalancesData: Promise<LeaveBalancesLoadResult> = listLeaveBalances({
-		page,
-		pageSize,
-		employeeSearch: employeeSearch || undefined,
-		year: year ?? undefined
-	})
-		.then((response) => {
-			const { count, next, previous, page_size, results } = response.data;
-			const effectivePageSize = page_size || pageSize;
-
-			return {
-				balances: results,
-				pagination: {
-					count,
-					page,
-					pageSize: effectivePageSize,
-					next,
-					previous,
-					filters: {
-						employeeSearch,
-						year
-					}
-				} satisfies PaginationState<LeaveBalanceFilters>,
-				loadError: null
-			} satisfies LeaveBalancesLoadResult;
-		})
-		.catch((error): LeaveBalancesLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load leave balances.';
-
-			return {
-				balances: [],
-				pagination: {
-					count: 0,
-					page,
-					pageSize,
-					next: null,
-					previous: null,
-					filters: {
-						employeeSearch,
-						year
-					}
-				} satisfies PaginationState<LeaveBalanceFilters>,
-				loadError: message
-			};
-		});
-
 	return {
 		initial: {
 			page,
@@ -97,7 +49,6 @@ export const load: PageLoad = ({ url }) => {
 				employeeSearch,
 				year
 			}
-		},
-		leaveBalancesData
+		}
 	};
 };
