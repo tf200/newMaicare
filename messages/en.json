@@ -1831,6 +1831,8 @@
 	"late_arrival_summary": "Arrival time: {time}",
 	"late_recent_title": "Recent reports",
 	"late_empty": "No recent reports",
+	"late_tab_late": "Late Arrivals",
+	"late_column_late": "Late",
 	"leave_table_title": "Leave requests",
 	"leave_table_description": "Overview of all leave and absence requests.",
 	"leave_table_empty_title": "No leave requests found",

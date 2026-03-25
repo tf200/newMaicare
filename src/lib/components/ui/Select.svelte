@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { Check, ChevronsUpDown } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
@@ -17,7 +18,8 @@
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = '',
-		size = 'md'
+		size = 'md',
+		prefix
 	} = $props<{
 		label?: string;
 		options?: Option[];
@@ -28,6 +30,7 @@
 		id?: string;
 		className?: string;
 		size?: SelectSize;
+		prefix?: Snippet;
 	}>();
 
 	let isOpen = $state(false);
@@ -85,6 +88,9 @@
 				: ''}"
 			aria-expanded={isOpen}
 		>
+			{#if prefix}
+				{@render prefix()}
+			{/if}
 			<span class="truncate">{selectedLabel}</span>
 			<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 text-text-subtle" />
 		</button>

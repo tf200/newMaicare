@@ -26,9 +26,11 @@
 	import {
 		listMyLeaveRequests,
 		createLeaveRequest,
+		createLateArrival,
 		listMyLeaveRequestStats,
 		listMyLeaveBalances
 	} from '$lib/api/leave';
+	import { ApiClientError } from '$lib/api/client';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getAuthState } from '$lib/state/auth.svelte';
@@ -278,6 +280,7 @@
 	let emailAddress = $state('');
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isSubmittingLateArrival = $state(false);
 
 	let newRequest = $state({
 		type: 'vacation' as CreatableLeaveType,
@@ -474,6 +477,16 @@
 		toastTimeout = setTimeout(() => {
 			toast = null;
 		}, 3500);
+	}
+
+	function getLateArrivalErrorMessage(error: unknown) {
+		if (error instanceof ApiClientError) {
+			if (error.status === 400 || error.status === 409) {
+				return error.message;
+			}
+		}
+
+		return error instanceof Error ? error.message : 'Failed to save late arrival.';
 	}
 
 	function formatMonth(date: Date) {
@@ -687,24 +700,44 @@
 		}
 	}
 
-	function handleCreateLate(event: Event) {
+	async function handleCreateLate(event: Event) {
 		event.preventDefault();
 		if (!lateRequest.employeeId || !lateRequest.date || !lateRequest.time) {
 			setToast(m.leave_toast_missing_late_fields(), 'warning');
 			return;
 		}
-		lateArrivals = [
-			{
-				id: crypto.randomUUID(),
-				employeeId: lateRequest.employeeId,
-				date: lateRequest.date,
-				time: lateRequest.time,
-				reason: lateRequest.reason
-			},
-			...lateArrivals
-		];
-		setToast(m.leave_toast_late_added(), 'success');
-		lateRequest = { employeeId: loggedInEmployee.id, date: '', time: '', reason: '' };
+
+		if (isSubmittingLateArrival) return;
+
+		const normalizedReason = normalizeReason(lateRequest.reason);
+		isSubmittingLateArrival = true;
+
+		try {
+			await createLateArrival({
+				arrival_date: lateRequest.date,
+				arrival_time: lateRequest.time,
+				reason: normalizedReason
+			});
+
+			lateArrivals = [
+				{
+					id: crypto.randomUUID(),
+					employeeId: lateRequest.employeeId,
+					date: lateRequest.date,
+					time: lateRequest.time,
+					reason: normalizedReason
+				},
+				...lateArrivals
+			];
+			setToast(m.leave_toast_late_added(), 'success');
+			lateRequest = { employeeId: loggedInEmployee.id, date: '', time: '', reason: '' };
+		} catch (error) {
+			const type =
+				error instanceof ApiClientError && error.status === 400 ? 'warning' : 'error';
+			setToast(getLateArrivalErrorMessage(error), type);
+		} finally {
+			isSubmittingLateArrival = false;
+		}
 	}
 
 	function handleApproveOverview(id: string) {
@@ -1149,6 +1182,7 @@
 							/>
 							<Button
 								type="submit"
+								isLoading={isSubmittingLateArrival}
 								class="w-full gap-2 bg-warning py-3 text-white hover:bg-warning/90"
 							>
 								<CheckCircle class="h-4 w-4" />

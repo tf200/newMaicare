@@ -1,13 +1,42 @@
 <script lang="ts">
-	import { Clock, CheckCircle, XCircle, AlertCircle, Search } from 'lucide-svelte';
+	import {
+		Clock,
+		CheckCircle,
+		XCircle,
+		AlertCircle,
+		Search,
+		MapPin,
+		User,
+		Calendar
+	} from 'lucide-svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { LeaveRequestListItemResponse, LeaveRequestStatus } from '$lib/types/api';
+	import type {
+		LeaveRequestListItemResponse,
+		LeaveRequestStatus,
+		LateArrivalListItemResponse
+	} from '$lib/types/api';
 
 	type RequestFilter = 'all' | LeaveRequestStatus;
-	type LeaveType = 'vacation' | 'sick' | 'personal' | 'training' | 'pregnancy' | 'unpaid' | 'other' | 'late';
+	type LeaveDecision = 'approve' | 'reject';
+	type LeaveType =
+		| 'vacation'
+		| 'sick'
+		| 'personal'
+		| 'training'
+		| 'pregnancy'
+		| 'unpaid'
+		| 'other'
+		| 'late';
+
+	type OverviewSubTab = 'requests' | 'lateArrivals';
 
 	interface Props {
+		activeSubTab?: OverviewSubTab;
 		rows: LeaveRequestListItemResponse[];
 		loading: boolean;
 		error: string | null;
@@ -16,10 +45,19 @@
 		currentPage?: number;
 		pageSize: number;
 		totalCount: number;
-		onApprove: (id: string) => void;
-		onReject: (id: string) => void;
+		onApprove: (id: string, decisionNote?: string) => Promise<void> | void;
+		onReject: (id: string, decisionNote?: string) => Promise<void> | void;
 		onDelete: (id: string) => void;
 		onCreateRequest: () => void;
+		lateArrivalRows?: LateArrivalListItemResponse[];
+		lateArrivalLoading?: boolean;
+		lateArrivalError?: string | null;
+		lateArrivalCurrentPage?: number;
+		lateArrivalPageSize?: number;
+		lateArrivalTotalCount?: number;
+		lateArrivalSearchQuery?: string;
+		lateArrivalDateFrom?: string;
+		lateArrivalDateTo?: string;
 	}
 
 	interface OverviewLeaveRequestRow {
@@ -41,10 +79,10 @@
 	}
 
 	const columns: DataTableColumn[] = [
-		{ key: 'employee', label: 'Medewerker' },
-		{ key: 'type', label: 'Type' },
-		{ key: 'period', label: 'Periode' },
-		{ key: 'status', label: 'Status', align: 'center' },
+		{ key: 'employee', label: m.employee() },
+		{ key: 'type', label: m.leave_type_label() },
+		{ key: 'period', label: m.period() },
+		{ key: 'status', label: m.status(), align: 'center' },
 		{ key: 'actions', label: '', align: 'right' }
 	];
 
@@ -91,7 +129,16 @@
 		expired: { label: () => m.leave_status_expired(), icon: Clock, color: 'text-text-muted' }
 	};
 
+	const lateArrivalColumns: DataTableColumn[] = [
+		{ key: 'employee', label: m.employee() },
+		{ key: 'arrival', label: m.late_arrival_time_label() },
+		{ key: 'late', label: m.late_column_late(), align: 'center' },
+		{ key: 'shift', label: 'Dienst' },
+		{ key: 'reason', label: m.late_reason_label() }
+	];
+
 	let {
+		activeSubTab = $bindable('requests' as OverviewSubTab),
 		rows,
 		loading,
 		error,
@@ -103,8 +150,33 @@
 		onApprove,
 		onReject,
 		onDelete,
-		onCreateRequest
+		onCreateRequest,
+		lateArrivalRows = [],
+		lateArrivalLoading = false,
+		lateArrivalError = null,
+		lateArrivalCurrentPage = $bindable(1),
+		lateArrivalPageSize = 20,
+		lateArrivalTotalCount = 0,
+		lateArrivalSearchQuery = $bindable(''),
+		lateArrivalDateFrom = $bindable(''),
+		lateArrivalDateTo = $bindable('')
 	}: Props = $props();
+
+	function getShiftStartTime(dateTimeText: string) {
+		const date = new Date(dateTimeText);
+		const hours = String(date.getHours()).padStart(2, '0');
+		const minutes = String(date.getMinutes()).padStart(2, '0');
+		return `${hours}:${minutes}`;
+	}
+
+	function getMinutesLate(arrivalTime: string, shiftStartDateTime: string) {
+		const shiftStart = getShiftStartTime(shiftStartDateTime);
+		const [arrH, arrM] = arrivalTime.split(':').map(Number);
+		const [shiftH, shiftM] = shiftStart.split(':').map(Number);
+		const arrivalMinutes = arrH * 60 + arrM;
+		const shiftMinutes = shiftH * 60 + shiftM;
+		return arrivalMinutes - shiftMinutes;
+	}
 
 	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
 		{ id: 'all', label: m.all() },
@@ -164,6 +236,53 @@
 		return requestFilter === pillId
 			? 'bg-rose-600 text-white'
 			: 'border border-border text-text-muted hover:text-text';
+	}
+
+	let decisionModalOpen = $state(false);
+	let decisionLoading = $state(false);
+	let decisionError = $state<string | null>(null);
+	let selectedDecisionRequestId = $state<string | null>(null);
+	let selectedDecision = $state<LeaveDecision>('approve');
+	let decisionNote = $state('');
+
+	const decisionModalTitle = $derived.by(() =>
+		selectedDecision === 'approve' ? m.leave_action_approve() : m.leave_action_reject()
+	);
+
+	function openDecisionModal(id: string, decision: LeaveDecision) {
+		selectedDecisionRequestId = id;
+		selectedDecision = decision;
+		decisionNote = '';
+		decisionError = null;
+		decisionModalOpen = true;
+	}
+
+	function closeDecisionModal() {
+		if (decisionLoading) return;
+		decisionModalOpen = false;
+		selectedDecisionRequestId = null;
+		decisionError = null;
+		decisionNote = '';
+	}
+
+	async function submitDecision() {
+		if (!selectedDecisionRequestId) return;
+
+		decisionLoading = true;
+		decisionError = null;
+
+		try {
+			if (selectedDecision === 'approve') {
+				await onApprove(selectedDecisionRequestId, decisionNote);
+			} else {
+				await onReject(selectedDecisionRequestId, decisionNote);
+			}
+			closeDecisionModal();
+		} catch (error) {
+			decisionError = error instanceof Error ? error.message : 'Failed to apply this decision.';
+		} finally {
+			decisionLoading = false;
+		}
 	}
 </script>
 
@@ -237,7 +356,7 @@
 		</p>
 		<p class="text-text-muted">
 			{row.days}
-			{row.days === 1 ? 'dag' : 'dagen'}
+			{row.days === 1 ? m.leave_day_singular() : m.leave_day_plural()}
 		</p>
 	</div>
 {/snippet}
@@ -255,14 +374,14 @@
 		{#if row.status === 'pending'}
 			<button
 				class="flex h-8 items-center gap-1.5 rounded-lg border border-error/30 bg-surface px-2.5 text-xs font-semibold text-error transition-all hover:bg-error/5 active:scale-95"
-				onclick={() => onReject(row.id)}
+				onclick={() => openDecisionModal(row.id, 'reject')}
 			>
 				<XCircle class="h-3.5 w-3.5" />
 				{m.leave_action_reject()}
 			</button>
 			<button
 				class="flex h-8 items-center gap-1.5 rounded-lg bg-success px-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-success/90 active:scale-95"
-				onclick={() => onApprove(row.id)}
+				onclick={() => openDecisionModal(row.id, 'approve')}
 			>
 				<CheckCircle class="h-3.5 w-3.5" />
 				{m.leave_action_approve()}
@@ -278,38 +397,228 @@
 	</div>
 {/snippet}
 
+{#snippet lateArrivalEmployeeCell(row: LateArrivalListItemResponse)}
+	<div class="flex items-center gap-3">
+		<div
+			class="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/10 text-xs font-semibold text-warning"
+		>
+			{row.employee_name
+				.split(' ')
+				.map((part) => part[0])
+				.join('')
+				.slice(0, 2)
+				.toUpperCase()}
+		</div>
+		<p class="text-sm font-semibold text-text">{row.employee_name}</p>
+	</div>
+{/snippet}
+
+{#snippet lateArrivalArrivalCell(row: LateArrivalListItemResponse)}
+	<div class="text-sm">
+		<p class="font-semibold text-text">
+			{new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(
+				new Date(row.arrival_date)
+			)}
+		</p>
+		<p class="text-text-muted">{row.arrival_time}</p>
+	</div>
+{/snippet}
+
+{#snippet lateArrivalLateCell(row: LateArrivalListItemResponse)}
+	{@const minutesLate = getMinutesLate(row.arrival_time, row.shift_start_datetime)}
+	{@const severity = minutesLate > 30 ? 'severe' : minutesLate > 15 ? 'moderate' : 'mild'}
+	{@const severityColor =
+		severity === 'severe'
+			? 'border-red-500/30 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400'
+			: severity === 'moderate'
+				? 'border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+				: 'border-warning/20 bg-warning/5 text-warning'}
+	<span
+		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {severityColor}"
+	>
+		{minutesLate} min
+	</span>
+{/snippet}
+
+{#snippet lateArrivalShiftCell(row: LateArrivalListItemResponse)}
+	<div class="text-sm">
+		<p class="font-medium text-text">{row.shift_name}</p>
+		{#if row.location_name}
+			<p class="text-xs text-text-muted">{row.location_name}</p>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet lateArrivalReasonCell(row: LateArrivalListItemResponse)}
+	{#if row.reason}
+		<p class="line-clamp-1 cursor-help text-sm text-text-muted hover:text-text" title={row.reason}>
+			{row.reason}
+		</p>
+	{:else}
+		<p class="text-sm text-text-subtle">-</p>
+	{/if}
+{/snippet}
+
+{#snippet lateArrivalFilters()}
+	<div class="flex w-full flex-wrap items-center gap-3">
+		<div class="relative w-full sm:w-64">
+			<Search
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+			/>
+			<input
+				type="search"
+				placeholder={m.search_employees()}
+				value={lateArrivalSearchQuery}
+				oninput={(event) => {
+					lateArrivalSearchQuery = (event.target as HTMLInputElement).value;
+					lateArrivalCurrentPage = 1;
+				}}
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+			/>
+		</div>
+		<div class="flex flex-wrap items-center gap-2">
+			<DatePicker label="Van" bind:value={lateArrivalDateFrom} compact />
+			<DatePicker label="Tot" bind:value={lateArrivalDateTo} compact />
+			{#if lateArrivalDateFrom || lateArrivalDateTo}
+				<button
+					class="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"
+					onclick={() => {
+						lateArrivalDateFrom = '';
+						lateArrivalDateTo = '';
+						lateArrivalCurrentPage = 1;
+					}}
+				>
+					{m.leave_action_delete()}
+				</button>
+			{/if}
+		</div>
+	</div>
+{/snippet}
+
 <div class="animate-in fade-in slide-in-from-bottom-2">
+	<div
+		class="bg-surface-subtle/30 mb-4 flex items-center gap-1 rounded-2xl border border-border/50 p-1"
+	>
+		<button
+			onclick={() => (activeSubTab = 'requests')}
+			class="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeSubTab ===
+			'requests'
+				? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
+				: 'text-text-muted hover:bg-surface hover:text-text'}"
+		>
+			{m.leave_table_title()}
+		</button>
+		<button
+			onclick={() => (activeSubTab = 'lateArrivals')}
+			class="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeSubTab ===
+			'lateArrivals'
+				? 'bg-warning text-white shadow-sm'
+				: 'text-text-muted hover:bg-surface hover:text-text'}"
+		>
+			<Clock class="h-4 w-4" />
+			{m.late_tab_late()}
+			{#if lateArrivalTotalCount > 0}
+				<span
+					class="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs"
+					>{lateArrivalTotalCount}</span
+				>
+			{/if}
+		</button>
+	</div>
+
 	{#if error}
 		<div class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
 			{error}
 		</div>
 	{/if}
-	<DataTable
-		{columns}
-		rows={tableRows}
-		loading={loading}
-		rowKey="id"
-		title={m.leave_table_title()}
-		description={m.leave_table_description()}
-		emptyTitle={m.leave_table_empty_title()}
-		emptyDescription={m.leave_table_empty_description()}
-		emptyActionLabel={m.leave_table_empty_action()}
-		emptyAction={onCreateRequest}
-		filters={requestFilters}
-		surface="plain"
-		headerInline
-		currentPage={currentPage}
-		{pageSize}
-		totalCount={totalCount}
-		onPageChange={(page) => {
-			currentPage = page;
-		}}
-		cells={{
-			employee: employeeCell,
-			type: typeCell,
-			period: periodCell,
-			status: statusCell,
-			actions: actionsCell
-		}}
-	/>
+
+	{#if activeSubTab === 'requests'}
+		<DataTable
+			{columns}
+			rows={tableRows}
+			{loading}
+			rowKey="id"
+			title={m.leave_table_title()}
+			description={m.leave_table_description()}
+			emptyTitle={m.leave_table_empty_title()}
+			emptyDescription={m.leave_table_empty_description()}
+			emptyActionLabel={m.leave_table_empty_action()}
+			emptyAction={onCreateRequest}
+			filters={requestFilters}
+			surface="plain"
+			headerInline
+			{currentPage}
+			{pageSize}
+			{totalCount}
+			onPageChange={(page) => {
+				currentPage = page;
+			}}
+			cells={{
+				employee: employeeCell,
+				type: typeCell,
+				period: periodCell,
+				status: statusCell,
+				actions: actionsCell
+			}}
+		/>
+	{:else if activeSubTab === 'lateArrivals'}
+		{#if lateArrivalError}
+			<div class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
+				{lateArrivalError}
+			</div>
+		{/if}
+		<DataTable
+			columns={lateArrivalColumns}
+			rows={lateArrivalRows}
+			loading={lateArrivalLoading}
+			rowKey="id"
+			title={m.late_tab_late()}
+			description=""
+			emptyTitle={m.late_empty()}
+			emptyDescription=""
+			surface="plain"
+			headerInline
+			currentPage={lateArrivalCurrentPage}
+			pageSize={lateArrivalPageSize}
+			totalCount={lateArrivalTotalCount}
+			onPageChange={(page) => {
+				lateArrivalCurrentPage = page;
+			}}
+			filters={lateArrivalFilters}
+			cells={{
+				employee: lateArrivalEmployeeCell,
+				arrival: lateArrivalArrivalCell,
+				late: lateArrivalLateCell,
+				shift: lateArrivalShiftCell,
+				reason: lateArrivalReasonCell
+			}}
+		/>
+	{/if}
 </div>
+
+<Modal bind:open={decisionModalOpen} title={decisionModalTitle} description="" size="sm">
+	<div class="space-y-4">
+		<Textarea
+			label={m.decision_notes_optional()}
+			placeholder={m.decision_notes_placeholder()}
+			bind:value={decisionNote}
+			rows={4}
+			disabled={decisionLoading}
+		/>
+		{#if decisionError}
+			<p class="rounded-xl border border-error/20 bg-error/5 px-3 py-2 text-xs text-error">
+				{decisionError}
+			</p>
+		{/if}
+	</div>
+	{#snippet footer()}
+		<div class="flex items-center justify-end gap-2">
+			<Button variant="ghost" onclick={closeDecisionModal} disabled={decisionLoading}>
+				{m.leave_modal_cancel()}
+			</Button>
+			<Button onclick={submitDecision} isLoading={decisionLoading}>
+				{selectedDecision === 'approve' ? m.leave_action_approve() : m.leave_action_reject()}
+			</Button>
+		</div>
+	{/snippet}
+</Modal>

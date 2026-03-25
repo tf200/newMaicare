@@ -10,6 +10,11 @@ import type {
 	ListMyLeaveBalancesParams,
 	CreateLeaveRequestPayload,
 	CreateLeaveRequestByAdminPayload,
+	CreateLateArrivalPayload,
+	CreateLateArrivalByAdminPayload,
+	LateArrivalListItemResponse,
+	ListLateArrivalsParams,
+	DecideLeaveRequestPayload,
 	MyLeaveRequestStatsResponse
 } from '$lib/types/api';
 
@@ -19,6 +24,14 @@ export function createLeaveRequest(data: CreateLeaveRequestPayload) {
 
 export function createLeaveRequestByAdmin(data: CreateLeaveRequestByAdminPayload) {
 	return api.post<ApiEnvelope<LeaveRequestListItemResponse>>('/leave-requests/admin', data);
+}
+
+export function createLateArrival(data: CreateLateArrivalPayload) {
+	return api.post<ApiEnvelope<unknown>>('/late-arrivals', data);
+}
+
+export function createLateArrivalByAdmin(data: CreateLateArrivalByAdminPayload) {
+	return api.post<ApiEnvelope<LateArrivalListItemResponse>>('/late-arrivals/admin', data);
 }
 
 export function listLeaveRequests(params: ListLeaveRequestsParams) {
@@ -64,6 +77,13 @@ export function listLeaveRequestStats() {
 	return api.get<ApiEnvelope<MyLeaveRequestStatsResponse>>('/leave-requests/stats');
 }
 
+export function decideLeaveRequest(id: string, data: DecideLeaveRequestPayload) {
+	return api.post<ApiEnvelope<LeaveRequestListItemResponse>>(
+		`/leave-requests/${id}/decision`,
+		data
+	);
+}
+
 const buildLeaveBalancesQuery = (
 	params: ListLeaveBalancesParams | ListMyLeaveBalancesParams,
 	includeEmployeeSearch: boolean
@@ -98,4 +118,25 @@ export function listMyLeaveBalances(params: ListMyLeaveBalancesParams) {
 	const endpoint = query ? `/leave-balances/my?${query}` : '/leave-balances/my';
 
 	return api.get<ApiEnvelope<PaginatedResponse<LeaveBalanceListItemResponse>>>(endpoint);
+}
+
+export function listLateArrivals(params: ListLateArrivalsParams) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.pageSize));
+
+	if (params.employeeSearch?.trim()) {
+		searchParams.set('employee_search', params.employeeSearch.trim().slice(0, 120));
+	}
+	if (params.dateFrom) {
+		searchParams.set('date_from', params.dateFrom);
+	}
+	if (params.dateTo) {
+		searchParams.set('date_to', params.dateTo);
+	}
+
+	const query = searchParams.toString();
+	const endpoint = query ? `/late-arrivals?${query}` : '/late-arrivals';
+
+	return api.get<ApiEnvelope<PaginatedResponse<LateArrivalListItemResponse>>>(endpoint);
 }

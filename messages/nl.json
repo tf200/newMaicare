@@ -1776,6 +1776,8 @@
 	"late_arrival_summary": "Aankomsttijd: {time}",
 	"late_recent_title": "Recente meldingen",
 	"late_empty": "Geen recente meldingen",
+	"late_tab_late": "Te laat",
+	"late_column_late": "Te laat",
 	"leave_table_title": "Verlofaanvragen",
 	"leave_table_description": "Overzicht van alle verlof- en verzuimaanvragen.",
 	"leave_table_empty_title": "Geen verlofaanvragen gevonden",

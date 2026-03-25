@@ -41,7 +41,7 @@
 					<th
 						class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase"
 					>
-						Datum
+						{m.date()}
 					</th>
 					<th
 						class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-text-muted uppercase"
@@ -51,7 +51,7 @@
 					<th
 						class="px-4 py-3 text-right text-xs font-semibold tracking-wide text-text-muted uppercase"
 					>
-						Verschil
+						Difference
 					</th>
 				</tr>
 			</thead>

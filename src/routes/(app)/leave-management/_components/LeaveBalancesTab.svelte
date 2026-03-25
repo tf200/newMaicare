@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { Search, Calendar, X, ChevronDown } from 'lucide-svelte';
+	import { Search } from 'lucide-svelte';
 	import { onDestroy } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import YearSelector from '$lib/components/ui/YearSelector.svelte';
 	import type { LeaveBalancesLoadResult, LeaveBalanceRow } from '../+page';
 
 	type Props = {
@@ -19,29 +20,22 @@
 	let searchDraft = $state('');
 	let yearDraft = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
-	let yearDropdownOpen = $state(false);
 
-	const currentYearObj = new Date().getFullYear();
-	const yearOptions = Array.from({ length: 11 }, (_, i) => currentYearObj - i);
-
-	function selectYear(y: number) {
-		yearDraft = String(y);
-		onYearChange(y);
-		yearDropdownOpen = false;
+	function scheduleSearch() {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			onSearch(searchDraft.trim());
+		}, 250);
 	}
 
-	function clickOutside(node: HTMLElement) {
-		const handleClick = (e: Event) => {
-			if (yearDropdownOpen && !node.contains(e.target as Node)) {
-				yearDropdownOpen = false;
-			}
-		};
-		document.addEventListener('mousedown', handleClick, true);
-		return {
-			destroy() {
-				document.removeEventListener('mousedown', handleClick, true);
-			}
-		};
+	function handleSearchInput(event: Event) {
+		searchDraft = (event.currentTarget as HTMLInputElement).value;
+		scheduleSearch();
+	}
+
+	function handleYearChange(year: number | null) {
+		yearDraft = year != null ? String(year) : '';
+		onYearChange(year);
 	}
 
 	$effect(() => {
@@ -61,10 +55,11 @@
 		{ key: 'totalRemaining', label: m.leave_balance_total(), align: 'right', width: '160px' }
 	];
 
-	const formatDays = (value: number) =>
-		new Intl.NumberFormat(undefined, {
-			maximumFractionDigits: 2
-		}).format(value);
+	const dayFormatter = new Intl.NumberFormat(undefined, {
+		maximumFractionDigits: 2
+	});
+
+	const formatDays = (value: number) => dayFormatter.format(value);
 
 	const employeeInitials = (employeeName: string) => {
 		const parts = employeeName.trim().split(/\s+/).filter(Boolean);
@@ -74,163 +69,31 @@
 
 		return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 	};
-
-	const scheduleSearch = () => {
-		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => {
-			onSearch(searchDraft.trim());
-		}, 250);
-	};
-
-	const handleYearInput = (event: Event) => {
-		yearDraft = (event.currentTarget as HTMLInputElement).value;
-		const trimmed = yearDraft.trim();
-		if (!trimmed) {
-			onYearChange(null);
-			return;
-		}
-
-		const parsed = Number(trimmed);
-		if (Number.isInteger(parsed) && parsed >= 2000 && parsed <= currentYearObj) {
-			onYearChange(parsed);
-		}
-	};
-
-	const handleSearchInput = (event: Event) => {
-		searchDraft = (event.currentTarget as HTMLInputElement).value;
-		scheduleSearch();
-	};
-
-	const clearYear = () => {
-		yearDraft = '';
-		onYearChange(null);
-	};
-
-	const handleYearKeydown = (event: KeyboardEvent) => {
-		if (event.key === 'Escape') {
-			yearDropdownOpen = false;
-			(event.currentTarget as HTMLElement).blur();
-		} else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-			event.preventDefault();
-			if (!yearDropdownOpen) yearDropdownOpen = true;
-			// Focus first/last item in dropdown logic could go here
-		}
-	};
-
-	const handleDropdownKeydown = (event: KeyboardEvent, index: number) => {
-		if (event.key === 'Escape') {
-			yearDropdownOpen = false;
-			// Return focus to input
-			const input = document.querySelector('input[aria-controls="year-dropdown"]');
-			if (input instanceof HTMLElement) input.focus();
-		} else if (event.key === 'ArrowDown') {
-			event.preventDefault();
-			const next = document.querySelector(`button[data-year-index="${index + 1}"]`);
-			if (next instanceof HTMLElement) next.focus();
-		} else if (event.key === 'ArrowUp') {
-			event.preventDefault();
-			if (index === 0) {
-				const input = document.querySelector('input[aria-controls="year-dropdown"]');
-				if (input instanceof HTMLElement) input.focus();
-			} else {
-				const prev = document.querySelector(`button[data-year-index="${index - 1}"]`);
-				if (prev instanceof HTMLElement) prev.focus();
-			}
-		} else if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			(event.currentTarget as HTMLElement).click();
-		}
-	};
 </script>
 
 {#snippet tableFilters()}
 	<div class="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-		<div class="relative w-full lg:max-w-sm">
-			<label for="search-employees" class="sr-only">{m.search_employees()}</label>
+		<div class="relative w-full md:max-w-sm">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
-				id="search-employees"
 				type="search"
 				placeholder={m.search_employees()}
 				value={searchDraft}
 				oninput={handleSearchInput}
-				class="h-[44px] w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/40 focus:outline-none"
 				aria-label={m.search_employees()}
+				class="h-10 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 			/>
 		</div>
-		<div class="relative w-36 min-w-[10rem] shrink-0 lg:w-36" use:clickOutside>
-			<label for="year-filter" class="sr-only">Filter by year</label>
-			<Calendar
-				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
-			/>
-			<input
-				id="year-filter"
-				type="text"
-				inputmode="numeric"
-				pattern="[0-9]*"
-				placeholder="Year"
-				value={yearDraft}
-				oninput={handleYearInput}
-				onclick={() => (yearDropdownOpen = true)}
-				onkeydown={handleYearKeydown}
-				role="combobox"
-				aria-haspopup="listbox"
-				aria-expanded={yearDropdownOpen}
-				aria-controls="year-dropdown"
-				class="h-[44px] w-full cursor-pointer rounded-xl border border-border bg-surface px-9 text-sm font-medium text-text [-moz-appearance:textfield] placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/40 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-			/>
-			{#if yearDraft}
-				<button
-					type="button"
-					class="hover:bg-surface-subtle absolute top-1/2 right-1.5 flex h-[44px] w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text focus:ring-2 focus:ring-brand/40 focus:outline-none"
-					onclick={clearYear}
-					aria-label={m.remove()}
-				>
-					<X class="h-4 w-4" />
-				</button>
-			{:else}
-				<ChevronDown
-					class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-text-subtle transition-transform {yearDropdownOpen
-						? 'rotate-180'
-						: ''}"
-				/>
-			{/if}
-
-			{#if yearDropdownOpen}
-				<div
-					id="year-dropdown"
-					role="listbox"
-					aria-label="Select year"
-					class="animate-in fade-in slide-in-from-top-2 absolute top-full left-0 z-50 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-lg ring-1 ring-black/5"
-				>
-					{#each yearOptions as y, index (y)}
-						<button
-							type="button"
-							role="option"
-							aria-selected={yearDraft === String(y)}
-							data-year-index={index}
-							class="flex h-[44px] w-full items-center rounded-lg px-3 text-left text-sm transition-colors hover:bg-border/50 focus:ring-2 focus:ring-brand/40 focus:outline-none {yearDraft ===
-							String(y)
-								? 'bg-brand/20 font-medium text-brand'
-								: 'text-text-muted hover:text-text'}"
-							onclick={() => selectYear(y)}
-							onkeydown={(e) => handleDropdownKeydown(e, index)}
-						>
-							{y}
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
+		<YearSelector bind:value={yearDraft} onchange={handleYearChange} className="w-36 shrink-0" />
 	</div>
 {/snippet}
 
 {#snippet employeeCell(balance: LeaveBalanceRow)}
 	<div class="flex items-center gap-3 py-1.5">
 		<div
-			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/20 text-brand shadow-sm shadow-brand/10"
+			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand shadow-sm shadow-brand/5"
 		>
 			<span class="text-xs font-bold">{employeeInitials(balance.employee_name)}</span>
 		</div>
@@ -246,8 +109,9 @@
 	</span>
 {/snippet}
 
-{#snippet balanceCell(remaining: number, total: number, colorClass: string)}
+{#snippet balanceCell(remaining: number, total: number, colorClass: string, label: string)}
 	<div class="flex flex-col gap-1.5 py-1">
+		<span class="text-[10px] font-bold tracking-wider text-text-subtle uppercase">{label}</span>
 		<div class="flex items-baseline gap-1.5">
 			<span class="text-sm font-semibold text-text">{formatDays(remaining)}</span>
 			<span class="text-xs text-text-muted">
@@ -265,17 +129,27 @@
 {/snippet}
 
 {#snippet legalCell(balance: LeaveBalanceRow)}
-	{@render balanceCell(balance.legal_remaining_days, balance.legal_total_days, 'bg-brand')}
+	{@render balanceCell(
+		balance.legal_remaining_days,
+		balance.legal_total_days,
+		'bg-brand/70',
+		m.leave_balance_legal()
+	)}
 {/snippet}
 
 {#snippet extraCell(balance: LeaveBalanceRow)}
-	{@render balanceCell(balance.extra_remaining_days, balance.extra_total_days, 'bg-info')}
+	{@render balanceCell(
+		balance.extra_remaining_days,
+		balance.extra_total_days,
+		'bg-info/70',
+		m.leave_balance_extra()
+	)}
 {/snippet}
 
 {#snippet totalRemainingCell(balance: LeaveBalanceRow)}
 	<div class="flex items-center justify-end">
 		<span
-			class="inline-flex items-center justify-center rounded-xl bg-success/20 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/10"
+			class="inline-flex items-center justify-center rounded-xl bg-success/10 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/5"
 		>
 			{formatDays(balance.total_remaining_days)}
 			{m.leave_balance_days_remaining()}
@@ -310,3 +184,11 @@
 		/>
 	</div>
 {/if}
+
+<style>
+	@media (prefers-reduced-motion: reduce) {
+		.animate-in {
+			animation: none !important;
+		}
+	}
+</style>

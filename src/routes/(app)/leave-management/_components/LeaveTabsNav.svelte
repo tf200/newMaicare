@@ -12,14 +12,14 @@
 	import { m } from '$lib/paraglide/messages';
 
 	type TabId =
-		| 'aanvragen'
-		| 'ziekmelding'
-		| 'zwangerschap'
-		| 'telaat'
-		| 'overzicht'
-		| 'saldo'
-		| 'uitbetalen'
-		| 'contractwijzigingen';
+		| 'requestLeave'
+		| 'sickLeave'
+		| 'maternityLeave'
+		| 'lateArrival'
+		| 'overview'
+		| 'balances'
+		| 'payouts'
+		| 'contractChanges';
 
 	type Props = {
 		activeTab: TabId;
@@ -36,14 +36,14 @@
 	let { activeTab, pendingCount, onTabChange }: Props = $props();
 
 	const mobileTabs: MobileTab[] = [
-		{ id: 'aanvragen', icon: CalendarPlus, label: m.leave_tab_request() },
-		{ id: 'ziekmelding', icon: Stethoscope, label: m.leave_tab_sick() },
-		{ id: 'zwangerschap', icon: Baby, label: m.leave_tab_pregnancy() },
-		{ id: 'telaat', icon: AlarmClock, label: m.leave_tab_late() },
-		{ id: 'overzicht', icon: List, label: m.leave_tab_overview() },
-		{ id: 'saldo', icon: Users, label: m.leave_tab_balance() },
-		{ id: 'uitbetalen', icon: Euro, label: m.leave_tab_payout() },
-		{ id: 'contractwijzigingen', icon: FileText, label: m.leave_tab_contract() }
+		{ id: 'requestLeave', icon: CalendarPlus, label: m.leave_tab_request() },
+		{ id: 'sickLeave', icon: Stethoscope, label: m.leave_tab_sick() },
+		{ id: 'maternityLeave', icon: Baby, label: m.leave_tab_pregnancy() },
+		{ id: 'lateArrival', icon: AlarmClock, label: m.leave_tab_late() },
+		{ id: 'overview', icon: List, label: m.leave_tab_overview() },
+		{ id: 'balances', icon: Users, label: m.leave_tab_balance() },
+		{ id: 'payouts', icon: Euro, label: m.leave_tab_payout() },
+		{ id: 'contractChanges', icon: FileText, label: m.leave_tab_contract() }
 	];
 </script>
 
@@ -59,7 +59,7 @@
 			>
 				<tab.icon class="h-3.5 w-3.5" />
 				{tab.label}
-				{#if tab.id === 'overzicht' && pendingCount > 0}
+				{#if tab.id === 'overview' && pendingCount > 0}
 					<span
 						class="flex h-4 w-4 items-center justify-center rounded-full bg-warning/20 text-[9px] font-bold text-warning"
 						>{pendingCount}</span
@@ -76,15 +76,15 @@
 			</p>
 			<div class="space-y-0.5">
 				<button
-					onclick={() => onTabChange('aanvragen')}
+					onclick={() => onTabChange('requestLeave')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
-						{activeTab === 'aanvragen'
+						{activeTab === 'requestLeave'
 						? 'bg-brand/8 text-brand shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab ===
-						'aanvragen'
+						'requestLeave'
 							? 'bg-brand/15 text-brand'
 							: 'bg-surface-subtle text-text-muted group-hover:text-brand'} transition-colors"
 					>
@@ -97,15 +97,15 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('ziekmelding')}
+					onclick={() => onTabChange('sickLeave')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
-						{activeTab === 'ziekmelding'
+						{activeTab === 'sickLeave'
 						? 'bg-error/8 text-error shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab ===
-						'ziekmelding'
+						'sickLeave'
 							? 'bg-error/15 text-error'
 							: 'bg-surface-subtle text-text-muted group-hover:text-error'} transition-colors"
 					>
@@ -118,15 +118,15 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('zwangerschap')}
+					onclick={() => onTabChange('maternityLeave')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
-						{activeTab === 'zwangerschap'
+						{activeTab === 'maternityLeave'
 						? 'bg-pink-500/8 text-pink-600 shadow-sm dark:text-pink-400'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab ===
-						'zwangerschap'
+						'maternityLeave'
 							? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400'
 							: 'bg-surface-subtle text-text-muted group-hover:text-pink-500'} transition-colors"
 					>
@@ -139,15 +139,15 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('telaat')}
+					onclick={() => onTabChange('lateArrival')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all
-						{activeTab === 'telaat'
+						{activeTab === 'lateArrival'
 						? 'bg-warning/8 text-warning shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {activeTab ===
-						'telaat'
+						'lateArrival'
 							? 'bg-warning/15 text-warning'
 							: 'bg-surface-subtle text-text-muted group-hover:text-warning'} transition-colors"
 					>
@@ -169,9 +169,9 @@
 			</p>
 			<div class="space-y-0.5">
 				<button
-					onclick={() => onTabChange('overzicht')}
+					onclick={() => onTabChange('overview')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
-						{activeTab === 'overzicht'
+						{activeTab === 'overview'
 						? 'bg-brand/8 text-brand shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
@@ -186,9 +186,9 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('saldo')}
+					onclick={() => onTabChange('balances')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
-						{activeTab === 'saldo'
+						{activeTab === 'balances'
 						? 'bg-brand/8 text-brand shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
@@ -197,9 +197,9 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('uitbetalen')}
+					onclick={() => onTabChange('payouts')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
-						{activeTab === 'uitbetalen'
+						{activeTab === 'payouts'
 						? 'bg-brand/8 text-brand shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>
@@ -208,9 +208,9 @@
 				</button>
 
 				<button
-					onclick={() => onTabChange('contractwijzigingen')}
+					onclick={() => onTabChange('contractChanges')}
 					class="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all
-						{activeTab === 'contractwijzigingen'
+						{activeTab === 'contractChanges'
 						? 'bg-brand/8 text-brand shadow-sm'
 						: 'hover:bg-surface-subtle text-text-muted hover:text-text'}"
 				>

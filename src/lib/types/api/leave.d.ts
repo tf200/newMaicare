@@ -76,6 +76,48 @@ export interface CreateLeaveRequestByAdminPayload {
 	reason?: string;
 }
 
+export interface CreateLateArrivalPayload {
+	arrival_date: string;
+	arrival_time: string;
+	reason?: string;
+}
+
+export interface CreateLateArrivalByAdminPayload extends CreateLateArrivalPayload {
+	employee_id: string;
+}
+
+export type LeaveRequestDecision = 'approve' | 'reject';
+
+export interface DecideLeaveRequestPayload {
+	decision: LeaveRequestDecision;
+	decision_note?: string | null;
+}
+
+export interface LateArrivalListItemResponse {
+	id: string;
+	schedule_id: string;
+	employee_id: string;
+	employee_name: string;
+	created_by_employee_id: string;
+	arrival_date: string;
+	arrival_time: string;
+	reason: string | null;
+	shift_start_datetime: string;
+	shift_end_datetime: string;
+	shift_name: string;
+	location_name: string;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ListLateArrivalsParams {
+	page: number;
+	pageSize: number;
+	employeeSearch?: string;
+	dateFrom?: string;
+	dateTo?: string;
+}
+
 export interface MyLeaveRequestStatsResponse {
 	open_requests: number;
 	approved_requests: number;

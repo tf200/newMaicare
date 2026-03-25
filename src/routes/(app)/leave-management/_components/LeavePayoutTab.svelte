@@ -7,7 +7,7 @@
 		id: string;
 		employee: string;
 		hours: number;
-		status: string;
+		status: 'pending' | 'approved';
 	};
 
 	type Props = {
@@ -54,7 +54,7 @@
 			</thead>
 			<tbody>
 				{#each payoutRequests as payout, i}
-					{@const isApproved = payout.status === 'Goedgekeurd'}
+					{@const isApproved = payout.status === 'approved'}
 					<tr
 						class="hover:bg-surface-subtle/30 border-b border-border/40 transition-colors last:border-0 {i %
 							2 ===
@@ -71,14 +71,14 @@
 							>
 						</td>
 						<td class="px-4 py-3.5">
-							<span
-								class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold {isApproved
+								<span
+									class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold {isApproved
 									? 'border-success/20 bg-success/10 text-success'
 									: 'border-warning/20 bg-warning/10 text-warning'}"
 							>
 								<span class="h-1.5 w-1.5 rounded-full {isApproved ? 'bg-success' : 'bg-warning'}"
 								></span>
-								{payout.status}
+								{isApproved ? m.leave_status_approved() : m.leave_status_pending()}
 							</span>
 						</td>
 						<td class="px-4 py-3.5 text-right">
