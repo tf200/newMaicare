@@ -156,11 +156,11 @@
 				placeholder={m.search_employees()}
 				value={searchDraft}
 				oninput={handleSearchInput}
-				class="h-10 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				class="h-[44px] w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/40 focus:outline-none"
 				aria-label={m.search_employees()}
 			/>
 		</div>
-		<div class="relative w-36 shrink-0" use:clickOutside>
+		<div class="relative w-36 min-w-[10rem] shrink-0 lg:w-36" use:clickOutside>
 			<label for="year-filter" class="sr-only">Filter by year</label>
 			<Calendar
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
@@ -179,16 +179,16 @@
 				aria-haspopup="listbox"
 				aria-expanded={yearDropdownOpen}
 				aria-controls="year-dropdown"
-				class="h-10 w-full cursor-pointer rounded-xl border border-border bg-surface px-9 text-sm font-medium text-text [-moz-appearance:textfield] placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+				class="h-[44px] w-full cursor-pointer rounded-xl border border-border bg-surface px-9 text-sm font-medium text-text [-moz-appearance:textfield] placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/40 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 			/>
 			{#if yearDraft}
 				<button
 					type="button"
-					class="hover:bg-surface-subtle absolute top-1/2 right-1.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
+					class="hover:bg-surface-subtle absolute top-1/2 right-1.5 flex h-[44px] w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text focus:ring-2 focus:ring-brand/40 focus:outline-none"
 					onclick={clearYear}
 					aria-label={m.remove()}
 				>
-					<X class="h-3.5 w-3.5" />
+					<X class="h-4 w-4" />
 				</button>
 			{:else}
 				<ChevronDown
@@ -211,9 +211,9 @@
 							role="option"
 							aria-selected={yearDraft === String(y)}
 							data-year-index={index}
-							class="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-border/50 {yearDraft ===
+							class="flex h-[44px] w-full items-center rounded-lg px-3 text-left text-sm transition-colors hover:bg-border/50 focus:ring-2 focus:ring-brand/40 focus:outline-none {yearDraft ===
 							String(y)
-								? 'bg-brand/10 font-medium text-brand'
+								? 'bg-brand/20 font-medium text-brand'
 								: 'text-text-muted hover:text-text'}"
 							onclick={() => selectYear(y)}
 							onkeydown={(e) => handleDropdownKeydown(e, index)}
@@ -230,7 +230,7 @@
 {#snippet employeeCell(balance: LeaveBalanceRow)}
 	<div class="flex items-center gap-3 py-1.5">
 		<div
-			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand shadow-sm shadow-brand/5"
+			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/20 text-brand shadow-sm shadow-brand/10"
 		>
 			<span class="text-xs font-bold">{employeeInitials(balance.employee_name)}</span>
 		</div>
@@ -265,17 +265,17 @@
 {/snippet}
 
 {#snippet legalCell(balance: LeaveBalanceRow)}
-	{@render balanceCell(balance.legal_remaining_days, balance.legal_total_days, 'bg-brand/70')}
+	{@render balanceCell(balance.legal_remaining_days, balance.legal_total_days, 'bg-brand')}
 {/snippet}
 
 {#snippet extraCell(balance: LeaveBalanceRow)}
-	{@render balanceCell(balance.extra_remaining_days, balance.extra_total_days, 'bg-info/70')}
+	{@render balanceCell(balance.extra_remaining_days, balance.extra_total_days, 'bg-info')}
 {/snippet}
 
 {#snippet totalRemainingCell(balance: LeaveBalanceRow)}
 	<div class="flex items-center justify-end">
 		<span
-			class="inline-flex items-center justify-center rounded-xl bg-success/10 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/5"
+			class="inline-flex items-center justify-center rounded-xl bg-success/20 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/10"
 		>
 			{formatDays(balance.total_remaining_days)}
 			{m.leave_balance_days_remaining()}
