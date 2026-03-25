@@ -477,8 +477,18 @@
 			/>
 		</div>
 		<div class="flex flex-wrap items-center gap-2">
-			<DatePicker label="Van" bind:value={lateArrivalDateFrom} compact />
-			<DatePicker label="Tot" bind:value={lateArrivalDateTo} compact />
+			<div class="flex items-center gap-2 whitespace-nowrap">
+				<span class="text-sm font-semibold text-text-muted">{m.leave_date_from()}</span>
+				<div class="min-w-40">
+					<DatePicker bind:value={lateArrivalDateFrom} compact />
+				</div>
+			</div>
+			<div class="flex items-center gap-2 whitespace-nowrap">
+				<span class="text-sm font-semibold text-text-muted">{m.leave_date_to()}</span>
+				<div class="min-w-40">
+					<DatePicker bind:value={lateArrivalDateTo} compact />
+				</div>
+			</div>
 			{#if lateArrivalDateFrom || lateArrivalDateTo}
 				<button
 					class="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text"

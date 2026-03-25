@@ -22,6 +22,7 @@ export interface EmployeeListItem {
 	bsn: string | number;
 	contract_type: EmployeeContractType | string;
 	department: string | null;
+	department_name?: string | null;
 	location_address: string | null;
 	contract_end_date: string | null;
 }
