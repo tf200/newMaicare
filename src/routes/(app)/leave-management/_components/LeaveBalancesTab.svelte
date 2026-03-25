@@ -55,10 +55,10 @@
 
 	const columns: DataTableColumn[] = [
 		{ key: 'employee', label: m.employee() },
-		{ key: 'year', label: 'Jaar', align: 'center', width: '100px' },
-		{ key: 'legal', label: 'Wettelijk', width: '220px' },
-		{ key: 'extra', label: 'Bovenwettelijk', width: '220px' },
-		{ key: 'totalRemaining', label: 'Totaal Resterend', align: 'right', width: '160px' }
+		{ key: 'year', label: 'Year', align: 'center', width: '100px' },
+		{ key: 'legal', label: m.leave_balance_legal(), width: '220px' },
+		{ key: 'extra', label: m.leave_balance_extra(), width: '220px' },
+		{ key: 'totalRemaining', label: m.leave_balance_total(), align: 'right', width: '160px' }
 	];
 
 	const formatDays = (value: number) =>
@@ -105,35 +105,80 @@
 		yearDraft = '';
 		onYearChange(null);
 	};
+
+	const handleYearKeydown = (event: KeyboardEvent) => {
+		if (event.key === 'Escape') {
+			yearDropdownOpen = false;
+			(event.currentTarget as HTMLElement).blur();
+		} else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (!yearDropdownOpen) yearDropdownOpen = true;
+			// Focus first/last item in dropdown logic could go here
+		}
+	};
+
+	const handleDropdownKeydown = (event: KeyboardEvent, index: number) => {
+		if (event.key === 'Escape') {
+			yearDropdownOpen = false;
+			// Return focus to input
+			const input = document.querySelector('input[aria-controls="year-dropdown"]');
+			if (input instanceof HTMLElement) input.focus();
+		} else if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			const next = document.querySelector(`button[data-year-index="${index + 1}"]`);
+			if (next instanceof HTMLElement) next.focus();
+		} else if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (index === 0) {
+				const input = document.querySelector('input[aria-controls="year-dropdown"]');
+				if (input instanceof HTMLElement) input.focus();
+			} else {
+				const prev = document.querySelector(`button[data-year-index="${index - 1}"]`);
+				if (prev instanceof HTMLElement) prev.focus();
+			}
+		} else if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			(event.currentTarget as HTMLElement).click();
+		}
+	};
 </script>
 
 {#snippet tableFilters()}
 	<div class="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
 		<div class="relative w-full lg:max-w-sm">
+			<label for="search-employees" class="sr-only">{m.search_employees()}</label>
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
+				id="search-employees"
 				type="search"
 				placeholder={m.search_employees()}
 				value={searchDraft}
 				oninput={handleSearchInput}
 				class="h-10 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
+				aria-label={m.search_employees()}
 			/>
 		</div>
 		<div class="relative w-36 shrink-0" use:clickOutside>
+			<label for="year-filter" class="sr-only">Filter by year</label>
 			<Calendar
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
-				type="number"
-				min="2000"
-				max={currentYearObj}
-				step="1"
-				placeholder="Jaar"
+				id="year-filter"
+				type="text"
+				inputmode="numeric"
+				pattern="[0-9]*"
+				placeholder="Year"
 				value={yearDraft}
 				oninput={handleYearInput}
 				onclick={() => (yearDropdownOpen = true)}
+				onkeydown={handleYearKeydown}
+				role="combobox"
+				aria-haspopup="listbox"
+				aria-expanded={yearDropdownOpen}
+				aria-controls="year-dropdown"
 				class="h-10 w-full cursor-pointer rounded-xl border border-border bg-surface px-9 text-sm font-medium text-text [-moz-appearance:textfield] placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 			/>
 			{#if yearDraft}
@@ -141,7 +186,7 @@
 					type="button"
 					class="hover:bg-surface-subtle absolute top-1/2 right-1.5 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text"
 					onclick={clearYear}
-					aria-label="Wissen"
+					aria-label={m.remove()}
 				>
 					<X class="h-3.5 w-3.5" />
 				</button>
@@ -155,16 +200,23 @@
 
 			{#if yearDropdownOpen}
 				<div
+					id="year-dropdown"
+					role="listbox"
+					aria-label="Select year"
 					class="animate-in fade-in slide-in-from-top-2 absolute top-full left-0 z-50 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-lg ring-1 ring-black/5"
 				>
-					{#each yearOptions as y}
+					{#each yearOptions as y, index (y)}
 						<button
 							type="button"
+							role="option"
+							aria-selected={yearDraft === String(y)}
+							data-year-index={index}
 							class="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-border/50 {yearDraft ===
 							String(y)
 								? 'bg-brand/10 font-medium text-brand'
 								: 'text-text-muted hover:text-text'}"
 							onclick={() => selectYear(y)}
+							onkeydown={(e) => handleDropdownKeydown(e, index)}
 						>
 							{y}
 						</button>
@@ -198,7 +250,10 @@
 	<div class="flex flex-col gap-1.5 py-1">
 		<div class="flex items-baseline gap-1.5">
 			<span class="text-sm font-semibold text-text">{formatDays(remaining)}</span>
-			<span class="text-xs text-text-muted">/ {formatDays(total)} dgn</span>
+			<span class="text-xs text-text-muted">
+				/ {formatDays(total)}
+				{m.leave_day_plural()}
+			</span>
 		</div>
 		<div class="bg-surface-subtle h-1.5 w-full max-w-[140px] overflow-hidden rounded-full">
 			<div
@@ -222,7 +277,8 @@
 		<span
 			class="inline-flex items-center justify-center rounded-xl bg-success/10 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/5"
 		>
-			{formatDays(balance.total_remaining_days)} dgn
+			{formatDays(balance.total_remaining_days)}
+			{m.leave_balance_days_remaining()}
 		</span>
 	</div>
 {/snippet}
