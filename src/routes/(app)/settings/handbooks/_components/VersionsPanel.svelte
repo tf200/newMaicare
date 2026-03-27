@@ -32,7 +32,7 @@
 	<div class={cardClass}>
 		<div class="mb-6 flex items-center justify-between">
 			<h2 class="text-lg font-bold text-text">Versions</h2>
-			<History class="h-4 w-4 text-text-muted" />
+			<History class="h-4 w-4 text-info" />
 		</div>
 
 		{#if selectedDepartmentTemplateStatus === 'loading' && !selectedDepartmentGroup}
@@ -65,8 +65,8 @@
 						aria-current={selectedVersionId === version.id ? 'true' : undefined}
 						class="w-full rounded-xl border p-3 text-left transition-all {selectedVersionId ===
 						version.id
-							? 'border-brand/40 bg-brand/5'
-							: 'border-border/40 bg-surface/30 hover:bg-surface/50'}"
+							? 'border-info/40 bg-info/5'
+							: 'border-border/40 bg-surface/30 hover:border-info/20 hover:bg-surface/50'}"
 					>
 						<div class="flex items-start justify-between gap-3">
 							<div>

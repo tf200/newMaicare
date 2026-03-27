@@ -11,7 +11,14 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { HandbookStep, HandbookTemplateVersion, LoadStatus } from '../types';
-	import { cardClass, getLinkTarget, getQuizContent, getStepIcon, getStepSummary } from '../utils';
+	import {
+		cardClass,
+		getLinkTarget,
+		getQuizContent,
+		getStepColorClasses,
+		getStepIcon,
+		getStepSummary
+	} from '../utils';
 
 	let {
 		selectedVersion,
@@ -79,7 +86,7 @@
 		{:else}
 			<div class="rounded-2xl border border-dashed border-border px-4 py-12 text-center">
 				<div
-					class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand"
+					class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10 text-secondary"
 				>
 					<BookOpen class="h-7 w-7" />
 				</div>
@@ -101,10 +108,11 @@
 		<div class="space-y-4">
 			{#each selectedVersionSteps as step, index (step.id)}
 				{@const Icon = getStepIcon(step.kind)}
+				{@const stepColors = getStepColorClasses(step.kind)}
 				<div class="rounded-2xl border border-border/50 bg-surface/50 p-5">
 					<div class="flex items-start gap-4">
 						<div
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {stepColors.bg} {stepColors.text}"
 						>
 							<Icon class="h-5 w-5" />
 						</div>
@@ -112,13 +120,13 @@
 							<div class="flex flex-wrap items-center gap-2">
 								<h4 class="font-bold text-text">{step.sortOrder}. {step.title}</h4>
 								<span
-									class="rounded-full bg-zinc-500/10 px-2 py-1 text-[10px] font-semibold text-zinc-700 uppercase"
+									class="rounded-full px-2 py-1 text-[10px] font-semibold uppercase {stepColors.badge}"
 								>
 									{step.kind}
 								</span>
 								{#if step.isRequired}
 									<span
-										class="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700 uppercase"
+										class="rounded-full bg-success/10 px-2 py-1 text-[10px] font-semibold text-success uppercase"
 									>
 										Required
 									</span>
@@ -134,7 +142,7 @@
 							{#if step.kind === 'link' && getLinkTarget(step)}
 								<button
 									type="button"
-									class="inline-flex items-center gap-2 text-sm font-medium text-brand hover:underline"
+									class="inline-flex items-center gap-2 text-sm font-medium {stepColors.text} hover:underline"
 									onclick={() => onOpenExternalResource(getLinkTarget(step))}
 								>
 									<ExternalLink class="h-4 w-4" />

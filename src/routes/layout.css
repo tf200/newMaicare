@@ -26,6 +26,12 @@
 	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #ffffff;
 
+	/* Leave Type Colors */
+	--color-leave-vacation: #0d9488;
+	--color-leave-sick: #f43f5e;
+	--color-leave-maternity: #ec4899;
+	--color-leave-late: #fbbf24;
+
 	/* Radii & Shadows */
 	--radius-card: 24px;
 	--radius-control: 12px;
@@ -55,6 +61,12 @@
 
 	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #000000;
+
+	/* Leave Type Colors - Dark Mode */
+	--color-leave-vacation: #2dd4bf;
+	--color-leave-sick: #fb7185;
+	--color-leave-maternity: #f472b6;
+	--color-leave-late: #fbbf24;
 
 	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
 }

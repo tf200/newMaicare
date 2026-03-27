@@ -18,13 +18,15 @@
 
 <div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-5 flex items-center justify-between">
-		<h3 class="font-bold text-text">{m.client_profile()}</h3>
+		<h3 class="text-[11px] font-bold tracking-[0.15em] text-text-subtle uppercase">
+			{m.client_profile()}
+		</h3>
 		<button class="text-xs font-bold text-brand">{m.edit()}</button>
 	</div>
 	<div class="space-y-4">
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-900"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-strong"
 			>
 				<User class="h-4 w-4" />
 			</div>
@@ -40,7 +42,7 @@
 		</div>
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-900"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning"
 			>
 				<MapPin class="h-4 w-4" />
 			</div>
@@ -54,7 +56,7 @@
 		</div>
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-900"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pink-500/10 text-pink-500 dark:bg-pink-500/20 dark:text-pink-400"
 			>
 				<Building2 class="h-4 w-4" />
 			</div>

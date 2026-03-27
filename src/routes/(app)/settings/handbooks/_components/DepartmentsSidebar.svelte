@@ -20,7 +20,7 @@
 <div class={cardClass}>
 	<div class="mb-6 flex items-center justify-between">
 		<h2 class="text-lg font-bold text-text">Departments</h2>
-		<span class="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand">
+		<span class="rounded-full bg-secondary/10 px-2.5 py-1 text-xs font-bold text-secondary">
 			{departments.length}
 		</span>
 	</div>
@@ -43,12 +43,18 @@
 					aria-pressed={selectedDepartmentId === department.id}
 					class="w-full rounded-2xl border p-4 text-left transition-all {selectedDepartmentId ===
 					department.id
-						? 'border-brand bg-brand/5 ring-1 ring-brand/20'
-						: 'border-border/50 bg-surface/40 hover:border-brand/30'}"
+						? 'border-secondary bg-secondary/5 ring-1 ring-secondary/20'
+						: 'border-border/50 bg-surface/40 hover:border-secondary/30'}"
 				>
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<h3 class="font-bold text-text">{department.name}</h3>
+							<h3
+								class="font-bold {selectedDepartmentId === department.id
+									? 'text-secondary'
+									: 'text-text'}"
+							>
+								{department.name}
+							</h3>
 							<p class="mt-1 text-xs text-text-muted">
 								{templateStatus === 'loading'
 									? 'Loading versions...'
@@ -63,7 +69,7 @@
 						</div>
 						{#if group?.versions.find((version) => version.status === 'draft')}
 							<span
-								class="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-700 uppercase"
+								class="rounded-full bg-warning/10 px-2 py-1 text-[10px] font-bold text-warning uppercase"
 							>
 								Draft
 							</span>

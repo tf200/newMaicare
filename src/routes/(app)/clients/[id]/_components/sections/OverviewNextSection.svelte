@@ -5,6 +5,7 @@
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { formatOverviewDate } from '../overview-date';
 
 	interface Props {
 		client: ClientOverviewData;
@@ -14,16 +15,8 @@
 	let { client, status }: Props = $props();
 	let showPutInCareForm = $state(false);
 
-	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
-
-	const formatDate = (dateString?: string) => {
-		if (!dateString) return m.not_available_short();
-		return new Date(dateString).toLocaleDateString(resolveLocale(), {
-			day: '2-digit',
-			month: 'short',
-			year: 'numeric'
-		});
-	};
+	const formatDate = (dateString?: string) =>
+		formatOverviewDate(dateString, getLocale(), m.not_available_short());
 
 	const getWhatsNext = (status: ClientOverviewStatus) => {
 		switch (status) {

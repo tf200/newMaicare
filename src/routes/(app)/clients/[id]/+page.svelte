@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { OverviewLoadResult } from './overview.shared';
-	import OverviewRouteView from './_components/shell/OverviewRouteView.svelte';
+	import OverviewScreen from './_components/shell/OverviewScreen.svelte';
 
 	let { data } = $props<{
 		data: {
@@ -9,4 +11,14 @@
 	}>();
 </script>
 
-<OverviewRouteView overviewData={data.overviewData} />
+{#await data.overviewData}
+	<div class="space-y-4">
+		<div class="h-8 w-48 animate-pulse rounded bg-border/70"></div>
+		<div class="h-[420px] animate-pulse rounded-3xl border border-border bg-surface"></div>
+	</div>
+{:then result}
+	{#if result.loadError}
+		<InlineErrorBanner message={result.loadError} onRetry={() => invalidateAll()} />
+	{/if}
+	<OverviewScreen overview={result.overview} />
+{/await}

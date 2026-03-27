@@ -4,10 +4,7 @@
 		CheckCircle,
 		XCircle,
 		AlertCircle,
-		Search,
-		MapPin,
-		User,
-		Calendar
+		Search
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
@@ -20,6 +17,7 @@
 		LeaveRequestStatus,
 		LateArrivalListItemResponse
 	} from '$lib/types/api';
+	import { calculateDays, formatDate } from './leave-form-utils';
 
 	type RequestFilter = 'all' | LeaveRequestStatus;
 	type LeaveDecision = 'approve' | 'reject';
@@ -62,13 +60,11 @@
 
 	interface OverviewLeaveRequestRow {
 		id: string;
-		employeeId: string;
 		employeeName: string;
 		leaveType: string;
 		startDate: string;
 		endDate: string;
 		days: number;
-		hours: number;
 		reason?: string;
 		status: LeaveRequestStatus;
 	}
@@ -187,35 +183,19 @@
 
 	const tableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		rows.map((row) => {
-			const days = calculateDays(row.start_date, row.end_date);
-			return {
-				id: row.id,
-				employeeId: row.employee_id,
-				employeeName: row.employee_name,
-				leaveType: row.leave_type,
-				startDate: row.start_date,
-				endDate: row.end_date,
-				days,
-				hours: days * 8,
-				reason: row.reason ?? undefined,
-				status: row.status
-			};
-		})
-	);
-
-	function formatDate(dateText: string) {
-		return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(
-			new Date(dateText)
+				const days = calculateDays(row.start_date, row.end_date);
+				return {
+					id: row.id,
+					employeeName: row.employee_name,
+					leaveType: row.leave_type,
+					startDate: row.start_date,
+					endDate: row.end_date,
+					days,
+					reason: row.reason ?? undefined,
+					status: row.status
+				};
+			})
 		);
-	}
-
-	function calculateDays(startDate: string, endDate: string) {
-		if (!startDate || !endDate) return 0;
-		const start = new Date(startDate);
-		const end = new Date(endDate);
-		const diff = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-		return diff > 0 ? diff : 0;
-	}
 
 	function getFilterPillClass(pillId: RequestFilter) {
 		if (pillId === 'all') {
@@ -536,13 +516,12 @@
 		</button>
 	</div>
 
-	{#if error}
-		<div class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
-			{error}
-		</div>
-	{/if}
-
 	{#if activeSubTab === 'requests'}
+		{#if error}
+			<div class="mb-4 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
+				{error}
+			</div>
+		{/if}
 		<DataTable
 			{columns}
 			rows={tableRows}

@@ -17,7 +17,6 @@
 		calendarEnd?: string | null;
 		lateArrivals: LocalLateArrivalItem[];
 		formatDate: (dateText: string) => string;
-		getEmployeeName: (employeeId: string) => string;
 		isSubmitting?: boolean;
 		onSubmit: (event: Event) => void | Promise<void>;
 	};
@@ -29,7 +28,6 @@
 		calendarEnd = $bindable<string | null>(),
 		lateArrivals,
 		formatDate,
-		getEmployeeName,
 		isSubmitting = false,
 		onSubmit
 	}: Props = $props();
@@ -98,12 +96,12 @@
 				{#each lateArrivals as item (item.id)}
 					<div
 						class="bg-surface-subtle/40 flex items-start justify-between gap-3 rounded-2xl border border-border/50 px-4 py-3 text-sm"
-					>
-						<div>
-							<p class="font-semibold text-text">{getEmployeeName(item.employeeId)}</p>
-							{#if item.reason}
-								<p class="mt-0.5 text-xs text-text-muted">{item.reason}</p>
-							{/if}
+						>
+							<div>
+								<p class="font-semibold text-text">{item.employeeName}</p>
+								{#if item.reason}
+									<p class="mt-0.5 text-xs text-text-muted">{item.reason}</p>
+								{/if}
 						</div>
 						<span
 							class="shrink-0 rounded-lg border border-warning/20 bg-warning/5 px-2 py-0.5 text-[10px] font-semibold text-warning"

@@ -2,10 +2,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Button from '$lib/components/ui/Button.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import LeavePageHeader from './_components/LeavePageHeader.svelte';
 	import LeaveStatsCards from './_components/LeaveStatsCards.svelte';
+	import LeaveHealthAlert from './_components/LeaveHealthAlert.svelte';
 	import LeaveTabsNav from './_components/LeaveTabsNav.svelte';
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
 	import LeavePayoutTab from './_components/LeavePayoutTab.svelte';
@@ -52,94 +54,9 @@
 		getValidatedDateRangeFormData
 	} from './_components/leave-form-utils';
 
-	type LeaveType = 'vacation' | 'sick' | 'personal' | 'pregnancy' | 'unpaid' | 'other' | 'training';
 	type CreatableLeaveType = CreateLeaveRequestByAdminPayload['leave_type'];
-	type LeaveStatus = LeaveRequestStatus;
-
-	interface Employee {
-		id: string;
-		name: string;
-		role: string;
-		department: string;
-	}
-
-	interface LeaveRequest {
-		id: string;
-		employeeId: string;
-		type: LeaveType;
-		startDate: string;
-		endDate: string;
-		days: number;
-		hours: number;
-		reason?: string;
-		status: LeaveStatus;
-	}
-
-	type RequestFilter = 'all' | LeaveStatus;
+	type RequestFilter = 'all' | LeaveRequestStatus;
 	type OverviewSubTab = 'requests' | 'lateArrivals';
-
-	const employees: Employee[] = [
-		{
-			id: 'emp-1',
-			name: 'Sanne Jansen',
-			role: 'Caregiver',
-			department: 'North Wing'
-		},
-		{
-			id: 'emp-2',
-			name: 'Milan de Vries',
-			role: 'Care Coordinator',
-			department: 'West Wing'
-		},
-		{
-			id: 'emp-3',
-			name: 'Nora Bakker',
-			role: 'Planning',
-			department: 'East Wing'
-		},
-		{
-			id: 'emp-4',
-			name: 'Ravi Singh',
-			role: 'Nurse',
-			department: 'South Wing'
-		}
-	];
-
-	let leaveRequests = $state<LeaveRequest[]>([
-		{
-			id: 'leave-1',
-			employeeId: 'emp-1',
-			type: 'vacation',
-			startDate: '2026-03-18',
-			endDate: '2026-03-20',
-			days: 3,
-			hours: 24,
-			reason: 'Weekend away with family.',
-			status: 'pending'
-		},
-		{
-			id: 'leave-2',
-			employeeId: 'emp-2',
-			type: 'sick',
-			startDate: '2026-03-11',
-			endDate: '2026-03-12',
-			days: 2,
-			hours: 16,
-			reason: 'Reported sick at 07:30 and recovered at 14:00.',
-			status: 'approved'
-		},
-		{
-			id: 'leave-3',
-			employeeId: 'emp-4',
-			type: 'training',
-			startDate: '2026-03-21',
-			endDate: '2026-03-21',
-			days: 1,
-			hours: 8,
-			reason: 'Wound care training.',
-			status: 'rejected'
-		}
-	]);
 
 	let lateArrivals = $state<LocalLateArrivalItem[]>([]);
 
@@ -154,6 +71,7 @@
 	let lateArrivalDateTo = $state('');
 	let lateArrivalRequestSequence = 0;
 	let lateArrivalSubmitting = $state(false);
+	let recentLateArrivalsLoaded = $state(false);
 
 	const leaveTypeOptions = $derived<LeaveTypeOption[]>([
 		{ label: m.leave_type_vacation(), value: 'vacation' },
@@ -221,6 +139,7 @@
 	let overviewRequestSequence = 0;
 	let activeOverviewSubTab = $state<OverviewSubTab>('requests');
 	let stats = $state<MyLeaveRequestStatsResponse | null>(null);
+	let statsError = $state<string | null>(null);
 	let statsRequestSequence = 0;
 	let leaveBalancesData = $state<LeaveBalancesLoadResult | null>(null);
 	let leaveBalancesLoading = $state(false);
@@ -245,29 +164,23 @@
 
 	let lateRequest = $state<LateArrivalFormState>(createEmptyLateArrivalForm());
 
-	const pendingCount = $derived.by(
-		() => stats?.open_requests ?? leaveRequests.filter((r) => r.status === 'pending').length
-	);
-	const approvedCount = $derived.by(
-		() => stats?.approved_requests ?? leaveRequests.filter((r) => r.status === 'approved').length
-	);
-	const sickCount = $derived.by(
-		() => stats?.sickness_absence ?? leaveRequests.filter((r) => r.type === 'sick').length
-	);
-	const rejectedCount = $derived.by(
-		() => stats?.rejected_requests ?? leaveRequests.filter((r) => r.status === 'rejected').length
-	);
+	const pendingCount = $derived(stats?.open_requests ?? 0);
+	const approvedCount = $derived(stats?.approved_requests ?? 0);
+	const sickCount = $derived(stats?.sickness_absence ?? 0);
+	const rejectedCount = $derived(stats?.rejected_requests ?? 0);
 	const normalizedOverviewSearch = $derived.by(() => searchQuery.trim().slice(0, 120));
 
 	async function loadStats() {
 		const requestId = ++statsRequestSequence;
+		statsError = null;
 		try {
 			const response = await listLeaveRequestStats();
 			if (requestId !== statsRequestSequence) return;
 			stats = response.data;
-		} catch {
+		} catch (error) {
 			if (requestId !== statsRequestSequence) return;
 			stats = null;
+			statsError = error instanceof Error ? error.message : 'Could not load leave request stats.';
 		}
 	}
 
@@ -353,6 +266,22 @@
 		}
 	}
 
+	async function loadRecentLateArrivals() {
+		try {
+			const response = await listLateArrivals({
+				page: 1,
+				pageSize: 5
+			});
+
+			lateArrivals = response.data.results.map(mapLateArrivalToLocalItem);
+			recentLateArrivalsLoaded = true;
+		} catch {
+			if (!recentLateArrivalsLoaded) {
+				lateArrivals = [];
+			}
+		}
+	}
+
 	$effect(() => {
 		if (activeTab !== 'overview' || activeOverviewSubTab !== 'lateArrivals') return;
 
@@ -368,6 +297,11 @@
 		return () => {
 			clearTimeout(timer);
 		};
+	});
+
+	$effect(() => {
+		if (activeTab !== 'lateArrival' || recentLateArrivalsLoaded) return;
+		void loadRecentLateArrivals();
 	});
 
 	const getBalanceLoadParams = () => ({
@@ -494,21 +428,6 @@
 		updateBalanceQuery(nextPage, appliedBalanceSearch, appliedBalanceYear);
 	};
 
-	const payoutRequests: {
-		id: string;
-		employee: string;
-		hours: number;
-		status: 'pending' | 'approved';
-	}[] = [
-		{ id: 'pay-1', employee: 'Ravi Singh', hours: 24, status: 'pending' },
-		{ id: 'pay-2', employee: 'Nina Visser', hours: 12, status: 'approved' }
-	];
-
-	const contractChanges = [
-		{ id: 'change-1', employee: 'Sanne Jansen', fromHours: 24, toHours: 32, date: '2026-02-15' },
-		{ id: 'change-2', employee: 'Milan de Vries', fromHours: 36, toHours: 32, date: '2026-02-28' }
-	];
-
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
 		toast = { message, type };
 		if (toastTimeout) clearTimeout(toastTimeout);
@@ -529,16 +448,11 @@
 		return {
 			id: row.id,
 			employeeId: row.employee_id,
+			employeeName: row.employee_name,
 			date: row.arrival_date,
 			time: row.arrival_time,
 			reason: row.reason ?? undefined
 		};
-	}
-
-	function addLeaveRequest(payload: Omit<LeaveRequest, 'id' | 'status'>) {
-		const id = crypto.randomUUID();
-		leaveRequests = [{ ...payload, id, status: 'pending' }, ...leaveRequests];
-		setToast(m.leave_toast_added(), 'success');
 	}
 
 	function refreshOverview() {
@@ -577,15 +491,7 @@
 				reason: validatedData.reason
 			});
 
-			addLeaveRequest({
-				employeeId: form.employeeId,
-				type: leaveType,
-				startDate: form.startDate,
-				endDate: form.endDate,
-				days: validatedData.days,
-				hours: validatedData.days * 8,
-				reason: validatedData.reason
-			});
+			setToast(m.leave_toast_added(), 'success');
 			reset();
 			refreshOverview();
 			void loadStats();
@@ -655,7 +561,8 @@
 				reason: lateRequest.reason.trim() || undefined
 			});
 
-			lateArrivals = [mapLateArrivalToLocalItem(response.data), ...lateArrivals];
+			lateArrivals = [mapLateArrivalToLocalItem(response.data), ...lateArrivals].slice(0, 5);
+			void loadRecentLateArrivals();
 			setToast(m.leave_toast_late_added(), 'success');
 			lateRequest = createEmptyLateArrivalForm();
 			selectedLateEmployee = null;
@@ -714,19 +621,11 @@
 
 	function handleDeleteConfirm() {
 		if (!selectedRequestId) return;
-		if (activeTab === 'overview') {
-			overviewRows = overviewRows.filter((request) => request.id !== selectedRequestId);
-			overviewTotalCount = Math.max(0, overviewTotalCount - 1);
-		} else {
-			leaveRequests = leaveRequests.filter((request) => request.id !== selectedRequestId);
-		}
+		overviewRows = overviewRows.filter((request) => request.id !== selectedRequestId);
+		overviewTotalCount = Math.max(0, overviewTotalCount - 1);
 		deleteDialogOpen = false;
 		selectedRequestId = null;
 		setToast(m.leave_toast_deleted(), 'warning');
-	}
-
-	function getEmployeeName(employeeId: string) {
-		return employees.find((employee) => employee.id === employeeId)?.name ?? 'Onbekend';
 	}
 </script>
 
@@ -736,7 +635,11 @@
 
 <section class="space-y-6">
 	<LeavePageHeader />
+	{#if statsError}
+		<InlineErrorBanner message={statsError} actionLabel={m.retry()} onRetry={loadStats} />
+	{/if}
 	<LeaveStatsCards {pendingCount} {approvedCount} {rejectedCount} {sickCount} />
+	<LeaveHealthAlert {sickCount} />
 	<div
 		class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm"
 	>
@@ -781,7 +684,6 @@
 						bind:calendarEnd={lateCalendarEnd}
 						{lateArrivals}
 						{formatDate}
-						{getEmployeeName}
 						isSubmitting={lateArrivalSubmitting}
 						onSubmit={handleCreateLate}
 					/>
@@ -827,9 +729,9 @@
 						/>
 					{/if}
 				{:else if activeTab === 'payouts'}
-					<LeavePayoutTab {payoutRequests} />
+					<LeavePayoutTab />
 				{:else if activeTab === 'contractChanges'}
-					<LeaveContractChangesTab {contractChanges} {formatDate} />
+					<LeaveContractChangesTab />
 				{/if}
 			</div>
 		</div>

@@ -62,8 +62,8 @@ export function formatVersion(version: string) {
 }
 
 export function versionStatusTone(status: HandbookTemplateVersion['status']) {
-	if (status === 'published') return 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20';
-	if (status === 'draft') return 'bg-amber-500/10 text-amber-700 ring-amber-500/20';
+	if (status === 'published') return 'bg-success/10 text-success ring-success/20';
+	if (status === 'draft') return 'bg-warning/10 text-warning ring-warning/20';
 	return 'bg-zinc-500/10 text-zinc-700 ring-zinc-500/20';
 }
 
@@ -138,6 +138,20 @@ export function getStepIcon(kind: StepKind): typeof LucideIcon {
 	if (kind === 'ack') return CheckCircle2;
 	if (kind === 'link') return LinkIcon;
 	return FileText;
+}
+
+export function getStepColorClasses(kind: StepKind) {
+	if (kind === 'link')
+		return { bg: 'bg-info/10', text: 'text-info', badge: 'bg-info/10 text-info' };
+	if (kind === 'ack')
+		return { bg: 'bg-success/10', text: 'text-success', badge: 'bg-success/10 text-success' };
+	if (kind === 'quiz')
+		return {
+			bg: 'bg-secondary/10',
+			text: 'text-secondary',
+			badge: 'bg-secondary/10 text-secondary'
+		};
+	return { bg: 'bg-brand/10', text: 'text-brand', badge: 'bg-brand/10 text-brand' };
 }
 
 export function getLinkTarget(step: HandbookStep) {

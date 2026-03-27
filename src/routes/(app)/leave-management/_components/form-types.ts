@@ -30,6 +30,7 @@ export type LateArrivalFormState = {
 export type LocalLateArrivalItem = {
 	id: string;
 	employeeId: string;
+	employeeName: string;
 	date: string;
 	time: string;
 	reason?: string;

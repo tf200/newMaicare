@@ -46,6 +46,19 @@
 					</span>
 				</div>
 			{/if}
+			{#if contractSummary.outstandingInvoices}
+				<div class="rounded-2xl bg-rose-50 p-3 dark:bg-rose-950/20">
+					<div class="flex items-center justify-between">
+						<span class="text-[10px] font-black text-rose-700 uppercase">{m.outstanding()}</span>
+						<span class="text-xs font-bold text-rose-800"
+							>{contractSummary.outstandingInvoices.amount}</span
+						>
+					</div>
+					<p class="mt-0.5 text-[10px] text-rose-600">
+						{m.unpaid_invoices_count({ count: contractSummary.outstandingInvoices.count })}
+					</p>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<p class="text-sm text-text-subtle italic">{m.no_contract_data_available()}</p>
