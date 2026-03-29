@@ -13,7 +13,7 @@
 		onCancel: () => void;
 	}
 
-	let { open = $bindable(false), initialGoals = [], onSave, onCancel }: Props = $props();
+	let { open = $bindable(false), intakeId, initialGoals = [], onSave, onCancel }: Props = $props();
 
 	let isSaving = $state(false);
 	let currentGoals = $state<IntakeGoalTopic[]>([]);
@@ -75,5 +75,5 @@
 		</div>
 	{/snippet}
 
-	<GoalAssessmentForm bind:goals={currentGoals} />
+	<GoalAssessmentForm intakeId={intakeId} bind:goals={currentGoals} />
 </Modal>

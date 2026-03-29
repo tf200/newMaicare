@@ -15,7 +15,9 @@
 	import { invalidateAll } from '$app/navigation';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
+	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
 	import PutClientOutOfCareForm from '$lib/components/forms/PutClientOutOfCareForm.svelte';
+	import ClientFileUploadModal from '$lib/components/clients/ClientFileUploadModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import type { ClientOverviewViewModel } from '../../overview.shared';
@@ -38,6 +40,8 @@
 	);
 	let showPutOutOfCareForm = $state(false);
 	let showCreateIncidentForm = $state(false);
+	let showCreateProgressReportModal = $state(false);
+	let showUploadModal = $state(false);
 
 	const openPutOutOfCareForm = () => {
 		showPutOutOfCareForm = true;
@@ -45,6 +49,10 @@
 
 	const openCreateIncidentForm = () => {
 		showCreateIncidentForm = true;
+	};
+
+	const openCreateProgressReportModal = () => {
+		showCreateProgressReportModal = true;
 	};
 
 	const formatDate = (dateString?: string) =>
@@ -112,6 +120,8 @@
 					</PermissionGuard>
 				{/if}
 				<button
+					type="button"
+					onclick={openCreateProgressReportModal}
 					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 				>
 					<MessageSquare class="h-4 w-4" />
@@ -133,6 +143,8 @@
 				{m.add_goal()}
 			</button>
 			<button
+				type="button"
+				onclick={() => (showUploadModal = true)}
 				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 			>
 				<FileCheck class="h-4 w-4" />
@@ -264,3 +276,11 @@
 	preselectedClientDisplay={`${client.firstName} ${client.lastName}`.trim()}
 	onCreated={() => invalidateAll()}
 />
+
+<CreateProgressReportModal
+	bind:open={showCreateProgressReportModal}
+	preselectedClientId={client.id}
+	onCreated={() => invalidateAll()}
+/>
+
+<ClientFileUploadModal bind:open={showUploadModal} clientId={client.id} />

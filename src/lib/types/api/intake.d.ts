@@ -331,5 +331,22 @@ export interface ListCarePlanTopics {
 }
 
 export interface GenerateGoalsResponse {
-	goals: MaturityGoal[];
+	goals: GeneratedGoal[];
+}
+
+export interface GenerateGoalsRequest {
+	topic_id: string;
+	current_level: number;
+	user_desc?: string;
+}
+
+export interface GeneratedGoal extends MaturityGoal {
+	id?: string;
+}
+
+export interface CreateGoalRequest {
+	title: string;
+	description: string;
+	priority: 'high' | 'medium' | 'low';
+	topic_id: string;
 }

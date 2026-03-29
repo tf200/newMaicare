@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Target } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
 	import type { ClientOverviewGoal } from '$lib/mock/client-overview';
 
@@ -28,7 +30,10 @@
 				{m.top_care_goals()}
 			</h3>
 		</div>
-		<button class="text-xs font-bold text-brand transition hover:underline">{m.view_all()}</button>
+		<button
+			onclick={() => goto(`/clients/${page.params.id}/goals`)}
+			class="text-xs font-bold text-brand transition hover:underline">{m.view_all()}</button
+		>
 	</div>
 	{#if goals.length === 0}
 		<div

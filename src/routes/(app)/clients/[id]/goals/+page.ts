@@ -17,9 +17,13 @@ export interface GoalsOverviewLoadResult {
 	days_left: number | null;
 	my_draft_evaluation_id: string | null;
 	is_responsible_employee: boolean;
+	can_update_goals: boolean;
+	goal_update_block_reason: string | null;
 	active_goals: Array<{
 		id: string;
 		title: string;
+		description: string | null;
+		topic_id: string | null;
 		topic_name: string;
 		priority: 'high' | 'medium' | 'low';
 		last_evaluation_progress: EvaluationProgress | null;
@@ -64,9 +68,13 @@ export const load: PageLoad = ({ params, url }) => {
 				days_left: getDaysLeft(res.data.next_evaluation_date),
 				my_draft_evaluation_id: res.data.my_draft_evaluation_id,
 				is_responsible_employee: res.data.is_responsible_employee,
+				can_update_goals: res.data.can_update_goals,
+				goal_update_block_reason: res.data.goal_update_block_reason,
 				active_goals: (res.data.goals ?? res.data.active_goals ?? []).map((goal) => ({
 					id: goal.id,
 					title: goal.title,
+					description: goal.description,
+					topic_id: goal.topic_id,
 					topic_name: goal.topic_name,
 					priority: goal.priority,
 					last_evaluation_progress: goal.last_evaluation_progress
@@ -80,6 +88,8 @@ export const load: PageLoad = ({ params, url }) => {
 				days_left: null,
 				my_draft_evaluation_id: null,
 				is_responsible_employee: false,
+				can_update_goals: true,
+				goal_update_block_reason: null,
 				active_goals: []
 			},
 			error: error instanceof Error ? error.message : 'Failed to load client goals.'
@@ -115,6 +125,8 @@ export const load: PageLoad = ({ params, url }) => {
 	]).then(([goalsResult, historyResult]) => ({
 		...goalsResult.payload,
 		...historyResult.payload,
+		can_update_goals: goalsResult.payload.can_update_goals,
+		goal_update_block_reason: goalsResult.payload.goal_update_block_reason,
 		loadError: goalsResult.error,
 		historyLoadError: historyResult.error
 	}));

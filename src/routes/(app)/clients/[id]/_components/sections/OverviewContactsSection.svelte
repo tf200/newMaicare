@@ -1,13 +1,21 @@
 <script lang="ts">
 	import { Mail, Phone, Users } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { invalidateAll } from '$app/navigation';
+	import CreateEmergencyContactModal from '$lib/components/forms/CreateEmergencyContactModal.svelte';
+	import EmergencyContactsListModal from '$lib/components/modals/EmergencyContactsListModal.svelte';
 	import type { ClientOverviewContact } from '$lib/mock/client-overview';
 
 	interface Props {
+		clientId: string;
 		contacts: ClientOverviewContact[];
 	}
 
-	let { contacts }: Props = $props();
+	let { clientId, contacts }: Props = $props();
+	let showCreateModal = $state(false);
+	let showListModal = $state(false);
+
+	const visibleContacts = $derived(contacts.slice(0, 2));
 </script>
 
 <div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
@@ -16,7 +24,20 @@
 			<Users class="h-4 w-4 text-brand/60" />
 			<h3 class="font-bold text-text">{m.key_contacts()}</h3>
 		</div>
-		<button class="text-xs font-bold text-brand transition hover:underline">{m.add()}</button>
+		<div class="flex items-center gap-3">
+			<button
+				onclick={() => (showListModal = true)}
+				class="text-xs font-bold text-brand transition hover:underline"
+			>
+				{m.view_all()}
+			</button>
+			<button
+				onclick={() => (showCreateModal = true)}
+				class="rounded-lg bg-brand px-3 py-1 text-xs font-bold text-white transition hover:bg-brand-strong dark:text-zinc-900"
+			>
+				{m.add()}
+			</button>
+		</div>
 	</div>
 	{#if contacts.length === 0}
 		<div
@@ -30,7 +51,7 @@
 		</div>
 	{:else}
 		<div class="space-y-3">
-			{#each contacts as contact (contact.id)}
+			{#each visibleContacts as contact (contact.id)}
 				<div
 					class="overflow-hidden rounded-2xl border border-border/50 {contact.primary
 						? 'border-brand/20 ring-1 ring-brand/10'
@@ -87,3 +108,11 @@
 		</div>
 	{/if}
 </div>
+
+<CreateEmergencyContactModal
+	bind:open={showCreateModal}
+	{clientId}
+	onCreated={() => invalidateAll()}
+/>
+
+<EmergencyContactsListModal bind:open={showListModal} {clientId} />

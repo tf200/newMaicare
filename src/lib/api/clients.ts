@@ -29,7 +29,16 @@ import type {
 	ProgressReport,
 	GetProgressReportResponse,
 	UpdateProgressReportRequest,
-	UpdateProgressReportResponse
+	UpdateProgressReportResponse,
+	CreateClientGoalRequest,
+	CreateClientGoalResponse,
+	GenerateGoalsResponse,
+	UpdateClientGoalRequest,
+	UpdateClientGoalResponse,
+	CreateClientEmergencyContactParams,
+	CreateClientEmergencyContactResponse,
+	ListClientEmergencyContactsParams,
+	ListClientEmergencyContactsResponse
 } from '$lib/types/api';
 
 export function listWaitingListClients(params: ListWaitingListClientsParams) {
@@ -233,4 +242,84 @@ export function updateClientProgressReport(
 
 export function deleteClientProgressReport(clientId: string, reportId: string) {
 	return api.delete<ApiEnvelope<null>>(`/clients/${clientId}/progress_reports/${reportId}`);
+}
+
+export interface ClientDocument {
+	attachment_id: string;
+	client_id: string;
+	label: string;
+	name: string;
+	file: string;
+	size: number;
+	is_used: boolean;
+	tag: string;
+	updated: string;
+	created: string;
+}
+
+export interface AddClientDocumentsRequest {
+	documents: { attachment_id: string; label: string }[];
+}
+
+export interface AddClientDocumentsResponse {
+	documents: ClientDocument[];
+}
+
+export function addClientDocuments(
+	clientId: string,
+	documents: { attachment_id: string; label: string }[]
+) {
+	return api.post<ApiEnvelope<AddClientDocumentsResponse>>(`/clients/${clientId}/documents`, {
+		documents
+	});
+}
+
+export function createClientGoal(clientId: string, payload: CreateClientGoalRequest) {
+	return api.post<ApiEnvelope<CreateClientGoalResponse>>(`/clients/${clientId}/goals`, payload);
+}
+
+export function generateClientGoalSuggestion(clientId: string, topicId: string) {
+	return api.post<ApiEnvelope<GenerateGoalsResponse>>(`/clients/${clientId}/goals/generate`, {
+		topic_id: topicId
+	});
+}
+
+export function updateClientGoal(
+	clientId: string,
+	goalId: string,
+	payload: UpdateClientGoalRequest
+) {
+	return api.patch<ApiEnvelope<UpdateClientGoalResponse>>(
+		`/clients/${clientId}/goals/${goalId}`,
+		payload
+	);
+}
+
+export function createClientEmergencyContact(
+	clientId: string,
+	payload: CreateClientEmergencyContactParams
+) {
+	return api.post<ApiEnvelope<CreateClientEmergencyContactResponse>>(
+		`/clients/${clientId}/emergency_contacts`,
+		payload
+	);
+}
+
+export function listClientEmergencyContacts(
+	clientId: string,
+	params: ListClientEmergencyContactsParams
+) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.page_size));
+
+	if (params.search) {
+		searchParams.set('search', params.search);
+	}
+
+	const query = searchParams.toString();
+
+	return api.get<ApiEnvelope<ListClientEmergencyContactsResponse>>(
+		`/clients/${clientId}/emergency_contacts?${query}`
+	);
 }

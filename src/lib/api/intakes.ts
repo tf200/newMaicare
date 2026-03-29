@@ -5,6 +5,7 @@ import type {
 	IntakeFormResponse,
 	GetIntakeFormResponse,
 	GenerateGoalsResponse,
+	GenerateGoalsRequest,
 	CreateIntakeFormGoalsRequest,
 	IntakeFormsTotalsResponse,
 	ListIntakeFormsParams,
@@ -50,10 +51,10 @@ export const intakes = {
 		return api.post<ApiEnvelope<IntakeFormResponse>>('/intake_forms', data);
 	},
 
-	generateGoals: (assessmentId: string) => {
+	generateGoals: (intakeFormId: string, data: GenerateGoalsRequest) => {
 		return api.post<ApiEnvelope<GenerateGoalsResponse>>(
-			`/intake_maturity/${assessmentId}/generate_goals`,
-			{}
+			`/intake_forms/${intakeFormId}/generate_goals`,
+			data
 		);
 	},
 

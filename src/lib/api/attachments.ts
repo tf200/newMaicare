@@ -26,14 +26,12 @@ export class AttachmentService {
 	static uploadToStorage(
 		url: string,
 		file: File,
-		contentType: string,
 		onProgress?: (progress: number) => void
 	): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
 
 			xhr.open('PUT', url);
-			xhr.setRequestHeader('Content-Type', contentType);
 
 			if (onProgress) {
 				xhr.upload.onprogress = (event) => {
@@ -53,7 +51,11 @@ export class AttachmentService {
 			};
 
 			xhr.onerror = () => {
-				reject(new Error('Storage upload failed due to a network error'));
+				reject(
+					new Error(
+						'Storage upload failed before the server responded. This usually means the storage bucket is rejecting the browser request because of CORS or upload endpoint configuration.'
+					)
+				);
 			};
 
 			xhr.send(file);
@@ -86,7 +88,7 @@ export class AttachmentService {
 		});
 
 		// Step 2: Storage
-		await this.uploadToStorage(initData.upload_url, file, file.type, onProgress);
+		await this.uploadToStorage(initData.upload_url, file, onProgress);
 
 		// Step 3: Confirm
 		return await this.confirmUpload({

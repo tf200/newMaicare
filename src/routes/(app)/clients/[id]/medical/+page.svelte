@@ -2,7 +2,17 @@
 	import { invalidateAll } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
-	import { ClipboardList, HeartPulse, Plus, Eye, Pencil } from 'lucide-svelte';
+	import {
+		ClipboardList,
+		HeartPulse,
+		Plus,
+		Eye,
+		Pencil,
+		Pill,
+		AlertTriangle,
+		FileText,
+		Clock
+	} from 'lucide-svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import CreateDiagnosisModal from '$lib/components/forms/CreateDiagnosisModal.svelte';
 	import CreateMedicationOrderModal from '$lib/components/forms/CreateMedicationOrderModal.svelte';
@@ -392,39 +402,82 @@
 		</header>
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.active_orders()}
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Pill class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{medicationRows.length}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.active_orders()}
+					</div>
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{medicationRows.length}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">{m.current_prescriptions()}</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.current_prescriptions()}</p>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.prn_orders()}
+
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Clock class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">{prnCount}</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.as_needed_medications()}</p>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.prn_orders()}
+					</div>
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">{prnCount}</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">{m.as_needed_medications()}</p>
+				</div>
 			</div>
-			<div class="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-rose-700 uppercase">
-					{m.critical_medication()}
+
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm transition-colors hover:border-rose-400/50 dark:border-rose-500/30 dark:bg-rose-950/20"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.05] transition-opacity group-hover:opacity-15"
+				>
+					<AlertTriangle class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-rose-700 sm:text-3xl">
-					{criticalCount}
+				<div class="relative">
+					<div
+						class="text-[10px] font-bold tracking-widest text-rose-700 uppercase dark:text-rose-400"
+					>
+						{m.critical_medication()}
+					</div>
+					<div class="mt-2 text-3xl font-bold tracking-tight text-rose-700 dark:text-rose-400">
+						{criticalCount}
+					</div>
+					<p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-500">
+						{m.high_priority_meds()}
+					</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-rose-600">{m.high_priority_meds()}</p>
 			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.diagnoses()}
+
+			<div
+				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-slate-500/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-slate-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<FileText class="h-32 w-32" />
 				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{diagnoses.length}
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.diagnoses()}
+					</div>
+					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
+						{diagnoses.length}
+					</div>
+					<p class="mt-1 text-xs font-medium text-text-muted">{m.recorded_conditions()}</p>
 				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.recorded_conditions()}</p>
 			</div>
 		</div>
 

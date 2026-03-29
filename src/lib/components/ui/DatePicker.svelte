@@ -13,7 +13,7 @@
 		onchange,
 		error = undefined,
 		minDate = undefined,
-		size = 'md',
+		size = 'lg',
 		compact = false,
 		id = `date-${Math.random().toString(36).substr(2, 9)}`
 	} = $props<{

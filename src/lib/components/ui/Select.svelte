@@ -18,7 +18,7 @@
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = '',
-		size = 'md',
+		size = 'lg',
 		prefix
 	} = $props<{
 		label?: string;
