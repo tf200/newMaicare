@@ -1,13 +1,24 @@
 <script lang="ts">
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	interface Props extends HTMLTextareaAttributes {
 		label?: string;
 		error?: string;
 		value?: string;
+		size?: SelectSize;
 	}
 
-	let { label, error, value = $bindable(), class: className, ...props }: Props = $props();
+	let {
+		label,
+		error,
+		value = $bindable(),
+		size = 'lg',
+		class: className,
+		...props
+	}: Props = $props();
+
+	let sizeClass = $derived(selectSizeClasses[size as SelectSize]);
 </script>
 
 <div class="space-y-2">
@@ -20,7 +31,7 @@
 		<textarea
 			{...props}
 			bind:value
-			class="min-h-[100px] w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20 {className}"
+			class="min-h-[100px] w-full rounded-xl border border-border bg-surface text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20 {sizeClass} {className}"
 		></textarea>
 	</div>
 	{#if error}

@@ -993,7 +993,7 @@
 				<div
 					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
 				>
-					<div class="rounded-3xl bg-brand/10 p-6 text-brand">
+					<div class="rounded-3xl bg-secondary/10 p-6 text-secondary">
 						<BookOpen class="h-12 w-12" />
 					</div>
 					<h2 class="mt-6 text-2xl font-bold text-text">No versions for this department</h2>
@@ -1010,7 +1010,7 @@
 				<div
 					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
 				>
-					<div class="rounded-3xl bg-brand/10 p-6 text-brand">
+					<div class="rounded-3xl bg-info/10 p-6 text-info">
 						<BookOpen class="h-12 w-12" />
 					</div>
 					<h2 class="mt-6 text-2xl font-bold text-text">Select a department</h2>

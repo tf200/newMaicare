@@ -167,11 +167,17 @@ class ApiClient {
 
 	private createApiError(status: number, fallbackMessage: string, payload: unknown) {
 		const message =
-			payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string'
+			payload &&
+			typeof payload === 'object' &&
+			'message' in payload &&
+			typeof payload.message === 'string'
 				? payload.message
 				: `API Error: ${fallbackMessage}`;
 		const code =
-			payload && typeof payload === 'object' && 'code' in payload && typeof payload.code === 'string'
+			payload &&
+			typeof payload === 'object' &&
+			'code' in payload &&
+			typeof payload.code === 'string'
 				? payload.code
 				: undefined;
 		const details =
@@ -280,7 +286,12 @@ class ApiClient {
 					) {
 						errorMessage = payload.message;
 					}
-					if (payload && typeof payload === 'object' && 'code' in payload && typeof payload.code === 'string') {
+					if (
+						payload &&
+						typeof payload === 'object' &&
+						'code' in payload &&
+						typeof payload.code === 'string'
+					) {
 						errorCode = payload.code;
 					}
 					if (payload && typeof payload === 'object' && 'details' in payload) {

@@ -313,11 +313,3 @@ export const clientOverviewMocks: Record<ClientOverviewStatus, ClientOverviewDat
 		quickLinks: quickLinksBase
 	}
 };
-
-export const clientStatusRouteMap: Record<ClientOverviewStatus, string> = {
-	on_waiting_list: 'on-waiting-list',
-	scheduled_in_care: 'scheduled-in-care',
-	in_care: 'in-care',
-	scheduled_out_of_care: 'scheduled-out-of-care',
-	out_of_care: 'out-of-care'
-};

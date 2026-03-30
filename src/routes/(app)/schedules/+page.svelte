@@ -4,7 +4,6 @@
 		CalendarDays,
 		Clock,
 		Moon,
-		AlertCircle,
 		ChevronLeft,
 		ChevronRight,
 		Loader2,
@@ -64,14 +63,14 @@
 	let { data }: { data: PageData } = $props();
 
 	const TEMPLATE_COLORS = [
-		'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800',
-		'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800',
-		'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800',
-		'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800',
-		'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800',
-		'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800',
-		'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800',
-		'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+		'bg-emerald-500 text-white dark:bg-emerald-700',
+		'bg-amber-500 text-white dark:bg-amber-700',
+		'bg-indigo-500 text-white dark:bg-indigo-700',
+		'bg-sky-500 text-white dark:bg-sky-700',
+		'bg-rose-500 text-white dark:bg-rose-700',
+		'bg-orange-500 text-white dark:bg-orange-700',
+		'bg-violet-500 text-white dark:bg-violet-700',
+		'bg-cyan-500 text-white dark:bg-cyan-700'
 	] as const;
 
 	let searchedLocationsById = $state<Record<string, OrganizationLocation>>({});
@@ -580,12 +579,16 @@
 	});
 
 	let visibleDays = $derived.by(() => {
+		const base = data.baseDate ? parseDateOnly(data.baseDate) : new Date();
+		const todayKey = formatDateKey(base);
 		return Array.from({ length: 7 }, (_, index) => {
 			const date = addDays(weekStart, index);
+			const dateKey = formatDateKey(date);
 			return {
-				date: formatDateKey(date),
+				date: dateKey,
 				dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
-				dayNumber: date.getDate()
+				dayNumber: date.getDate(),
+				isToday: dateKey === todayKey
 			};
 		});
 	});
@@ -857,15 +860,13 @@
 	<header
 		class="sticky top-0 z-20 flex shrink-0 flex-col gap-4 border-b border-border/60 bg-surface/85 px-6 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"
 	>
-		<div class="flex items-center gap-4">
-			<div
-				class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand shadow-sm"
-			>
-				<CalendarDays class="h-6 w-6" />
+		<div class="flex items-center gap-3">
+			<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand">
+				<CalendarDays class="h-5 w-5" />
 			</div>
 			<div>
-				<h1 class="text-xl font-bold tracking-tight text-text">{m.schedules_management()}</h1>
-				<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-muted">
+				<h1 class="text-lg font-bold tracking-tight text-text">{m.schedules_management()}</h1>
+				<div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
 					<SearchSelect
 						bind:value={selectedLocationId}
 						bind:displayValue={selectedLocationDisplay}
@@ -876,21 +877,8 @@
 						placeholder={m.select_location()}
 						searchPlaceholder={m.search_locations()}
 						compact
-						className="w-[230px]"
+						className="w-[200px]"
 					/>
-					<span
-						class="bg-surface-subtle rounded-full border border-border/70 px-3 py-1 text-xs font-medium"
-					>
-						{visibleDateRange}
-					</span>
-					{#if schedulesLoading}
-						<span
-							class="bg-surface-subtle inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-medium"
-						>
-							<Loader2 class="h-3.5 w-3.5 animate-spin" />
-							{m.loading()}
-						</span>
-					{/if}
 				</div>
 			</div>
 		</div>
@@ -929,8 +917,7 @@
 						<ChevronLeft class="h-4 w-4" />
 					</button>
 					<span class="px-3 text-sm font-medium text-text">
-						W{String(getISOWeek(weekStart)).padStart(2, '0')}
-						{getISOWeekYear(weekStart)}
+						{visibleDateRange}
 					</span>
 					<button
 						type="button"
@@ -1004,7 +991,7 @@
 		{/if}
 
 		{#if !selectedLocationId}
-			<div class="rounded-2xl border border-border/70 bg-surface p-5 text-sm text-text-muted">
+			<div class="rounded-3xl border border-border/70 bg-surface p-5 text-sm text-text-muted">
 				{m.no_location_selected()}
 			</div>
 		{:else if viewMode === 'weekly'}
@@ -1017,11 +1004,21 @@
 					</div>
 
 					{#each visibleDays as day (day.date)}
-						<div class="bg-surface-subtle/80 border-r border-b border-border/60 p-3 text-center">
+						<div
+							class="border-r border-b border-border/60 p-3 text-center {day.isToday
+								? 'bg-brand/5'
+								: 'bg-surface-subtle/80'}"
+						>
 							<span class="text-[11px] font-semibold tracking-wider text-text-muted uppercase"
 								>{day.dayName}</span
 							>
-							<div class="mt-1 text-2xl font-light text-text">{day.dayNumber}</div>
+							<div
+								class="mt-1 text-2xl font-light {day.isToday
+									? 'mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 font-medium text-brand'
+									: 'text-text'}"
+							>
+								{day.dayNumber}
+							</div>
 						</div>
 					{/each}
 
@@ -1035,14 +1032,10 @@
 						{#each templates as template (template.id)}
 							<div class="sticky left-0 z-10 border-r border-b border-border/60 bg-surface p-4">
 								<div class="flex items-center gap-2">
-									<div
-										class="h-3 w-3 rounded-full {template.colorClass.split(
-											' '
-										)[0]} border {template.colorClass.split(' ')[2]}"
-									></div>
-									<span class="font-semibold text-text">{template.name}</span>
+									<div class="h-3.5 w-3.5 rounded-full {template.colorClass.split(' ')[0]}"></div>
+									<span class="text-sm font-bold text-text">{template.name}</span>
 								</div>
-								<div class="mt-2 flex items-center gap-1.5 text-xs text-text-muted">
+								<div class="mt-1.5 flex items-center gap-1.5 text-[11px] text-text-subtle">
 									<Clock class="h-3.5 w-3.5" />
 									<span>{template.startTime} - {template.endTime}</span>
 								</div>
@@ -1059,7 +1052,9 @@
 							{#each visibleDays as day (day.date)}
 								{@const cellShifts = getShifts(template.id, day.date)}
 								<div
-									class="group/cell flex min-h-[124px] flex-col gap-2 border-r border-b border-border/60 bg-surface/80 p-2.5"
+									class="group/cell flex min-h-[124px] flex-col gap-2 border-r border-b border-border/60 p-2.5 {day.isToday
+										? 'bg-brand/5'
+										: 'bg-surface/80'}"
 								>
 									{#if cellShifts.length > 0}
 										<div class="flex flex-col gap-2">
@@ -1068,7 +1063,7 @@
 												{#each visibleEmployees as employee (employee.id)}
 													<div class="group relative">
 														<div
-															class="flex w-full items-center justify-between gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold {template.colorClass}"
+															class="flex w-full items-center justify-between gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold shadow-sm {template.colorClass}"
 														>
 															<span class="block min-w-0 flex-1 truncate text-left"
 																>{employee.name}</span
@@ -1111,26 +1106,33 @@
 										</div>
 										<button
 											type="button"
-											class="flex w-full items-center justify-center rounded-lg border border-dashed border-transparent py-1.5 text-text-muted/30 transition-all group-hover/cell:text-text-muted/60 hover:!border-brand/30 hover:!bg-brand/5 hover:!text-brand"
+											class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/40 py-1.5 text-[11px] font-medium text-text-muted/40 transition-all hover:!border-brand/30 hover:!bg-brand/5 hover:!text-brand"
 											aria-label={m.add_employee_to_shift({
 												name: template.name,
 												date: day.date
 											})}
 											onclick={() => openAssignSheet(day.date, template.id)}
 										>
-											<Plus class="h-4 w-4" />
+											<Plus class="h-3.5 w-3.5" />
+											<span class="opacity-0 transition-opacity group-hover/cell:opacity-100"
+												>{m.add()}</span
+											>
 										</button>
 									{:else}
 										<button
 											type="button"
-											class="flex h-full min-h-[104px] w-full items-center justify-center rounded-xl border border-dashed border-transparent text-text-muted/20 transition-all group-hover/cell:text-text-muted/50 hover:!border-brand/30 hover:!bg-brand/5 hover:!text-brand"
+											class="flex h-full min-h-[104px] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/30 text-text-muted/40 transition-all hover:border-brand/30 hover:bg-brand/5 hover:text-brand"
 											aria-label={m.add_employee_to_shift({
 												name: template.name,
 												date: day.date
 											})}
 											onclick={() => openAssignSheet(day.date, template.id)}
 										>
-											<Plus class="h-6 w-6" />
+											<Plus class="h-5 w-5" />
+											<span
+												class="text-[11px] font-medium opacity-0 transition-opacity group-hover/cell:opacity-100"
+												>{m.add_employee()}</span
+											>
 										</button>
 									{/if}
 								</div>
@@ -1193,13 +1195,13 @@
 											position="top"
 										>
 											<div
-												class="flex cursor-default items-center justify-between rounded-md border px-1.5 py-1 text-[11px] font-medium {template.colorClass} hover:opacity-90"
+												class="flex cursor-default items-center justify-between rounded-md px-1.5 py-1 text-[11px] font-medium shadow-sm {template.colorClass} hover:brightness-110"
 											>
 												<div class="mr-1 truncate">
 													{template.name}
 												</div>
 												<div class="flex shrink-0 items-center gap-1">
-													<span class="opacity-80">{shift.employees.length}</span>
+													<span class="opacity-90">{shift.employees.length}</span>
 													{#if template.isCrossMidnight}
 														<Moon class="h-2.5 w-2.5 opacity-70" />
 													{/if}
@@ -1219,21 +1221,6 @@
 				</div>
 			</div>
 		{/if}
-
-		<div
-			class="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-border/70 bg-surface p-4 text-sm text-text-muted"
-		>
-			<div class="flex items-center gap-2 font-medium text-text">
-				<AlertCircle class="h-4 w-4" />
-				<span>{m.legend_rules()}</span>
-			</div>
-			<div
-				class="bg-surface-subtle flex items-center gap-2 rounded-lg border border-border/60 px-2.5 py-1.5"
-			>
-				<Moon class="h-3.5 w-3.5 text-indigo-500" />
-				<span>{m.cross_midnight_rule()}</span>
-			</div>
-		</div>
 	</div>
 </div>
 

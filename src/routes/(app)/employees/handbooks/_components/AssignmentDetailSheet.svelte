@@ -71,7 +71,12 @@
 		onWaiveRequest
 	}: Props = $props();
 
-	const detailTabs: Array<{ id: DetailTab; label: string; icon: typeof ListChecks; accentClass: string }> = [
+	const detailTabs: Array<{
+		id: DetailTab;
+		label: string;
+		icon: typeof ListChecks;
+		accentClass: string;
+	}> = [
 		{ id: 'steps', label: 'Steps', icon: ListChecks, accentClass: 'text-info' },
 		{ id: 'timeline', label: 'Timeline', icon: Activity, accentClass: 'text-secondary' }
 	];
@@ -163,7 +168,9 @@
 	const detailRequiredStepTotals = (detail: EmployeeHandbookAssignmentDetail | null) => {
 		if (!detail) return { total: 0, completed: 0 };
 		const requiredSteps = detail.steps.filter((step) => step.is_required);
-		const completedRequiredSteps = requiredSteps.filter((step) => step.status === 'completed').length;
+		const completedRequiredSteps = requiredSteps.filter(
+			(step) => step.status === 'completed'
+		).length;
 		return {
 			total: requiredSteps.length,
 			completed: completedRequiredSteps
@@ -192,8 +199,7 @@
 	const tabPanelId = (tab: DetailTab) => `assignment-detail-panel-${tab}`;
 	const formatEventCountLabel = (count: number) => `${count} ${count === 1 ? 'event' : 'events'}`;
 	const toggleMetaDetails = (assignmentId: string) => {
-		expandedMetaAssignmentId =
-			expandedMetaAssignmentId === assignmentId ? null : assignmentId;
+		expandedMetaAssignmentId = expandedMetaAssignmentId === assignmentId ? null : assignmentId;
 	};
 
 	const focusTab = (tab: DetailTab) => {
@@ -215,7 +221,8 @@
 
 		if (event.key === 'ArrowLeft') {
 			event.preventDefault();
-			const prevTab = detailTabOrder[(currentIndex - 1 + detailTabOrder.length) % detailTabOrder.length];
+			const prevTab =
+				detailTabOrder[(currentIndex - 1 + detailTabOrder.length) % detailTabOrder.length];
 			onTabChange(prevTab);
 			requestAnimationFrame(() => focusTab(prevTab));
 			return;
@@ -358,31 +365,12 @@
 				<!-- Metadata strip -->
 				<div class="border-t border-border/40 px-5 py-3">
 					<div class="grid grid-cols-2 gap-x-4 gap-y-2">
-						{#each [
-							{
-								label: 'Assigned',
-								icon: CalendarClock,
-								value: formatDate(detail?.assigned_at ?? selectedAssignment.assigned_at),
-								color: 'text-brand'
-							},
-							{
-								label: 'Last activity',
-								icon: Clock,
-								value: formatDate(
-									detail?.completed_at ??
-										detail?.started_at ??
-										selectedAssignment.completed_at ??
-										selectedAssignment.started_at ??
-										selectedAssignment.assigned_at
-								),
-								color: 'text-secondary'
-							}
-						] as meta (meta.label)}
+						{#each [{ label: 'Assigned', icon: CalendarClock, value: formatDate(detail?.assigned_at ?? selectedAssignment.assigned_at), color: 'text-brand' }, { label: 'Last activity', icon: Clock, value: formatDate(detail?.completed_at ?? detail?.started_at ?? selectedAssignment.completed_at ?? selectedAssignment.started_at ?? selectedAssignment.assigned_at), color: 'text-secondary' }] as meta (meta.label)}
 							{@const MetaIcon = meta.icon}
-							<div class="flex items-center gap-2 min-w-0">
+							<div class="flex min-w-0 items-center gap-2">
 								<MetaIcon class="h-3.5 w-3.5 shrink-0 {meta.color}" />
 								<div class="min-w-0">
-									<p class="text-[10px] font-semibold uppercase tracking-wider {meta.color}">
+									<p class="text-[10px] font-semibold tracking-wider uppercase {meta.color}">
 										{meta.label}
 									</p>
 									<p class="truncate text-sm leading-tight text-text" title={meta.value}>
@@ -398,30 +386,12 @@
 							id={moreMetaSectionId}
 							class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border/30 pt-3"
 						>
-							{#each [
-								{
-									label: 'Template',
-									icon: BookOpen,
-									value:
-										(detail?.template_title ?? selectedAssignment.template_title) || 'No template',
-									color: 'text-info'
-								},
-								{
-									label: 'Started',
-									icon: Play,
-									value: detail?.started_at
-										? formatDate(detail.started_at)
-										: selectedAssignment.started_at
-											? formatDate(selectedAssignment.started_at)
-											: 'Not started',
-									color: 'text-success'
-								}
-							] as meta (meta.label)}
+							{#each [{ label: 'Template', icon: BookOpen, value: (detail?.template_title ?? selectedAssignment.template_title) || 'No template', color: 'text-info' }, { label: 'Started', icon: Play, value: detail?.started_at ? formatDate(detail.started_at) : selectedAssignment.started_at ? formatDate(selectedAssignment.started_at) : 'Not started', color: 'text-success' }] as meta (meta.label)}
 								{@const MetaIcon = meta.icon}
-								<div class="flex items-center gap-2 min-w-0">
+								<div class="flex min-w-0 items-center gap-2">
 									<MetaIcon class="h-3.5 w-3.5 shrink-0 {meta.color}" />
 									<div class="min-w-0">
-										<p class="text-[10px] font-semibold uppercase tracking-wider {meta.color}">
+										<p class="text-[10px] font-semibold tracking-wider uppercase {meta.color}">
 											{meta.label}
 										</p>
 										<p class="truncate text-sm leading-tight text-text" title={meta.value}>
@@ -436,7 +406,7 @@
 					<div class="mt-2 flex justify-end">
 						<button
 							type="button"
-							class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-colors hover:text-text hover:bg-border/30"
+							class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-colors hover:bg-border/30 hover:text-text"
 							aria-expanded={isMetaExpanded}
 							aria-controls={moreMetaSectionId}
 							onclick={() => {
@@ -444,7 +414,9 @@
 							}}
 						>
 							{isMetaExpanded ? 'Less' : 'More details'}
-							<ChevronDown class="h-3 w-3 transition-transform {isMetaExpanded ? 'rotate-180' : ''}" />
+							<ChevronDown
+								class="h-3 w-3 transition-transform {isMetaExpanded ? 'rotate-180' : ''}"
+							/>
 						</button>
 					</div>
 				</div>
@@ -455,7 +427,11 @@
 				<div class="rounded-xl border border-border/60 bg-surface px-4 py-3">
 					<div class="mb-2 flex items-end justify-between gap-2">
 						<div class="flex items-baseline gap-1.5">
-							<span class="text-xl font-bold tabular-nums {progressPct >= 100 ? 'text-success' : 'text-text'}">
+							<span
+								class="text-xl font-bold tabular-nums {progressPct >= 100
+									? 'text-success'
+									: 'text-text'}"
+							>
 								{progressPct}%
 							</span>
 							<span class="text-xs text-text-muted">complete</span>
@@ -466,7 +442,8 @@
 					</div>
 					<div class="h-2 w-full overflow-hidden rounded-full bg-border/30">
 						<div
-							class="h-full rounded-full transition-all duration-700 ease-out motion-reduce:transition-none {progressPct >= 100
+							class="h-full rounded-full transition-all duration-700 ease-out motion-reduce:transition-none {progressPct >=
+							100
 								? 'bg-gradient-to-r from-success to-brand'
 								: progressPct > 50
 									? 'bg-gradient-to-r from-brand to-info'
@@ -497,8 +474,8 @@
 							onkeydown={(event) => handleTabKeydown(event, tab.id)}
 							class="flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 motion-reduce:transition-none {activeDetailTab ===
 							tab.id
-								? 'bg-surface shadow-sm ring-1 ring-border/60 text-text'
-								: 'text-text-muted hover:text-text hover:bg-surface/60'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1"
+								? 'bg-surface text-text shadow-sm ring-1 ring-border/60'
+								: 'text-text-muted hover:bg-surface/60 hover:text-text'} focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:outline-none"
 						>
 							<TabIcon class="h-4 w-4 {activeDetailTab === tab.id ? tab.accentClass : ''}" />
 							{tab.label}
@@ -524,7 +501,7 @@
 						<!-- ─── Steps Panel ─── -->
 						<div class="space-y-2">
 							{#if isLoadingAssignmentDetail}
-								{#each Array.from({ length: Math.max(3, selectedAssignment.total_steps || 3) }) as _, i (`skel-step-${i}`)}
+								{#each Array.from( { length: Math.max(3, selectedAssignment.total_steps || 3) } ) as _, i (`skel-step-${i}`)}
 									<div
 										class="flex items-start gap-3 rounded-xl border border-border/50 bg-surface p-4"
 										aria-busy="true"
@@ -570,7 +547,9 @@
 												>
 													{step.title}
 												</p>
-												<span class="rounded-md px-1.5 py-0.5 text-[10px] font-semibold {sCfg.labelClass}">
+												<span
+													class="rounded-md px-1.5 py-0.5 text-[10px] font-semibold {sCfg.labelClass}"
+												>
 													{sCfg.label}
 												</span>
 											</div>
@@ -623,7 +602,6 @@
 								</div>
 							{/if}
 						</div>
-
 					{:else}
 						<!-- ─── Timeline Panel ─── -->
 						<div class="space-y-1">

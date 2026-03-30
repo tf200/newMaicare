@@ -78,35 +78,30 @@
 			.join(' ');
 	};
 
-	const statusMeta: Record<ClientStatus, { label: string; className: string; detailPath: string }> =
+	const statusMeta: Record<ClientStatus, { label: string; className: string }> =
 		{
 			in_care: {
 				label: m.status_in_care(),
 				className:
-					'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30',
-				detailPath: 'in-care'
+					'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
 			},
 			on_waiting_list: {
 				label: m.status_waiting_list(),
 				className:
-					'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30',
-				detailPath: 'on-waiting-list'
+					'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30'
 			},
 			scheduled_in_care: {
 				label: m.status_scheduled_in_care(),
-				className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30',
-				detailPath: 'scheduled-in-care'
+				className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30'
 			},
 			scheduled_out_of_care: {
 				label: m.status_scheduled_out_of_care(),
-				className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30',
-				detailPath: 'scheduled-out-of-care'
+				className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30'
 			},
 			out_of_care: {
 				label: m.status_out_of_care(),
 				className:
-					'bg-slate-500 text-white border border-slate-600/60 shadow-sm shadow-slate-600/30',
-				detailPath: 'out-of-care'
+					'bg-slate-500 text-white border border-slate-600/60 shadow-sm shadow-slate-600/30'
 			}
 		};
 
@@ -151,12 +146,7 @@
 	};
 
 	const openClientDetail = (row: ClientsRow) => {
-		if (row.status === 'on_waiting_list') {
-			goto(`/clients/${row.id}`);
-			return;
-		}
-
-		goto(`/clients/${row.id}/${statusMeta[row.status].detailPath}`);
+		goto(`/clients/${row.id}`);
 	};
 </script>
 
@@ -330,9 +320,7 @@
 {#snippet actionsCell(row: ClientsRow)}
 	<div class="flex justify-end gap-1">
 		<a
-			href={row.status === 'on_waiting_list'
-				? `/clients/${row.id}`
-				: `/clients/${row.id}/${statusMeta[row.status].detailPath}`}
+			href={`/clients/${row.id}`}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title={m.view_details()}
 			aria-label={m.view_details()}
@@ -513,6 +501,18 @@
 			rowKey="id"
 			title={m.clients()}
 			description={m.clients_table_description()}
+			emptyTitle={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_title()
+				: m.empty_clients_title()}
+			emptyDescription={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_description()
+				: m.empty_clients_description()}
+			emptyActionLabel={appliedSearch || appliedStatus || appliedLocationId
+				? m.empty_no_results_action()
+				: m.empty_clients_action()}
+			emptyAction={appliedSearch || appliedStatus || appliedLocationId
+				? () => updateQuery(1, '', '', '')
+				: () => goto('/clients')}
 			filters={tableFilters}
 			cells={{
 				client: clientCell,

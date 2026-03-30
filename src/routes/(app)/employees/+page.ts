@@ -57,7 +57,7 @@ const mapEmployee = (employee: EmployeeListItem): EmployeeRow => {
 		id: employee.id,
 		name,
 		bsn,
-		department: employee.department?.trim() || '—',
+		department: employee.department_name?.trim() || employee.department?.trim() || '—',
 		location: employee.location_address?.trim() || '—',
 		contractType: normalizeContractType(employee.contract_type),
 		contractEndDate: contractEndDate

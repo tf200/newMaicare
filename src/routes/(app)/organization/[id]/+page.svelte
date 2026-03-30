@@ -2,16 +2,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import {
-
-		Building2,
-		Pencil,
-		Plus,
-		Search,
-		Users,
-		Warehouse,
-		Clock
-	} from 'lucide-svelte';
+	import { Building2, Pencil, Plus, Search, Users, Warehouse, Clock } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -55,7 +46,9 @@
 			{ label: m.organizations(), href: '/organization' },
 			{ label: m.breadcrumb_organization_detail() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let searchTerm = $state('');

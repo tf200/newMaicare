@@ -42,15 +42,12 @@
 	const fallbackBreadcrumbs = $derived.by(() => {
 		const segments = page.url.pathname.split('/').filter(Boolean);
 		if (segments.length === 0) {
-			return [
-				{ label: m.breadcrumb_home(), href: '/dashboard' },
-				{ label: m.dashboard() }
-			];
+			return [{ label: m.breadcrumb_home(), href: '/dashboard' }, { label: m.dashboard() }];
 		}
-		
+
 		const items: any[] = [{ label: m.breadcrumb_home(), href: '/dashboard' }];
 		let currentPath = '';
-		
+
 		for (let i = 0; i < segments.length; i++) {
 			const segment = segments[i];
 			if (segment.length === 36 && segment.includes('-')) {
@@ -60,7 +57,7 @@
 			}
 			currentPath += `/${segment}`;
 			const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
-			
+
 			items.push({
 				label: label as any,
 				...(i === segments.length - 1 ? {} : { href: currentPath })

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
 	import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-svelte';
 
@@ -41,6 +42,7 @@
 		onRowClick?: (row: any) => void;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		surface?: 'card' | 'plain';
+		headerInline?: boolean;
 		class?: string;
 	}
 
@@ -68,6 +70,7 @@
 		onRowClick,
 		onSort,
 		surface = 'card',
+		headerInline = false,
 		class: className = ''
 	}: Props = $props();
 
@@ -131,7 +134,7 @@
 		<div
 			class="flex flex-col gap-4 p-4 sm:px-6 sm:pb-6 {surface === 'card'
 				? 'sm:flex-row sm:items-end sm:justify-between'
-				: ''}"
+				: ''} {headerInline ? 'sm:flex-row sm:items-end sm:justify-between' : ''}"
 		>
 			<div>
 				{#if title}
@@ -211,22 +214,18 @@
 				{:else if rows.length === 0}
 					<tr>
 						<td colspan={columns.length} class="px-6 py-12 text-center">
-							<div class="flex min-h-[400px] flex-col items-center justify-center gap-4">
-								<div class="h-16 w-16 rounded-full bg-border/50"></div>
-								<p class="text-xl font-bold tracking-tight text-text">
-									{emptyTitle}
-								</p>
-								<p class="text-sm text-text-muted">
-									{emptyDescription}
-								</p>
-								<button
-									onclick={handleEmptyAction}
-									disabled={!emptyAction || emptyActionDisabled}
-									class="rounded-xl bg-btn-primary-bg px-4 py-2 text-sm font-semibold text-btn-primary-text disabled:cursor-not-allowed disabled:opacity-70"
-								>
-									{emptyActionLabel}
-								</button>
-							</div>
+							<EmptyState
+								title={emptyTitle}
+								description={emptyDescription}
+								primaryAction={emptyAction
+									? {
+											label: emptyActionLabel,
+											onclick: handleEmptyAction,
+											disabled: emptyActionDisabled
+										}
+									: undefined}
+								size="md"
+							/>
 						</td>
 					</tr>
 				{:else}

@@ -151,8 +151,7 @@
 		const activeStatusKey = [...statusFilterItems]
 			.reverse()
 			.find((item) => Boolean(nextFilters[item.key]))?.key;
-		const nextStatus =
-			statusFilterItems.find((item) => item.key === activeStatusKey)?.value ?? '';
+		const nextStatus = statusFilterItems.find((item) => item.key === activeStatusKey)?.value ?? '';
 
 		setFilters({
 			...withPendingSearch(appliedFilters),
@@ -557,7 +556,11 @@
 	{#snippet actionsCell(row: EmployeeHandbookAssignment)}
 		<div class="flex items-center justify-end gap-2">
 			{#if row.employee_handbook_id == null}
-				<Button variant="secondary" class="px-3 py-1.5" onclick={() => handleOpenAssign(row)}>
+				<Button
+					variant="secondary"
+					class="rounded-lg px-3 py-1.5 text-xs font-semibold"
+					onclick={() => handleOpenAssign(row)}
+				>
 					Assign handbook
 				</Button>
 			{:else}

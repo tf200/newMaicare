@@ -8,7 +8,6 @@
 		Phone,
 		Mail,
 		Clock,
-
 		MapPin,
 		Briefcase,
 		HeartPulse,
@@ -61,7 +60,9 @@
 			{ label: m.registrations(), href: '/registrations' },
 			{ label: m.breadcrumb_registration_detail() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	// Edit State

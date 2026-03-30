@@ -57,7 +57,12 @@
 				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
 				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
 				{ label: m.swap_page_title(), href: '/shift-swaps' },
-				{ label: m.leave(), href: '/leave' }
+				{ label: m.leave(), href: '/leave' },
+				{
+					label: m.leave_management_label(),
+					href: '/leave-management',
+					permission: 'EMPLOYEE.VIEW'
+				}
 			]
 		},
 		{
@@ -107,7 +112,7 @@
 					permission: 'INVOICE.VIEW'
 				}
 			]
-		},
+		}
 	];
 
 	const items = $derived(sidebarState.scopedConfig?.items ?? defaultItems);
@@ -134,25 +139,32 @@
 	// UIUX.md: Inactive hover:bg-zinc-100 dark:hover:bg-zinc-800
 	const inactiveItem = 'text-text-muted hover:bg-border/50 hover:text-text';
 
-	const isActive = (href: string) => {
-		const path = deLocalizeUrl(page.url).pathname;
-		return path === href || path.startsWith(`${href}/`);
+	const normalizePath = (path: string) =>
+		path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path;
+
+	const isActive = (href: string, exact = false) => {
+		const path = normalizePath(deLocalizeUrl(page.url).pathname);
+		const normalizedHref = normalizePath(href);
+		if (exact) return path === normalizedHref;
+		return path === normalizedHref || path.startsWith(`${normalizedHref}/`);
 	};
 
 	const isItemActive = (item: NavItem) => {
-		if (item.href && isActive(item.href)) return true;
+		const exact = !!sidebarState.scopedConfig;
+		if (item.href && isActive(item.href, exact)) return true;
 		if (item.children) {
-			return item.children.some((child) => isActive(child.href));
+			return item.children.some((child) => isActive(child.href, exact));
 		}
 		return false;
 	};
 
 	const getActiveChildHref = (item: NavItem) => {
 		if (!item.children) return null;
-		const path = deLocalizeUrl(page.url).pathname;
+		const path = normalizePath(deLocalizeUrl(page.url).pathname);
 		let activeHref: string | null = null;
 		for (const child of item.children) {
-			if (path === child.href || path.startsWith(`${child.href}/`)) {
+			const childHref = normalizePath(child.href);
+			if (path === childHref || path.startsWith(`${childHref}/`)) {
 				if (!activeHref || child.href.length > activeHref.length) {
 					activeHref = child.href;
 				}
@@ -316,12 +328,12 @@
 
 						{#if hasChildren && isExpanded && !collapsed}
 							<div class="ml-9 space-y-1" transition:slide={{ duration: 300 }}>
-							{#each item.children as child (child.label)}
-								<PermissionGuard permission={child.permission}>
-									{@const childActive = activeChildHref === child.href}
-									<button
-										onclick={() => goto(localizeHref(child.href))}
-										class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
+								{#each item.children as child (child.label)}
+									<PermissionGuard permission={child.permission}>
+										{@const childActive = activeChildHref === child.href}
+										<button
+											onclick={() => goto(localizeHref(child.href))}
+											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
 										{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>
 											{child.label}

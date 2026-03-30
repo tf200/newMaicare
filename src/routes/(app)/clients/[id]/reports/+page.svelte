@@ -63,7 +63,9 @@
 			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${data.clientId}` },
 			{ label: m.reports() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let activeFilters = $state<Record<string, any>>({});

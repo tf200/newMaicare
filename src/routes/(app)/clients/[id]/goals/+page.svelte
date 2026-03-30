@@ -20,8 +20,16 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import GoalProgressModal from '$lib/components/clients/GoalProgressModal.svelte';
+	import CreateGoalModal from '$lib/components/clients/CreateGoalModal.svelte';
+	import UpdateGoalModal from '$lib/components/clients/UpdateGoalModal.svelte';
 	import CreateEvaluationForm from '$lib/components/forms/CreateEvaluationForm.svelte';
 	import type { GoalsOverviewLoadResult } from './+page';
+	import {
+		createClientGoal,
+		generateClientGoalSuggestion,
+		updateClientGoal
+	} from '$lib/api/clients';
+	import type { CreateGoalRequest, UpdateClientGoalRequest } from '$lib/types/api';
 
 	let { data } = $props<{
 		data: {
@@ -35,16 +43,32 @@
 	}>();
 
 	let progressModalOpen = $state(false);
+	let createGoalModalOpen = $state(false);
+	let updateGoalModalOpen = $state(false);
+
+	type GoalToEdit = {
+		id: string;
+		title: string;
+		description: string | null;
+		priority: 'high' | 'medium' | 'low';
+		topic_id: string | null;
+	};
+	let selectedGoalToEdit = $state<GoalToEdit | null>(null);
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.clients(), href: '/clients' },
-			{ label: data.clientName ?? m.breadcrumb_client_detail(), href: `/clients/${page.params.id}` },
+			{
+				label: data.clientName ?? m.breadcrumb_client_detail(),
+				href: `/clients/${page.params.id}`
+			},
 			{ label: m.goals() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	let selectedGoalTitle = $state('');
@@ -238,6 +262,8 @@
 
 				<div class="flex items-center gap-3">
 					<Button
+						disabled={!goalsData.can_update_goals}
+						onclick={() => (createGoalModalOpen = true)}
 						class="gap-2 bg-teal-600 text-white shadow-sm hover:opacity-90 dark:bg-teal-400 dark:text-black"
 					>
 						<Plus class="h-4 w-4" />
@@ -252,6 +278,20 @@
 			>
 				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
 				<p class="text-sm font-medium">{goalsData.loadError}</p>
+			</div>
+		{/if}
+
+		{#if !goalsData.can_update_goals}
+			<div
+				class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
+			>
+				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
+				<div class="space-y-1">
+					<p class="text-sm font-semibold">{m.goals_update_blocked()}</p>
+					<p class="text-xs font-medium">
+						{goalsData.goal_update_block_reason || m.goals_blocked_tooltip()}
+					</p>
+				</div>
 			</div>
 		{/if}
 
@@ -301,7 +341,18 @@
 											</span>
 											<div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
 												<button
-													class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
+													disabled={!goalsData.can_update_goals}
+													onclick={() => {
+														selectedGoalToEdit = {
+															id: goal.id,
+															title: goal.title,
+															description: goal.description,
+															priority: goal.priority,
+															topic_id: goal.topic_id
+														};
+														updateGoalModalOpen = true;
+													}}
+													class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-zinc-800 dark:hover:text-white"
 												>
 													<Pencil class="h-3.5 w-3.5" />
 												</button>
@@ -538,3 +589,29 @@
 	clientName={activeClientName}
 	onSaved={handleEvaluationSaved}
 />
+
+<CreateGoalModal
+	bind:open={createGoalModalOpen}
+	clientId={page.params.id ?? ''}
+	onSave={async (goal: CreateGoalRequest) => {
+		await createClientGoal(page.params.id ?? '', goal);
+		await invalidateAll();
+	}}
+	onGenerate={async (topicId: string) => {
+		const res = await generateClientGoalSuggestion(page.params.id ?? '', topicId);
+		return res.data;
+	}}
+	onCancel={() => (createGoalModalOpen = false)}
+/>
+
+{#if selectedGoalToEdit}
+	<UpdateGoalModal
+		bind:open={updateGoalModalOpen}
+		goal={selectedGoalToEdit}
+		onSave={async (goalId: string, data: UpdateClientGoalRequest) => {
+			await updateClientGoal(page.params.id ?? '', goalId, data);
+			await invalidateAll();
+		}}
+		onCancel={() => (updateGoalModalOpen = false)}
+	/>
+{/if}

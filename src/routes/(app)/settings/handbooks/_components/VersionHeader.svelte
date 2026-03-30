@@ -89,7 +89,7 @@
 	</div>
 
 	{#if isPublishedVersion || isArchivedVersion}
-		<div class="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-700">
+		<div class="mt-6 rounded-2xl border border-info/20 bg-info/5 p-4 text-sm text-info">
 			This version is read-only. To change handbook content, clone it into a new draft for
 			{selectedDepartmentGroup.departmentName}.
 		</div>
@@ -114,7 +114,7 @@
 							</p>
 							{#if selectedVersionStepsLength === 0}
 								<div
-									class="mt-3 flex max-w-fit items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700"
+									class="mt-3 flex max-w-fit items-center gap-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-medium text-warning"
 								>
 									<AlertCircle class="h-4 w-4" />
 									Publishing stays disabled until the draft has at least one step.

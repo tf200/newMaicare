@@ -136,8 +136,10 @@ export type CreateEvaluationResponse = GoalEvaluationResponse;
 
 export interface ClientGoalsItemResponse {
 	id: string;
+	topic_id: string | null;
 	topic_name: string;
 	title: string;
+	description: string | null;
 	priority: 'low' | 'medium' | 'high';
 	last_evaluation_progress: EvaluationProgress | null;
 }
@@ -148,6 +150,8 @@ export interface ClientGoalsOverviewResponse {
 	next_evaluation_date: string | null;
 	my_draft_evaluation_id: string | null;
 	is_responsible_employee: boolean;
+	can_update_goals: boolean;
+	goal_update_block_reason: string | null;
 }
 
 export interface ListClientSubmittedEvaluationsResponse {

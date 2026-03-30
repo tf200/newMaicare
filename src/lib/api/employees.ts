@@ -1,6 +1,6 @@
 import { api } from '$lib/api/client';
 import type { ApiEnvelope, PaginatedResponse } from '$lib/types/api';
-import type { EmployeeProfileDetailsResponse } from '$lib/types/api';
+import type { EmployeeProfileDetailsResponse, EmployeeScheduleTimelineDay } from '$lib/types/api';
 
 export type EmployeeContractType = 'loondienst' | 'ZZP' | 'none';
 
@@ -22,6 +22,7 @@ export interface EmployeeListItem {
 	bsn: string | number;
 	contract_type: EmployeeContractType | string;
 	department: string | null;
+	department_name?: string | null;
 	location_address: string | null;
 	contract_end_date: string | null;
 }
@@ -106,4 +107,19 @@ export function createEmployee(payload: CreateEmployeeRequest) {
 
 export function getEmployeeProfileDetails() {
 	return api.get<ApiEnvelope<EmployeeProfileDetailsResponse>>('/employees/profile/details');
+}
+
+export interface GetMyScheduleTimelineParams {
+	startDate: string;
+	endDate: string;
+}
+
+export function getMyScheduleTimeline(params: GetMyScheduleTimelineParams) {
+	const query = new URLSearchParams();
+	query.set('start_date', params.startDate);
+	query.set('end_date', params.endDate);
+
+	return api.get<ApiEnvelope<EmployeeScheduleTimelineDay[]>>(
+		`/employees/profile/schedules?${query.toString()}`
+	);
 }

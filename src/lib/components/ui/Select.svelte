@@ -1,9 +1,11 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { Check, ChevronsUpDown } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
+	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	type Option = { label: string; value: string };
 
@@ -16,7 +18,8 @@
 		error = undefined,
 		id = `select-${Math.random().toString(36).substr(2, 9)}`,
 		className = '',
-		size = 'md'
+		size = 'lg',
+		prefix
 	} = $props<{
 		label?: string;
 		options?: Option[];
@@ -26,7 +29,8 @@
 		error?: string;
 		id?: string;
 		className?: string;
-		size?: 'sm' | 'md' | 'lg';
+		size?: SelectSize;
+		prefix?: Snippet;
 	}>();
 
 	let isOpen = $state(false);
@@ -38,17 +42,7 @@
 		options.find((opt: Option) => opt.value === value)?.label || resolvedPlaceholder
 	);
 
-	const sizeClasses: Record<'sm' | 'md' | 'lg', string> = {
-		sm: 'py-2 px-3 text-xs',
-		md: 'py-2.5 px-4 text-sm',
-		lg: 'py-3.5 px-4 text-sm'
-	};
-
-	let sizeClass = $derived.by(() => {
-		if (size === 'sm') return sizeClasses.sm;
-		if (size === 'lg') return sizeClasses.lg;
-		return sizeClasses.md;
-	});
+	let sizeClass = $derived(selectSizeClasses[size as SelectSize]);
 
 	function toggle() {
 		isOpen = !isOpen;
@@ -89,13 +83,16 @@
 			bind:this={triggerEl}
 			type="button"
 			onclick={toggle}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text transition-all hover:bg-surface/80 {sizeClass} {error
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {sizeClass} {error
 				? 'border-error'
 				: ''}"
 			aria-expanded={isOpen}
 		>
+			{#if prefix}
+				{@render prefix()}
+			{/if}
 			<span class="truncate">{selectedLabel}</span>
-			<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+			<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 text-text-subtle" />
 		</button>
 
 		{#if isOpen && triggerEl}
@@ -103,17 +100,17 @@
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
-				class="z-[9999] mt-2 max-h-60 w-full overflow-auto rounded-xl border border-border bg-surface p-1 shadow-lg ring-1 ring-black/5"
+				class="z-[9999] mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-xl"
 				transition:scale={{ start: 0.95, duration: 100 }}
 			>
 				{#each options as option (option.value)}
 					<button
 						type="button"
 						onclick={() => select(option.value)}
-						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-border/50 {value ===
+						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-border/50 {value ===
 						option.value
-							? 'bg-border/30 font-medium text-text'
-							: ''}"
+							? 'bg-brand/10 font-semibold text-brand'
+							: 'text-text'}"
 					>
 						{option.label}
 						{#if value === option.value}

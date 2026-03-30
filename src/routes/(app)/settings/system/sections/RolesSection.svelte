@@ -60,8 +60,8 @@
 	const selectedRole = $derived(roles.find((r) => r.id === selectedRoleId));
 	const selectedRolePermissions: string[] = $derived(
 		selectedRoleId
-			? permissionsByRoleId[selectedRoleId] ?? selectedRole?.permissions ?? []
-			: selectedRole?.permissions ?? []
+			? (permissionsByRoleId[selectedRoleId] ?? selectedRole?.permissions ?? [])
+			: (selectedRole?.permissions ?? [])
 	);
 
 	async function loadRolePermissions(roleId: string) {
@@ -160,7 +160,8 @@
 	function getGroupSelectedCount(groupId: string) {
 		const group = permissionGroups.find((g) => g.id === groupId);
 		if (!group) return 0;
-		return group.permissions.filter((p: PermissionItem) => selectedRolePermissions.includes(p.id)).length;
+		return group.permissions.filter((p: PermissionItem) => selectedRolePermissions.includes(p.id))
+			.length;
 	}
 
 	const totalSelectedCount = $derived(selectedRolePermissions.length ?? 0);
@@ -331,11 +332,15 @@
 				</div>
 
 				{#if isLoadingPermissions}
-					<div class="rounded-2xl border border-border/50 bg-surface/40 p-6 text-sm text-text-muted">
+					<div
+						class="rounded-2xl border border-border/50 bg-surface/40 p-6 text-sm text-text-muted"
+					>
 						Loading permissions for {selectedRole.name}...
 					</div>
 				{:else if permissionLoadError}
-					<div class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600">
+					<div
+						class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600"
+					>
 						{permissionLoadError}
 					</div>
 				{:else}
@@ -350,66 +355,66 @@
 										<div class="rounded-lg bg-text/5 p-2 text-text">
 											<GroupIcon class="h-4 w-4" />
 										</div>
-									<div>
-										<h4 class="text-sm font-bold text-text">{group.label}</h4>
-										<p class="text-[10px] font-medium text-text-muted">
-											{getGroupSelectedCount(group.id)} of {group.permissions.length} active
-										</p>
+										<div>
+											<h4 class="text-sm font-bold text-text">{group.label}</h4>
+											<p class="text-[10px] font-medium text-text-muted">
+												{getGroupSelectedCount(group.id)} of {group.permissions.length} active
+											</p>
+										</div>
+									</div>
+									<div class="flex gap-2">
+										<button
+											onclick={() => toggleGroup(group.id, true)}
+											class="text-[10px] font-bold tracking-wider text-brand uppercase hover:underline"
+										>
+											Select All
+										</button>
+										<span class="text-border">|</span>
+										<button
+											onclick={() => toggleGroup(group.id, false)}
+											class="text-[10px] font-bold tracking-wider text-text-subtle uppercase hover:text-rose-500"
+										>
+											Clear
+										</button>
 									</div>
 								</div>
-								<div class="flex gap-2">
-									<button
-										onclick={() => toggleGroup(group.id, true)}
-										class="text-[10px] font-bold tracking-wider text-brand uppercase hover:underline"
-									>
-										Select All
-									</button>
-									<span class="text-border">|</span>
-									<button
-										onclick={() => toggleGroup(group.id, false)}
-										class="text-[10px] font-bold tracking-wider text-text-subtle uppercase hover:text-rose-500"
-									>
-										Clear
-									</button>
-								</div>
-							</div>
 
 								<div class="grid grid-cols-1 gap-px bg-border/50 sm:grid-cols-2">
 									{#each group.permissions as perm (perm.id)}
 										{@const isSelected = selectedRolePermissions.includes(perm.id)}
-									<button
-										onclick={() => togglePermission(perm.id)}
-										class="group relative flex items-start gap-4 bg-surface p-5 text-left transition-colors hover:bg-brand/[0.02]"
-									>
-										<div class="mt-0.5">
-											{#if isSelected}
-												<div
-													class="flex h-5 w-5 items-center justify-center rounded-md bg-brand text-white shadow-sm shadow-brand/20"
+										<button
+											onclick={() => togglePermission(perm.id)}
+											class="group relative flex items-start gap-4 bg-surface p-5 text-left transition-colors hover:bg-brand/[0.02]"
+										>
+											<div class="mt-0.5">
+												{#if isSelected}
+													<div
+														class="flex h-5 w-5 items-center justify-center rounded-md bg-brand text-white shadow-sm shadow-brand/20"
+													>
+														<Check class="h-3.5 w-3.5" strokeWidth={3} />
+													</div>
+												{:else}
+													<div
+														class="h-5 w-5 rounded-md border-2 border-border transition-colors group-hover:border-brand/50"
+													></div>
+												{/if}
+											</div>
+											<div class="space-y-1">
+												<p
+													class="text-sm font-bold transition-colors {isSelected
+														? 'text-brand'
+														: 'text-text'}"
 												>
-													<Check class="h-3.5 w-3.5" strokeWidth={3} />
-												</div>
-											{:else}
-												<div
-													class="h-5 w-5 rounded-md border-2 border-border transition-colors group-hover:border-brand/50"
-												></div>
-											{/if}
-										</div>
-										<div class="space-y-1">
-											<p
-												class="text-sm font-bold transition-colors {isSelected
-													? 'text-brand'
-													: 'text-text'}"
-											>
-												{perm.label}
-											</p>
-											<p class="text-xs leading-relaxed text-text-muted">
-												{perm.description}
-											</p>
-										</div>
-									</button>
-								{/each}
+													{perm.label}
+												</p>
+												<p class="text-xs leading-relaxed text-text-muted">
+													{perm.description}
+												</p>
+											</div>
+										</button>
+									{/each}
+								</div>
 							</div>
-						</div>
 						{/each}
 
 						{#if filteredGroups.length === 0}
@@ -451,19 +456,19 @@
 <Modal bind:open={isCreateOpen} title="Create Role" description="Add a new access role">
 	<div class="space-y-4">
 		<Input label="Role name" bind:value={createName} placeholder="e.g. Care Coordinator" />
-		<Input label="Description" bind:value={createDescription} placeholder="What can this role do?" />
+		<Input
+			label="Description"
+			bind:value={createDescription}
+			placeholder="What can this role do?"
+		/>
 		{#if createError}
 			<p class="text-xs font-medium text-rose-600">{createError}</p>
 		{/if}
 	</div>
 	{#snippet footer()}
 		<div class="flex items-center justify-end gap-2">
-			<Button variant="ghost" onclick={() => (isCreateOpen = false)}>
-				Cancel
-			</Button>
-			<Button onclick={handleCreateRole} isLoading={isCreating} class="px-4">
-				Create Role
-			</Button>
+			<Button variant="ghost" onclick={() => (isCreateOpen = false)}>Cancel</Button>
+			<Button onclick={handleCreateRole} isLoading={isCreating} class="px-4">Create Role</Button>
 		</div>
 	{/snippet}
 </Modal>

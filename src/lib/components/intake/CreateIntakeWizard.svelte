@@ -639,7 +639,11 @@
 							</button>
 						</div>
 
-						<GoalAssessmentForm bind:goals onGoalsChange={(g) => (goals = g)} />
+						<GoalAssessmentForm
+							intakeId={createdIntakeId}
+							bind:goals
+							onGoalsChange={(g) => (goals = g)}
+						/>
 					</div>
 				</div>
 			</div>

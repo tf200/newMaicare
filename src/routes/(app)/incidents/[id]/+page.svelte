@@ -10,7 +10,6 @@
 		FileText,
 		CheckCircle2,
 		XCircle,
-
 		Mail,
 		Info,
 		Stethoscope,
@@ -66,7 +65,9 @@
 			{ label: m.incidents(), href: '/incidents' },
 			{ label: m.incident_detail() }
 		];
-		return () => { breadcrumbs.items = []; };
+		return () => {
+			breadcrumbs.items = [];
+		};
 	});
 
 	const closeConfirmModal = () => {

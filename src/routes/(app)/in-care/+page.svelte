@@ -203,7 +203,7 @@
 {#snippet actionsCell(row: InCareRow)}
 	<div class="flex justify-end gap-1">
 		<a
-			href="/clients/{row.id}/in-care"
+			href="/clients/{row.id}"
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title={m.view_details()}
 			aria-label={m.view_details()}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
+	import { intakes } from '$lib/api/intakes';
 	import { slide } from 'svelte/transition';
 	import { untrack } from 'svelte';
 	import { Loader2, Sparkles, X, Plus } from 'lucide-svelte';
@@ -9,11 +10,12 @@
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
+		intakeId?: string | null;
 		goals: IntakeGoalTopic[];
 		onGoalsChange?: (goals: IntakeGoalTopic[]) => void;
 	}
 
-	let { goals = $bindable([]), onGoalsChange }: Props = $props();
+	let { intakeId = null, goals = $bindable([]), onGoalsChange }: Props = $props();
 
 	// Component State
 	let maturityTopics = $state<ListCarePlanTopics[]>([]);
@@ -26,6 +28,7 @@
 	let topicGoals = $state<Record<string, MaturityGoal[]>>({});
 	let topicDescriptions = $state<Record<string, string>>({});
 	let generatingFor = $state<string | null>(null);
+	let generateErrors = $state<Record<string, string>>({});
 
 	// Initialize local state from goals prop
 	$effect(() => {
@@ -123,20 +126,37 @@
 	};
 
 	const generateGoals = async (topicId: string) => {
+		if (!intakeId || generatingFor === topicId) return;
+
+		const currentLevel = topicLevels[topicId];
+		if (!currentLevel) {
+			generateErrors = {
+				...generateErrors,
+				[topicId]: 'Please select a maturity level before generating goals.'
+			};
+			return;
+		}
+
 		generatingFor = topicId;
-		await new Promise((resolve) => setTimeout(resolve, 1500));
-		const newGoals: MaturityGoal[] = [
-			{
-				title: m.goal_suggestion_title({
-					name: maturityTopics.find((t) => t.id === topicId)?.topic_name ?? ''
-				}),
-				description: m.goal_suggestion_description(),
-				priority: 'medium'
-			}
-		];
-		const existing = topicGoals[topicId] ?? [];
-		topicGoals = { ...topicGoals, [topicId]: [...existing, ...newGoals] };
-		generatingFor = null;
+		generateErrors = { ...generateErrors, [topicId]: '' };
+
+		try {
+			const res = await intakes.generateGoals(intakeId, {
+				topic_id: topicId,
+				current_level: currentLevel,
+				user_desc: topicDescriptions[topicId]?.trim() || undefined
+			});
+			const existing = topicGoals[topicId] ?? [];
+			topicGoals = { ...topicGoals, [topicId]: [...existing, ...res.data.goals] };
+		} catch (err) {
+			console.error('Failed to generate goals:', err);
+			generateErrors = {
+				...generateErrors,
+				[topicId]: err instanceof Error ? err.message : 'Failed to generate goals.'
+			};
+		} finally {
+			generatingFor = null;
+		}
 	};
 </script>
 
@@ -242,7 +262,7 @@
 							<div class="flex items-center gap-2">
 								<button
 									onclick={() => generateGoals(topic.id)}
-									disabled={generatingFor === topic.id}
+									disabled={generatingFor === topic.id || !intakeId}
 									class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-all hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50"
 								>
 									{#if generatingFor === topic.id}
@@ -262,6 +282,14 @@
 								</button>
 							</div>
 						</div>
+
+						{#if generateErrors[topic.id]}
+							<div
+								class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"
+							>
+								{generateErrors[topic.id]}
+							</div>
+						{/if}
 
 						<TextArea
 							bind:value={topicDescriptions[topic.id]}

@@ -313,6 +313,42 @@ export interface GetClientGoal {
 	topic_name: string | null;
 }
 
+export interface CreateClientGoalRequest {
+	title: string;
+	description: string;
+	priority: 'high' | 'medium' | 'low';
+	topic_id: string;
+}
+
+export interface CreateClientGoalResponse {
+	id: string;
+	client_id: string;
+	title: string;
+	description: string | null;
+	priority: string;
+	status: string;
+	topic_name_snapshot: string | null;
+	source: string;
+	sort_order: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface UpdateClientGoalRequest {
+	title: string;
+	description: string;
+	priority: 'high' | 'medium' | 'low';
+	topic_id: string;
+	sort_order: number;
+}
+
+export interface UpdateClientGoalResponse {
+	mutation_type: string;
+	goal_id: string;
+	replacement_goal_id: string | null;
+	goal: CreateClientGoalResponse;
+}
+
 export interface GetClientIntake {
 	self_sufficiency_score: number | null;
 	conclusion: IntakeConclusionEnum | null;
@@ -549,3 +585,42 @@ export interface ListProgressReportsParams {
 	page_size: number;
 	type?: ProgressReportType;
 }
+
+export interface CreateClientEmergencyContactParams {
+	first_name?: string;
+	last_name?: string;
+	email?: string;
+	phone_number?: string;
+	address?: string;
+	relationship?: string;
+	relation_status?: string;
+	medical_reports: boolean;
+	incidents_reports: boolean;
+	goals_reports: boolean;
+}
+
+export interface CreateClientEmergencyContactResponse {
+	id: string;
+	client_id: string;
+	first_name: string | null;
+	last_name: string | null;
+	email: string | null;
+	phone_number: string | null;
+	address: string | null;
+	relationship: string | null;
+	relation_status: string | null;
+	created_at: string;
+	is_verified: boolean;
+	medical_reports: boolean;
+	incidents_reports: boolean;
+	goals_reports: boolean;
+}
+
+export interface ListClientEmergencyContactsParams {
+	page: number;
+	page_size: number;
+	search?: string;
+}
+
+export type ListClientEmergencyContactsResponse =
+	PaginatedResponse<CreateClientEmergencyContactResponse>;

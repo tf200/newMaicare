@@ -20,7 +20,7 @@ Swiss typography + Apple shapes + Bento grids. High whitespace, hyper-rounded co
 ## Shapes & Type
 
 **Radius:** Cards=`rounded-3xl`, Buttons/Inputs=`rounded-xl`, Badges=`rounded-lg/full`
-**Typography:** Inter/sans, Headings=`font-bold tracking-tight`, Body=`font-normal/medium`
+**Typography:** Plus Jakarta Sans/sans, Headings=`font-bold tracking-tight`, Body=`font-normal/medium`
 
 ## Components
 

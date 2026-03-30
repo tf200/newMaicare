@@ -140,9 +140,7 @@
 					description: formDescription.trim() || undefined,
 					departmentHeadId: formHeadId.trim() || null
 				});
-				departments = departments.map((dept) =>
-					dept.id === updated.id ? updated : dept
-				);
+				departments = departments.map((dept) => (dept.id === updated.id ? updated : dept));
 			} else {
 				if (!onCreateDepartment) return;
 				const created = await onCreateDepartment({
@@ -250,9 +248,7 @@
 	</div>
 	{#snippet footer()}
 		<div class="flex items-center justify-end gap-2">
-			<Button variant="ghost" onclick={() => (isModalOpen = false)}>
-				Cancel
-			</Button>
+			<Button variant="ghost" onclick={() => (isModalOpen = false)}>Cancel</Button>
 			<Button onclick={handleSubmit} isLoading={isSaving} class="px-4">
 				{editingDepartmentId ? 'Save Changes' : 'Create Department'}
 			</Button>
