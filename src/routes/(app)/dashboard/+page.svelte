@@ -1,21 +1,20 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { onboarding } from '$lib/state/onboarding.svelte';
 	import WelcomeModal from '$lib/components/ui/WelcomeModal.svelte';
 	import {
 		UsersRound,
 		UserCheck,
-		FileText,
-		Clock,
+		FileWarning,
 		Bell,
 		ChevronDown,
 		AlertTriangle,
 		ArrowUpRight,
 		Calendar,
-		ClipboardList,
-		BarChart3,
-		CircleDot
+		Clock,
+		CircleDot,
+		Plane,
+		BookOpen
 	} from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -26,9 +25,9 @@
 
 	function getTimeOfDay(): string {
 		const hour = new Date().getHours();
-		if (hour < 12) return m.dashboard_welcome_morning();
-		if (hour < 18) return m.dashboard_welcome_afternoon();
-		return m.dashboard_welcome_evening();
+		if (hour < 12) return 'Good morning';
+		if (hour < 18) return 'Good afternoon';
+		return 'Good evening';
 	}
 
 	const userName = $derived.by(() => {
@@ -43,7 +42,7 @@
 	}
 
 	const today = new Date();
-	const formattedDate = today.toLocaleDateString('nl-NL', {
+	const formattedDate = today.toLocaleDateString('en-US', {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'long',
@@ -52,128 +51,128 @@
 
 	const stats = [
 		{
-			label: 'Totaal Medewerkers',
+			label: 'Total Employees',
 			value: '124',
-			sub: 'Actief in systeem',
+			sub: 'Active in system',
 			icon: UsersRound,
 			color: 'text-brand'
 		},
 		{
-			label: 'Aanwezig Vandaag',
+			label: 'Present Today',
 			value: '98',
-			sub: '79% aanwezigheid',
+			sub: '79% attendance',
 			icon: UserCheck,
 			color: 'text-emerald-600'
 		},
 		{
-			label: 'Documenten',
-			value: '342',
-			sub: '12 nieuw deze week',
-			icon: FileText,
+			label: 'On Leave',
+			value: '12',
+			sub: '3 returning this week',
+			icon: Plane,
 			color: 'text-indigo-500'
 		},
 		{
-			label: 'In Afwachting',
+			label: 'Expiring Soon',
 			value: '17',
-			sub: 'Actie vereist',
-			icon: Clock,
+			sub: 'Documents & certifications',
+			icon: FileWarning,
 			color: 'text-[var(--color-secondary)]'
 		}
 	];
 
 	const notifications = [
 		{
-			type: 'Verlopen',
-			label: 'BHV Certificaat',
+			type: 'Expired',
+			label: 'Safety Certificate',
 			employee: 'Jan de Vries',
-			date: '28 mrt 2026',
+			date: 'Mar 28, 2026',
 			severity: 'error' as const
 		},
 		{
-			type: 'Verlopen',
-			label: 'VOG Verklaring',
+			type: 'Expired',
+			label: 'Background Check',
 			employee: 'Lisa Bakker',
-			date: '25 mrt 2026',
+			date: 'Mar 25, 2026',
 			severity: 'error' as const
 		},
 		{
-			type: 'Bijna verlopen',
-			label: 'Medische Verklaring',
+			type: 'Expiring',
+			label: 'Medical Certificate',
 			employee: 'Pieter Jansen',
-			date: '05 apr 2026',
+			date: 'Apr 5, 2026',
 			severity: 'warning' as const
 		},
 		{
-			type: 'Bijna verlopen',
-			label: 'EHBO Certificaat',
+			type: 'Expiring',
+			label: 'First Aid Qualification',
 			employee: 'Sophie Mulder',
-			date: '12 apr 2026',
+			date: 'Apr 12, 2026',
 			severity: 'warning' as const
 		},
 		{
-			type: 'Bijna verlopen',
-			label: 'Autorisatie Medicatie',
+			type: 'Expiring',
+			label: 'Medication Authorization',
 			employee: 'Thomas Visser',
-			date: '18 apr 2026',
+			date: 'Apr 18, 2026',
 			severity: 'warning' as const
 		}
 	];
 
 	const employees = [
-		{ name: 'Jan de Vries', role: 'Verzorgende IG', team: 'Wijkteam Noord', status: 'Actief' },
-		{ name: 'Lisa Bakker', role: 'Verpleegkundige', team: 'Wijkteam Zuid', status: 'Actief' },
-		{ name: 'Pieter Jansen', role: 'Helpende', team: 'Wijkteam Oost', status: 'Verlof' },
-		{ name: 'Sophie Mulder', role: 'Verzorgende IG', team: 'Wijkteam West', status: 'Actief' },
-		{ name: 'Thomas Visser', role: 'Verpleegkundige', team: 'Wijkteam Noord', status: 'Ziek' }
+		{ name: 'Jan de Vries', role: 'Caregiver', department: 'Team North', status: 'Active' },
+		{ name: 'Lisa Bakker', role: 'Nurse', department: 'Team South', status: 'Active' },
+		{ name: 'Pieter Jansen', role: 'Assistant', department: 'Team East', status: 'On Leave' },
+		{ name: 'Sophie Mulder', role: 'Caregiver', department: 'Team West', status: 'Active' },
+		{ name: 'Thomas Visser', role: 'Nurse', department: 'Team North', status: 'Sick' }
 	];
 
 	const events = [
-		{ title: 'Teamoverleg Wijkteam Noord', time: '09:00', date: 'Vandaag', color: 'bg-brand' },
-		{ title: 'Training BHV Herhaling', time: '13:30', date: 'Morgen', color: 'bg-indigo-500' },
+		{ title: 'Team Standup - Team North', time: '09:00', date: 'Today', color: 'bg-brand' },
+		{ title: 'Safety Training Refresher', time: '13:30', date: 'Tomorrow', color: 'bg-indigo-500' },
 		{
-			title: 'Functioneringsgesprek - L. Bakker',
+			title: 'Performance Review - L. Bakker',
 			time: '10:00',
-			date: '2 apr',
+			date: 'Apr 2',
 			color: 'bg-[var(--color-secondary)]'
 		},
-		{ title: 'Vergadering Ondernemingsraad', time: '14:00', date: '5 apr', color: 'bg-rose-500' }
+		{ title: 'Works Council Meeting', time: '14:00', date: 'Apr 5', color: 'bg-rose-500' }
 	];
 
 	const quickActions = [
 		{
-			label: 'Cliënten',
-			href: '/clients',
+			label: 'Employees',
+			href: '/employees',
 			icon: UsersRound,
 			color: 'text-brand',
 			bg: 'bg-brand/10'
 		},
 		{
-			label: 'Roosters',
+			label: 'Schedules',
 			href: '/schedules',
 			icon: Calendar,
 			color: 'text-indigo-500',
 			bg: 'bg-indigo-500/10'
 		},
 		{
-			label: 'Intakes',
-			href: '/intakes',
-			icon: ClipboardList,
+			label: 'Leave',
+			href: '/leave-management',
+			icon: Plane,
 			color: 'text-[var(--color-secondary)]',
 			bg: 'bg-[var(--color-secondary)]/10'
 		},
 		{
-			label: 'Rapporten',
-			href: '/evaluations',
-			icon: BarChart3,
+			label: 'Handbooks',
+			href: '/employees/handbooks',
+			icon: BookOpen,
 			color: 'text-emerald-600',
 			bg: 'bg-emerald-500/10'
 		}
 	];
 
 	const statusClasses: Record<string, string> = {
-		Actief: 'bg-emerald-50 text-emerald-600 ring-emerald-500/10',
-		Verlof: 'bg-amber-50 text-amber-600 ring-amber-500/10',
-		Ziek: 'bg-rose-50 text-rose-600 ring-rose-500/10'
+		Active: 'bg-emerald-50 text-emerald-600 ring-emerald-500/10',
+		'On Leave': 'bg-amber-50 text-amber-600 ring-amber-500/10',
+		Sick: 'bg-rose-50 text-rose-600 ring-rose-500/10'
 	};
 
 	const severityClasses: Record<string, string> = {
@@ -183,7 +182,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.dashboard()} | MaiCare</title>
+	<title>Dashboard | MaiCare</title>
 </svelte:head>
 
 {#if showWelcome}
@@ -195,9 +194,7 @@
 	<header class="relative flex flex-wrap items-end justify-between gap-4 px-1 pt-2 pb-2">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight text-text">
-				{userName
-					? m.dashboard_welcome_title({ timeOfDay: getTimeOfDay(), name: userName })
-					: m.dashboard()}
+				{userName ? `${getTimeOfDay()}, ${userName}` : 'Dashboard'}
 			</h1>
 			<p class="mt-1 text-sm font-medium text-text-muted">{formattedDate}</p>
 		</div>
@@ -210,7 +207,7 @@
 				></span>
 				<span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
 			</span>
-			<span class="text-xs font-bold text-emerald-600">Actief</span>
+			<span class="text-xs font-bold text-emerald-600">Active</span>
 		</div>
 	</header>
 
@@ -249,9 +246,9 @@
 					<Bell class="h-5 w-5 text-rose-500" />
 				</div>
 				<div>
-					<h2 class="text-base font-bold tracking-tight text-text">Vervalwaarschuwingen</h2>
+					<h2 class="text-base font-bold tracking-tight text-text">Document Alerts</h2>
 					<p class="text-xs font-medium text-text-muted">
-						{notifications.length} meldingen die aandacht vereisen
+						{notifications.length} items requiring attention
 					</p>
 				</div>
 			</div>
@@ -273,8 +270,8 @@
 								<tr>
 									<th class="px-6 py-3">Status</th>
 									<th class="px-6 py-3">Document</th>
-									<th class="px-6 py-3">Medewerker</th>
-									<th class="px-6 py-3">Datum</th>
+									<th class="px-6 py-3">Employee</th>
+									<th class="px-6 py-3">Date</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -316,14 +313,14 @@
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="flex items-center justify-between border-b border-border p-5">
 				<div>
-					<h2 class="text-base font-bold tracking-tight text-text">Medewerkers</h2>
-					<p class="text-xs font-medium text-text-muted">Recent actieve medewerkers</p>
+					<h2 class="text-base font-bold tracking-tight text-text">Employees</h2>
+					<p class="text-xs font-medium text-text-muted">Recently active team members</p>
 				</div>
 				<a
 					href={localizeHref('/employees')}
 					class="group flex items-center gap-1 text-[11px] font-bold text-brand transition-colors hover:text-brand/80"
 				>
-					Bekijk alles
+					View all
 					<ArrowUpRight
 						class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
 					/>
@@ -333,8 +330,8 @@
 				<table class="min-w-full text-left">
 					<thead class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						<tr>
-							<th class="px-5 py-3">Naam</th>
-							<th class="px-5 py-3">Functie</th>
+							<th class="px-5 py-3">Name</th>
+							<th class="px-5 py-3">Role</th>
 							<th class="px-5 py-3">Status</th>
 						</tr>
 					</thead>
@@ -356,7 +353,7 @@
 										</div>
 										<div>
 											<p class="text-sm font-semibold text-text">{emp.name}</p>
-											<p class="text-[11px] text-text-muted">{emp.team}</p>
+											<p class="text-[11px] text-text-muted">{emp.department}</p>
 										</div>
 									</div>
 								</td>
@@ -380,8 +377,8 @@
 		<!-- Quick Actions -->
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="border-b border-border p-5">
-				<h2 class="text-base font-bold tracking-tight text-text">Snelle Acties</h2>
-				<p class="text-xs font-medium text-text-muted">Veelgebruikte handelingen</p>
+				<h2 class="text-base font-bold tracking-tight text-text">Quick Actions</h2>
+				<p class="text-xs font-medium text-text-muted">Common tasks</p>
 			</div>
 			<div class="grid grid-cols-2 gap-3 p-5">
 				{#each quickActions as action (action.label)}
@@ -403,8 +400,8 @@
 		<!-- Events -->
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="border-b border-border p-5">
-				<h2 class="text-base font-bold tracking-tight text-text">Aankomende Evenementen</h2>
-				<p class="text-xs font-medium text-text-muted">Deze week gepland</p>
+				<h2 class="text-base font-bold tracking-tight text-text">Upcoming Events</h2>
+				<p class="text-xs font-medium text-text-muted">Scheduled this week</p>
 			</div>
 			<div class="p-5">
 				{#each events as event, i (event.title)}
