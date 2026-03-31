@@ -20,7 +20,8 @@
 		CircleUser,
 		BadgeEuro,
 		BookOpen,
-		Target
+		Target,
+		Palmtree
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -94,6 +95,12 @@
 			label: 'Functioneren',
 			href: '/functioneren',
 			icon: Target,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: 'Vakantiekalender',
+			href: '/vakantiekalender',
+			icon: Palmtree,
 			permission: 'EMPLOYEE.VIEW'
 		}
 	];
