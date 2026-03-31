@@ -82,6 +82,12 @@
 			href: '/leave-management',
 			icon: ClipboardCheck,
 			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: 'Salarisadministratie',
+			href: '/salary-administration',
+			icon: BadgeEuro,
+			permission: 'EMPLOYEE.VIEW'
 		}
 	];
 
