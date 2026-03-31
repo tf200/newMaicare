@@ -21,7 +21,8 @@
 		BadgeEuro,
 		BookOpen,
 		Target,
-		Palmtree
+		Palmtree,
+		GraduationCap
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -101,6 +102,12 @@
 			label: 'Vakantiekalender',
 			href: '/vakantiekalender',
 			icon: Palmtree,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: 'Trainingen',
+			href: '/trainingen',
+			icon: GraduationCap,
 			permission: 'EMPLOYEE.VIEW'
 		}
 	];

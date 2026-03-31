@@ -15,3 +15,4 @@ export * from './api/leave';
 export * from './api/salary';
 export * from './api/functioneren';
 export * from './api/vakantiekalender';
+export * from './api/trainingen';
