@@ -13,3 +13,4 @@ export * from './api/settings';
 export * from './api/handbooks';
 export * from './api/leave';
 export * from './api/salary';
+export * from './api/functioneren';

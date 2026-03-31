@@ -19,7 +19,8 @@
 		ArrowLeft,
 		CircleUser,
 		BadgeEuro,
-		BookOpen
+		BookOpen,
+		Target
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -87,6 +88,12 @@
 			label: 'Salarisadministratie',
 			href: '/salary-administration',
 			icon: BadgeEuro,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: 'Functioneren',
+			href: '/functioneren',
+			icon: Target,
 			permission: 'EMPLOYEE.VIEW'
 		}
 	];
