@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import {
+		import {
 		CalendarDays,
 		Clock,
 		Moon,
@@ -9,7 +9,14 @@
 		Loader2,
 		Plus,
 		Sparkles,
-		X
+		X,
+		CalendarCheck,
+		Users,
+		CircleDot,
+		Hourglass,
+		FileDown,
+		Mail,
+		Settings
 	} from 'lucide-svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -122,6 +129,7 @@
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 	let deletingScheduleIds = $state<string[]>([]);
 	let autoGenerateModalOpen = $state(false);
+	let activeTab = $state<'schedules' | 'open-services' | 'hours'>('schedules');
 
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	const SHIFT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -856,7 +864,144 @@
 	</div>
 {/snippet}
 
-<div class="flex h-full flex-col bg-surface">
+<div class="flex h-full flex-col gap-4 p-6">
+	<div class="flex items-center justify-between">
+		<div
+			class="flex shrink-0 rounded-xl border border-border bg-surface p-1 shadow-sm"
+		>
+			<button
+				onclick={() => (activeTab = 'schedules')}
+				class="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+				{activeTab === 'schedules'
+					? 'border border-border/50 bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
+					: 'text-text-muted hover:text-text'}"
+			>
+				<CalendarDays class="h-4 w-4" />
+				Schedules
+			</button>
+			<button
+				onclick={() => (activeTab = 'open-services')}
+				class="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+				{activeTab === 'open-services'
+					? 'border border-border/50 bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
+					: 'text-text-muted hover:text-text'}"
+			>
+				<CircleDot class="h-4 w-4" />
+				Open Services
+			</button>
+			<button
+				onclick={() => (activeTab = 'hours')}
+				class="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+				{activeTab === 'hours'
+					? 'border border-border/50 bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
+					: 'text-text-muted hover:text-text'}"
+			>
+				<Clock class="h-4 w-4" />
+				Hours
+			</button>
+		</div>
+
+		<div class="flex items-center gap-2">
+			<Button variant="outline" class="gap-2 rounded-xl">
+				<FileDown class="h-4 w-4" />
+				Export PDF
+			</Button>
+			<Button variant="outline" class="gap-2 rounded-xl">
+				<Mail class="h-4 w-4" />
+				E-mail
+			</Button>
+			<Button class="gap-2 rounded-xl">
+				<Settings class="h-4 w-4" />
+				Manage Services
+			</Button>
+		</div>
+	</div>
+
+	<header
+		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
+	>
+		<div
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+		></div>
+		<div class="relative space-y-2">
+			<h1 class="text-3xl font-bold tracking-tighter text-text">{m.schedules_management()}</h1>
+			<p class="max-w-2xl text-sm font-medium text-text-muted">
+				Plan and manage employee shifts across your care locations.
+			</p>
+		</div>
+	</header>
+
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+		<div
+			class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
+		>
+			<div
+				class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+			>
+				<CalendarCheck class="h-28 w-28" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Scheduled This Week
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">0</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">services</p>
+			</div>
+		</div>
+
+		<div
+			class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
+		>
+			<div
+				class="absolute -right-4 -bottom-4 text-emerald-600 opacity-[0.03] transition-opacity group-hover:opacity-10"
+			>
+				<Users class="h-28 w-28" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Available Employees
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">6</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">active</p>
+			</div>
+		</div>
+
+		<div
+			class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
+		>
+			<div
+				class="absolute -right-4 -bottom-4 text-amber-600 opacity-[0.03] transition-opacity group-hover:opacity-10"
+			>
+				<CircleDot class="h-28 w-28" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Open Services
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">0</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">to be filled in</p>
+			</div>
+		</div>
+
+		<div
+			class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-indigo-500/30"
+		>
+			<div
+				class="absolute -right-4 -bottom-4 text-indigo-600 opacity-[0.03] transition-opacity group-hover:opacity-10"
+			>
+				<Hourglass class="h-28 w-28" />
+			</div>
+			<div class="relative">
+				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					Hours This Week
+				</div>
+				<div class="mt-2 text-2xl font-bold tracking-tight text-indigo-600 sm:text-3xl">0</div>
+				<p class="mt-2 text-xs font-medium text-text-muted">totally planned</p>
+			</div>
+		</div>
+	</div>
+
+	<div class="flex flex-1 flex-col rounded-b-3xl border border-border/70 bg-surface">
 	<header
 		class="sticky top-0 z-20 flex shrink-0 flex-col gap-4 border-b border-border/60 bg-surface/85 px-6 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"
 	>
@@ -1221,6 +1366,7 @@
 				</div>
 			</div>
 		{/if}
+	</div>
 	</div>
 </div>
 

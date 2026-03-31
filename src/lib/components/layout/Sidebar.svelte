@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		LayoutDashboard,
 		UsersRound,
 		Calendar,
+		FileText,
+		BookMarked,
+		Clock3,
+		RefreshCw,
+		Plane,
+		ClipboardCheck,
 		X,
 		HelpCircle,
 		ChevronDown,
@@ -20,11 +27,12 @@
 	import { localizeHref, deLocalizeUrl } from '$lib/paraglide/runtime';
 	import { slide } from 'svelte/transition';
 	import { sidebarState } from '$lib/state/sidebar.svelte';
+	import { PEOPLE_APP_MODE } from '$lib/config/sidebar';
 
 	interface NavItem {
 		label: string;
 		href?: string;
-		icon: any;
+		icon: typeof LayoutDashboard;
 		permission?: string;
 		children?: { label: string; href: string; permission?: string }[];
 	}
@@ -115,7 +123,51 @@
 		}
 	];
 
-	const items = $derived(sidebarState.scopedConfig?.items ?? defaultItems);
+	const peopleAppItems: NavItem[] = [
+		{
+			label: m.my_handbook(),
+			href: '/handbook',
+			icon: BookOpen
+		},
+		{ label: m.employees(), href: '/employees', icon: UsersRound, permission: 'EMPLOYEE.VIEW' },
+		{
+			label: m.appointments(),
+			href: '/appointments',
+			icon: Calendar,
+			permission: 'DASHBOARD.VIEW'
+		},
+		{
+			label: m.organization(),
+			href: '/organization',
+			icon: HeartHandshake,
+			permission: 'ORGANISATION.VIEW'
+		},
+		{ label: 'Templates', href: '/settings/handbooks', icon: FileText },
+		{
+			label: 'Handbooks',
+			href: '/employees/handbooks',
+			icon: BookMarked,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.schedules(),
+			href: '/schedules',
+			icon: Clock3,
+			permission: 'DASHBOARD.VIEW'
+		},
+		{ label: m.swap_page_title(), href: '/shift-swaps', icon: RefreshCw },
+		{ label: m.leave(), href: '/leave', icon: Plane },
+		{
+			label: m.leave_management_label(),
+			href: '/leave-management',
+			icon: ClipboardCheck,
+			permission: 'EMPLOYEE.VIEW'
+		}
+	];
+
+	const items = $derived(
+		sidebarState.scopedConfig?.items ?? (PEOPLE_APP_MODE ? peopleAppItems : defaultItems)
+	);
 	const title = $derived(sidebarState.scopedConfig?.title);
 
 	let { collapsed = $bindable(false), mobileOpen = $bindable(false) } = $props();
@@ -196,7 +248,7 @@
 	<!-- Header -->
 	<div class="flex h-16 items-center justify-between px-4">
 		<button
-			onclick={() => goto(localizeHref('/dashboard'))}
+			onclick={() => goto(resolve(localizeHref('/dashboard')))}
 			class="group flex items-center gap-3 overflow-hidden outline-none"
 		>
 			<!-- Logo Icon -->
@@ -234,7 +286,7 @@
 				<button
 					onclick={() => {
 						sidebarState.clearScopedSidebar();
-						goto(localizeHref('/clients'));
+						goto(resolve(localizeHref('/clients')));
 					}}
 					class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-text-muted transition-all hover:bg-border/30 hover:text-text active:scale-95"
 					class:justify-center={collapsed}
@@ -295,7 +347,7 @@
 									if (hasChildren) {
 										toggleExpand(item.label);
 									} else if (item.href) {
-										goto(localizeHref(item.href));
+										goto(resolve(localizeHref(item.href)));
 									}
 								}}
 								class="{baseItem} {active ? activeItem : inactiveItem}"
@@ -332,7 +384,7 @@
 									<PermissionGuard permission={child.permission}>
 										{@const childActive = activeChildHref === child.href}
 										<button
-											onclick={() => goto(localizeHref(child.href))}
+											onclick={() => goto(resolve(localizeHref(child.href)))}
 											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
 										{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
 										>
