@@ -37,93 +37,13 @@
 		children?: { label: string; href: string; permission?: string }[];
 	}
 
-	const defaultItems: NavItem[] = [
+	const peopleAppItems: NavItem[] = [
 		{
 			label: m.dashboard(),
 			href: '/dashboard',
-			icon: LayoutDashboard,
-			permission: 'DASHBOARD.VIEW'
+			icon: LayoutDashboard
 		},
-		{
-			label: m.my_handbook(),
-			href: '/handbook',
-			icon: BookOpen
-		},
-		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
-		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
-		{
-			label: 'People',
-			icon: CircleUser,
-			children: [
-				{ label: m.employees(), href: '/employees', permission: 'EMPLOYEE.VIEW' },
-				{
-					label: m.appointments(),
-					href: '/appointments',
-					permission: 'DASHBOARD.VIEW'
-				},
-				{ label: 'Templates', href: '/settings/handbooks' },
-				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
-				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
-				{ label: m.swap_page_title(), href: '/shift-swaps' },
-				{ label: m.leave(), href: '/leave' },
-				{
-					label: m.leave_management_label(),
-					href: '/leave-management',
-					permission: 'EMPLOYEE.VIEW'
-				}
-			]
-		},
-		{
-			label: m.care_coordination(),
-			icon: HeartHandshake,
-			permission: 'CARE_COORDINATION.VIEW',
-			children: [
-				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' },
-				{ label: m.contracts(), href: '/contracts', permission: 'CARE_COORDINATION.VIEW' },
-				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' },
-				{ label: m.registrations(), href: '/registrations', permission: 'CARE_COORDINATION.VIEW' },
-				{
-					label: m.intake(),
-					href: '/intakes',
-					permission: 'CARE_COORDINATION.VIEW'
-				},
-				{
-					label: m.waiting_for_selection(),
-					href: '/waiting-list',
-					permission: 'CARE_COORDINATION.VIEW'
-				},
-				{
-					label: m.in_care(),
-					href: '/in-care',
-					permission: 'CARE_COORDINATION.VIEW'
-				},
-				{
-					label: m.evaluations(),
-					href: '/evaluations',
-					permission: 'CARE_COORDINATION.VIEW'
-				},
-				{
-					label: m.incidents(),
-					href: '/incidents',
-					permission: 'CARE_COORDINATION.VIEW'
-				}
-			]
-		},
-		{
-			label: m.finances(),
-			icon: BadgeEuro,
-			permission: 'FINANCE.VIEW',
-			children: [
-				{
-					label: m.invoices(),
-					href: '/finances/invoices',
-					permission: 'INVOICE.VIEW'
-				}
-			]
-		}
-	];
 
-	const peopleAppItems: NavItem[] = [
 		{
 			label: m.my_handbook(),
 			href: '/handbook',
@@ -166,7 +86,7 @@
 	];
 
 	const items = $derived(
-		sidebarState.scopedConfig?.items ?? (PEOPLE_APP_MODE ? peopleAppItems : defaultItems)
+		sidebarState.scopedConfig?.items ?? (PEOPLE_APP_MODE ? peopleAppItems : [])
 	);
 	const title = $derived(sidebarState.scopedConfig?.title);
 
