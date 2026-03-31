@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { Search, CheckCircle2, Clock, Calendar, XCircle, GraduationCap } from 'lucide-svelte';
 	import type { EmployeeTraining, TrainingStatus } from '$lib/types/api/trainingen';
 
@@ -13,10 +14,10 @@
 	let statusFilter = $state('all');
 
 	const statusConfig: Record<TrainingStatus, { label: string; color: string; icon: any }> = {
-		planned: { label: 'Gepland', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', icon: Calendar },
-		in_progress: { label: 'Bezig', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: Clock },
-		completed: { label: 'Afgerond', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
-		expired: { label: 'Verlopen', color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', icon: XCircle }
+		planned: { label: m.train_status_planned(), color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', icon: Calendar },
+		in_progress: { label: m.train_status_progress(), color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: Clock },
+		completed: { label: m.train_status_completed(), color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+		expired: { label: m.train_status_expired(), color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', icon: XCircle }
 	};
 
 	const filtered = $derived(
@@ -45,7 +46,7 @@
 			<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
 			<input
 				type="text"
-				placeholder="Zoek op training of medewerker..."
+				placeholder={m.train_search()}
 				bind:value={searchQuery}
 				class="h-9 w-full rounded-xl border border-border bg-surface px-3 pl-9 text-sm text-text placeholder:text-text-subtle transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
 			/>
@@ -55,7 +56,7 @@
 			value={statusFilter}
 			onchange={(e) => (statusFilter = (e.target as HTMLSelectElement).value)}
 		>
-			<option value="all">Alle statussen</option>
+			<option value="all">{m.train_all_statuses()}</option>
 			{#each Object.entries(statusConfig) as [key, cfg]}
 				<option value={key}>{cfg.label}</option>
 			{/each}
@@ -73,9 +74,9 @@
 			<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/8 dark:bg-indigo-500/5">
 				<GraduationCap class="h-6 w-6 text-indigo-400 dark:text-indigo-500" />
 			</div>
-			<p class="mt-4 text-sm font-bold text-text">Geen trainingen gevonden</p>
+			<p class="mt-4 text-sm font-bold text-text">{m.train_no_results()}</p>
 			<p class="mt-1 max-w-[280px] text-center text-xs text-text-subtle">
-				Pas de filters aan of wijs een training toe aan een medewerker
+				{m.train_no_results_desc()}
 			</p>
 		</div>
 	{:else}
@@ -111,7 +112,7 @@
 					<div class="flex items-center gap-4 shrink-0">
 						{#if et.expiry_date}
 							<div class="hidden text-right sm:block">
-								<div class="text-[10px] font-bold tracking-[0.1em] text-text-subtle uppercase">Vervalt</div>
+								<div class="text-[10px] font-bold tracking-[0.1em] text-text-subtle uppercase">{m.train_expires()}</div>
 								<div class="text-[12px] tabular-nums {getExpiryClass(et.expiry_date)}">
 									{new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(et.expiry_date))}
 								</div>
@@ -119,7 +120,7 @@
 						{/if}
 						{#if et.completed_date}
 							<div class="hidden text-right md:block">
-								<div class="text-[10px] font-bold tracking-[0.1em] text-text-subtle uppercase">Afgerond</div>
+								<div class="text-[10px] font-bold tracking-[0.1em] text-text-subtle uppercase">{m.train_finished()}</div>
 								<div class="text-[12px] tabular-nums text-text-muted">
 									{new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(et.completed_date))}
 								</div>
@@ -127,7 +128,7 @@
 						{/if}
 						<div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
 							{#if et.status !== 'completed'}
-								<button class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-all hover:bg-emerald-500/8 hover:text-emerald-600" title="Afronden">
+								<button class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-all hover:bg-emerald-500/8 hover:text-emerald-600" title={m.train_mark_complete()}>
 									<CheckCircle2 class="h-[15px] w-[15px]" />
 								</button>
 							{/if}

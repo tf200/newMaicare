@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { BadgeEuro, ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		currentMonth: Date;
@@ -31,13 +32,13 @@
 					<div class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
 						<BadgeEuro class="h-4 w-4 text-white/90" />
 					</div>
-					<span class="text-[11px] font-bold tracking-[0.2em] text-white/60 uppercase">HR & Finance</span>
+					<span class="text-[11px] font-bold tracking-[0.2em] text-white/60 uppercase">{m.salaris_hr_finance()}</span>
 				</div>
 				<h1 class="text-4xl font-extrabold tracking-tight text-white">
-					Salaris<span class="text-emerald-300">administratie</span>
+					{m.salaris_label()}
 				</h1>
 				<p class="max-w-md text-sm font-medium text-white/50">
-					Berekening op basis van ingeroosterde diensten · CAO Jeugdzorg
+					{m.salaris_subtitle()}
 				</p>
 			</div>
 
@@ -81,7 +82,7 @@
 								: 'translate-x-0.5'}"
 						></div>
 					</div>
-					<span class="text-xs font-semibold text-white/60">Pauzes meerekenen</span>
+					<span class="text-xs font-semibold text-white/60">{m.salaris_breaks()}</span>
 				</button>
 			</div>
 		</div>

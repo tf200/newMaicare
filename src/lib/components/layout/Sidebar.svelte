@@ -87,25 +87,25 @@
 			permission: 'EMPLOYEE.VIEW'
 		},
 		{
-			label: 'Salarisadministratie',
+			label: m.salaris_label(),
 			href: '/salary-administration',
 			icon: BadgeEuro,
 			permission: 'EMPLOYEE.VIEW'
 		},
 		{
-			label: 'Functioneren',
+			label: m.func_label(),
 			href: '/functioneren',
 			icon: Target,
 			permission: 'EMPLOYEE.VIEW'
 		},
 		{
-			label: 'Vakantiekalender',
+			label: m.vac_label(),
 			href: '/vakantiekalender',
 			icon: Palmtree,
 			permission: 'EMPLOYEE.VIEW'
 		},
 		{
-			label: 'Trainingen',
+			label: m.train_label(),
 			href: '/trainingen',
 			icon: GraduationCap,
 			permission: 'EMPLOYEE.VIEW'

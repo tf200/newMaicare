@@ -5,6 +5,7 @@
 	import OverzichtTab from './_components/OverzichtTab.svelte';
 	import CatalogusTab from './_components/CatalogusTab.svelte';
 	import { listMockTrainings, listMockEmployeeTrainings } from '$lib/api/trainingen.mock';
+	import { m } from '$lib/paraglide/messages';
 
 	type TabId = 'overzicht' | 'catalogus';
 	let activeTab = $state<TabId>('overzicht');
@@ -58,13 +59,13 @@
 	});
 
 	const tabs: { id: TabId; label: string; count?: number }[] = $derived([
-		{ id: 'overzicht', label: 'Overzicht', count: employeeTrainings.length },
-		{ id: 'catalogus', label: 'Catalogus', count: trainings.length }
+		{ id: 'overzicht', label: m.train_overview(), count: employeeTrainings.length },
+		{ id: 'catalogus', label: m.train_catalog(), count: trainings.length }
 	]);
 </script>
 
 <svelte:head>
-	<title>Trainingen | MaiCare</title>
+	<title>{m.train_label()} | MaiCare</title>
 </svelte:head>
 
 <section class="space-y-8">
@@ -75,12 +76,12 @@
 		<div class="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-violet-300/10 blur-2xl"></div>
 		<div class="relative px-8 py-9">
 			<div class="space-y-2">
-				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">HR & Ontwikkeling</span>
+				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">{m.train_hr_dev()}</span>
 				<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
-					Trainingen
+					{m.train_label()}
 				</h1>
 				<p class="max-w-md text-[13px] font-medium text-white/45">
-					Beheer verplichte trainingen, cursussen en certificaten
+					{m.train_subtitle()}
 				</p>
 			</div>
 		</div>

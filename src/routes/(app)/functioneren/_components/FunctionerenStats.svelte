@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Target } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		totalEmployees: number;
@@ -14,30 +15,30 @@
 
 	const items = $derived([
 		{
-			label: 'Medewerkers',
+			label: m.func_employees(),
 			value: String(totalEmployees),
-			sub: 'Actief in beoordeling',
+			sub: m.func_active_in_review(),
 			color: 'from-rose-500/12 to-rose-500/3',
 			valueColor: 'text-rose-700 dark:text-rose-300'
 		},
 		{
-			label: 'Beoordelingen',
+			label: m.func_assessments(),
 			value: String(completedCount),
-			sub: `${thisMonthCount} deze maand`,
+			sub: `${thisMonthCount} ${m.func_completed_this_month()}`,
 			color: 'from-amber-500/12 to-amber-500/3',
 			valueColor: 'text-amber-700 dark:text-amber-300'
 		},
 		{
-			label: 'Gem. Score',
+			label: m.func_avg_score(),
 			value: avgScore !== null ? avgScore.toFixed(1) : '—',
-			sub: avgScore !== null ? 'van 10' : 'Nog geen scores',
+			sub: avgScore !== null ? m.func_of_ten() : m.func_no_scores(),
 			color: 'from-emerald-500/12 to-emerald-500/3',
 			valueColor: 'text-emerald-700 dark:text-emerald-300'
 		},
 		{
-			label: 'Dekking',
+			label: m.func_coverage(),
 			value: `${coveragePercent}%`,
-			sub: `${coveredCount} van ${totalEmployees} beoordeeld`,
+			sub: `${coveredCount} ${m.func_assessed_of()} ${totalEmployees}`,
 			color: 'from-indigo-500/12 to-indigo-500/3',
 			valueColor: 'text-indigo-700 dark:text-indigo-300'
 		}

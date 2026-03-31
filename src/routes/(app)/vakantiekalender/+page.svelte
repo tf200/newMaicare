@@ -5,6 +5,7 @@
 	import CalendarHeader from './_components/CalendarHeader.svelte';
 	import CalendarGrid from './_components/CalendarGrid.svelte';
 	import { listMockLeaveRequests } from '$lib/api/vakantiekalender.mock';
+	import { m } from '$lib/paraglide/messages';
 
 	let leaveRequests = $state<LeaveRequest[]>([]);
 	let loading = $state(true);
@@ -45,7 +46,7 @@
 </script>
 
 <svelte:head>
-	<title>Vakantiekalender | MaiCare</title>
+	<title>{m.vac_label()} | MaiCare</title>
 </svelte:head>
 
 <section class="space-y-6">
@@ -56,13 +57,13 @@
 		<div class="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-teal-300/10 blur-2xl"></div>
 		<div class="relative flex items-end justify-between px-8 py-9">
 			<div class="space-y-2">
-				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">HR & Planning</span>
-				<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
-					Vakantiekalender
-				</h1>
-				<p class="max-w-md text-[13px] font-medium text-white/45">
-					Visueel overzicht van alle goedgekeurde verlofaanvragen per medewerker
-				</p>
+			<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">{m.vac_hr_planning()}</span>
+			<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
+				{m.vac_label()}
+			</h1>
+			<p class="max-w-md text-[13px] font-medium text-white/45">
+				{m.vac_subtitle()}
+			</p>
 			</div>
 			<!-- Month nav in header -->
 			<div class="hidden items-center gap-2 sm:flex">

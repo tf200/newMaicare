@@ -41,6 +41,7 @@
 		calculateOrtAmounts,
 		combineOrtBreakdowns
 	} from '$lib/utils/ort';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props();
 
@@ -492,10 +493,10 @@
 	});
 
 	const tabs: { id: TabId; label: string }[] = [
-		{ id: 'salary', label: 'Salarisoverzicht' },
-		{ id: 'zzp', label: "ZZP'ers" },
-		{ id: 'ort', label: 'ORT Overzicht' },
-		{ id: 'rates', label: 'Tarieven' }
+		{ id: 'salary', label: m.salaris_overview() },
+		{ id: 'zzp', label: m.salaris_zzp() },
+		{ id: 'ort', label: m.salaris_ort() },
+		{ id: 'rates', label: m.salaris_rates() }
 	];
 
 	function handleDownloadPdf(_row: EmployeeSalaryRow) {
@@ -508,7 +509,7 @@
 </script>
 
 <svelte:head>
-	<title>Salarisadministratie | MaiCare</title>
+	<title>{m.salaris_label()}</title>
 </svelte:head>
 
 <section class="space-y-8">
@@ -553,7 +554,7 @@
 					/>
 					<input
 						type="text"
-						placeholder="Zoek medewerker..."
+						placeholder={m.salaris_search()}
 						bind:value={searchQuery}
 						class="h-9 w-full rounded-xl border border-border bg-surface px-3 pl-9 text-sm text-text placeholder:text-text-subtle transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20"
 					/>
@@ -562,7 +563,7 @@
 					bind:value={employeeFilter}
 					size="sm"
 					options={[
-						{ value: 'all', label: 'Alle medewerkers' },
+						{ value: 'all', label: m.salaris_all_employees() },
 						...visibleEmployees
 							.sort((a, b) => a.first_name.localeCompare(b.first_name))
 							.map((emp) => ({
@@ -576,10 +577,10 @@
 					bind:value={departmentFilter}
 					size="sm"
 					options={[
-						{ value: 'all', label: 'Alle afdelingen' },
+						{ value: 'all', label: m.salaris_all_depts() },
 						...departments.map((d) => ({ value: d, label: d }))
 					]}
-					placeholder="Alle afdelingen"
+					placeholder={m.salaris_all_depts()}
 				/>
 			</div>
 

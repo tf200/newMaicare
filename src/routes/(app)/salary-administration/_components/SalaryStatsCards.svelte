@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Euro, Clock, Calculator, TrendingUp } from 'lucide-svelte';
 	import type { SalaryTotals } from '$lib/types/api/salary';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		totals: SalaryTotals;
@@ -19,7 +20,7 @@
 
 	const items = $derived([
 		{
-			label: 'Totaal Uren',
+			label: m.salaris_total_hours(),
 			value: totals.regularHours.toFixed(1),
 			unit: 'uur',
 			detail: `${totals.totalShifts} diensten`,
@@ -28,7 +29,7 @@
 			line: 'bg-teal-500'
 		},
 		{
-			label: 'ORT Uren',
+			label: m.salaris_ort_hours(),
 			value: totals.totalOrtHours.toFixed(1),
 			unit: 'uur',
 			detail: `${totals.eveningOrtHours.toFixed(1)} avond · ${totals.nightOrtHours.toFixed(1)} nacht · ${totals.saturdayOrtHours.toFixed(1)} za`,
@@ -37,7 +38,7 @@
 			line: 'bg-amber-500'
 		},
 		{
-			label: 'Regulier Loon',
+			label: m.salaris_regular_pay(),
 			value: formatCurrency(totals.regularPay),
 			unit: '',
 			detail: 'Exclusief ORT',
@@ -46,7 +47,7 @@
 			line: 'bg-indigo-500'
 		},
 		{
-			label: 'Bruto Totaal',
+			label: m.salaris_gross_total(),
 			value: formatCurrency(totals.totalGross),
 			unit: '',
 			detail: `+${formatCurrency(totals.totalOrt)} ORT toeslag`,

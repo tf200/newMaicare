@@ -14,6 +14,7 @@
 		listMockWorkAssignments,
 		listMockFunctionerenEmployees
 	} from '$lib/api/functioneren.mock';
+	import { m } from '$lib/paraglide/messages';
 
 	type TabId = 'overzicht' | 'nieuw' | 'aankomend' | 'werkadvies';
 	let activeTab = $state<TabId>('overzicht');
@@ -129,15 +130,15 @@
 	}
 
 	const tabs: { id: TabId; label: string; count?: number }[] = $derived([
-		{ id: 'overzicht', label: 'Overzicht', count: assessments.length },
-		{ id: 'nieuw', label: 'Nieuw' },
-		{ id: 'aankomend', label: 'Aankomend', count: upcomingItems.length },
-		{ id: 'werkadvies', label: 'Werkadvies', count: workAssignments.length }
+		{ id: 'overzicht', label: m.func_overview(), count: assessments.length },
+		{ id: 'nieuw', label: m.func_new() },
+		{ id: 'aankomend', label: m.func_upcoming(), count: upcomingItems.length },
+		{ id: 'werkadvies', label: m.func_advice(), count: workAssignments.length }
 	]);
 </script>
 
 <svelte:head>
-	<title>Functioneren | MaiCare</title>
+	<title>{m.func_label()} | MaiCare</title>
 </svelte:head>
 
 <section class="space-y-8">
@@ -148,22 +149,22 @@
 		<div class="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-pink-300/10 blur-2xl"></div>
 		<div class="relative flex items-end justify-between px-8 py-9">
 			<div class="space-y-2">
-				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">HR & Ontwikkeling</span>
+				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">{m.func_hr_dev()}</span>
 				<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
-					Functioneren
+					{m.func_label()}
 				</h1>
 				<p class="max-w-md text-[13px] font-medium text-white/45">
-					Competentiebeoordelingen, POP-gesprekken en werkadvies op basis van CAO Jeugdzorg
+					{m.func_subtitle()}
 				</p>
 			</div>
 			<div class="hidden items-baseline gap-6 sm:flex">
 				<div class="text-right">
-					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">Dekking</div>
+					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">{m.func_coverage()}</div>
 					<div class="text-3xl font-extrabold text-white">{coveragePercent}<span class="text-lg text-white/60">%</span></div>
 				</div>
 				<div class="h-10 w-px bg-white/15"></div>
 				<div class="text-right">
-					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">Gem. Score</div>
+					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">{m.func_avg_score()}</div>
 					<div class="text-3xl font-extrabold text-white">{avgScore !== null ? avgScore.toFixed(1) : '—'}</div>
 				</div>
 			</div>
@@ -213,7 +214,7 @@
 </section>
 
 <!-- Detail Modal -->
-<Modal bind:open={detailOpen} title="Beoordelingsdetails" description="Bekijk scores per competentiedomein" size="lg">
+<Modal bind:open={detailOpen} title={m.func_detail_title()} description={m.func_detail_desc()} size="lg">
 	{#snippet children()}
 		{#if selectedAssessment}
 			<AssessmentDetail assessment={selectedAssessment} scores={detailScores} onClose={() => (detailOpen = false)} />

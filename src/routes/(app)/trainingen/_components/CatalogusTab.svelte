@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { GraduationCap, Clock, Shield, Users } from 'lucide-svelte';
 	import type { Training } from '$lib/types/api/trainingen';
 
@@ -29,10 +30,10 @@
 <div>
 	<div class="mb-5 flex items-baseline justify-between">
 		<div>
-			<h2 class="text-lg font-extrabold tracking-tight text-text">Trainingscatalogus</h2>
-			<p class="mt-0.5 text-xs font-medium text-text-subtle">Beschikbare trainingen en cursussen</p>
+			<h2 class="text-lg font-extrabold tracking-tight text-text">{m.train_catalog_title()}</h2>
+			<p class="mt-0.5 text-xs font-medium text-text-subtle">{m.train_catalog_subtitle()}</p>
 		</div>
-		<span class="text-xs font-semibold tabular-nums text-text-subtle">{trainings.length} trainingen</span>
+		<span class="text-xs font-semibold tabular-nums text-text-subtle">{m.train_count({ count: trainings.length })}</span>
 	</div>
 
 	{#if loading}
@@ -56,7 +57,7 @@
 						</div>
 						{#if training.is_mandatory}
 							<span class="inline-flex items-center rounded-lg bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-								Verplicht
+								{m.train_mandatory()}
 							</span>
 						{/if}
 					</div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages';
 	import { GraduationCap, CheckCircle2, XCircle, AlertTriangle } from 'lucide-svelte';
 
 	interface Props {
@@ -13,10 +14,10 @@
 
 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 	{#each [
-		{ label: 'Totaal', value: String(total), color: 'from-indigo-500/12 to-indigo-500/3', valColor: 'text-indigo-700 dark:text-indigo-300', icon: GraduationCap },
-		{ label: 'Afgerond', value: String(completed), color: 'from-emerald-500/12 to-emerald-500/3', valColor: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle2 },
-		{ label: 'Verlopen', value: String(expired), color: 'from-rose-500/12 to-rose-500/3', valColor: 'text-rose-700 dark:text-rose-300', icon: XCircle },
-		{ label: 'Binnenkort', value: String(expiringSoon), color: 'from-amber-500/12 to-amber-500/3', valColor: 'text-amber-700 dark:text-amber-300', icon: AlertTriangle }
+		{ label: m.train_total(), value: String(total), color: 'from-indigo-500/12 to-indigo-500/3', valColor: 'text-indigo-700 dark:text-indigo-300', icon: GraduationCap },
+		{ label: m.train_completed(), value: String(completed), color: 'from-emerald-500/12 to-emerald-500/3', valColor: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle2 },
+		{ label: m.train_expired(), value: String(expired), color: 'from-rose-500/12 to-rose-500/3', valColor: 'text-rose-700 dark:text-rose-300', icon: XCircle },
+		{ label: m.train_expiring_soon(), value: String(expiringSoon), color: 'from-amber-500/12 to-amber-500/3', valColor: 'text-amber-700 dark:text-amber-300', icon: AlertTriangle }
 	] as stat, i}
 		<div class="relative overflow-hidden rounded-2xl border border-border/80 bg-surface" style="animation: fade-in 400ms cubic-bezier(0.22,1,0.36,1) both; animation-delay: {i * 80}ms">
 			<div class="absolute inset-0 bg-gradient-to-br {stat.color}"></div>

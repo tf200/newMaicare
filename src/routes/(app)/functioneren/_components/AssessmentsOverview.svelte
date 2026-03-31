@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Eye, Trash2, ClipboardList } from 'lucide-svelte';
 	import type { Assessment } from '$lib/types/api/functioneren';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		assessments: Assessment[];
@@ -26,8 +27,8 @@
 <div>
 	<div class="mb-5 flex items-baseline justify-between">
 		<div>
-			<h2 class="text-lg font-extrabold tracking-tight text-text">Beoordelingsoverzicht</h2>
-			<p class="mt-0.5 text-xs font-medium text-text-subtle">Alle competentiebeoordelingen</p>
+			<h2 class="text-lg font-extrabold tracking-tight text-text">{m.func_all_assessments()}</h2>
+			<p class="mt-0.5 text-xs font-medium text-text-subtle">{m.func_all_assessments()}</p>
 		</div>
 		<span class="text-xs font-semibold tabular-nums text-text-subtle">{assessments.length} totaal</span>
 	</div>
@@ -43,7 +44,7 @@
 			<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/8 dark:bg-rose-500/5">
 				<ClipboardList class="h-6 w-6 text-rose-400 dark:text-rose-500" />
 			</div>
-			<p class="mt-4 text-sm font-bold text-text">Nog geen beoordelingen</p>
+			<p class="mt-4 text-sm font-bold text-text">{m.func_no_results()}</p>
 			<p class="mt-1 max-w-[280px] text-center text-xs text-text-subtle">
 				Start een nieuwe beoordeling om het functioneren van medewerkers te evalueren
 			</p>
@@ -53,10 +54,10 @@
 			<table class="w-full">
 				<thead>
 					<tr class="border-b border-border">
-						<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Medewerker</th>
+						<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.salaris_employee()}</th>
 						<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Datum</th>
-						<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Score</th>
-						<th class="pb-2.5 pt-0 text-center text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Status</th>
+						<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_detail_score()}</th>
+						<th class="pb-2.5 pt-0 text-center text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_status_label()}</th>
 						<th class="pb-2.5 pt-0 w-20"></th>
 					</tr>
 				</thead>
@@ -85,9 +86,9 @@
 							</td>
 							<td class="py-3 text-center">
 								{#if a.status === 'completed'}
-									<span class="inline-flex items-center rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-emerald-700 dark:text-emerald-400">Voltooid</span>
+									<span class="inline-flex items-center rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-emerald-700 dark:text-emerald-400">{m.func_status_completed()}</span>
 								{:else}
-									<span class="inline-flex items-center rounded-lg bg-border/40 px-2.5 py-1 text-[10px] font-bold tracking-wide text-text-muted">Concept</span>
+									<span class="inline-flex items-center rounded-lg bg-border/40 px-2.5 py-1 text-[10px] font-bold tracking-wide text-text-muted">{m.func_status_draft()}</span>
 								{/if}
 							</td>
 							<td class="py-3">
