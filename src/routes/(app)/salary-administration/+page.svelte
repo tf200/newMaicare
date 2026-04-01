@@ -2,10 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { addMonths, subMonths, format } from 'date-fns';
-	import { Search } from 'lucide-svelte';
+
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
+
 	import type {
 		EmployeeSalaryRow,
 		ZzpSalaryRow,
@@ -546,44 +546,6 @@
 	<!-- Content area (no card wrapper) -->
 	<div>
 		{#if activeTab === 'salary'}
-			<!-- Filters inline -->
-			<div class="mb-6 flex flex-col gap-3 sm:flex-row">
-				<div class="relative flex-1">
-					<Search
-						class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle"
-					/>
-					<input
-						type="text"
-						placeholder={m.salaris_search()}
-						bind:value={searchQuery}
-						class="h-9 w-full rounded-xl border border-border bg-surface px-3 pl-9 text-sm text-text placeholder:text-text-subtle transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20"
-					/>
-				</div>
-				<Select
-					bind:value={employeeFilter}
-					size="sm"
-					options={[
-						{ value: 'all', label: m.salaris_all_employees() },
-						...visibleEmployees
-							.sort((a, b) => a.first_name.localeCompare(b.first_name))
-							.map((emp) => ({
-								value: emp.id,
-								label: `${emp.first_name} ${emp.last_name}`
-							}))
-					]}
-					placeholder="Alle medewerkers"
-				/>
-				<Select
-					bind:value={departmentFilter}
-					size="sm"
-					options={[
-						{ value: 'all', label: m.salaris_all_depts() },
-						...departments.map((d) => ({ value: d, label: d }))
-					]}
-					placeholder={m.salaris_all_depts()}
-				/>
-			</div>
-
 			<SalaryTable
 				rows={employeeSalaryData}
 				{totals}
@@ -591,6 +553,11 @@
 				{includeBreaks}
 				onDownloadPdf={handleDownloadPdf}
 				onPreviewPdf={handlePreviewPdf}
+				bind:searchQuery
+				bind:employeeFilter
+				bind:departmentFilter
+				{visibleEmployees}
+				{departments}
 			/>
 		{:else if activeTab === 'zzp'}
 			<ZZPTab rows={zzpSalaryData} totals={zzpTotals} {loading} />

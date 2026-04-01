@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Users, Clock, Euro } from 'lucide-svelte';
 	import type { ZzpSalaryRow, ZzpTotals } from '$lib/types/api/salary';
+	import StatsCard from '$lib/components/ui/StatsCard.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		rows: ZzpSalaryRow[];
@@ -17,31 +19,39 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Summary strip -->
-	<div class="flex gap-4 overflow-x-auto">
-		{#each [
-			{ label: 'Actief', value: `${activeCount}`, sub: `van ${rows.length} totaal`, icon: Users, color: 'text-teal-600 dark:text-teal-400' },
-			{ label: 'Uren', value: totals.totalHours.toFixed(1), sub: `${totals.totalShifts} diensten`, icon: Clock, color: 'text-indigo-600 dark:text-indigo-400' },
-			{ label: 'Totale Kosten', value: fmt(totals.totalCost), sub: 'deze maand', icon: Euro, color: 'text-orange-600 dark:text-orange-400' }
-		] as stat}
-			<div class="flex min-w-[200px] flex-1 items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-4">
-				<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-border/30 {stat.color}">
-					<stat.icon class="h-4 w-4" />
-				</div>
-				<div>
-					<div class="text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{stat.label}</div>
-					<div class="mt-0.5 text-xl font-extrabold tracking-tight tabular-nums text-text">{stat.value}</div>
-					<div class="text-[11px] text-text-subtle">{stat.sub}</div>
-				</div>
-			</div>
-		{/each}
+	<!-- Summary cards -->
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<StatsCard
+			label={m.salaris_zzp_active()}
+			value={activeCount}
+			sub={m.salaris_zzp_of_total({ total: rows.length })}
+			icon={Users}
+			color="text-teal-600"
+			hoverBorder="hover:border-teal-500/30"
+		/>
+		<StatsCard
+			label={m.salaris_zzp_hours()}
+			value={totals.totalHours.toFixed(1)}
+			sub={`${totals.totalShifts} ${m.salaris_shifts()}`}
+			icon={Clock}
+			color="text-indigo-600"
+			hoverBorder="hover:border-indigo-500/30"
+		/>
+		<StatsCard
+			label={m.salaris_zzp_costs()}
+			value={fmt(totals.totalCost)}
+			sub={m.salaris_zzp_this_month()}
+			icon={Euro}
+			color="text-orange-600"
+			hoverBorder="hover:border-orange-500/30"
+		/>
 	</div>
 
 	<!-- Table -->
 	<div>
 		<div class="border-b-2 border-text/10 pb-4 mb-1">
-			<h2 class="text-lg font-extrabold tracking-tight text-text">ZZP'ers</h2>
-			<p class="text-xs text-text-subtle">Ingehuurde freelancers en totale kosten</p>
+			<h2 class="text-lg font-extrabold tracking-tight text-text">{m.salaris_zzp_title()}</h2>
+			<p class="text-xs text-text-subtle">{m.salaris_zzp_subtitle()}</p>
 		</div>
 
 		{#if loading}
@@ -53,18 +63,18 @@
 		{:else if rows.length === 0}
 			<div class="flex flex-col items-center py-16 text-text-subtle">
 				<Users class="mb-3 h-10 w-10 opacity-30" />
-				<p class="text-sm font-medium">Geen ZZP'ers gevonden</p>
+				<p class="text-sm font-medium">{m.salaris_zzp_no_results()}</p>
 			</div>
 		{:else}
 			<div class="overflow-x-auto">
 				<table class="w-full min-w-[600px]">
 					<thead>
 						<tr class="border-b border-text/8">
-							<th class="pb-3 pt-4 text-left text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">ZZP'er</th>
-							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">Diensten</th>
-							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">Uren</th>
-							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">Tarief</th>
-							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">Kosten</th>
+							<th class="pb-3 pt-4 text-left text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{m.salaris_zzp()}</th>
+							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{m.salaris_shifts()}</th>
+							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{m.salaris_hours()}</th>
+							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{m.salaris_zzp_tarieven()}</th>
+							<th class="pb-3 pt-4 text-right text-[10px] font-bold tracking-[0.15em] text-text-subtle uppercase">{m.salaris_zzp_kosten()}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -92,7 +102,7 @@
 					</tbody>
 					<tfoot>
 						<tr class="border-t-2 border-text/10">
-							<td class="py-4 text-sm font-extrabold text-text">Totaal</td>
+							<td class="py-4 text-sm font-extrabold text-text">{m.salaris_zzp_total_label()}</td>
 							<td class="py-4 text-right text-sm font-bold tabular-nums text-text">{totals.totalShifts}</td>
 							<td class="py-4 text-right text-sm font-bold tabular-nums text-text">{totals.totalHours.toFixed(1)}</td>
 							<td class="py-4 text-right text-sm text-text-subtle">—</td>

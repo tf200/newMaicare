@@ -22,7 +22,9 @@
 		BookOpen,
 		Target,
 		Palmtree,
-		GraduationCap
+		GraduationCap,
+		FileSignature,
+		Receipt
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -108,6 +110,24 @@
 			label: m.train_label(),
 			href: '/trainingen',
 			icon: GraduationCap,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.ondertekenen_label(),
+			href: '/digitaal-ondertekenen',
+			icon: FileSignature,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.decl_label(),
+			href: '/declaraties',
+			icon: Receipt,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.uren_label(),
+			href: '/uren',
+			icon: Clock3,
 			permission: 'EMPLOYEE.VIEW'
 		}
 	];
@@ -212,7 +232,7 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-secondary">.</span>
+				MaiHr<span class="text-secondary">.</span>
 			</span>
 		</button>
 

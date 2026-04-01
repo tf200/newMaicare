@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Eye, MessageSquare, Trash2, Clock, Send, CheckCircle, AlertCircle, ClipboardList } from 'lucide-svelte';
 	import type { WorkAssignment } from '$lib/types/api/functioneren';
+	import StatsCard from '$lib/components/ui/StatsCard.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		assignments: WorkAssignment[];
@@ -32,32 +34,39 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Summary strip -->
-	<div class="grid grid-cols-3 gap-3">
-		{#each summaryItems as stat, i}
-			<div class="relative overflow-hidden rounded-2xl border border-border/80 bg-surface" style="animation: fade-in 400ms cubic-bezier(0.22,1,0.36,1) both; animation-delay: {i * 80}ms">
-				<div class="absolute inset-0 bg-gradient-to-br {stat.color}"></div>
-				<div class="relative flex items-center gap-4 px-5 py-4">
-					<div class="flex h-10 w-10 items-center justify-center rounded-xl {stat.valColor} bg-surface/60 shadow-sm">
-						<stat.icon class="h-4 w-4" />
-					</div>
-					<div>
-						<div class="text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{stat.label}</div>
-						<div class="mt-1 text-[22px] leading-none font-extrabold tracking-tight tabular-nums {stat.valColor}">{stat.value}</div>
-					</div>
-				</div>
-			</div>
-		{/each}
+	<!-- Summary cards -->
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<StatsCard
+			label={m.func_open()}
+			value={openCount}
+			icon={Clock}
+			color="text-amber-600"
+			hoverBorder="hover:border-amber-500/30"
+		/>
+		<StatsCard
+			label={m.func_to_review()}
+			value={submittedCount}
+			icon={Send}
+			color="text-indigo-600"
+			hoverBorder="hover:border-indigo-500/30"
+		/>
+		<StatsCard
+			label={m.func_done()}
+			value={doneCount}
+			icon={CheckCircle}
+			color="text-emerald-600"
+			hoverBorder="hover:border-emerald-500/30"
+		/>
 	</div>
 
 	<!-- Table -->
 	<div>
 		<div class="mb-5 flex items-baseline justify-between">
 			<div>
-				<h2 class="text-lg font-extrabold tracking-tight text-text">Werkadvies</h2>
-				<p class="mt-0.5 text-xs font-medium text-text-subtle">Automatisch gegenereerd bij lage beoordelingsscores</p>
+				<h2 class="text-lg font-extrabold tracking-tight text-text">{m.func_advice_title()}</h2>
+				<p class="mt-0.5 text-xs font-medium text-text-subtle">{m.func_advice_subtitle()}</p>
 			</div>
-			<span class="text-xs font-semibold tabular-nums text-text-subtle">{assignments.length} opdrachten</span>
+			<span class="text-xs font-semibold tabular-nums text-text-subtle">{m.func_advice_count({ count: assignments.length })}</span>
 		</div>
 
 		{#if loading}
@@ -71,9 +80,9 @@
 				<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/8 dark:bg-emerald-500/5">
 					<ClipboardList class="h-6 w-6 text-emerald-400 dark:text-emerald-500" />
 				</div>
-				<p class="mt-4 text-sm font-bold text-text">Geen openstaand werkadvies</p>
+				<p class="mt-4 text-sm font-bold text-text">{m.func_no_advice()}</p>
 				<p class="mt-1 max-w-[280px] text-center text-xs text-text-subtle">
-					Werkadvies wordt automatisch aangemaakt wanneer een score lager dan 6 wordt gegeven
+					{m.func_no_advice_desc()}
 				</p>
 			</div>
 		{:else}
@@ -81,11 +90,11 @@
 				<table class="w-full">
 					<thead>
 						<tr class="border-b border-border">
-							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Medewerker</th>
-							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Domein</th>
-							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Opdracht</th>
-							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Deadline</th>
-							<th class="pb-2.5 pt-0 text-center text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">Status</th>
+							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.salaris_employee()}</th>
+							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_domain()}</th>
+							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_assignment()}</th>
+							<th class="pb-2.5 pt-0 text-left text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_deadline()}</th>
+							<th class="pb-2.5 pt-0 text-center text-[10px] font-bold tracking-[0.14em] text-text-subtle uppercase">{m.func_status_label()}</th>
 							<th class="pb-2.5 pt-0 w-24"></th>
 						</tr>
 					</thead>
@@ -103,19 +112,19 @@
 								<td class="py-3 text-center">
 									{#if a.status === 'open'}
 										<span class="inline-flex items-center rounded-lg bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-											<Clock class="mr-1 h-2.5 w-2.5" /> Open
+											<Clock class="mr-1 h-2.5 w-2.5" /> {m.func_status_open()}
 										</span>
 									{:else if a.status === 'submitted'}
 										<span class="inline-flex items-center rounded-lg bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-											<Send class="mr-1 h-2.5 w-2.5" /> Ingediend
+											<Send class="mr-1 h-2.5 w-2.5" /> {m.func_status_submitted()}
 										</span>
 									{:else if a.status === 'approved'}
 										<span class="inline-flex items-center rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-											<CheckCircle class="mr-1 h-2.5 w-2.5" /> Goedgekeurd
+											<CheckCircle class="mr-1 h-2.5 w-2.5" /> {m.func_status_approved()}
 										</span>
 									{:else}
 										<span class="inline-flex items-center rounded-lg bg-error/10 px-2 py-1 text-[10px] font-bold text-error">
-											<AlertCircle class="mr-1 h-2.5 w-2.5" /> Revisie
+											<AlertCircle class="mr-1 h-2.5 w-2.5" /> {m.func_status_revision()}
 										</span>
 									{/if}
 								</td>

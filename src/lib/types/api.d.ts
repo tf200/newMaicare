@@ -16,3 +16,6 @@ export * from './api/salary';
 export * from './api/functioneren';
 export * from './api/vakantiekalender';
 export * from './api/trainingen';
+export * from './api/ondertekenen';
+export * from './api/declaraties';
+export * from './api/uren';
