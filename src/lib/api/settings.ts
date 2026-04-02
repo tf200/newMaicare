@@ -60,15 +60,15 @@ export function listDepartments(
 	search.set('page_size', String(params.pageSize ?? 100));
 
 	return api.get<ApiEnvelope<ListDepartmentsResponse>>(
-		`/settings/departments?${search.toString()}`,
+		`/departments?${search.toString()}`,
 		options
 	);
 }
 
 export function createDepartment(payload: CreateDepartmentRequest) {
-	return api.post<ApiEnvelope<CreateDepartmentResponse>>('/settings/departments', payload);
+	return api.post<ApiEnvelope<CreateDepartmentResponse>>('/departments', payload);
 }
 
 export function updateDepartment(id: string, payload: UpdateDepartmentRequest) {
-	return api.put<ApiEnvelope<UpdateDepartmentResponse>>(`/settings/departments/${id}`, payload);
+	return api.put<ApiEnvelope<UpdateDepartmentResponse>>(`/departments/${id}`, payload);
 }

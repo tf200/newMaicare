@@ -565,7 +565,6 @@
 			description=""
 			emptyTitle={m.late_empty()}
 			emptyDescription=""
-			surface="plain"
 			headerInline
 			currentPage={lateArrivalCurrentPage}
 			pageSize={lateArrivalPageSize}

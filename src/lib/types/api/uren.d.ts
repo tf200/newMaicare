@@ -15,3 +15,38 @@ export interface TimeEntry {
 	status: TimeEntryStatus;
 	created_at: string;
 }
+
+export type TimeEntriesListStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+export type TimeEntriesHourType = 'normal' | 'overtime' | 'travel' | 'leave' | 'sick' | 'training';
+
+export interface TimeEntryListItemResponse {
+	id: string;
+	employee_id: string;
+	employee_name: string;
+	schedule_id: string | null;
+	entry_date: string;
+	hours: number;
+	break_minutes: number;
+	hour_type: TimeEntriesHourType;
+	project_name: string | null;
+	project_number: string | null;
+	client_name: string | null;
+	activity_category: string | null;
+	activity_description: string | null;
+	status: TimeEntriesListStatus;
+	submitted_at: string | null;
+	approved_at: string | null;
+	approved_by_employee_id: string | null;
+	approved_by_name: string | null;
+	rejection_reason: string | null;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ListTimeEntriesParams {
+	page: number;
+	pageSize: number;
+	employeeSearch?: string;
+	status?: TimeEntriesListStatus;
+}

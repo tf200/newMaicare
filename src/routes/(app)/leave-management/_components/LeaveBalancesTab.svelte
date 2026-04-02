@@ -168,7 +168,6 @@
 			title={m.leave_balance_title()}
 			description={m.leave_balance_subtitle()}
 			filters={tableFilters}
-			surface="plain"
 			headerInline
 			currentPage={data.pagination.page}
 			pageSize={data.pagination.pageSize}

@@ -8,6 +8,7 @@
 	import WerkadviesTab from './_components/WerkadviesTab.svelte';
 	import AssessmentDetail from './_components/AssessmentDetail.svelte';
 	import AssessmentWizard from './_components/AssessmentWizard.svelte';
+	import FunctionerenPageHeader from './_components/FunctionerenPageHeader.svelte';
 	import {
 		listMockAssessments,
 		listMockAssessmentScores,
@@ -141,35 +142,8 @@
 	<title>{m.func_label()} | MaiCare</title>
 </svelte:head>
 
-<section class="space-y-8">
-	<!-- Header -->
-	<header class="relative overflow-hidden rounded-3xl">
-		<div class="absolute inset-0 bg-gradient-to-br from-rose-500 via-rose-600 to-pink-700 dark:from-rose-900 dark:via-rose-950 dark:to-pink-950"></div>
-		<div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/[0.07] blur-3xl"></div>
-		<div class="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-pink-300/10 blur-2xl"></div>
-		<div class="relative flex items-end justify-between px-8 py-9">
-			<div class="space-y-2">
-				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">{m.func_hr_dev()}</span>
-				<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
-					{m.func_label()}
-				</h1>
-				<p class="max-w-md text-[13px] font-medium text-white/45">
-					{m.func_subtitle()}
-				</p>
-			</div>
-			<div class="hidden items-baseline gap-6 sm:flex">
-				<div class="text-right">
-					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">{m.func_coverage()}</div>
-					<div class="text-3xl font-extrabold text-white">{coveragePercent}<span class="text-lg text-white/60">%</span></div>
-				</div>
-				<div class="h-10 w-px bg-white/15"></div>
-				<div class="text-right">
-					<div class="text-[10px] font-bold tracking-[0.14em] text-white/40 uppercase">{m.func_avg_score()}</div>
-					<div class="text-3xl font-extrabold text-white">{avgScore !== null ? avgScore.toFixed(1) : '—'}</div>
-				</div>
-			</div>
-		</div>
-	</header>
+<section class="space-y-6">
+	<FunctionerenPageHeader />
 
 	<FunctionerenStats
 		totalEmployees={employees.length}
@@ -180,36 +154,43 @@
 		coveredCount={coveredIds.size}
 	/>
 
-	<!-- Tabs -->
-	<div class="flex items-center gap-1">
-		{#each tabs as tab}
-			<button
-				class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab === tab.id
-					? 'bg-surface text-text shadow-sm border border-border/60'
-					: 'text-text-subtle hover:bg-border/30 hover:text-text-muted'}"
-				onclick={() => (activeTab = tab.id)}
-			>
-				{tab.label}
-				{#if tab.count !== undefined && tab.count > 0}
-					<span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab === tab.id ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-border/40 text-text-muted'}">
-						{tab.count}
-					</span>
-				{/if}
-			</button>
-		{/each}
-	</div>
+	<!-- Main Content Container -->
+	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+		<div class="p-6">
+			<div class="space-y-6">
+				<!-- Tabs -->
+				<div class="flex items-center gap-1">
+					{#each tabs as tab}
+						<button
+							class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab === tab.id
+								? 'bg-surface text-text shadow-sm border border-border/60'
+								: 'text-text-subtle hover:bg-border/30 hover:text-text-muted'}"
+							onclick={() => (activeTab = tab.id)}
+						>
+							{tab.label}
+							{#if tab.count !== undefined && tab.count > 0}
+								<span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab === tab.id ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-border/40 text-text-muted'}">
+									{tab.count}
+								</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
 
-	<!-- Content -->
-	<div>
-		{#if activeTab === 'overzicht'}
-			<AssessmentsOverview {assessments} {loading} onView={handleView} onDelete={handleDelete} />
-		{:else if activeTab === 'nieuw'}
-			<AssessmentWizard {employees} />
-		{:else if activeTab === 'aankomend'}
-			<UpcomingAssessmentsTab items={upcomingItems} {loading} />
-		{:else if activeTab === 'werkadvies'}
-			<WerkadviesTab assignments={workAssignments} {loading} />
-		{/if}
+				<!-- Content -->
+				<div>
+					{#if activeTab === 'overzicht'}
+						<AssessmentsOverview {assessments} {loading} onView={handleView} onDelete={handleDelete} />
+					{:else if activeTab === 'nieuw'}
+						<AssessmentWizard {employees} />
+					{:else if activeTab === 'aankomend'}
+						<UpcomingAssessmentsTab items={upcomingItems} {loading} />
+					{:else if activeTab === 'werkadvies'}
+						<WerkadviesTab assignments={workAssignments} {loading} />
+					{/if}
+				</div>
+			</div>
+		</div>
 	</div>
 </section>
 

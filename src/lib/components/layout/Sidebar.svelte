@@ -58,8 +58,7 @@
 		{
 			label: m.appointments(),
 			href: '/appointments',
-			icon: Calendar,
-			permission: 'DASHBOARD.VIEW'
+			icon: Calendar
 		},
 		{
 			label: m.organization(),
@@ -77,8 +76,7 @@
 		{
 			label: m.schedules(),
 			href: '/schedules',
-			icon: Clock3,
-			permission: 'DASHBOARD.VIEW'
+			icon: Clock3
 		},
 		{ label: m.swap_page_title(), href: '/shift-swaps', icon: RefreshCw },
 		{ label: m.leave(), href: '/leave', icon: Plane },

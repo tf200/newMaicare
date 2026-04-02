@@ -2,13 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Button from '$lib/components/ui/Button.svelte';
-	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import LeavePageHeader from './_components/LeavePageHeader.svelte';
 	import LeaveStatsCards from './_components/LeaveStatsCards.svelte';
 	import LeaveHealthAlert from './_components/LeaveHealthAlert.svelte';
-	import LeaveTabsNav from './_components/LeaveTabsNav.svelte';
+	import LeaveManagementTabs from './_components/LeaveManagementTabs.svelte';
 	import LeaveBalancesTab from './_components/LeaveBalancesTab.svelte';
 	import LeavePayoutTab from './_components/LeavePayoutTab.svelte';
 	import LeaveContractChangesTab from './_components/LeaveContractChangesTab.svelte';
@@ -26,16 +26,18 @@
 		listLeaveRequests,
 		listLateArrivals
 	} from '$lib/api/leave';
+	import { listLeavePayoutsForMonth } from '$lib/api/salary';
+	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { ApiClientError } from '$lib/api/client';
 	import { m } from '$lib/paraglide/messages';
-	import type { EmployeeListItem } from '$lib/api/employees';
 	import type {
 		CreateLeaveRequestByAdminPayload,
 		LeaveRequestDecision,
 		LeaveRequestListItemResponse,
 		LeaveRequestStatus,
 		LateArrivalListItemResponse,
-		MyLeaveRequestStatsResponse
+		MyLeaveRequestStatsResponse,
+		LeavePayout
 	} from '$lib/types/api';
 	import type { LeaveBalancesLoadResult, LeaveManagementPageData } from './+page';
 	import type {
@@ -57,9 +59,17 @@
 	type CreatableLeaveType = CreateLeaveRequestByAdminPayload['leave_type'];
 	type RequestFilter = 'all' | LeaveRequestStatus;
 	type OverviewSubTab = 'requests' | 'lateArrivals';
+	type TabId =
+		| 'requestLeave'
+		| 'sickLeave'
+		| 'maternityLeave'
+		| 'lateArrival'
+		| 'overview'
+		| 'balances'
+		| 'payouts'
+		| 'contractChanges';
 
 	let lateArrivals = $state<LocalLateArrivalItem[]>([]);
-
 	let lateArrivalRows = $state<LateArrivalListItemResponse[]>([]);
 	let lateArrivalCurrentPage = $state(1);
 	let lateArrivalPageSize = $state(20);
@@ -80,7 +90,7 @@
 		{ label: m.leave_type_other(), value: 'other' }
 	]);
 
-	const validTabs = [
+	const validTabs: TabId[] = [
 		'requestLeave',
 		'sickLeave',
 		'maternityLeave',
@@ -89,27 +99,14 @@
 		'balances',
 		'payouts',
 		'contractChanges'
-	] as const;
-	type TabId = (typeof validTabs)[number];
-
-	const legacyTabAliases: Record<string, TabId> = {
-		aanvragen: 'requestLeave',
-		ziekmelding: 'sickLeave',
-		zwangerschap: 'maternityLeave',
-		telaat: 'lateArrival',
-		overzicht: 'overview',
-		saldo: 'balances',
-		uitbetalen: 'payouts',
-		contractwijzigingen: 'contractChanges'
-	};
+	];
 
 	function getInitialTab(): TabId {
 		if (typeof window !== 'undefined') {
 			const hash = window.location.hash.replace('#', '');
 			const params = new URLSearchParams(hash);
 			const tab = params.get('tab');
-			if (tab && (validTabs as readonly string[]).includes(tab)) return tab as TabId;
-			if (tab && tab in legacyTabAliases) return legacyTabAliases[tab];
+			if (tab && (validTabs as string[]).includes(tab)) return tab as TabId;
 		}
 		return 'overview';
 	}
@@ -128,6 +125,7 @@
 			window.location.hash = `tab=${activeTab}`;
 		}
 	});
+
 	let requestFilter = $state<RequestFilter>('all');
 	let searchQuery = $state('');
 	let overviewCurrentPage = $state(1);
@@ -145,6 +143,11 @@
 	let leaveBalancesLoading = $state(false);
 	let leaveBalancesRequestSequence = 0;
 	let leaveBalancesLastKey = $state('');
+	let payoutRows = $state<LeavePayout[]>([]);
+	let payoutEmployeeNames = $state<Record<string, string>>({});
+	let payoutLoading = $state(false);
+	let payoutLoaded = $state(false);
+	let payoutRequestSequence = 0;
 	let deleteDialogOpen = $state(false);
 	let selectedRequestId = $state<string | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -157,11 +160,8 @@
 	let selectedLateEmployee = $state<EmployeeListItem | null>(null);
 	let lateCalendarStart = $state<string | null>(null);
 	let lateCalendarEnd = $state<string | null>(null);
-
 	let sickRequest = $state<DateRangeRequestFormState>(createEmptyDateRangeRequestForm());
-
 	let pregnancyRequest = $state<DateRangeRequestFormState>(createEmptyDateRangeRequestForm());
-
 	let lateRequest = $state<LateArrivalFormState>(createEmptyLateArrivalForm());
 
 	const pendingCount = $derived(stats?.open_requests ?? 0);
@@ -169,6 +169,12 @@
 	const sickCount = $derived(stats?.sickness_absence ?? 0);
 	const rejectedCount = $derived(stats?.rejected_requests ?? 0);
 	const normalizedOverviewSearch = $derived.by(() => searchQuery.trim().slice(0, 120));
+	const currentSalaryMonth = $derived.by(() => {
+		const now = new Date();
+		const year = String(now.getFullYear());
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		return `${year}-${month}-01`;
+	});
 
 	async function loadStats() {
 		const requestId = ++statsRequestSequence;
@@ -188,7 +194,6 @@
 		const requestId = ++overviewRequestSequence;
 		overviewLoading = true;
 		overviewError = null;
-
 		try {
 			const response = await listLeaveRequests({
 				page,
@@ -196,9 +201,7 @@
 				status: status === 'all' ? undefined : status,
 				employeeSearch
 			});
-
 			if (requestId !== overviewRequestSequence) return;
-
 			overviewRows = response.data.results;
 			overviewTotalCount = response.data.count;
 			overviewPageSize = response.data.page_size || overviewPageSize;
@@ -220,11 +223,9 @@
 
 	$effect(() => {
 		if (activeTab !== 'overview' || activeOverviewSubTab !== 'requests') return;
-
 		const timer = setTimeout(() => {
 			void loadOverviewRequests(overviewCurrentPage, requestFilter, normalizedOverviewSearch);
 		}, 250);
-
 		return () => {
 			clearTimeout(timer);
 		};
@@ -239,7 +240,6 @@
 		const requestId = ++lateArrivalRequestSequence;
 		lateArrivalLoading = true;
 		lateArrivalError = null;
-
 		try {
 			const response = await listLateArrivals({
 				page,
@@ -248,9 +248,7 @@
 				dateFrom: dateFrom || undefined,
 				dateTo: dateTo || undefined
 			});
-
 			if (requestId !== lateArrivalRequestSequence) return;
-
 			lateArrivalRows = response.data.results;
 			lateArrivalTotalCount = response.data.count;
 			lateArrivalPageSize = response.data.page_size || lateArrivalPageSize;
@@ -272,7 +270,6 @@
 				page: 1,
 				pageSize: 5
 			});
-
 			lateArrivals = response.data.results.map(mapLateArrivalToLocalItem);
 			recentLateArrivalsLoaded = true;
 		} catch {
@@ -284,7 +281,6 @@
 
 	$effect(() => {
 		if (activeTab !== 'overview' || activeOverviewSubTab !== 'lateArrivals') return;
-
 		const timer = setTimeout(() => {
 			void loadLateArrivals(
 				lateArrivalCurrentPage,
@@ -293,7 +289,6 @@
 				lateArrivalDateTo
 			);
 		}, 250);
-
 		return () => {
 			clearTimeout(timer);
 		};
@@ -320,7 +315,6 @@
 		const { page, pageSize, employeeSearch, year } = getBalanceLoadParams();
 		const requestId = ++leaveBalancesRequestSequence;
 		leaveBalancesLoading = true;
-
 		try {
 			const response = await listLeaveBalances({
 				page,
@@ -328,12 +322,9 @@
 				employeeSearch: employeeSearch || undefined,
 				year: year ?? undefined
 			});
-
 			if (requestId !== leaveBalancesRequestSequence) return;
-
 			const { count, next, previous, page_size, results } = response.data;
 			const effectivePageSize = page_size || pageSize;
-
 			leaveBalancesData = {
 				balances: results,
 				pagination: {
@@ -375,12 +366,47 @@
 
 	$effect(() => {
 		if (activeTab !== 'balances') return;
-
 		const key = getBalanceLoadKey();
 		if (leaveBalancesLastKey === key && leaveBalancesData) return;
-
 		leaveBalancesLastKey = key;
 		void loadLeaveBalances();
+	});
+
+	async function loadPayouts() {
+		const requestId = ++payoutRequestSequence;
+		payoutLoading = true;
+		try {
+			const [payoutResponse, employeeResponse] = await Promise.all([
+				listLeavePayoutsForMonth(currentSalaryMonth),
+				listEmployees({ page: 1, page_size: 500 })
+			]);
+			if (requestId !== payoutRequestSequence) return;
+
+			const namesById = Object.fromEntries(
+				(employeeResponse.data.results ?? []).map((employee) => [
+					employee.id,
+					`${employee.first_name} ${employee.last_name}`.trim()
+				])
+			);
+
+			payoutRows = payoutResponse.data ?? [];
+			payoutEmployeeNames = namesById;
+			payoutLoaded = true;
+		} catch (error) {
+			if (requestId !== payoutRequestSequence) return;
+			payoutRows = [];
+			payoutEmployeeNames = {};
+			console.error(error);
+		} finally {
+			if (requestId === payoutRequestSequence) {
+				payoutLoading = false;
+			}
+		}
+	}
+
+	$effect(() => {
+		if (activeTab !== 'payouts' || payoutLoaded) return;
+		void loadPayouts();
 	});
 
 	const retryLeaveBalances = () => {
@@ -440,7 +466,6 @@
 		if (error instanceof ApiClientError && (error.status === 400 || error.status === 409)) {
 			return error.message;
 		}
-
 		return error instanceof Error ? error.message : 'Failed to save late arrival.';
 	}
 
@@ -475,13 +500,11 @@
 		reset: () => void;
 	}) {
 		event.preventDefault();
-
 		const validatedData = getValidatedDateRangeFormData(form);
 		if (!validatedData) {
 			setToast(missingFieldsMessage, 'warning');
 			return;
 		}
-
 		try {
 			await createLeaveRequestByAdmin({
 				employee_id: form.employeeId,
@@ -490,9 +513,9 @@
 				end_date: form.endDate,
 				reason: validatedData.reason
 			});
-
 			setToast(m.leave_toast_added(), 'success');
 			reset();
+			activeTab = 'overview';
 			refreshOverview();
 			void loadStats();
 		} catch {
@@ -548,11 +571,8 @@
 			setToast(m.leave_toast_missing_late_fields(), 'warning');
 			return;
 		}
-
 		if (lateArrivalSubmitting) return;
-
 		lateArrivalSubmitting = true;
-
 		try {
 			const response = await createLateArrivalByAdmin({
 				employee_id: lateRequest.employeeId,
@@ -560,7 +580,6 @@
 				arrival_time: lateRequest.time,
 				reason: lateRequest.reason.trim() || undefined
 			});
-
 			lateArrivals = [mapLateArrivalToLocalItem(response.data), ...lateArrivals].slice(0, 5);
 			void loadRecentLateArrivals();
 			setToast(m.leave_toast_late_added(), 'success');
@@ -568,6 +587,7 @@
 			selectedLateEmployee = null;
 			lateCalendarStart = null;
 			lateCalendarEnd = null;
+			activeTab = 'overview';
 		} catch (error) {
 			setToast(
 				getLateArrivalErrorMessage(error),
@@ -590,7 +610,6 @@
 				decision,
 				decision_note: decisionNote ?? null
 			});
-
 			overviewRows = overviewRows.map((request) =>
 				request.id === id ? { ...request, ...response.data } : request
 			);
@@ -633,28 +652,27 @@
 	<title>{m.leave_page_title()} | MaiCare</title>
 </svelte:head>
 
-<section class="space-y-6">
+<section class="max-w-[1600px] mx-auto space-y-8 p-4 md:p-8">
 	<LeavePageHeader />
+
 	{#if statsError}
 		<InlineErrorBanner message={statsError} actionLabel={m.retry()} onRetry={loadStats} />
 	{/if}
-	<LeaveStatsCards {pendingCount} {approvedCount} {rejectedCount} {sickCount} />
-	<LeaveHealthAlert {sickCount} />
-	<div
-		class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm"
-	>
-		<div class="lg:flex">
-			<LeaveTabsNav
-				{activeTab}
-				{pendingCount}
-				onTabChange={(tab) => {
-					activeTab = tab;
-				}}
-			/>
 
-			<!-- ── Content pane ────────────────────────────────────────── -->
-			<div class="min-w-0 flex-1 p-6">
-				{#if activeTab === 'requestLeave'}
+	<LeaveStatsCards {pendingCount} {approvedCount} {rejectedCount} {sickCount} />
+
+	<LeaveHealthAlert {sickCount} />
+
+	<div class="space-y-6">
+		<LeaveManagementTabs
+			{activeTab}
+			{pendingCount}
+			onTabChange={(tab) => (activeTab = tab)}
+		/>
+
+		<div class="min-h-[400px]">
+			{#if activeTab === 'requestLeave'}
+				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
 					<LeaveRequestCreateTab
 						bind:form={newRequest}
 						bind:selectedEmployee={selectedEmployeeFromSearch}
@@ -662,21 +680,27 @@
 						{calculateDays}
 						onSubmit={handleCreateLeave}
 					/>
-				{:else if activeTab === 'sickLeave'}
+				</div>
+			{:else if activeTab === 'sickLeave'}
+				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
 					<LeaveSickTab
 						bind:form={sickRequest}
 						bind:selectedEmployee={selectedSickEmployee}
 						{calculateDays}
 						onSubmit={handleCreateSick}
 					/>
-				{:else if activeTab === 'maternityLeave'}
+				</div>
+			{:else if activeTab === 'maternityLeave'}
+				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
 					<LeavePregnancyTab
 						bind:form={pregnancyRequest}
 						bind:selectedEmployee={selectedPregnancyEmployee}
 						{calculateDays}
 						onSubmit={handleCreatePregnancy}
 					/>
-				{:else if activeTab === 'lateArrival'}
+				</div>
+			{:else if activeTab === 'lateArrival'}
+				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
 					<LeaveLateArrivalTab
 						bind:form={lateRequest}
 						bind:selectedEmployee={selectedLateEmployee}
@@ -687,53 +711,58 @@
 						isSubmitting={lateArrivalSubmitting}
 						onSubmit={handleCreateLate}
 					/>
-				{:else if activeTab === 'overview'}
-					<LeaveOverviewTab
-						bind:activeSubTab={activeOverviewSubTab}
-						rows={overviewRows}
-						loading={overviewLoading}
-						error={overviewError}
-						bind:requestFilter
-						bind:searchQuery
-						bind:currentPage={overviewCurrentPage}
-						pageSize={overviewPageSize}
-						totalCount={overviewTotalCount}
-						onApprove={handleApproveOverview}
-						onReject={handleRejectOverview}
-						onDelete={handleDeleteClick}
-						onCreateRequest={() => (activeTab = 'requestLeave')}
-						{lateArrivalRows}
-						{lateArrivalLoading}
-						{lateArrivalError}
-						bind:lateArrivalCurrentPage
-						{lateArrivalPageSize}
-						{lateArrivalTotalCount}
-						bind:lateArrivalSearchQuery
-						bind:lateArrivalDateFrom
-						bind:lateArrivalDateTo
-					/>
-				{:else if activeTab === 'balances'}
-					{#if leaveBalancesLoading && !leaveBalancesData}
-						<div
-							class="animate-in fade-in slide-in-from-bottom-2 rounded-3xl border border-border bg-surface p-6 text-sm text-text-muted shadow-sm"
-						>
-							Loading leave balances...
+				</div>
+			{:else if activeTab === 'overview'}
+				<LeaveOverviewTab
+					bind:activeSubTab={activeOverviewSubTab}
+					rows={overviewRows}
+					loading={overviewLoading}
+					error={overviewError}
+					bind:requestFilter
+					bind:searchQuery
+					bind:currentPage={overviewCurrentPage}
+					pageSize={overviewPageSize}
+					totalCount={overviewTotalCount}
+					onApprove={handleApproveOverview}
+					onReject={handleRejectOverview}
+					onDelete={handleDeleteClick}
+					onCreateRequest={() => (activeTab = 'requestLeave')}
+					{lateArrivalRows}
+					{lateArrivalLoading}
+					{lateArrivalError}
+					bind:lateArrivalCurrentPage
+					{lateArrivalPageSize}
+					{lateArrivalTotalCount}
+					bind:lateArrivalSearchQuery
+					bind:lateArrivalDateFrom
+					bind:lateArrivalDateTo
+				/>
+			{:else if activeTab === 'balances'}
+				{#if leaveBalancesLoading && !leaveBalancesData}
+					<div class="flex h-64 items-center justify-center rounded-[2.5rem] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+						<div class="flex flex-col items-center gap-3">
+							<div class="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent"></div>
+							<p class="text-sm font-bold text-zinc-400">Loading leave balances...</p>
 						</div>
-					{:else if leaveBalancesData}
-						<LeaveBalancesTab
-							data={leaveBalancesData}
-							onSearch={handleBalanceSearch}
-							onYearChange={handleBalanceYearChange}
-							onPageChange={handleBalancePageChange}
-							onRetry={retryLeaveBalances}
-						/>
-					{/if}
-				{:else if activeTab === 'payouts'}
-					<LeavePayoutTab />
-				{:else if activeTab === 'contractChanges'}
-					<LeaveContractChangesTab />
+					</div>
+				{:else if leaveBalancesData}
+					<LeaveBalancesTab
+						data={leaveBalancesData}
+						onSearch={handleBalanceSearch}
+						onYearChange={handleBalanceYearChange}
+						onPageChange={handleBalancePageChange}
+						onRetry={retryLeaveBalances}
+					/>
 				{/if}
-			</div>
+			{:else if activeTab === 'payouts'}
+				<LeavePayoutTab
+					payouts={payoutRows}
+					employeeNamesById={payoutEmployeeNames}
+					loading={payoutLoading}
+				/>
+			{:else if activeTab === 'contractChanges'}
+				<LeaveContractChangesTab />
+			{/if}
 		</div>
 	</div>
 </section>
@@ -751,10 +780,12 @@
 	{/snippet}
 	{#snippet footer()}
 		<div class="flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (deleteDialogOpen = false)}
-				>{m.leave_modal_cancel()}</Button
-			>
-			<Button variant="destructive" onclick={handleDeleteConfirm}>{m.confirm_delete()}</Button>
+			<Button variant="ghost" onclick={() => (deleteDialogOpen = false)}>
+				{m.leave_modal_cancel()}
+			</Button>
+			<Button variant="destructive" onclick={handleDeleteConfirm}>
+				{m.confirm_delete()}
+			</Button>
 		</div>
 	{/snippet}
 </Modal>
