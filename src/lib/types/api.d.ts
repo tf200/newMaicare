@@ -19,3 +19,4 @@ export * from './api/trainingen';
 export * from './api/ondertekenen';
 export * from './api/declaraties';
 export * from './api/uren';
+export * from './api/shift-swaps';
