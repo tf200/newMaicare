@@ -38,6 +38,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"date-fns": "^4.1.0",
 		"lucide-svelte": "^0.563.0",
 		"sveltekit-superforms": "^2.29.1",
 		"valibot": "^1.2.0",

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Building2, Eye, Pencil, Plus, Search, MapPin, Users } from 'lucide-svelte';
+	import StatsCard from '$lib/components/ui/StatsCard.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -312,62 +313,30 @@
 			{/if}
 
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				<div
-					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-				>
-					<div class="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-5">
-						<Building2 class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.total_organizations()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{organizationsData.pagination.count}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.active_in_network()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<MapPin class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.total_locations()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-							{countsData.counts.totalLocations}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.total_care_sites()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-emerald-600 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Users class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.total_capacity()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-							{countsData.counts.totalCapacity}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">
-							{m.available_places()}
-						</p>
-					</div>
-				</div>
+				<StatsCard
+					label={m.total_organizations()}
+					value={organizationsData.pagination.count}
+					sub={m.active_in_network()}
+					icon={Building2}
+					hoverBorder=""
+				/>
+				<StatsCard
+					label={m.total_locations()}
+					value={countsData.counts.totalLocations}
+					sub={m.total_care_sites()}
+					icon={MapPin}
+					color="text-brand"
+					valueColor="text-brand"
+				/>
+				<StatsCard
+					label={m.total_capacity()}
+					value={countsData.counts.totalCapacity}
+					sub={m.available_places()}
+					icon={Users}
+					color="text-emerald-600"
+					valueColor="text-emerald-600"
+					hoverBorder="hover:border-emerald-500/30"
+				/>
 			</div>
 		{/await}
 

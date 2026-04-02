@@ -19,7 +19,12 @@
 		ArrowLeft,
 		CircleUser,
 		BadgeEuro,
-		BookOpen
+		BookOpen,
+		Target,
+		Palmtree,
+		GraduationCap,
+		FileSignature,
+		Receipt
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -81,6 +86,48 @@
 			label: m.leave_management_label(),
 			href: '/leave-management',
 			icon: ClipboardCheck,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.salaris_label(),
+			href: '/salary-administration',
+			icon: BadgeEuro,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.func_label(),
+			href: '/functioneren',
+			icon: Target,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.vac_label(),
+			href: '/vakantiekalender',
+			icon: Palmtree,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.train_label(),
+			href: '/trainingen',
+			icon: GraduationCap,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.ondertekenen_label(),
+			href: '/digitaal-ondertekenen',
+			icon: FileSignature,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.decl_label(),
+			href: '/declaraties',
+			icon: Receipt,
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.uren_label(),
+			href: '/uren',
+			icon: Clock3,
 			permission: 'EMPLOYEE.VIEW'
 		}
 	];
@@ -185,7 +232,7 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-secondary">.</span>
+				MaiHr<span class="text-secondary">.</span>
 			</span>
 		</button>
 

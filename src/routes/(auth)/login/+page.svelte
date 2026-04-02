@@ -64,9 +64,9 @@
 						</div>
 						<div>
 							<p class="text-xs font-semibold tracking-[0.3em] text-text-subtle uppercase">
-								MaiCare
+								MaiHr
 							</p>
-							<h2 class="text-2xl font-bold text-text">Care operations, unified.</h2>
+							<h2 class="text-2xl font-bold text-text">Care operations Hr, unified.</h2>
 						</div>
 					</div>
 					<p class="mt-6 text-sm leading-relaxed text-text-muted">

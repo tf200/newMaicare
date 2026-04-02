@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StatsCard from '$lib/components/ui/StatsCard.svelte';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { onboarding } from '$lib/state/onboarding.svelte';
 	import WelcomeModal from '$lib/components/ui/WelcomeModal.svelte';
@@ -214,24 +215,13 @@
 	<!-- Stats -->
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 		{#each stats as stat (stat.label)}
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 {stat.color} opacity-[0.03] transition-opacity group-hover:opacity-10 dark:opacity-5"
-				>
-					<stat.icon class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{stat.label}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{stat.value}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{stat.sub}</p>
-				</div>
-			</div>
+			<StatsCard
+				label={stat.label}
+				value={stat.value}
+				sub={stat.sub}
+				icon={stat.icon}
+				color={stat.color}
+			/>
 		{/each}
 	</div>
 
