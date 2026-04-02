@@ -1,5 +1,11 @@
 export type SignatureStatus = 'pending' | 'signed' | 'rejected' | 'expired';
-export type DocumentType = 'contract' | 'policy' | 'agreement' | 'addendum' | 'termination' | 'other';
+export type DocumentType =
+	| 'contract'
+	| 'policy'
+	| 'agreement'
+	| 'addendum'
+	| 'termination'
+	| 'other';
 
 export interface DocumentSignature {
 	id: string;

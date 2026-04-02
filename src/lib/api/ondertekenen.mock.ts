@@ -71,7 +71,8 @@ const mockDocumentSignatures: DocumentSignature[] = [
 		requested_at: '2026-03-01T11:00:00Z',
 		signed_at: null,
 		signature_hash: null,
-		rejection_reason: 'Inhoud is niet overeenkomstig mijn arbeidsvoorwaarden. Ik verzoek om overleg met HR.',
+		rejection_reason:
+			'Inhoud is niet overeenkomstig mijn arbeidsvoorwaarden. Ik verzoek om overleg met HR.',
 		expires_at: null
 	},
 	{

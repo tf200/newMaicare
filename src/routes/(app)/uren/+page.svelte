@@ -103,7 +103,9 @@
 	const progressStatus = $derived.by(() => {
 		if (totalHoursToday > CONTRACT_HOURS_PER_DAY) return m.uren_progress_over();
 		if (totalHoursToday >= CONTRACT_HOURS_PER_DAY) return m.uren_progress_complete();
-		return m.uren_progress_incomplete({ remaining: formatHours(CONTRACT_HOURS_PER_DAY - totalHoursToday) });
+		return m.uren_progress_incomplete({
+			remaining: formatHours(CONTRACT_HOURS_PER_DAY - totalHoursToday)
+		});
 	});
 
 	const columns: DataTableColumn[] = [
@@ -324,7 +326,7 @@
 					<span class="text-sm font-bold text-white capitalize">{formattedDate}</span>
 					{#if isCurrentWeekend}
 						<span
-							class="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
+							class="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase"
 						>
 							{m.uren_weekend_badge()}
 						</span>
@@ -412,56 +414,54 @@
 
 <!-- Register / Edit Modal -->
 {#if modalOpen}
-<Modal
-	open={true}
-	title={editingEntry ? m.uren_modal_edit_title() : m.uren_modal_new_title()}
-	description={editingEntry ? m.uren_modal_edit_desc() : m.uren_modal_new_desc()}
-	size="md"
->
-	<div class="space-y-4">
-		<!-- Hours + Minutes -->
-		<div class="grid grid-cols-2 gap-3">
-			<Select
-				label={m.uren_form_hours()}
-				options={hourOptions.map((o) => ({ label: `${o.label}${m.uren_unit_hour_short()}`, value: o.value }))}
-				bind:value={formHours}
-			/>
-			<Select
-				label={m.uren_form_minutes()}
-				options={minuteOptions.map((o) => ({ label: `${o.label}${m.uren_unit_minute_short()}`, value: o.value }))}
-				bind:value={formMinutes}
-			/>
+	<Modal
+		open={true}
+		title={editingEntry ? m.uren_modal_edit_title() : m.uren_modal_new_title()}
+		description={editingEntry ? m.uren_modal_edit_desc() : m.uren_modal_new_desc()}
+		size="md"
+	>
+		<div class="space-y-4">
+			<!-- Hours + Minutes -->
+			<div class="grid grid-cols-2 gap-3">
+				<Select
+					label={m.uren_form_hours()}
+					options={hourOptions.map((o) => ({
+						label: `${o.label}${m.uren_unit_hour_short()}`,
+						value: o.value
+					}))}
+					bind:value={formHours}
+				/>
+				<Select
+					label={m.uren_form_minutes()}
+					options={minuteOptions.map((o) => ({
+						label: `${o.label}${m.uren_unit_minute_short()}`,
+						value: o.value
+					}))}
+					bind:value={formMinutes}
+				/>
+			</div>
+
+			<!-- Hour type -->
+			<Select label={m.uren_form_hour_type()} options={hourTypeOptions} bind:value={formHourType} />
+
+			<!-- Activity category -->
+			<Select label={m.uren_form_category()} options={categoryOptions} bind:value={formCategory} />
+
+			<!-- Description -->
+			<Input label={m.uren_form_description()} bind:value={formDescription} />
 		</div>
 
-		<!-- Hour type -->
-		<Select
-			label={m.uren_form_hour_type()}
-			options={hourTypeOptions}
-			bind:value={formHourType}
-		/>
-
-		<!-- Activity category -->
-		<Select
-			label={m.uren_form_category()}
-			options={categoryOptions}
-			bind:value={formCategory}
-		/>
-
-		<!-- Description -->
-		<Input label={m.uren_form_description()} bind:value={formDescription} />
-	</div>
-
-	{#snippet footer()}
-		<div class="flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (modalOpen = false)}>
-				{m.cancel()}
-			</Button>
-			<Button onclick={handleSubmitEntry}>
-				{editingEntry ? m.save() : m.uren_register_button()}
-			</Button>
-		</div>
-	{/snippet}
-</Modal>
+		{#snippet footer()}
+			<div class="flex justify-end gap-2">
+				<Button variant="ghost" onclick={() => (modalOpen = false)}>
+					{m.cancel()}
+				</Button>
+				<Button onclick={handleSubmitEntry}>
+					{editingEntry ? m.save() : m.uren_register_button()}
+				</Button>
+			</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <!-- Toast -->
@@ -479,7 +479,7 @@
 	<span
 		class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold {hourTypeColors[
 			row.hour_type
-		] ?? 'bg-gray-500/10 text-gray-600 border-gray-400/30'}"
+		] ?? 'border-gray-400/30 bg-gray-500/10 text-gray-600'}"
 	>
 		{row.hour_type === 'regular'
 			? m.uren_type_regular()

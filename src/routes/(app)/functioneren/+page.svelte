@@ -36,7 +36,9 @@
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
 		toast = { message, type };
 		if (toastTimeout) clearTimeout(toastTimeout);
-		toastTimeout = setTimeout(() => { toast = null; }, 3500);
+		toastTimeout = setTimeout(() => {
+			toast = null;
+		}, 3500);
 	}
 
 	async function loadData() {
@@ -60,7 +62,9 @@
 		}
 	}
 
-	$effect(() => { void loadData(); });
+	$effect(() => {
+		void loadData();
+	});
 
 	const completedAssessments = $derived(assessments.filter((a) => a.status === 'completed'));
 	const thisMonth = new Date();
@@ -72,7 +76,8 @@
 	);
 	const avgScore = $derived(
 		completedAssessments.length > 0
-			? completedAssessments.reduce((s, a) => s + (a.total_score ?? 0), 0) / completedAssessments.length
+			? completedAssessments.reduce((s, a) => s + (a.total_score ?? 0), 0) /
+					completedAssessments.length
 			: null
 	);
 	const coveredIds = new Set(completedAssessments.map((a) => a.employee_id));
@@ -155,21 +160,29 @@
 	/>
 
 	<!-- Main Content Container -->
-	<div class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm">
+	<div
+		class="animate-in fade-in overflow-hidden rounded-3xl border border-border/60 bg-surface shadow-sm"
+	>
 		<div class="p-6">
 			<div class="space-y-6">
 				<!-- Tabs -->
 				<div class="flex items-center gap-1">
 					{#each tabs as tab}
 						<button
-							class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab === tab.id
-								? 'bg-surface text-text shadow-sm border border-border/60'
+							class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab ===
+							tab.id
+								? 'border border-border/60 bg-surface text-text shadow-sm'
 								: 'text-text-subtle hover:bg-border/30 hover:text-text-muted'}"
 							onclick={() => (activeTab = tab.id)}
 						>
 							{tab.label}
 							{#if tab.count !== undefined && tab.count > 0}
-								<span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab === tab.id ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-border/40 text-text-muted'}">
+								<span
+									class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab ===
+									tab.id
+										? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+										: 'bg-border/40 text-text-muted'}"
+								>
 									{tab.count}
 								</span>
 							{/if}
@@ -180,7 +193,12 @@
 				<!-- Content -->
 				<div>
 					{#if activeTab === 'overzicht'}
-						<AssessmentsOverview {assessments} {loading} onView={handleView} onDelete={handleDelete} />
+						<AssessmentsOverview
+							{assessments}
+							{loading}
+							onView={handleView}
+							onDelete={handleDelete}
+						/>
 					{:else if activeTab === 'nieuw'}
 						<AssessmentWizard {employees} />
 					{:else if activeTab === 'aankomend'}
@@ -195,12 +213,25 @@
 </section>
 
 <!-- Detail Modal -->
-<Modal bind:open={detailOpen} title={m.func_detail_title()} description={m.func_detail_desc()} size="lg">
+<Modal
+	bind:open={detailOpen}
+	title={m.func_detail_title()}
+	description={m.func_detail_desc()}
+	size="lg"
+>
 	{#snippet children()}
 		{#if selectedAssessment}
-			<AssessmentDetail assessment={selectedAssessment} scores={detailScores} onClose={() => (detailOpen = false)} />
+			<AssessmentDetail
+				assessment={selectedAssessment}
+				scores={detailScores}
+				onClose={() => (detailOpen = false)}
+			/>
 		{/if}
 	{/snippet}
 </Modal>
 
-<Toast message={toast?.message ?? null} type={toast?.type ?? 'success'} onClose={() => (toast = null)} />
+<Toast
+	message={toast?.message ?? null}
+	type={toast?.type ?? 'success'}
+	onClose={() => (toast = null)}
+/>

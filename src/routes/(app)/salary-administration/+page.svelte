@@ -133,8 +133,7 @@
 	);
 
 	function navigateMonth(direction: 'prev' | 'next') {
-		currentMonth =
-			direction === 'prev' ? subMonths(currentMonth, 1) : addMonths(currentMonth, 1);
+		currentMonth = direction === 'prev' ? subMonths(currentMonth, 1) : addMonths(currentMonth, 1);
 
 		const params = new URLSearchParams(page.url.searchParams.toString());
 		params.set('month', format(currentMonth, 'yyyy-MM'));
@@ -160,14 +159,18 @@
 
 	const visibleEmployees = $derived(
 		employees.filter((emp) => {
-			const type = String(emp.contract_type ?? '').toLowerCase().trim();
+			const type = String(emp.contract_type ?? '')
+				.toLowerCase()
+				.trim();
 			return type !== 'zzp';
 		})
 	);
 
 	const zzpEmployees = $derived(
 		employees.filter((emp) => {
-			const type = String(emp.contract_type ?? '').toLowerCase().trim();
+			const type = String(emp.contract_type ?? '')
+				.toLowerCase()
+				.trim();
 			return type === 'zzp';
 		})
 	);
@@ -176,8 +179,7 @@
 		visibleEmployees.filter((emp) => {
 			const name = `${emp.first_name} ${emp.last_name}`.toLowerCase();
 			const matchesSearch = name.includes(searchQuery.toLowerCase());
-			const matchesDepartment =
-				departmentFilter === 'all' || emp.department === departmentFilter;
+			const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter;
 			const matchesEmployee = employeeFilter === 'all' || emp.id === employeeFilter;
 			return matchesSearch && matchesDepartment && matchesEmployee;
 		})
@@ -211,10 +213,10 @@
 
 		if (assignmentStartTime && assignmentEndTime) {
 			const duration = calculateDuration(assignmentStartTime, assignmentEndTime);
-			if (duration !== null) return includeBreaks ? duration + 0.5 : duration;
+			if (duration !== null) return duration;
 		} else if (service?.start_time && service?.end_time) {
 			const duration = calculateDuration(service.start_time, service.end_time);
-			if (duration !== null) return includeBreaks ? duration + 0.5 : duration;
+			if (duration !== null) return duration;
 		}
 
 		return DEFAULT_HOURS_PER_SHIFT;
@@ -247,11 +249,7 @@
 		return Math.round((monthly / DEFAULT_HOURS_PER_SHIFT) * 10) / 10;
 	}
 
-	function getContractForDate(
-		empId: string,
-		targetDate: Date,
-		emp: EmployeeListItem
-	) {
+	function getContractForDate(empId: string, targetDate: Date, emp: EmployeeListItem) {
 		const empChanges = contractChanges
 			.filter((c) => c.employee_id === empId && c.field_changed.startsWith('hours_per_week'))
 			.sort((a, b) => new Date(a.change_date).getTime() - new Date(b.change_date).getTime());
@@ -346,8 +344,7 @@
 			const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 			const contractAtMonth = getContractForDate(emp.id, monthEnd, emp);
 			const isZeroHoursContract =
-				contractAtMonth.contract_hours_type === 'nul-uren' ||
-				contractAtMonth.hours_per_week === 0;
+				contractAtMonth.contract_hours_type === 'nul-uren' || contractAtMonth.hours_per_week === 0;
 
 			let maxShifts = 0;
 			let shiftsDifference = 0;
@@ -513,12 +510,7 @@
 </svelte:head>
 
 <section class="space-y-8">
-	<SalaryPageHeader
-		{currentMonth}
-		{includeBreaks}
-		onNavigate={navigateMonth}
-		onToggleBreaks={(v) => (includeBreaks = v)}
-	/>
+	<SalaryPageHeader {currentMonth} />
 
 	{#if loadError}
 		<InlineErrorBanner message={loadError} onRetry={loadAllData} />
@@ -537,7 +529,7 @@
 			>
 				{tab.label}
 				{#if activeTab === tab.id}
-					<div class="absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-brand"></div>
+					<div class="absolute right-2 -bottom-px left-2 h-[2px] rounded-full bg-brand"></div>
 				{/if}
 			</button>
 		{/each}
@@ -550,21 +542,18 @@
 				rows={employeeSalaryData}
 				{totals}
 				{loading}
-				{includeBreaks}
+				{currentMonth}
+				onNavigate={navigateMonth}
 				onDownloadPdf={handleDownloadPdf}
 				onPreviewPdf={handlePreviewPdf}
 				bind:searchQuery
-				bind:employeeFilter
-				bind:departmentFilter
-				{visibleEmployees}
-				{departments}
 			/>
 		{:else if activeTab === 'zzp'}
 			<ZZPTab rows={zzpSalaryData} totals={zzpTotals} {loading} />
 		{:else if activeTab === 'ort'}
 			<ORTTab rows={employeeSalaryData} {totals} {loading} />
 		{:else if activeTab === 'rates'}
-			<RatesTab scales={salaryScales} {loading} {includeBreaks} />
+			<RatesTab scales={salaryScales} {loading} />
 		{/if}
 	</div>
 </section>

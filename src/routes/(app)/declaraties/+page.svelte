@@ -154,9 +154,7 @@
 		const filtered = filteredRows;
 		return {
 			total: filtered.length,
-			pending: filtered
-				.filter((r) => r.status === 'pending')
-				.reduce((sum, r) => sum + r.amount, 0),
+			pending: filtered.filter((r) => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0),
 			approved: filtered
 				.filter((r) => r.status === 'approved')
 				.reduce((sum, r) => sum + r.amount, 0),
@@ -165,12 +163,16 @@
 	});
 
 	function handleApprove(id: string) {
-		rows = rows.map((row) => (row.id === id ? { ...row, status: 'approved' as ExpenseStatus } : row));
+		rows = rows.map((row) =>
+			row.id === id ? { ...row, status: 'approved' as ExpenseStatus } : row
+		);
 		setToast('Declaratie goedgekeurd.', 'success');
 	}
 
 	function handleReject(id: string) {
-		rows = rows.map((row) => (row.id === id ? { ...row, status: 'rejected' as ExpenseStatus } : row));
+		rows = rows.map((row) =>
+			row.id === id ? { ...row, status: 'rejected' as ExpenseStatus } : row
+		);
 		setToast('Declaratie afgewezen.', 'warning');
 	}
 
@@ -256,11 +258,7 @@
 			bind:value={searchQuery}
 			className="w-full sm:w-64"
 		/>
-		<Select
-			options={statusOptions}
-			bind:value={statusFilter}
-			className="w-full sm:w-40"
-		/>
+		<Select options={statusOptions} bind:value={statusFilter} className="w-full sm:w-40" />
 	</div>
 {/snippet}
 
@@ -275,7 +273,9 @@
 {#snippet categoryCell(row: Expense)}
 	{@const category = row.category as ExpenseCategory}
 	<span
-		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {categoryColors[category]}"
+		class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold {categoryColors[
+			category
+		]}"
 	>
 		{categoryLabels[category]}
 	</span>
@@ -317,50 +317,40 @@
 {/snippet}
 
 {#if isFormOpen}
-<Modal open={true} title="Nieuwe declaratie" size="lg">
-	<form class="space-y-4">
-		<Select
-			label="Medewerker"
-			options={employeeOptions}
-			bind:value={newExpense.employeeId}
-			placeholder="Selecteer medewerker..."
-		/>
-		<Input
-			label="Datum"
-			type="date"
-			bind:value={newExpense.date}
-		/>
-		<Input
-			label="Bedrag (€)"
-			type="number"
-			step="0.01"
-			bind:value={newExpense.amount}
-			placeholder="0.00"
-		/>
-		<Select
-			label="Categorie"
-			options={categoryOptions}
-			bind:value={newExpense.category}
-		/>
-		<div class="space-y-2">
-			<label class="ml-1 text-sm font-semibold text-text-muted">
-				Omschrijving
-			</label>
-			<textarea
-				class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-				rows="3"
-				bind:value={newExpense.description}
-				placeholder="Beschrijf de uitgave..."
-			></textarea>
-		</div>
-	</form>
-	{#snippet footer()}
-		<div class="flex justify-end gap-2">
-			<Button variant="ghost" onclick={() => (isFormOpen = false)}>Annuleren</Button>
-			<Button onclick={() => (isFormOpen = false)}>Declaratie indienen</Button>
-		</div>
-	{/snippet}
-</Modal>
+	<Modal open={true} title="Nieuwe declaratie" size="lg">
+		<form class="space-y-4">
+			<Select
+				label="Medewerker"
+				options={employeeOptions}
+				bind:value={newExpense.employeeId}
+				placeholder="Selecteer medewerker..."
+			/>
+			<Input label="Datum" type="date" bind:value={newExpense.date} />
+			<Input
+				label="Bedrag (€)"
+				type="number"
+				step="0.01"
+				bind:value={newExpense.amount}
+				placeholder="0.00"
+			/>
+			<Select label="Categorie" options={categoryOptions} bind:value={newExpense.category} />
+			<div class="space-y-2">
+				<label class="ml-1 text-sm font-semibold text-text-muted"> Omschrijving </label>
+				<textarea
+					class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text placeholder:text-text-muted focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
+					rows="3"
+					bind:value={newExpense.description}
+					placeholder="Beschrijf de uitgave..."
+				></textarea>
+			</div>
+		</form>
+		{#snippet footer()}
+			<div class="flex justify-end gap-2">
+				<Button variant="ghost" onclick={() => (isFormOpen = false)}>Annuleren</Button>
+				<Button onclick={() => (isFormOpen = false)}>Declaratie indienen</Button>
+			</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 {#if toast}

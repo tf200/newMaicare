@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { AlertCircle, ArrowLeftRight, CheckCircle2, Clock, Filter } from 'lucide-svelte';
+	import { AlertCircle, ArrowLeftRight, CheckCircle2, Clock, XCircle, Eye } from 'lucide-svelte';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import { listEmployees } from '$lib/api/employees';
 	import type { ShiftSwapFilter } from '$lib/api/shift-swaps';
 	import type { ShiftSwapResponse, ShiftSwapStatus } from '$lib/types/api';
 	import type { ShiftSwapCountsLoadResult, ShiftSwapLoadResult } from './+page';
@@ -59,30 +61,40 @@
 		}
 	};
 
-	const statusOptions: Array<{ value: ShiftSwapStatus; label: () => string }> = [
-		{ value: 'pending_recipient', label: statusConfig.pending_recipient.label },
-		{ value: 'recipient_rejected', label: statusConfig.recipient_rejected.label },
-		{ value: 'pending_admin', label: statusConfig.pending_admin.label },
-		{ value: 'admin_rejected', label: statusConfig.admin_rejected.label },
-		{ value: 'confirmed', label: statusConfig.confirmed.label },
-		{ value: 'cancelled', label: statusConfig.cancelled.label },
-		{ value: 'expired', label: statusConfig.expired.label }
+	const statusOptions = [
+		{ value: 'pending_recipient', label: () => m.swap_stat_pending() },
+		{ value: 'recipient_rejected', label: () => m.swap_toast_target_rejected() },
+		{ value: 'pending_admin', label: () => m.swap_waiting_approval() },
+		{ value: 'admin_rejected', label: () => m.swap_toast_rejected() },
+		{ value: 'confirmed', label: () => m.confirmed() },
+		{ value: 'cancelled', label: () => m.leave_status_cancelled() },
+		{ value: 'expired', label: () => m.expired() }
 	];
 
-	const swapsDataPromise = $derived.by(() => data.swapsData);
-	const countsDataPromise = $derived.by(() => data.countsData);
-	const currentPage = $derived.by(() => data.initial.page);
-	const pageSize = $derived.by(() => data.initial.pageSize);
-	const activeFilter = $derived.by(() => data.initial.filters.filter);
-	const selectedStatus = $derived.by(() => data.initial.filters.status);
+	const statusSelectOptions = $derived([
+		{ value: '', label: 'All statuses' },
+		...statusOptions.map((opt) => ({ value: opt.value, label: opt.label() }))
+	]);
+
+	const swapsDataPromise = $derived(data.swapsData);
+	const countsDataPromise = $derived(data.countsData);
+	const currentPage = $derived(data.initial.page);
+	const pageSize = $derived(data.initial.pageSize);
+	const activeFilter = $derived(data.initial.filters.filter);
+	const selectedStatus = $derived(data.initial.filters.status);
+	const selectedEmployeeId = $derived(data.initial.filters.employeeId);
 
 	const columns = $derived.by<DataTableColumn[]>(() => {
+		const baseColumns: DataTableColumn[] = [
+			{ key: 'requester', label: m.swap_col_requester() },
+			{ key: 'icon', label: '', width: '40px', align: 'center' },
+			{ key: 'target', label: m.swap_col_colleague() },
+			{ key: 'date', label: m.swap_col_date() }
+		];
+
 		if (activeFilter === 'to_approve') {
 			return [
-				{ key: 'requester', label: m.swap_col_requester() },
-				{ key: 'icon', label: '', width: '40px', align: 'center' },
-				{ key: 'target', label: m.swap_col_colleague() },
-				{ key: 'date', label: m.swap_col_date() },
+				...baseColumns,
 				{ key: 'response', label: m.swap_col_response() },
 				{ key: 'status', label: m.swap_col_status() }
 			];
@@ -90,20 +102,14 @@
 
 		if (activeFilter === 'history') {
 			return [
-				{ key: 'requester', label: m.swap_col_requester() },
-				{ key: 'icon', label: '', width: '40px', align: 'center' },
-				{ key: 'target', label: m.swap_col_colleague() },
-				{ key: 'date', label: m.swap_col_date() },
+				...baseColumns,
 				{ key: 'reaction', label: m.swap_col_reaction() },
 				{ key: 'status', label: m.swap_col_status() }
 			];
 		}
 
 		return [
-			{ key: 'requester', label: m.swap_col_requester() },
-			{ key: 'icon', label: '', width: '40px', align: 'center' },
-			{ key: 'target', label: m.swap_col_colleague() },
-			{ key: 'date', label: m.swap_col_date() },
+			...baseColumns,
 			{ key: 'expires', label: m.expired() },
 			{ key: 'status', label: m.swap_col_status() }
 		];
@@ -119,25 +125,31 @@
 	const buildQuery = (
 		pageValue: number,
 		filterValue: ShiftSwapFilter,
-		statusValue: ShiftSwapStatus | ''
+		statusValue: ShiftSwapStatus | '',
+		employeeIdValue: string
 	) => {
-		const params = new URLSearchParams();
+		const params = new URLSearchParams(page.url.searchParams);
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 		params.set('filter', filterValue);
 		if (statusValue) params.set('status', statusValue);
-		if (data.initial.filters.employeeId) params.set('employee_id', data.initial.filters.employeeId);
+		else params.delete('status');
+		if (employeeIdValue) params.set('employee_id', employeeIdValue);
+		else params.delete('employee_id');
 		return params.toString();
 	};
 
 	const updateQuery = (
 		pageValue: number,
 		filterValue: ShiftSwapFilter,
-		statusValue: ShiftSwapStatus | ''
+		statusValue: ShiftSwapStatus | '',
+		employeeIdValue: string = selectedEmployeeId
 	) => {
-		const nextQuery = buildQuery(pageValue, filterValue, statusValue);
-		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`${resolve(page.url.pathname as any)}?${nextQuery}` as string, {
+		const nextQuery = buildQuery(pageValue, filterValue, statusValue, employeeIdValue);
+		const currentQuery = page.url.searchParams.toString();
+		if (currentQuery === nextQuery) return;
+
+		goto(`?${nextQuery}`, {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -149,9 +161,48 @@
 		updateQuery(1, nextFilter, selectedStatus);
 	}
 
-	function handleStatusChange(nextStatus: ShiftSwapStatus | '') {
-		if (selectedStatus === nextStatus) return;
-		updateQuery(1, activeFilter, nextStatus);
+	function handleStatusChange(nextStatus: string) {
+		const status = (nextStatus as ShiftSwapStatus | '') || '';
+		if (selectedStatus === status) return;
+		updateQuery(1, activeFilter, status);
+	}
+
+	function handleEmployeeChange(employeeId: string | undefined) {
+		const id = employeeId || '';
+		if (selectedEmployeeId === id) return;
+		updateQuery(1, activeFilter, selectedStatus, id);
+	}
+
+	function getFilterPillClass(pillId: ShiftSwapFilter) {
+		if (pillId === 'open') {
+			return activeFilter === pillId
+				? 'bg-amber-500 text-white shadow-sm'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		if (pillId === 'to_approve') {
+			return activeFilter === pillId
+				? 'bg-brand text-white shadow-sm'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		if (pillId === 'history') {
+			return activeFilter === pillId
+				? 'bg-emerald-600 text-white shadow-sm'
+				: 'border border-border text-text-muted hover:text-text';
+		}
+		return 'border border-border text-text-muted hover:text-text';
+	}
+
+	async function loadEmployeeOptions(query: string) {
+		try {
+			const response = await listEmployees({ search: query, page_size: 20 });
+			return response.data.results.map((emp) => ({
+				value: emp.id,
+				label: `${emp.first_name} ${emp.last_name}`,
+				department: emp.department
+			}));
+		} catch {
+			return [];
+		}
 	}
 
 	function formatDate(value: string) {
@@ -227,68 +278,6 @@
 <svelte:head>
 	<title>{m.swap_page_title()} | MaiCare</title>
 </svelte:head>
-
-{#snippet tableFilters()}
-	<div class="flex w-full flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-		<div class="flex flex-wrap gap-2">
-			{#await countsDataPromise}
-				{#each [{ id: 'open', label: m.swap_tab_pending( { count: 0 } ) }, { id: 'to_approve', label: m.swap_tab_approval( { count: 0 } ) }, { id: 'history', label: m.swap_tab_history( { count: 0 } ) }] as pill (pill.id)}
-					<button
-						type="button"
-						onclick={() => handleFilterChange(pill.id as ShiftSwapFilter)}
-						class="h-9 rounded-full px-4 text-xs font-semibold transition-all {activeFilter ===
-						pill.id
-							? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-							: 'border border-border text-text-muted hover:text-text'}"
-					>
-						{pill.label}
-					</button>
-				{/each}
-			{:then countsData}
-				{#each [{ id: 'open', label: m.swap_tab_pending( { count: countsData.counts.open } ) }, { id: 'to_approve', label: m.swap_tab_approval( { count: countsData.counts.to_approve } ) }, { id: 'history', label: m.swap_tab_history( { count: countsData.counts.history } ) }] as pill (pill.id)}
-					<button
-						type="button"
-						onclick={() => handleFilterChange(pill.id as ShiftSwapFilter)}
-						class="h-9 rounded-full px-4 text-xs font-semibold transition-all {activeFilter ===
-						pill.id
-							? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-							: 'border border-border text-text-muted hover:text-text'}"
-					>
-						{pill.label}
-					</button>
-				{/each}
-			{/await}
-		</div>
-
-		<div class="flex items-center gap-2 self-start xl:self-auto">
-			<div
-				class="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-muted"
-			>
-				<Filter class="h-4 w-4" />
-			</div>
-			<label
-				class="text-xs font-semibold tracking-wide text-text-subtle uppercase"
-				for="swap-status"
-			>
-				{m.status()}
-			</label>
-			<select
-				id="swap-status"
-				value={selectedStatus}
-				onchange={(event) =>
-					handleStatusChange(
-						(event.currentTarget as HTMLSelectElement).value as ShiftSwapStatus | ''
-					)}
-				class="h-9 min-w-[210px] rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text outline-hidden transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-			>
-				<option value="">All statuses</option>
-				{#each statusOptions as option (option.value)}
-					<option value={option.value}>{option.label()}</option>
-				{/each}
-			</select>
-		</div>
-	</div>
-{/snippet}
 
 {#snippet cellRequester(row: SwapRow)}
 	<div class="flex items-center gap-3">
@@ -382,6 +371,44 @@
 	</span>
 {/snippet}
 
+{#snippet tableFilters()}
+	<div class="flex w-full flex-wrap items-center gap-3">
+		<div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+			<div class="w-full sm:w-64">
+				<SearchSelect
+					placeholder={m.search_employees()}
+					loadOptions={loadEmployeeOptions}
+					value={selectedEmployeeId}
+					onchange={handleEmployeeChange}
+					size="sm"
+				/>
+			</div>
+			<div class="w-full sm:w-48">
+				<Select
+					placeholder="All statuses"
+					options={statusSelectOptions}
+					value={selectedStatus}
+					onchange={handleStatusChange}
+					size="sm"
+				/>
+			</div>
+		</div>
+
+		<div class="flex flex-1 items-center justify-end gap-2">
+			{#each [{ id: 'open', label: m.pending() }, { id: 'to_approve', label: m.swap_stat_approval() }, { id: 'history', label: m.history() }] as pill (pill.id)}
+				<button
+					onclick={() => handleFilterChange(pill.id as ShiftSwapFilter)}
+					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
+						pill.id as ShiftSwapFilter
+					)}"
+				>
+					{pill.label}
+				</button>
+			{/each}
+		</div>
+	</div>
+{/snippet}
+
 <section class="flex flex-col gap-6">
 	<div class="flex flex-wrap items-start justify-between gap-6">
 		<div class="space-y-1">
@@ -390,16 +417,75 @@
 		</div>
 	</div>
 
-	{#await swapsDataPromise}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		{#await countsDataPromise}
 			{#each [1, 2, 3] as item (item)}
 				<div class="rounded-2xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 				</div>
 			{/each}
-		</div>
+		{:then countsData}
+			<div
+				class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-warning/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-warning opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<Clock class="h-28 w-28" />
+				</div>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.swap_stat_pending()}
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-warning sm:text-3xl">
+						{countsData.counts.open}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_pending_sub()}</p>
+				</div>
+			</div>
 
+			<div
+				class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<AlertCircle class="h-28 w-28" />
+				</div>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.swap_stat_approval()}
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
+						{countsData.counts.to_approve}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_approval_sub()}</p>
+				</div>
+			</div>
+
+			<div
+				class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-success/30"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 text-success opacity-[0.03] transition-opacity group-hover:opacity-10"
+				>
+					<CheckCircle2 class="h-28 w-28" />
+				</div>
+				<div class="relative">
+					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+						{m.swap_stat_processed()}
+					</div>
+					<div class="mt-2 text-2xl font-bold tracking-tight text-success sm:text-3xl">
+						{countsData.counts.history}
+					</div>
+					<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_processed_sub()}</p>
+				</div>
+			</div>
+		{/await}
+	</div>
+
+	{#await swapsDataPromise}
 		<DataTable
 			{columns}
 			rows={[]}
@@ -427,80 +513,6 @@
 		{#if swapsData.loadError}
 			<InlineErrorBanner message={swapsData.loadError} onRetry={() => invalidateAll()} />
 		{/if}
-
-		{#await countsDataPromise}
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				{#each [1, 2, 3] as item (item)}
-					<div class="rounded-2xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-						<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
-						<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-					</div>
-				{/each}
-			</div>
-		{:then countsData}
-			{#if countsData.loadError}
-				<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
-			{/if}
-
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				<div
-					class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-warning/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-warning opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Clock class="h-28 w-28" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.swap_stat_pending()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-warning sm:text-3xl">
-							{countsData.counts.open}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_pending_sub()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<AlertCircle class="h-28 w-28" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.swap_stat_approval()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-							{countsData.counts.to_approve}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_approval_sub()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-success/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-success opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<CheckCircle2 class="h-28 w-28" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.swap_stat_processed()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-success sm:text-3xl">
-							{countsData.counts.history}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.swap_stat_processed_sub()}</p>
-					</div>
-				</div>
-			</div>
-		{/await}
 
 		<DataTable
 			{columns}

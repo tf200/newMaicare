@@ -63,9 +63,7 @@
 							<img src="/logo.webp" alt="MaiCare" class="h-9 w-9 object-contain" />
 						</div>
 						<div>
-							<p class="text-xs font-semibold tracking-[0.3em] text-text-subtle uppercase">
-								MaiHr
-							</p>
+							<p class="text-xs font-semibold tracking-[0.3em] text-text-subtle uppercase">MaiHr</p>
 							<h2 class="text-2xl font-bold text-text">Care operations Hr, unified.</h2>
 						</div>
 					</div>

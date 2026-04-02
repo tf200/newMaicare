@@ -652,7 +652,7 @@
 	<title>{m.leave_page_title()} | MaiCare</title>
 </svelte:head>
 
-<section class="max-w-[1600px] mx-auto space-y-8 p-4 md:p-8">
+<section class="mx-auto max-w-[1600px] space-y-8 p-4 md:p-8">
 	<LeavePageHeader />
 
 	{#if statsError}
@@ -664,15 +664,13 @@
 	<LeaveHealthAlert {sickCount} />
 
 	<div class="space-y-6">
-		<LeaveManagementTabs
-			{activeTab}
-			{pendingCount}
-			onTabChange={(tab) => (activeTab = tab)}
-		/>
+		<LeaveManagementTabs {activeTab} {pendingCount} onTabChange={(tab) => (activeTab = tab)} />
 
 		<div class="min-h-[400px]">
 			{#if activeTab === 'requestLeave'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+				<div
+					class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+				>
 					<LeaveRequestCreateTab
 						bind:form={newRequest}
 						bind:selectedEmployee={selectedEmployeeFromSearch}
@@ -682,7 +680,9 @@
 					/>
 				</div>
 			{:else if activeTab === 'sickLeave'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+				<div
+					class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+				>
 					<LeaveSickTab
 						bind:form={sickRequest}
 						bind:selectedEmployee={selectedSickEmployee}
@@ -691,7 +691,9 @@
 					/>
 				</div>
 			{:else if activeTab === 'maternityLeave'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+				<div
+					class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+				>
 					<LeavePregnancyTab
 						bind:form={pregnancyRequest}
 						bind:selectedEmployee={selectedPregnancyEmployee}
@@ -700,7 +702,9 @@
 					/>
 				</div>
 			{:else if activeTab === 'lateArrival'}
-				<div class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+				<div
+					class="animate-in fade-in slide-in-from-bottom-2 rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+				>
 					<LeaveLateArrivalTab
 						bind:form={lateRequest}
 						bind:selectedEmployee={selectedLateEmployee}
@@ -739,9 +743,13 @@
 				/>
 			{:else if activeTab === 'balances'}
 				{#if leaveBalancesLoading && !leaveBalancesData}
-					<div class="flex h-64 items-center justify-center rounded-[2.5rem] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+					<div
+						class="flex h-64 items-center justify-center rounded-[2.5rem] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+					>
 						<div class="flex flex-col items-center gap-3">
-							<div class="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent"></div>
+							<div
+								class="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent"
+							></div>
 							<p class="text-sm font-bold text-zinc-400">Loading leave balances...</p>
 						</div>
 					</div>

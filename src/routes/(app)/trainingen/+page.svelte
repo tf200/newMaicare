@@ -21,7 +21,9 @@
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
 		toast = { message, type };
 		if (toastTimeout) clearTimeout(toastTimeout);
-		toastTimeout = setTimeout(() => { toast = null; }, 3500);
+		toastTimeout = setTimeout(() => {
+			toast = null;
+		}, 3500);
 	}
 
 	async function loadData() {
@@ -40,7 +42,9 @@
 		}
 	}
 
-	$effect(() => { void loadData(); });
+	$effect(() => {
+		void loadData();
+	});
 
 	function getExpiryStatus(date: string | null): string | null {
 		if (!date) return null;
@@ -54,8 +58,12 @@
 	const stats = $derived({
 		total: employeeTrainings.length,
 		completed: employeeTrainings.filter((et) => et.status === 'completed').length,
-		expired: employeeTrainings.filter((et) => et.status === 'expired' || getExpiryStatus(et.expiry_date) === 'expired').length,
-		expiringSoon: employeeTrainings.filter((et) => getExpiryStatus(et.expiry_date) === 'expiring_soon').length
+		expired: employeeTrainings.filter(
+			(et) => et.status === 'expired' || getExpiryStatus(et.expiry_date) === 'expired'
+		).length,
+		expiringSoon: employeeTrainings.filter(
+			(et) => getExpiryStatus(et.expiry_date) === 'expiring_soon'
+		).length
 	});
 
 	const tabs: { id: TabId; label: string; count?: number }[] = $derived([
@@ -71,12 +79,16 @@
 <section class="space-y-8">
 	<!-- Header -->
 	<header class="relative overflow-hidden rounded-3xl">
-		<div class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 dark:from-indigo-900 dark:via-indigo-950 dark:to-violet-950"></div>
-		<div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/[0.07] blur-3xl"></div>
+		<div
+			class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 dark:from-indigo-900 dark:via-indigo-950 dark:to-violet-950"
+		></div>
+		<div class="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/[0.07] blur-3xl"></div>
 		<div class="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-violet-300/10 blur-2xl"></div>
 		<div class="relative px-8 py-9">
 			<div class="space-y-2">
-				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase">{m.train_hr_dev()}</span>
+				<span class="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase"
+					>{m.train_hr_dev()}</span
+				>
 				<h1 class="text-[42px] leading-none font-extrabold tracking-tight text-white">
 					{m.train_label()}
 				</h1>
@@ -98,14 +110,20 @@
 	<div class="flex items-center gap-1">
 		{#each tabs as tab}
 			<button
-				class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab === tab.id
-					? 'bg-surface text-text shadow-sm border border-border/60'
+				class="relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 {activeTab ===
+				tab.id
+					? 'border border-border/60 bg-surface text-text shadow-sm'
 					: 'text-text-subtle hover:bg-border/30 hover:text-text-muted'}"
 				onclick={() => (activeTab = tab.id)}
 			>
 				{tab.label}
 				{#if tab.count !== undefined && tab.count > 0}
-					<span class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab === tab.id ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-border/40 text-text-muted'}">
+					<span
+						class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums {activeTab ===
+						tab.id
+							? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+							: 'bg-border/40 text-text-muted'}"
+					>
 						{tab.count}
 					</span>
 				{/if}
@@ -123,4 +141,8 @@
 	</div>
 </section>
 
-<Toast message={toast?.message ?? null} type={toast?.type ?? 'success'} onClose={() => (toast = null)} />
+<Toast
+	message={toast?.message ?? null}
+	type={toast?.type ?? 'success'}
+	onClose={() => (toast = null)}
+/>

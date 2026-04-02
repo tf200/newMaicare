@@ -853,9 +853,7 @@
 
 <div class="flex h-full flex-col gap-4 p-6">
 	<div class="flex items-center justify-between">
-		<div
-			class="flex shrink-0 rounded-xl border border-border bg-surface p-1 shadow-sm"
-		>
+		<div class="flex shrink-0 rounded-xl border border-border bg-surface p-1 shadow-sm">
 			<button
 				onclick={() => (activeTab = 'schedules')}
 				class="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all
@@ -887,7 +885,6 @@
 				Hours
 			</button>
 		</div>
-
 	</div>
 
 	<header

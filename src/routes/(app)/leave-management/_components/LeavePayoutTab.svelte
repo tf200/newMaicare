@@ -32,11 +32,7 @@
 		loading?: boolean;
 	}
 
-	let {
-		payouts = [],
-		employeeNamesById = {},
-		loading = false
-	}: Props = $props();
+	let { payouts = [], employeeNamesById = {}, loading = false }: Props = $props();
 
 	const columns: DataTableColumn[] = [
 		{ key: 'employee', label: m.employee() },
@@ -224,7 +220,9 @@
 		</div>
 		<div>
 			<p class="text-sm font-semibold text-text">{row.employee_name}</p>
-			<p class="text-[10px] text-text-muted font-medium uppercase tracking-wider">Year {row.balance_year}</p>
+			<p class="text-[10px] font-medium tracking-wider text-text-muted uppercase">
+				Year {row.balance_year}
+			</p>
 		</div>
 	</div>
 {/snippet}
@@ -274,14 +272,14 @@
 			<button
 				type="button"
 				aria-label="Approve payout"
-				class="group flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success transition-all hover:bg-success hover:text-white hover:shadow-md hover:shadow-success/20 focus:outline-none focus:ring-2 focus:ring-success/40"
+				class="group flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success transition-all hover:bg-success hover:text-white hover:shadow-md hover:shadow-success/20 focus:ring-2 focus:ring-success/40 focus:outline-none"
 			>
 				<CheckCircle class="h-4 w-4 transition-transform group-hover:scale-110" />
 			</button>
 			<button
 				type="button"
 				aria-label="Reject payout"
-				class="group flex h-8 w-8 items-center justify-center rounded-lg bg-error/10 text-error transition-all hover:bg-error hover:text-white hover:shadow-md hover:shadow-error/20 focus:outline-none focus:ring-2 focus:ring-error/40"
+				class="group flex h-8 w-8 items-center justify-center rounded-lg bg-error/10 text-error transition-all hover:bg-error hover:text-white hover:shadow-md hover:shadow-error/20 focus:ring-2 focus:ring-error/40 focus:outline-none"
 			>
 				<XCircle class="h-4 w-4 transition-transform group-hover:scale-110" />
 			</button>

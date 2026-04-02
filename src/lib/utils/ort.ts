@@ -57,7 +57,13 @@ function calculateOverlapHours(
 			rangeEnd,
 			isOvernightRange
 		);
-		const afterMidnight = calculateOverlapHours(0, shiftEnd, rangeStart, rangeEnd, isOvernightRange);
+		const afterMidnight = calculateOverlapHours(
+			0,
+			shiftEnd,
+			rangeStart,
+			rangeEnd,
+			isOvernightRange
+		);
 		return beforeMidnight + afterMidnight;
 	}
 

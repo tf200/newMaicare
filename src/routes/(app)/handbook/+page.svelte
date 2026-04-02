@@ -350,11 +350,17 @@
 			>
 				<PlayCircle class="h-12 w-12" />
 			</div>
-			<h2 class="text-4xl font-extrabold tracking-tight text-text lg:text-5xl">{m.welcome_back()}!</h2>
+			<h2 class="text-4xl font-extrabold tracking-tight text-text lg:text-5xl">
+				{m.welcome_back()}!
+			</h2>
 			<p class="mx-auto mt-4 max-w-lg text-lg text-text-muted">
 				{m.handbook_description()}
 			</p>
-			<Button class="mt-10 px-10 py-7 text-xl font-bold shadow-lg shadow-brand/20 hover:scale-105 transition-all" onclick={startHandbook} disabled={isStarting}>
+			<Button
+				class="mt-10 px-10 py-7 text-xl font-bold shadow-lg shadow-brand/20 transition-all hover:scale-105"
+				onclick={startHandbook}
+				disabled={isStarting}
+			>
 				{isStarting ? 'Starting...' : m.start_handbook()}
 			</Button>
 		</div>
@@ -390,7 +396,7 @@
 						<button
 							class="group flex w-full items-center gap-4 border p-4 text-left transition-all duration-300
                             {currentStepIndex === i
-								? 'rounded-2xl border-brand bg-brand shadow-lg shadow-brand/20 scale-[1.02]'
+								? 'scale-[1.02] rounded-2xl border-brand bg-brand shadow-lg shadow-brand/20'
 								: 'rounded-xl border-transparent hover:border-border hover:bg-surface/60'}"
 							onclick={() => {
 								currentStepIndex = i;
@@ -421,7 +427,13 @@
 								>
 									{step.title}
 								</p>
-								<p class="text-xs font-medium {currentStepIndex === i ? 'text-white/80' : 'text-text-subtle'}">{getStepKindLabel(step.kind)}</p>
+								<p
+									class="text-xs font-medium {currentStepIndex === i
+										? 'text-white/80'
+										: 'text-text-subtle'}"
+								>
+									{getStepKindLabel(step.kind)}
+								</p>
 							</div>
 							{#if currentStepIndex === i}
 								<ChevronRight class="h-5 w-5 text-white" />
@@ -496,8 +508,8 @@
 														<button
 															class="group flex items-center gap-4 rounded-xl border p-4 text-left transition-all duration-300
                                                             {quizAnswers[q.id] === option
-																? 'border-brand bg-brand text-white shadow-lg shadow-brand/20 scale-[1.02]'
-																: 'border-border/50 bg-surface hover:border-border hover:bg-surface-alt/60'}"
+																? 'scale-[1.02] border-brand bg-brand text-white shadow-lg shadow-brand/20'
+																: 'hover:bg-surface-alt/60 border-border/50 bg-surface hover:border-border'}"
 															onclick={() => (quizAnswers[q.id] = option)}
 															disabled={currentStep.status !== 'pending'}
 														>
@@ -508,10 +520,16 @@
 																	: 'border-border group-hover:border-text-subtle'}"
 															>
 																{#if quizAnswers[q.id] === option}
-																	<div class="h-2.5 w-2.5 rounded-full bg-brand scale-in-center"></div>
+																	<div
+																		class="scale-in-center h-2.5 w-2.5 rounded-full bg-brand"
+																	></div>
 																{/if}
 															</div>
-															<span class="text-sm font-semibold {quizAnswers[q.id] === option ? 'text-white' : 'text-text'}">{option}</span>
+															<span
+																class="text-sm font-semibold {quizAnswers[q.id] === option
+																	? 'text-white'
+																	: 'text-text'}">{option}</span
+															>
 														</button>
 													{/each}
 												</div>
@@ -526,18 +544,26 @@
 							</div>
 
 							{#if currentStep.kind === 'ack'}
-								<div class="mt-12 overflow-hidden rounded-2xl border border-brand bg-surface shadow-md">
-									<label class="group flex cursor-pointer items-center gap-4 p-6 transition-colors hover:bg-brand/5">
+								<div
+									class="mt-12 overflow-hidden rounded-2xl border border-brand bg-surface shadow-md"
+								>
+									<label
+										class="group flex cursor-pointer items-center gap-4 p-6 transition-colors hover:bg-brand/5"
+									>
 										<div class="relative flex h-7 w-7 items-center justify-center">
 											<input
 												type="checkbox"
 												bind:checked={acknowledged}
 												disabled={currentStep.status !== 'pending'}
-												class="peer h-7 w-7 appearance-none rounded-lg border-2 border-border bg-surface transition-all checked:border-brand checked:bg-brand focus:outline-none focus:ring-4 focus:ring-brand/20 disabled:opacity-50"
+												class="peer h-7 w-7 appearance-none rounded-lg border-2 border-border bg-surface transition-all checked:border-brand checked:bg-brand focus:ring-4 focus:ring-brand/20 focus:outline-none disabled:opacity-50"
 											/>
-											<CheckCircle2 class="absolute pointer-events-none h-4 w-4 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+											<CheckCircle2
+												class="pointer-events-none absolute h-4 w-4 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+											/>
 										</div>
-										<span class="text-base font-bold text-text group-hover:text-brand transition-colors">
+										<span
+											class="text-base font-bold text-text transition-colors group-hover:text-brand"
+										>
 											{m.acknowledge_handbook()}
 										</span>
 									</label>

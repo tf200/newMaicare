@@ -295,9 +295,7 @@ function generateAssignments(startStr: string, endStr: string): ShiftAssignment[
 
 	for (const empId of Object.keys(employeeShiftCounts)) {
 		const count = employeeShiftCounts[empId];
-		const totalDays = Math.ceil(
-			(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-		);
+		const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 		const step = Math.max(1, Math.floor(totalDays / count));
 
 		let shiftsCreated = 0;
@@ -336,27 +334,174 @@ function generateAssignments(startStr: string, endStr: string): ShiftAssignment[
 // Mock CAO salary scales
 // ---------------------------------------------------------------------------
 const mockScales: CaoSalaryScale[] = [
-	{ id: 'sc-01', scale_number: 35, periodiek: 1, monthly_salary: 2457, hourly_rate: 14.18, is_uitloop: false },
-	{ id: 'sc-02', scale_number: 35, periodiek: 2, monthly_salary: 2580, hourly_rate: 14.89, is_uitloop: false },
-	{ id: 'sc-03', scale_number: 35, periodiek: 3, monthly_salary: 2710, hourly_rate: 15.64, is_uitloop: false },
-	{ id: 'sc-04', scale_number: 40, periodiek: 1, monthly_salary: 2750, hourly_rate: 15.87, is_uitloop: false },
-	{ id: 'sc-05', scale_number: 40, periodiek: 2, monthly_salary: 2890, hourly_rate: 16.68, is_uitloop: false },
-	{ id: 'sc-06', scale_number: 40, periodiek: 3, monthly_salary: 3035, hourly_rate: 17.51, is_uitloop: false },
-	{ id: 'sc-07', scale_number: 40, periodiek: 4, monthly_salary: 3187, hourly_rate: 18.39, is_uitloop: false },
-	{ id: 'sc-08', scale_number: 45, periodiek: 1, monthly_salary: 3025, hourly_rate: 17.46, is_uitloop: false },
-	{ id: 'sc-09', scale_number: 45, periodiek: 2, monthly_salary: 3180, hourly_rate: 18.36, is_uitloop: false },
-	{ id: 'sc-10', scale_number: 45, periodiek: 3, monthly_salary: 3340, hourly_rate: 19.28, is_uitloop: false },
-	{ id: 'sc-11', scale_number: 45, periodiek: 4, monthly_salary: 3510, hourly_rate: 20.26, is_uitloop: false },
-	{ id: 'sc-12', scale_number: 45, periodiek: 5, monthly_salary: 3688, hourly_rate: 21.29, is_uitloop: false },
-	{ id: 'sc-13', scale_number: 45, periodiek: 6, monthly_salary: 3875, hourly_rate: 22.37, is_uitloop: false },
-	{ id: 'sc-14', scale_number: 50, periodiek: 1, monthly_salary: 3400, hourly_rate: 19.63, is_uitloop: false },
-	{ id: 'sc-15', scale_number: 50, periodiek: 2, monthly_salary: 3575, hourly_rate: 20.64, is_uitloop: false },
-	{ id: 'sc-16', scale_number: 50, periodiek: 3, monthly_salary: 3758, hourly_rate: 21.69, is_uitloop: false },
-	{ id: 'sc-17', scale_number: 50, periodiek: 4, monthly_salary: 3948, hourly_rate: 22.79, is_uitloop: false },
-	{ id: 'sc-18', scale_number: 50, periodiek: 5, monthly_salary: 4148, hourly_rate: 23.94, is_uitloop: false },
-	{ id: 'sc-19', scale_number: 50, periodiek: 6, monthly_salary: 4358, hourly_rate: 25.15, is_uitloop: false },
-	{ id: 'sc-20', scale_number: 50, periodiek: 7, monthly_salary: 4576, hourly_rate: 26.41, is_uitloop: false },
-	{ id: 'sc-21', scale_number: 50, periodiek: 8, monthly_salary: 4805, hourly_rate: 27.73, is_uitloop: false }
+	{
+		id: 'sc-01',
+		scale_number: 35,
+		periodiek: 1,
+		monthly_salary: 2457,
+		hourly_rate: 14.18,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-02',
+		scale_number: 35,
+		periodiek: 2,
+		monthly_salary: 2580,
+		hourly_rate: 14.89,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-03',
+		scale_number: 35,
+		periodiek: 3,
+		monthly_salary: 2710,
+		hourly_rate: 15.64,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-04',
+		scale_number: 40,
+		periodiek: 1,
+		monthly_salary: 2750,
+		hourly_rate: 15.87,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-05',
+		scale_number: 40,
+		periodiek: 2,
+		monthly_salary: 2890,
+		hourly_rate: 16.68,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-06',
+		scale_number: 40,
+		periodiek: 3,
+		monthly_salary: 3035,
+		hourly_rate: 17.51,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-07',
+		scale_number: 40,
+		periodiek: 4,
+		monthly_salary: 3187,
+		hourly_rate: 18.39,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-08',
+		scale_number: 45,
+		periodiek: 1,
+		monthly_salary: 3025,
+		hourly_rate: 17.46,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-09',
+		scale_number: 45,
+		periodiek: 2,
+		monthly_salary: 3180,
+		hourly_rate: 18.36,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-10',
+		scale_number: 45,
+		periodiek: 3,
+		monthly_salary: 3340,
+		hourly_rate: 19.28,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-11',
+		scale_number: 45,
+		periodiek: 4,
+		monthly_salary: 3510,
+		hourly_rate: 20.26,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-12',
+		scale_number: 45,
+		periodiek: 5,
+		monthly_salary: 3688,
+		hourly_rate: 21.29,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-13',
+		scale_number: 45,
+		periodiek: 6,
+		monthly_salary: 3875,
+		hourly_rate: 22.37,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-14',
+		scale_number: 50,
+		periodiek: 1,
+		monthly_salary: 3400,
+		hourly_rate: 19.63,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-15',
+		scale_number: 50,
+		periodiek: 2,
+		monthly_salary: 3575,
+		hourly_rate: 20.64,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-16',
+		scale_number: 50,
+		periodiek: 3,
+		monthly_salary: 3758,
+		hourly_rate: 21.69,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-17',
+		scale_number: 50,
+		periodiek: 4,
+		monthly_salary: 3948,
+		hourly_rate: 22.79,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-18',
+		scale_number: 50,
+		periodiek: 5,
+		monthly_salary: 4148,
+		hourly_rate: 23.94,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-19',
+		scale_number: 50,
+		periodiek: 6,
+		monthly_salary: 4358,
+		hourly_rate: 25.15,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-20',
+		scale_number: 50,
+		periodiek: 7,
+		monthly_salary: 4576,
+		hourly_rate: 26.41,
+		is_uitloop: false
+	},
+	{
+		id: 'sc-21',
+		scale_number: 50,
+		periodiek: 8,
+		monthly_salary: 4805,
+		hourly_rate: 27.73,
+		is_uitloop: false
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -480,9 +625,7 @@ export function listShiftAssignments(params: { start_date: string; end_date: str
 }
 
 export function listServices() {
-	return delay(200).then(
-		() => ({ data: mockServices, success: true }) as ApiEnvelope<Service[]>
-	);
+	return delay(200).then(() => ({ data: mockServices, success: true }) as ApiEnvelope<Service[]>);
 }
 
 export function listContractChanges() {
@@ -517,7 +660,5 @@ export function sendSalarySlipEmail(payload: {
 	filename: string;
 	pdfBase64: string;
 }) {
-	return delay(1000).then(
-		() => ({ data: null, success: true }) as ApiEnvelope<null>
-	);
+	return delay(1000).then(() => ({ data: null, success: true }) as ApiEnvelope<null>);
 }

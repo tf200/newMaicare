@@ -12,7 +12,14 @@
 		coveredCount: number;
 	}
 
-	let { totalEmployees, completedCount, thisMonthCount, avgScore, coveragePercent, coveredCount }: Props = $props();
+	let {
+		totalEmployees,
+		completedCount,
+		thisMonthCount,
+		avgScore,
+		coveragePercent,
+		coveredCount
+	}: Props = $props();
 </script>
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

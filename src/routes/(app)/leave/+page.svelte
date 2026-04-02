@@ -732,8 +732,7 @@
 			setToast(m.leave_toast_late_added(), 'success');
 			lateRequest = { employeeId: loggedInEmployee.id, date: '', time: '', reason: '' };
 		} catch (error) {
-			const type =
-				error instanceof ApiClientError && error.status === 400 ? 'warning' : 'error';
+			const type = error instanceof ApiClientError && error.status === 400 ? 'warning' : 'error';
 			setToast(getLateArrivalErrorMessage(error), type);
 		} finally {
 			isSubmittingLateArrival = false;

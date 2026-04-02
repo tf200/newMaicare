@@ -1,11 +1,5 @@
 <script lang="ts">
-	import {
-		Clock,
-		CheckCircle,
-		XCircle,
-		AlertCircle,
-		Search
-	} from 'lucide-svelte';
+	import { Clock, CheckCircle, XCircle, AlertCircle, Search } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -183,19 +177,19 @@
 
 	const tableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		rows.map((row) => {
-				const days = calculateDays(row.start_date, row.end_date);
-				return {
-					id: row.id,
-					employeeName: row.employee_name,
-					leaveType: row.leave_type,
-					startDate: row.start_date,
-					endDate: row.end_date,
-					days,
-					reason: row.reason ?? undefined,
-					status: row.status
-				};
-			})
-		);
+			const days = calculateDays(row.start_date, row.end_date);
+			return {
+				id: row.id,
+				employeeName: row.employee_name,
+				leaveType: row.leave_type,
+				startDate: row.start_date,
+				endDate: row.end_date,
+				days,
+				reason: row.reason ?? undefined,
+				status: row.status
+			};
+		})
+	);
 
 	function getFilterPillClass(pillId: RequestFilter) {
 		if (pillId === 'all') {

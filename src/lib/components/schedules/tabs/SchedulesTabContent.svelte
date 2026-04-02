@@ -192,11 +192,7 @@
 				<Button variant="ghost" class="rounded-xl" onclick={() => (weekOffset = 0)}
 					>{m.this_week()}</Button
 				>
-				<Button
-					class="rounded-xl"
-					onclick={onOpenAutoGenerateModal}
-					disabled={!selectedLocationId}
-				>
+				<Button class="rounded-xl" onclick={onOpenAutoGenerateModal} disabled={!selectedLocationId}>
 					<Sparkles class="h-4 w-4" />
 					{m.auto_generate()}
 				</Button>

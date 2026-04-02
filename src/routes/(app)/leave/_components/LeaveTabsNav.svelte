@@ -1,12 +1,5 @@
 <script lang="ts">
-	import {
-		AlarmClock,
-		Baby,
-		CalendarPlus,
-		List,
-		Stethoscope,
-		Users
-	} from 'lucide-svelte';
+	import { AlarmClock, Baby, CalendarPlus, List, Stethoscope, Users } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type TabId = 'aanvragen' | 'ziekmelding' | 'zwangerschap' | 'telaat' | 'overzicht' | 'saldo';

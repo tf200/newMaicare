@@ -84,7 +84,9 @@
 
 				shifts[day.date].push({
 					date: day.date,
-					type: isShift ? (item.shift?.location_name ?? m.schedule()) : (item.event?.title ?? 'Event'),
+					type: isShift
+						? (item.shift?.location_name ?? m.schedule())
+						: (item.event?.title ?? 'Event'),
 					startTime: toTime(item.start_time),
 					endTime: toTime(item.end_time),
 					color
@@ -147,9 +149,7 @@
 	};
 
 	const monthName = $derived(
-		new Intl.DateTimeFormat(resolveLocale(), { month: 'long', year: 'numeric' }).format(
-			currentDate
-		)
+		new Intl.DateTimeFormat(resolveLocale(), { month: 'long', year: 'numeric' }).format(currentDate)
 	);
 
 	const weekdayLabels = $derived.by(() => {
@@ -185,10 +185,12 @@
 		return days;
 	});
 
-	const employeeSchedulesPromise = $derived.by<Promise<{
-		schedules: EmployeeScheduleTimelineDay[];
-		loadError: string | null;
-	}>>(() => {
+	const employeeSchedulesPromise = $derived.by<
+		Promise<{
+			schedules: EmployeeScheduleTimelineDay[];
+			loadError: string | null;
+		}>
+	>(() => {
 		if (!selectedEmployee?.id) {
 			return Promise.resolve({
 				schedules: [],
@@ -221,7 +223,9 @@
 	<div>
 		<h3 class="mb-4 flex items-center gap-2 font-semibold text-text">
 			<Calendar class="h-4 w-4 text-brand" />
-			{selectedEmployee ? m.schedule_for_employee({ name: selectedEmployee.first_name }) : m.select_employee()}
+			{selectedEmployee
+				? m.schedule_for_employee({ name: selectedEmployee.first_name })
+				: m.select_employee()}
 		</h3>
 
 		{#if !selectedEmployee}
@@ -328,7 +332,9 @@
 						<div class="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm">
 							<p class="font-semibold text-text">{m.schedule_selected_period()}</p>
 							<p class="text-xs text-text-muted">
-								{formatDisplayDate(selectedStartDate)} {m.to().toLowerCase()} {formatDisplayDate(selectedEndDate)}
+								{formatDisplayDate(selectedStartDate)}
+								{m.to().toLowerCase()}
+								{formatDisplayDate(selectedEndDate)}
 							</p>
 						</div>
 					{:else if selectedStartDate}

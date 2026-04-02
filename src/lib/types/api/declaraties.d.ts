@@ -1,5 +1,13 @@
 export type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'paid';
-export type ExpenseCategory = 'reiskosten' | 'verblijfkosten' | 'maaltijden' | 'telefoon' | 'kantoorbenodigdheden' | 'opleidingen' | 'representatie' | 'overig';
+export type ExpenseCategory =
+	| 'reiskosten'
+	| 'verblijfkosten'
+	| 'maaltijden'
+	| 'telefoon'
+	| 'kantoorbenodigdheden'
+	| 'opleidingen'
+	| 'representatie'
+	| 'overig';
 
 export interface Expense {
 	id: string;

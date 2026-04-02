@@ -13,13 +13,55 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Mock Competencies
 // ---------------------------------------------------------------------------
 const mockCompetencies: Competency[] = [
-	{ id: 'comp-01', name: 'Veilig leefklimaat', description: 'Bieden van een veilig en stabiel leefklimaat', category: 'Pedagogisch', is_active: true },
-	{ id: 'comp-02', name: 'ADL-begeleiding', description: 'Begeleiden van de dagelijkse leefsituatie', category: 'Pedagogisch', is_active: true },
-	{ id: 'comp-03', name: 'Ontwikkeling stimuleren', description: 'Stimuleren van ontwikkeling', category: 'Pedagogisch', is_active: true },
-	{ id: 'comp-04', name: 'Opvoeden en begrenzen', description: 'Opvoeden en begrenzen', category: 'Pedagogisch', is_active: true },
-	{ id: 'comp-05', name: 'Individuele begeleiding', description: 'Individuele begeleiding bieden', category: 'Pedagogisch', is_active: true },
-	{ id: 'comp-06', name: 'Samenwerken', description: 'Samenwerken met collega\'s en externe partijen', category: 'Professioneel', is_active: true },
-	{ id: 'comp-07', name: 'Reflectie', description: 'Reflecteren op eigen handelen', category: 'Professioneel', is_active: true }
+	{
+		id: 'comp-01',
+		name: 'Veilig leefklimaat',
+		description: 'Bieden van een veilig en stabiel leefklimaat',
+		category: 'Pedagogisch',
+		is_active: true
+	},
+	{
+		id: 'comp-02',
+		name: 'ADL-begeleiding',
+		description: 'Begeleiden van de dagelijkse leefsituatie',
+		category: 'Pedagogisch',
+		is_active: true
+	},
+	{
+		id: 'comp-03',
+		name: 'Ontwikkeling stimuleren',
+		description: 'Stimuleren van ontwikkeling',
+		category: 'Pedagogisch',
+		is_active: true
+	},
+	{
+		id: 'comp-04',
+		name: 'Opvoeden en begrenzen',
+		description: 'Opvoeden en begrenzen',
+		category: 'Pedagogisch',
+		is_active: true
+	},
+	{
+		id: 'comp-05',
+		name: 'Individuele begeleiding',
+		description: 'Individuele begeleiding bieden',
+		category: 'Pedagogisch',
+		is_active: true
+	},
+	{
+		id: 'comp-06',
+		name: 'Samenwerken',
+		description: "Samenwerken met collega's en externe partijen",
+		category: 'Professioneel',
+		is_active: true
+	},
+	{
+		id: 'comp-07',
+		name: 'Reflectie',
+		description: 'Reflecteren op eigen handelen',
+		category: 'Professioneel',
+		is_active: true
+	}
 ];
 
 // ---------------------------------------------------------------------------
@@ -90,7 +132,8 @@ const mockAssessments: Assessment[] = [
 		assessment_date: '2026-02-15',
 		total_score: 7.4,
 		status: 'completed',
-		notes: 'Sophie laat zien dat ze goed kan omgaan met complexe situaties. Aandachtspunt: meer structuur bieden in de ochtendroutine.',
+		notes:
+			'Sophie laat zien dat ze goed kan omgaan met complexe situaties. Aandachtspunt: meer structuur bieden in de ochtendroutine.',
 		created_at: '2026-02-15T10:00:00Z',
 		employee: { id: 'emp-001', name: 'Sophie de Vries' },
 		scores: generateScores('assess-001', 1)
@@ -112,7 +155,8 @@ const mockAssessments: Assessment[] = [
 		assessment_date: '2025-12-10',
 		total_score: 8.1,
 		status: 'completed',
-		notes: 'Mohammed excelleert in het bieden van emotionele veiligheid. Blijven inzetten op cognitieve ontwikkeling.',
+		notes:
+			'Mohammed excelleert in het bieden van emotionele veiligheid. Blijven inzetten op cognitieve ontwikkeling.',
 		created_at: '2025-12-10T09:00:00Z',
 		employee: { id: 'emp-004', name: 'Mohammed Hassan' },
 		scores: generateScores('assess-003', 3)
@@ -123,7 +167,8 @@ const mockAssessments: Assessment[] = [
 		assessment_date: '2026-03-01',
 		total_score: 5.9,
 		status: 'completed',
-		notes: 'Emma heeft nog extra ondersteuning nodig bij het begrenzen en het hanteren van conflicten.',
+		notes:
+			'Emma heeft nog extra ondersteuning nodig bij het begrenzen en het hanteren van conflicten.',
 		created_at: '2026-03-01T11:00:00Z',
 		employee: { id: 'emp-005', name: 'Emma Bakker' },
 		scores: generateScores('assess-004', 4)
@@ -134,7 +179,7 @@ const mockAssessments: Assessment[] = [
 		assessment_date: '2025-11-05',
 		total_score: 7.9,
 		status: 'completed',
-		notes: 'Fatima toont veel ervaring en kan goed als mentor fungeren voor jongere collega\'s.',
+		notes: "Fatima toont veel ervaring en kan goed als mentor fungeren voor jongere collega's.",
 		created_at: '2025-11-05T15:00:00Z',
 		employee: { id: 'emp-007', name: 'Fatima Zorgman' },
 		scores: generateScores('assess-005', 5)
@@ -156,7 +201,8 @@ const mockAssessments: Assessment[] = [
 		assessment_date: '2025-10-15',
 		total_score: 6.5,
 		status: 'completed',
-		notes: 'Anna maakt goede voortgang sinds de vorige beoordeling. Blijven focussen op zelfredzaamheid.',
+		notes:
+			'Anna maakt goede voortgang sinds de vorige beoordeling. Blijven focussen op zelfredzaamheid.',
 		created_at: '2025-10-15T10:00:00Z',
 		employee: { id: 'emp-010', name: 'Anna Jansen' },
 		scores: generateScores('assess-007', 7)
@@ -173,11 +219,14 @@ const mockWorkAssignments: WorkAssignment[] = [
 		employee_id: 'emp-005',
 		question_id: 'ob-1',
 		domain_id: 'opvoeden-begrenzen',
-		question_text: 'Positief en constructief corrigeren: Focus leggen op gewenst gedrag in plaats van alleen op het ongewenste.',
+		question_text:
+			'Positief en constructief corrigeren: Focus leggen op gewenst gedrag in plaats van alleen op het ongewenste.',
 		score: 4,
-		assignment_description: 'Reflecteer op het gebied van begrenzen waar je onvoldoende hebt gescoord.\n\nOpdracht:\n1. Beschrijf concreet wat je hebt gedaan op dit gebied\n2. Analyseer waarom dit nog niet op niveau is\n3. Benoem 3 concrete verbeteracties\n4. Geef aan hoe je voortgang meet',
+		assignment_description:
+			'Reflecteer op het gebied van begrenzen waar je onvoldoende hebt gescoord.\n\nOpdracht:\n1. Beschrijf concreet wat je hebt gedaan op dit gebied\n2. Analyseer waarom dit nog niet op niveau is\n3. Benoem 3 concrete verbeteracties\n4. Geef aan hoe je voortgang meet',
 		improvement_notes: 'Let op de-escalerende technieken bij conflicten.',
-		expectations: 'Binnen 2 weken: reflectieverslag.\nBinnen 4 weken: meetbare verbetering.\nBinnen 6 weken: minimaal voldoende score.',
+		expectations:
+			'Binnen 2 weken: reflectieverslag.\nBinnen 4 weken: meetbare verbetering.\nBinnen 6 weken: minimaal voldoende score.',
 		advice: 'Focus op positieve bekrachtiging. Oefen met Nieuwe Autoriteit technieken.',
 		due_date: '2026-03-15',
 		status: 'open',
@@ -193,16 +242,19 @@ const mockWorkAssignments: WorkAssignment[] = [
 		employee_id: 'emp-005',
 		question_id: 'so-2',
 		domain_id: 'stimuleren-ontwikkeling',
-		question_text: 'Emotieregulatie versterken: Helpen bij het herkennen, benoemen en constructief uiten van emoties.',
+		question_text:
+			'Emotieregulatie versterken: Helpen bij het herkennen, benoemen en constructief uiten van emoties.',
 		score: 5,
-		assignment_description: 'Reflecteer op het gebied van emotieregulatie.\n\nOpdracht:\n1. Beschrijf je aanpak bij emotionele situaties\n2. Zoek verbeterpunten\n3. Maak een actieplan',
+		assignment_description:
+			'Reflecteer op het gebied van emotieregulatie.\n\nOpdracht:\n1. Beschrijf je aanpak bij emotionele situaties\n2. Zoek verbeterpunten\n3. Maak een actieplan',
 		improvement_notes: null,
 		expectations: 'Binnen 4 weken: aantoonbare verbetering.',
 		advice: 'Gebruik gevoelsthermometer. Oefen dagelijks met de jeugdigen.',
 		due_date: '2026-03-15',
 		status: 'submitted',
 		submitted_at: '2026-03-10T14:00:00Z',
-		submission_text: 'Ik heb de afgelopen twee weken dagelijks de gevoelsthermometer ingezet. Bij 3 jeugdigen zie ik dat ze beter kunnen benoemen wat ze voelen.',
+		submission_text:
+			'Ik heb de afgelopen twee weken dagelijks de gevoelsthermometer ingezet. Bij 3 jeugdigen zie ik dat ze beter kunnen benoemen wat ze voelen.',
 		feedback: null,
 		reviewed_at: null,
 		employee: { id: 'emp-005', name: 'Emma Bakker' }
@@ -215,14 +267,16 @@ const mockWorkAssignments: WorkAssignment[] = [
 		domain_id: 'individuele-begeleiding',
 		question_text: 'Systemisch werken: De begeleiding afstemmen op het grotere geheel.',
 		score: 4,
-		assignment_description: 'Reflecteer op systemisch werken.\n\nOpdracht:\n1. Beschrijf je huidige aanpak\n2. Analyseer verbeterpunten\n3. Maak een plan',
+		assignment_description:
+			'Reflecteer op systemisch werken.\n\nOpdracht:\n1. Beschrijf je huidige aanpak\n2. Analyseer verbeterpunten\n3. Maak een plan',
 		improvement_notes: 'Maak meer verbinding tussen groep, school en thuis.',
 		expectations: 'Binnen 6 weken: voldoende score.',
 		advice: 'Plan maandelijks een MDO. Betrek ouders actiever.',
 		due_date: '2026-02-20',
 		status: 'approved',
 		submitted_at: '2026-02-18T10:00:00Z',
-		submission_text: 'Ik heb twee MDO\'s bijgewoond en een oudergesprek gevoerd. De lijnen zijn nu korter.',
+		submission_text:
+			"Ik heb twee MDO's bijgewoond en een oudergesprek gevoerd. De lijnen zijn nu korter.",
 		feedback: 'Goede verbetering zichtbaar. Blijf dit vasthouden.',
 		reviewed_at: '2026-02-19T09:00:00Z',
 		employee: { id: 'emp-002', name: 'Ahmed El Amrani' }
@@ -235,15 +289,18 @@ const mockWorkAssignments: WorkAssignment[] = [
 		domain_id: 'stimuleren-ontwikkeling',
 		question_text: 'Zelfredzaamheid vergroten: Stapsgewijs verantwoordelijkheid geven.',
 		score: 3,
-		assignment_description: 'Reflecteer op het vergroten van zelfredzaamheid.\n\nOpdracht:\n1. Beschrijf concrete situaties\n2. Analyseer waar het beter kan\n3. Maak een stappenplan',
+		assignment_description:
+			'Reflecteer op het vergroten van zelfredzaamheid.\n\nOpdracht:\n1. Beschrijf concrete situaties\n2. Analyseer waar het beter kan\n3. Maak een stappenplan',
 		improvement_notes: 'Te veel overgenomen van de jeugdigen.',
 		expectations: 'Binnen 2 weken: reflectieverslag.\nBinnen 4 weken: verbetering.',
 		advice: 'Gebruik de "laat maar doen" methodiek. Bouw stapsgewijs af.',
 		due_date: '2026-02-01',
 		status: 'revision_needed',
 		submitted_at: '2026-01-28T11:00:00Z',
-		submission_text: 'Ik heb geprobeerd meer los te laten maar sommige jeugdigen zijn nog niet toe aan meer zelfstandigheid.',
-		feedback: 'Je reflectie is te algemeen. Geef concrete voorbeelden van situaties waar je hebt losgelaten en wat het resultaat was.',
+		submission_text:
+			'Ik heb geprobeerd meer los te laten maar sommige jeugdigen zijn nog niet toe aan meer zelfstandigheid.',
+		feedback:
+			'Je reflectie is te algemeen. Geef concrete voorbeelden van situaties waar je hebt losgelaten en wat het resultaat was.',
 		reviewed_at: '2026-01-30T14:00:00Z',
 		employee: { id: 'emp-010', name: 'Anna Jansen' }
 	}
@@ -259,9 +316,11 @@ const mockConversations: PopConversation[] = [
 		conversation_date: '2026-01-10',
 		conversation_type: 'evaluatie',
 		goals: 'Doorgroeien naar senior jeugdwerker. Meer verantwoordelijkheid in groepsleiding.',
-		agreements: 'Start met coaching opleiding in Q2. Maandelijks voortgangsgesprek met leidinggevende.',
+		agreements:
+			'Start met coaching opleiding in Q2. Maandelijks voortgangsgesprek met leidinggevende.',
 		development_points: 'Methodisch werken verdiepen. Meer gebruik maken van Geef me de 5.',
-		strengths: 'Uitstekende relatie met jeugdigen. Goede intuïtie voor signalering. Creatieve oplossingen.',
+		strengths:
+			'Uitstekende relatie met jeugdigen. Goede intuïtie voor signalering. Creatieve oplossingen.',
 		notes: 'Sophie is zeer gemotiveerd en toont eigenaarschap.',
 		next_conversation_date: '2026-07-10',
 		status: 'afgerond',
@@ -273,7 +332,7 @@ const mockConversations: PopConversation[] = [
 		conversation_date: '2026-02-05',
 		conversation_type: 'tussentijds',
 		goals: 'Verbeteren van verslaglegging. Meer aandacht voor systemisch werken.',
-		agreements: 'Wekelijks reflectieformulier invullen. Twee MDO\'s per maand bijwonen.',
+		agreements: "Wekelijks reflectieformulier invullen. Twee MDO's per maand bijwonen.",
 		development_points: 'Verslaglegging. Samenwerking met externe partijen.',
 		strengths: 'Goede band met jeugdigen. Rustige uitstraling.',
 		notes: 'Ahmed heeft moeite met de administratieve kant maar doet zijn best.',
@@ -302,7 +361,7 @@ const mockConversations: PopConversation[] = [
 		conversation_type: 'evaluatie',
 		goals: 'Doorgroeien naar teamleider. Meer strategische betrokkenheid.',
 		agreements: 'Start leiderschapstraject. Maandelijks strategisch overleg.',
-		development_points: 'Delegeren. Feedback geven aan collega\'s.',
+		development_points: "Delegeren. Feedback geven aan collega's.",
 		strengths: 'Ervaring. Rust. Diepgaande kennis van de doelgroep.',
 		notes: 'Fatima is klaar voor de volgende stap. Organiseer het leiderschapstraject.',
 		next_conversation_date: '2026-05-20',
