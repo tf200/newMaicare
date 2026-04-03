@@ -63,8 +63,7 @@
 		{
 			label: m.organization(),
 			href: '/organization',
-			icon: HeartHandshake,
-			permission: 'ORGANISATION.VIEW'
+			icon: HeartHandshake
 		},
 		{ label: 'Templates', href: '/settings/handbooks', icon: FileText },
 		{

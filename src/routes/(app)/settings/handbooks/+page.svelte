@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { AlertCircle, BookOpen, ChevronLeft, Plus } from 'lucide-svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -28,7 +28,6 @@
 	} from '$lib/types/api';
 	import { _mapStep, _mapTemplateVersion } from './+page';
 	import type {
-		DepartmentOption,
 		DepartmentTemplateGroup,
 		DraftModalMode,
 		HandbookSettingsLoadResult,
@@ -64,14 +63,10 @@
 		};
 	}>();
 
-	const initialHandbookData = $derived(data.initial);
-
-	let handbookData = $state<HandbookSettingsLoadResult>({
-		departments: [],
-		departmentTemplates: [],
-		loadError: null
-	});
-	let selectedDepartmentId = $state<string | null>(null);
+	let handbookData = $state<HandbookSettingsLoadResult>(untrack(() => data.initial));
+	let selectedDepartmentId = $state<string | null>(
+		untrack(() => data.initial.departments[0]?.id ?? null)
+	);
 	let selectedVersionId = $state<string | null>(null);
 	let preferredDepartmentId = $state<string | null>(null);
 	let preferredVersionId = $state<string | null>(null);
@@ -115,37 +110,6 @@
 	let stepForm = $state<StepFormState>(createEmptyStepForm());
 	let editingStepId = $state<string | null>(null);
 	let stepPendingDelete = $state<HandbookStep | null>(null);
-
-	function syncSelection(departments: DepartmentOption[], groups: DepartmentTemplateGroup[]) {
-		if (departments.length === 0) {
-			selectedDepartmentId = null;
-			selectedVersionId = null;
-			return;
-		}
-
-		const preferredDepartment = preferredDepartmentId
-			? (departments.find((department) => department.id === preferredDepartmentId) ?? null)
-			: null;
-		const selectedDepartment = selectedDepartmentId
-			? (departments.find((department) => department.id === selectedDepartmentId) ?? null)
-			: null;
-		const nextDepartment = preferredDepartment ?? selectedDepartment ?? departments[0];
-		const nextGroup = groups.find((group) => group.departmentId === nextDepartment.id) ?? null;
-
-		selectedDepartmentId = nextDepartment.id;
-
-		const preferredVersion = preferredVersionId
-			? (nextGroup?.versions.find((version) => version.id === preferredVersionId) ?? null)
-			: null;
-		const selectedVersion = selectedVersionId
-			? (nextGroup?.versions.find((version) => version.id === selectedVersionId) ?? null)
-			: null;
-
-		selectedVersionId =
-			preferredVersion?.id ?? selectedVersion?.id ?? getDefaultVersionId(nextGroup);
-		preferredDepartmentId = null;
-		preferredVersionId = null;
-	}
 
 	function upsertDepartmentGroup(group: DepartmentTemplateGroup) {
 		const nextGroups = handbookData.departmentTemplates.filter(
@@ -289,19 +253,6 @@
 			};
 		}
 	}
-
-	$effect(() => {
-		if (
-			handbookData.departments.length > 0 ||
-			handbookData.departmentTemplates.length > 0 ||
-			handbookData.loadError !== null
-		) {
-			return;
-		}
-
-		handbookData = initialHandbookData;
-		syncSelection(initialHandbookData.departments, initialHandbookData.departmentTemplates);
-	});
 
 	$effect(() => {
 		if (!selectedDepartmentId) return;

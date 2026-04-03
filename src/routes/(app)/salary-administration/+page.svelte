@@ -42,6 +42,8 @@
 		combineOrtBreakdowns
 	} from '$lib/utils/ort';
 	import { m } from '$lib/paraglide/messages';
+	import { getPayrollMonthSummary } from '$lib/api/salary';
+	import type { SalaryAdministrationRow } from './_components/SalaryTable.svelte';
 
 	let { data } = $props();
 
@@ -72,6 +74,40 @@
 
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	let payrollSummaryRows = $state<SalaryAdministrationRow[]>([]);
+	let payrollSummaryCount = $state(0);
+	let payrollPage = $state(1);
+	let payrollPageSize = $state(100);
+	let overviewLoading = $state(true);
+
+	async function loadPayrollSummary() {
+		overviewLoading = true;
+		try {
+			const res = await getPayrollMonthSummary({
+				month: format(currentMonth, 'yyyy-MM'),
+				employee_search: searchQuery || undefined,
+				page: payrollPage,
+				page_size: payrollPageSize
+			});
+			if (res.data?.success && res.data?.data) {
+				payrollSummaryRows = res.data.data.results;
+				payrollSummaryCount = res.data.data.count;
+			}
+		} catch (e) {
+			console.error('Failed to load payroll summary', e);
+		} finally {
+			overviewLoading = false;
+		}
+	}
+
+	$effect(() => {
+		// Track currentMonth, searchQuery, payrollPage
+		const _month = currentMonth;
+		const _query = searchQuery;
+		const _page = payrollPage;
+		void loadPayrollSummary();
+	});
 
 	function setToast(message: string, type: 'success' | 'warning' | 'error' = 'success') {
 		toast = { message, type };
@@ -496,11 +532,11 @@
 		{ id: 'rates', label: m.salaris_rates() }
 	];
 
-	function handleDownloadPdf(_row: EmployeeSalaryRow) {
+	function handleDownloadPdf(_row: SalaryAdministrationRow) {
 		setToast('PDF download wordt ondersteund via de backend API.', 'warning');
 	}
 
-	function handlePreviewPdf(_row: EmployeeSalaryRow) {
+	function handlePreviewPdf(_row: SalaryAdministrationRow) {
 		setToast('PDF preview wordt ondersteund via de backend API.', 'warning');
 	}
 </script>
@@ -539,9 +575,8 @@
 	<div>
 		{#if activeTab === 'salary'}
 			<SalaryTable
-				rows={employeeSalaryData}
-				{totals}
-				{loading}
+				rows={payrollSummaryRows}
+				loading={overviewLoading}
 				{currentMonth}
 				onNavigate={navigateMonth}
 				onDownloadPdf={handleDownloadPdf}

@@ -40,6 +40,23 @@ export function listLeavePayoutsForMonth(salaryMonth: string) {
 	return api.get<ApiEnvelope<LeavePayout[]>>(`/salary/leave-payouts?${query}`);
 }
 
+export function getPayrollMonthSummary(params: {
+	month: string;
+	employee_search?: string;
+	page: number;
+	page_size: number;
+}) {
+	const query = new URLSearchParams();
+	query.set('month', params.month);
+	query.set('page', String(params.page));
+	query.set('page_size', String(params.page_size));
+	if (params.employee_search) {
+		query.set('employee_search', params.employee_search);
+	}
+
+	return api.get<any>(`/salary/payroll-month-summary?${query.toString()}`);
+}
+
 export function sendSalarySlipEmail(payload: {
 	to: string;
 	subject: string;

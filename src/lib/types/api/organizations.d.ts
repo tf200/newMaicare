@@ -38,7 +38,7 @@ export interface OrganizationCounts {
 
 export interface GlobalOrganizationCounts {
 	total_locations: number;
-	total_capacity: number;
+	total_employees: number;
 }
 
 export interface LocationShift {

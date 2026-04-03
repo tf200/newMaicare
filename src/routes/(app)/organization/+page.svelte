@@ -330,8 +330,8 @@
 				/>
 				<StatsCard
 					label={m.total_capacity()}
-					value={countsData.counts.totalCapacity}
-					sub={m.available_places()}
+					value={countsData.counts.totalEmployees}
+					sub={m.active_caregivers()}
 					icon={Users}
 					color="text-emerald-600"
 					valueColor="text-emerald-600"

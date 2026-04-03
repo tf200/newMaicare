@@ -26,7 +26,7 @@ export interface OrganizationLoadResult {
 export interface OrganizationCountsLoadResult {
 	counts: {
 		totalLocations: number;
-		totalCapacity: number;
+		totalEmployees: number;
 	};
 	loadError: string | null;
 }
@@ -95,7 +95,7 @@ export const load: PageLoad = ({ url }) => {
 		.then((response) => ({
 			counts: {
 				totalLocations: response.data.total_locations,
-				totalCapacity: response.data.total_capacity
+				totalEmployees: response.data.total_employees
 			},
 			loadError: null
 		}))
@@ -103,7 +103,7 @@ export const load: PageLoad = ({ url }) => {
 			(error): OrganizationCountsLoadResult => ({
 				counts: {
 					totalLocations: 0,
-					totalCapacity: 0
+					totalEmployees: 0
 				},
 				loadError:
 					error instanceof Error ? error.message : 'Failed to load global organization counts.'
