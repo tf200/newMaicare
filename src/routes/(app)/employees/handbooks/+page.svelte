@@ -229,7 +229,7 @@
 			});
 			if (selectedEmployeeId !== employeeId || requestSeq !== templateLoadRequestSeq) return;
 
-			availableTemplates = response.data.results
+			availableTemplates = response.data
 				.filter((template) => template.status === 'published')
 				.map(toTemplateOption);
 

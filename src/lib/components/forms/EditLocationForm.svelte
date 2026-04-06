@@ -69,8 +69,7 @@
 							house_number: form.data.house_number.trim(),
 							postal_code: formatPostalCode(form.data.postal_code).trim(),
 							city: form.data.city.trim(),
-							house_number_addition: trimToUndefined(form.data.house_number_addition),
-							capacity: toOptionalInt(form.data.capacity)
+							house_number_addition: trimToUndefined(form.data.house_number_addition)
 						};
 						await updateLocation(location.id, payload);
 						open = false;
@@ -92,8 +91,7 @@
 				house_number: location.house_number,
 				house_number_addition: location.house_number_addition ?? undefined,
 				street: location.street,
-				city: location.city,
-				capacity: location.capacity ?? undefined
+				city: location.city
 			};
 			reset({ data: initialData });
 		}
@@ -232,17 +230,6 @@
 					{lookupMessage}
 				</div>
 			{/if}
-
-			<Input
-				label={m.capacity_optional()}
-				placeholder={m.placeholder_capacity()}
-				type="number"
-				min="0"
-				step="1"
-				bind:value={$form.capacity}
-				error={formatFormError($errors.capacity)}
-				disabled={isFetching}
-			/>
 		{/if}
 
 		{#if submitErrorMessage}

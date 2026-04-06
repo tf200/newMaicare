@@ -1,5 +1,6 @@
 import type { PageLoad } from './$types';
 import { listDepartments } from '$lib/api/settings';
+import { listDepartmentTemplates, listTemplateSteps } from '$lib/api/handbooks';
 import type { DepartmentItem, HandbookTemplateApi, HandbookTemplateStepApi } from '$lib/types/api';
 import type {
 	DepartmentOption,
@@ -11,7 +12,7 @@ import type {
 } from './types';
 
 export interface HandbookSettingsPageData {
-	initial: HandbookSettingsLoadResult;
+	initialPromise: Promise<HandbookSettingsLoadResult>;
 }
 
 export const _toDepartmentOption = (department: DepartmentItem): DepartmentOption => ({
@@ -62,11 +63,19 @@ export const _createInitialHandbookSettings = (): HandbookSettingsLoadResult => 
 	loadError: null
 });
 
-export const load: PageLoad = async () => {
-	const initial = await listDepartments()
+function _getDefaultVersionId(versions: HandbookTemplateVersion[]): string | null {
+	return (
+		versions.find((v) => v.status === 'draft')?.id ??
+		versions.find((v) => v.status === 'published')?.id ??
+		versions[0]?.id ??
+		null
+	);
+}
+
+export const load: PageLoad = () => {
+	const initialPromise = listDepartments()
 		.then((response) => {
 			const departments = response.data.results.map(_toDepartmentOption);
-
 			return {
 				departments,
 				departmentTemplates: [] as DepartmentTemplateGroup[],
@@ -81,6 +90,6 @@ export const load: PageLoad = async () => {
 		);
 
 	return {
-		initial
-	} satisfies HandbookSettingsPageData;
+		initialPromise
+	};
 };

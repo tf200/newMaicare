@@ -1,19 +1,9 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
-
-	type LeaveBalance = {
-		year: number;
-		legal_total_days: number;
-		legal_used_days: number;
-		legal_remaining_days: number;
-		extra_total_days: number;
-		extra_used_days: number;
-		extra_remaining_days: number;
-		total_remaining_days: number;
-	};
+	import type { LeaveBalanceListItemResponse } from '$lib/types/api';
 
 	type Props = {
-		balances: LeaveBalance[];
+		balances: LeaveBalanceListItemResponse[];
 	};
 
 	let { balances }: Props = $props();
@@ -44,16 +34,24 @@
 
 		<div class="space-y-4">
 			{#each balances as balance (balance.year)}
+				{@const legalTotalDays = (balance.leave_budget.legal.total_hours || 0) / 8}
+				{@const legalUsedDays = (balance.leave_budget.legal.used_hours || 0) / 8}
+				{@const legalRemainingDays = (balance.leave_budget.legal.remaining_hours || 0) / 8}
+				{@const extraTotalDays = (balance.leave_budget.budget.total_hours || 0) / 8}
+				{@const extraUsedDays = (balance.leave_budget.budget.used_hours || 0) / 8}
+				{@const extraRemainingDays = (balance.leave_budget.budget.remaining_hours || 0) / 8}
+				{@const totalRemainingDays = legalRemainingDays + extraRemainingDays}
+
 				<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 					<div class="flex items-baseline justify-between">
 						<div class="flex-1 text-center">
 							<p
 								class="{textColor(
-									balance.total_remaining_days,
-									balance.legal_total_days + balance.extra_total_days
+									totalRemainingDays,
+									legalTotalDays + extraTotalDays
 								)} text-5xl font-bold tracking-tight"
 							>
-								{formatDays(balance.total_remaining_days)}
+								{formatDays(totalRemainingDays)}
 							</p>
 							<p class="mt-1 text-sm text-text-muted">{m.leave_balance_days_remaining()}</p>
 						</div>
@@ -67,15 +65,15 @@
 					<div class="mt-6 grid gap-5 sm:grid-cols-2">
 						{@render balanceBlock(
 							m.leave_balance_legal(),
-							balance.legal_remaining_days,
-							balance.legal_total_days,
-							balance.legal_used_days
+							legalRemainingDays,
+							legalTotalDays,
+							legalUsedDays
 						)}
 						{@render balanceBlock(
 							m.leave_balance_extra(),
-							balance.extra_remaining_days,
-							balance.extra_total_days,
-							balance.extra_used_days
+							extraRemainingDays,
+							extraTotalDays,
+							extraUsedDays
 						)}
 					</div>
 				</div>

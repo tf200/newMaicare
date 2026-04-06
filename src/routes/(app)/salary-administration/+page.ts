@@ -5,7 +5,7 @@ import type {
 	Service,
 	ContractChange,
 	LeaveBalance,
-	LeavePayout
+	PayoutRequest
 } from '$lib/types/api/salary';
 
 export interface SalaryPageData {
@@ -21,7 +21,7 @@ export interface ResolvedSalaryData {
 	services: Service[];
 	contractChanges: ContractChange[];
 	leaveBalances: LeaveBalance[];
-	leavePayouts: LeavePayout[];
+	leavePayouts: PayoutRequest[];
 	loadErrors: string[];
 }
 

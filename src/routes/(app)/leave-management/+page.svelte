@@ -26,7 +26,6 @@
 		listLeaveRequests,
 		listLateArrivals
 	} from '$lib/api/leave';
-	import { listLeavePayoutsForMonth } from '$lib/api/salary';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { ApiClientError } from '$lib/api/client';
 	import { m } from '$lib/paraglide/messages';
@@ -36,8 +35,7 @@
 		LeaveRequestListItemResponse,
 		LeaveRequestStatus,
 		LateArrivalListItemResponse,
-		MyLeaveRequestStatsResponse,
-		LeavePayout
+		MyLeaveRequestStatsResponse
 	} from '$lib/types/api';
 	import type { LeaveBalancesLoadResult, LeaveManagementPageData } from './+page';
 	import type {
@@ -143,11 +141,6 @@
 	let leaveBalancesLoading = $state(false);
 	let leaveBalancesRequestSequence = 0;
 	let leaveBalancesLastKey = $state('');
-	let payoutRows = $state<LeavePayout[]>([]);
-	let payoutEmployeeNames = $state<Record<string, string>>({});
-	let payoutLoading = $state(false);
-	let payoutLoaded = $state(false);
-	let payoutRequestSequence = 0;
 	let deleteDialogOpen = $state(false);
 	let selectedRequestId = $state<string | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -370,43 +363,6 @@
 		if (leaveBalancesLastKey === key && leaveBalancesData) return;
 		leaveBalancesLastKey = key;
 		void loadLeaveBalances();
-	});
-
-	async function loadPayouts() {
-		const requestId = ++payoutRequestSequence;
-		payoutLoading = true;
-		try {
-			const [payoutResponse, employeeResponse] = await Promise.all([
-				listLeavePayoutsForMonth(currentSalaryMonth),
-				listEmployees({ page: 1, page_size: 500 })
-			]);
-			if (requestId !== payoutRequestSequence) return;
-
-			const namesById = Object.fromEntries(
-				(employeeResponse.data.results ?? []).map((employee) => [
-					employee.id,
-					`${employee.first_name} ${employee.last_name}`.trim()
-				])
-			);
-
-			payoutRows = payoutResponse.data ?? [];
-			payoutEmployeeNames = namesById;
-			payoutLoaded = true;
-		} catch (error) {
-			if (requestId !== payoutRequestSequence) return;
-			payoutRows = [];
-			payoutEmployeeNames = {};
-			console.error(error);
-		} finally {
-			if (requestId === payoutRequestSequence) {
-				payoutLoading = false;
-			}
-		}
-	}
-
-	$effect(() => {
-		if (activeTab !== 'payouts' || payoutLoaded) return;
-		void loadPayouts();
 	});
 
 	const retryLeaveBalances = () => {
@@ -763,11 +719,7 @@
 					/>
 				{/if}
 			{:else if activeTab === 'payouts'}
-				<LeavePayoutTab
-					payouts={payoutRows}
-					employeeNamesById={payoutEmployeeNames}
-					loading={payoutLoading}
-				/>
+				<LeavePayoutTab />
 			{:else if activeTab === 'contractChanges'}
 				<LeaveContractChangesTab />
 			{/if}

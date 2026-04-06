@@ -5,7 +5,7 @@ import type {
 	Service,
 	ContractChange,
 	LeaveBalance,
-	LeavePayout
+	PayoutRequest
 } from '$lib/types/api/salary';
 import type { EmployeeListItem } from '$lib/api/employees';
 
@@ -591,17 +591,21 @@ const mockLeaveBalances: LeaveBalance[] = [
 // ---------------------------------------------------------------------------
 // Mock leave payouts
 // ---------------------------------------------------------------------------
-const mockLeavePayouts: LeavePayout[] = [
+const mockPayoutRequests: PayoutRequest[] = [
 	{
 		id: 'lp-001',
 		employee_id: 'emp-007',
+		employee_name: 'Pieter de Vries',
+		created_by_employee_id: 'emp-001',
 		salary_month: '2026-03-01',
-		payout_code: 'W',
-		leave_type: 'vacation',
-		hours_requested: 16,
+		requested_hours: 16,
 		hourly_rate: 26.41,
-		total_amount: 422.56,
-		status: 'approved'
+		gross_amount: 422.56,
+		balance_year: 2026,
+		status: 'approved',
+		requested_at: new Date().toISOString(),
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
 	}
 ];
 
@@ -644,13 +648,13 @@ export function listLeaveBalancesForYear(year: number) {
 	);
 }
 
-export function listLeavePayoutsForMonth(salaryMonth: string) {
+export function listPayoutRequestsForMonth(salaryMonth: string) {
 	return delay(200).then(
 		() =>
 			({
-				data: mockLeavePayouts.filter((p) => p.salary_month === salaryMonth),
+				data: mockPayoutRequests.filter((p) => p.salary_month === salaryMonth),
 				success: true
-			}) as ApiEnvelope<LeavePayout[]>
+			}) as ApiEnvelope<PayoutRequest[]>
 	);
 }
 

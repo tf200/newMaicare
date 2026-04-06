@@ -129,29 +129,34 @@
 {/snippet}
 
 {#snippet legalCell(balance: LeaveBalanceRow)}
+	{@const totalDays = (balance.leave_budget?.legal?.total_hours || 0) / 8}
+	{@const remainingDays = (balance.leave_budget?.legal?.remaining_hours || 0) / 8}
 	{@render balanceCell(
-		balance.legal_remaining_days,
-		balance.legal_total_days,
+		remainingDays,
+		totalDays,
 		'bg-brand/70',
 		m.leave_balance_legal()
 	)}
 {/snippet}
 
 {#snippet extraCell(balance: LeaveBalanceRow)}
+	{@const totalDays = (balance.leave_budget?.budget?.total_hours || 0) / 8}
+	{@const remainingDays = (balance.leave_budget?.budget?.remaining_hours || 0) / 8}
 	{@render balanceCell(
-		balance.extra_remaining_days,
-		balance.extra_total_days,
+		remainingDays,
+		totalDays,
 		'bg-info/70',
 		m.leave_balance_extra()
 	)}
 {/snippet}
 
 {#snippet totalRemainingCell(balance: LeaveBalanceRow)}
+	{@const totalRemainingDays = ((balance.leave_budget?.legal?.remaining_hours || 0) + (balance.leave_budget?.budget?.remaining_hours || 0)) / 8}
 	<div class="flex items-center justify-end">
 		<span
 			class="inline-flex items-center justify-center rounded-xl bg-success/10 px-3 py-1.5 text-sm font-bold text-success shadow-sm shadow-success/5"
 		>
-			{formatDays(balance.total_remaining_days)}
+			{formatDays(totalRemainingDays)}
 			{m.leave_balance_days_remaining()}
 		</span>
 	</div>

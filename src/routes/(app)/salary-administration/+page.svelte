@@ -16,7 +16,7 @@
 		Service,
 		ContractChange,
 		LeaveBalance,
-		LeavePayout,
+		PayoutRequest,
 		OrtBreakdown,
 		OrtAmounts
 	} from '$lib/types/api/salary';
@@ -33,7 +33,7 @@
 		listServices,
 		listContractChanges,
 		listLeaveBalancesForYear,
-		listLeavePayoutsForMonth,
+		listPayoutRequestsForMonth,
 		listMockEmployees
 	} from '$lib/api/salary.mock';
 	import {
@@ -66,7 +66,7 @@
 	let services = $state<Service[]>([]);
 	let contractChanges = $state<ContractChange[]>([]);
 	let leaveBalances = $state<LeaveBalance[]>([]);
-	let leavePayouts = $state<LeavePayout[]>([]);
+	let leavePayouts = $state<PayoutRequest[]>([]);
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -90,9 +90,9 @@
 				page: payrollPage,
 				page_size: payrollPageSize
 			});
-			if (res.data?.success && res.data?.data) {
-				payrollSummaryRows = res.data.data.results;
-				payrollSummaryCount = res.data.data.count;
+			if (res.success && res.data) {
+				payrollSummaryRows = res.data.results;
+				payrollSummaryCount = res.data.count;
 			}
 		} catch (e) {
 			console.error('Failed to load payroll summary', e);
@@ -138,7 +138,7 @@
 					listServices(),
 					listContractChanges(),
 					listLeaveBalancesForYear(currentYear),
-					listLeavePayoutsForMonth(salaryMonthKey)
+					listPayoutRequestsForMonth(salaryMonthKey)
 				]);
 
 			if (requestId !== dataSequence) return;

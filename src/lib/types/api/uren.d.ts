@@ -25,8 +25,10 @@ export interface TimeEntryListItemResponse {
 	employee_name: string;
 	schedule_id: string | null;
 	entry_date: string;
-	hours: number;
-	break_minutes: number;
+	start_time: string | null;
+	end_time: string | null;
+	hours: number | null;
+	break_minutes: number | null;
 	hour_type: TimeEntriesHourType;
 	project_name: string | null;
 	project_number: string | null;
@@ -49,4 +51,47 @@ export interface ListTimeEntriesParams {
 	pageSize: number;
 	employeeSearch?: string;
 	status?: TimeEntriesListStatus;
+}
+
+export type CreateTimeEntryHourType =
+	| 'normal'
+	| 'overtime'
+	| 'travel'
+	| 'leave'
+	| 'sick'
+	| 'training';
+
+export interface CreateTimeEntryRequest {
+	employee_id: string;
+	schedule_id?: string | null;
+	entry_date: string;
+	start_time: string;
+	end_time: string;
+	break_minutes?: number;
+	hour_type: CreateTimeEntryHourType;
+	project_name?: string | null;
+	project_number?: string | null;
+	client_name?: string | null;
+	activity_category?: string | null;
+	activity_description?: string | null;
+	notes?: string | null;
+}
+
+export interface CreateTimeEntryResponse {
+	id: string;
+	employee_id: string;
+	schedule_id: string | null;
+	entry_date: string;
+	start_time: string;
+	end_time: string;
+	break_minutes: number;
+	hour_type: CreateTimeEntryHourType;
+	project_name: string | null;
+	project_number: string | null;
+	client_name: string | null;
+	activity_category: string | null;
+	activity_description: string | null;
+	status: TimeEntryStatus;
+	notes: string | null;
+	created_at: string;
 }

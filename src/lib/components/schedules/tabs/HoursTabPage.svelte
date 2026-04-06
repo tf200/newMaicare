@@ -2,13 +2,23 @@
 	import { onMount } from 'svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import { Clock, CheckCircle, FileText, Send, Search, XCircle, Eye } from 'lucide-svelte';
+	import { Clock, CheckCircle, FileText, Plus, Send, Search, XCircle, Eye } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { listTimeEntries } from '$lib/api/uren';
 	import type { TimeEntryListItemResponse, TimeEntriesListStatus } from '$lib/types/api';
+	import AddTimeEntryModal from '$lib/components/schedules/AddTimeEntryModal.svelte';
 
 	const DEFAULT_PAGE_SIZE = 10;
+	const HOUR_TYPE_COLORS: Record<string, string> = {
+		normal: 'text-blue-600 dark:text-blue-400',
+		overtime: 'text-violet-600 dark:text-violet-400',
+		travel: 'text-orange-600 dark:text-orange-400',
+		leave: 'text-cyan-600 dark:text-cyan-400',
+		sick: 'text-rose-600 dark:text-rose-400',
+		training: 'text-indigo-600 dark:text-indigo-400'
+	};
+
 	const SEARCH_DEBOUNCE_MS = 350;
 
 	type StatusFilter = 'all' | TimeEntriesListStatus;
@@ -24,12 +34,13 @@
 	let totalCount = $state(0);
 	let requestId = 0;
 	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+	let showAddModal = $state(false);
 
 	const columns: DataTableColumn[] = [
 		{ key: 'employee_name', label: 'Employee' },
 		{ key: 'entry_date', label: 'Date' },
 		{ key: 'client_name', label: 'Client / Project' },
-		{ key: 'hour_type', label: 'Type' },
+		{ key: 'schedule', label: 'Schedule', align: 'center' },
 		{ key: 'hours', label: 'Hours', align: 'right' },
 		{ key: 'status', label: 'Status' },
 		{ key: 'actions', label: '', align: 'right' }
@@ -82,24 +93,68 @@
 
 	const locale = $derived(getLocale() === 'nl' ? 'nl-NL' : 'en-US');
 
+	function parseFiniteNumber(value: unknown): number | null {
+		if (typeof value === 'number') {
+			return Number.isFinite(value) ? value : null;
+		}
+		if (typeof value === 'string' && value.trim() !== '') {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		return null;
+	}
+
+	function computeEntryHours(entry: TimeEntryListItemResponse): number {
+		const direct = parseFiniteNumber(entry.hours);
+		if (direct !== null) return direct;
+
+		if (!entry.start_time || !entry.end_time) return 0;
+
+		const [sh, sm] = entry.start_time.split(':').map(Number);
+		const [eh, em] = entry.end_time.split(':').map(Number);
+		if (
+			!Number.isFinite(sh) ||
+			!Number.isFinite(sm) ||
+			!Number.isFinite(eh) ||
+			!Number.isFinite(em)
+		)
+			return 0;
+
+		let diffMinutes = eh * 60 + em - (sh * 60 + sm);
+		if (diffMinutes < 0) diffMinutes += 24 * 60;
+		const breakMin = parseFiniteNumber(entry.break_minutes) ?? 0;
+		return Math.max(0, (diffMinutes - breakMin) / 60);
+	}
+
+	function getHoursValue(value: unknown): number {
+		return parseFiniteNumber(value) ?? 0;
+	}
+
+	function formatHours(value: unknown): string {
+		const parsed = parseFiniteNumber(value);
+		return parsed === null ? '—' : `${parsed.toFixed(2)}h`;
+	}
+
 	const totalHours = $derived.by(() =>
-		entries.reduce((sum, entry) => sum + (Number.isFinite(entry.hours) ? entry.hours : 0), 0)
+		entries.reduce((sum, entry) => sum + computeEntryHours(entry), 0)
 	);
 
 	const submittedHours = $derived.by(() =>
 		entries
 			.filter((entry) => entry.status === 'submitted')
-			.reduce((sum, entry) => sum + entry.hours, 0)
+			.reduce((sum, entry) => sum + computeEntryHours(entry), 0)
 	);
 
 	const approvedHours = $derived.by(() =>
 		entries
 			.filter((entry) => entry.status === 'approved')
-			.reduce((sum, entry) => sum + entry.hours, 0)
+			.reduce((sum, entry) => sum + computeEntryHours(entry), 0)
 	);
 
 	const draftHours = $derived.by(() =>
-		entries.filter((entry) => entry.status === 'draft').reduce((sum, entry) => sum + entry.hours, 0)
+		entries
+			.filter((entry) => entry.status === 'draft')
+			.reduce((sum, entry) => sum + computeEntryHours(entry), 0)
 	);
 
 	function getFilterPillClass(pillId: StatusFilter) {
@@ -224,6 +279,14 @@
 			void fetchEntries();
 		}, SEARCH_DEBOUNCE_MS);
 	}
+
+	function handleEntrySaved() {
+		currentPage = 1;
+		activeFilter = 'all';
+		searchQuery = '';
+		debouncedSearchQuery = '';
+		void fetchEntries();
+	}
 </script>
 
 {#snippet tableFilters()}
@@ -268,22 +331,19 @@
 	</div>
 {/snippet}
 
-{#snippet cellType(row: TimeEntryListItemResponse)}
-	{@const typeColors: Record<string, string> = {
-		normal: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-		overtime: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
-		travel: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
-		leave: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
-		sick: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-		training: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
-	}}
-	<span
-		class="inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-semibold {typeColors[
-			row.hour_type
-		] || 'bg-border/50 text-text-muted'}"
-	>
-		{getHourTypeLabel(row.hour_type)}
-	</span>
+{#snippet cellSchedule(row: TimeEntryListItemResponse)}
+	<div class="flex flex-col items-center gap-0.5">
+		{#if row.start_time && row.end_time}
+			<span class="text-sm font-semibold text-text tabular-nums">
+				{row.start_time.slice(0, 5)} – {row.end_time.slice(0, 5)}
+			</span>
+		{:else}
+			<span class="text-sm text-text-muted">—</span>
+		{/if}
+		<span class="text-[10px] font-medium {HOUR_TYPE_COLORS[row.hour_type] || 'text-text-muted'}">
+			{getHourTypeLabel(row.hour_type)}
+		</span>
+	</div>
 {/snippet}
 
 {#snippet cellDate(row: TimeEntryListItemResponse)}
@@ -301,10 +361,16 @@
 {/snippet}
 
 {#snippet cellHours(row: TimeEntryListItemResponse)}
-	<div class="flex flex-col items-end">
-		<span class="font-semibold text-text">{row.hours.toFixed(2)}h</span>
-		{#if row.break_minutes > 0}
-			<span class="text-[10px] text-text-muted">{row.break_minutes}m break</span>
+	<div class="flex flex-col items-end gap-0.5">
+		<span class="text-sm font-bold text-text tabular-nums"
+			>{formatHours(computeEntryHours(row))}</span
+		>
+		{#if (row.break_minutes ?? 0) > 0}
+			<span
+				class="inline-flex items-center rounded-md bg-border/40 px-1.5 py-px text-[10px] font-medium text-text-muted"
+			>
+				{row.break_minutes}m break
+			</span>
 		{/if}
 	</div>
 {/snippet}
@@ -343,6 +409,17 @@
 {/snippet}
 
 <div class="flex flex-col gap-6">
+	<div class="flex items-center justify-end">
+		<button
+			type="button"
+			onclick={() => (showAddModal = true)}
+			class="inline-flex h-9 items-center gap-1.5 rounded-xl bg-btn-primary-bg px-4 text-sm font-bold text-btn-primary-text shadow-sm transition-all hover:opacity-90 active:scale-95"
+		>
+			<Plus class="h-4 w-4" />
+			Add Entry
+		</button>
+	</div>
+
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 		<div
 			class="group relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
@@ -435,7 +512,7 @@
 		cells={{
 			employee_name: cellEmployee,
 			entry_date: cellDate,
-			hour_type: cellType,
+			schedule: cellSchedule,
 			status: cellStatus,
 			hours: cellHours,
 			client_name: cellClient,
@@ -443,3 +520,5 @@
 		}}
 	/>
 </div>
+
+<AddTimeEntryModal bind:open={showAddModal} onSaved={handleEntrySaved} />

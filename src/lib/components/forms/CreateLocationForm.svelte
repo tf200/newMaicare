@@ -61,8 +61,7 @@
 							house_number: form.data.house_number.trim(),
 							postal_code: formatPostalCode(form.data.postal_code).trim(),
 							city: form.data.city.trim(),
-							house_number_addition: trimToUndefined(form.data.house_number_addition),
-							capacity: toOptionalInt(form.data.capacity)
+							house_number_addition: trimToUndefined(form.data.house_number_addition)
 						};
 						await createOrganizationLocation(organizationId, payload);
 						reset();
@@ -190,16 +189,6 @@
 				{lookupMessage}
 			</div>
 		{/if}
-
-		<Input
-			label={m.capacity_optional()}
-			placeholder={m.placeholder_capacity()}
-			type="number"
-			min="0"
-			step="1"
-			bind:value={$form.capacity}
-			error={formatFormError($errors.capacity)}
-		/>
 
 		{#if errorMessage}
 			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">

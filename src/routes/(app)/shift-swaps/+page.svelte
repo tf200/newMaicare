@@ -32,23 +32,23 @@
 
 	const statusConfig: Record<ShiftSwapStatus, { label: () => string; className: string }> = {
 		pending_recipient: {
-			label: () => m.swap_stat_pending(),
+			label: () => m.swap_badge_pending(),
 			className: 'border-warning/20 bg-warning/10 text-warning'
 		},
 		recipient_rejected: {
-			label: () => m.swap_toast_target_rejected(),
+			label: () => m.swap_badge_rejected(),
 			className: 'border-error/20 bg-error/10 text-error'
 		},
 		pending_admin: {
-			label: () => m.swap_waiting_approval(),
+			label: () => m.swap_badge_waiting(),
 			className: 'border-brand/20 bg-brand/10 text-brand'
 		},
 		admin_rejected: {
-			label: () => m.swap_toast_rejected(),
+			label: () => m.swap_badge_denied(),
 			className: 'border-error/20 bg-error/10 text-error'
 		},
 		confirmed: {
-			label: () => m.confirmed(),
+			label: () => m.swap_badge_approved(),
 			className: 'border-success/20 bg-success/10 text-success'
 		},
 		cancelled: {
@@ -349,7 +349,7 @@
 
 {#snippet cellStatus(row: SwapRow)}
 	<span
-		class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase {statusConfig[
+		class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold {statusConfig[
 			row.status
 		].className}"
 	>

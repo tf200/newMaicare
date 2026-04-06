@@ -112,6 +112,17 @@
 		employeeLookup = nextLookup;
 	}
 
+	function getEmployeesFromResponseData(
+		data:
+			| { results?: EligibleHandbookEmployeeApi[] }
+			| EligibleHandbookEmployeeApi[]
+			| null
+			| undefined
+	) {
+		if (Array.isArray(data)) return data;
+		return Array.isArray(data?.results) ? data.results : [];
+	}
+
 	async function loadEmployeeOptions(query: string) {
 		employeeLoadError = null;
 		try {
@@ -121,9 +132,9 @@
 				departmentId: activeDepartmentId || undefined,
 				search: query.trim() || undefined
 			});
-
-			cacheEmployees(response.data.results);
-			return response.data.results;
+			const employees = getEmployeesFromResponseData(response.data);
+			cacheEmployees(employees);
+			return employees;
 		} catch (error) {
 			employeeLoadError =
 				error instanceof Error ? error.message : 'Failed to load eligible employees.';

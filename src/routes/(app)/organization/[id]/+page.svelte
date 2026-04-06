@@ -107,8 +107,6 @@
 	const columns = $derived<DataTableColumn[]>([
 		{ key: 'name', label: m.location() },
 		{ key: 'address', label: m.address() },
-		{ key: 'occupancy', label: m.occupancy(), width: '200px' },
-		{ key: 'available', label: m.available(), align: 'right', width: '120px' },
 		{ key: 'updated_at', label: m.updated(), align: 'right', width: '140px' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	]);
@@ -129,11 +127,6 @@
 		const addition = organization.house_number_addition?.trim() ?? '';
 		const suffix = addition.length > 0 ? addition : '';
 		return `${organization.street} ${organization.house_number}${suffix}`.trim();
-	};
-
-	const occupancyPercent = (location: OrganizationLocation) => {
-		if (!location.capacity || location.capacity <= 0) return null;
-		return Math.min(100, Math.round((location.occupied / location.capacity) * 100));
 	};
 </script>
 
@@ -179,39 +172,6 @@
 		{row.house_number}{row.house_number_addition ?? ''}, {row.postal_code}
 		{row.city}
 	</div>
-{/snippet}
-
-{#snippet occupancyCell(row: OrganizationLocation)}
-	{#if row.capacity}
-		{@const percent = occupancyPercent(row)}
-		<div class="flex w-full flex-col gap-1.5">
-			<div class="flex items-center justify-between text-xs">
-				<span class="font-medium text-text">
-					{formatNumber(row.occupied)} / {formatNumber(row.capacity)}
-				</span>
-				{#if percent !== null}
-					<span class="text-text-muted">{percent}%</span>
-				{/if}
-			</div>
-			<div class="h-2 w-full overflow-hidden rounded-full bg-border/50">
-				{#if percent !== null}
-					<div
-						class="h-full rounded-full bg-brand transition-all duration-500"
-						style={`width:${percent}%`}
-					></div>
-				{/if}
-			</div>
-		</div>
-	{:else}
-		<span class="text-text-subtle">—</span>
-	{/if}
-{/snippet}
-
-{#snippet availableCell(row: OrganizationLocation)}
-	<span class="inline-flex items-center justify-end gap-1">
-		<span class="text-sm font-semibold text-text">{formatNumber(row.available)}</span>
-		<span class="text-xs text-text-subtle">{m.beds()}</span>
-	</span>
 {/snippet}
 
 {#snippet updatedAtCell(row: OrganizationLocation)}
@@ -440,8 +400,6 @@
 						cells={{
 							name: nameCell,
 							address: addressCell,
-							occupancy: occupancyCell,
-							available: availableCell,
 							updated_at: updatedAtCell,
 							actions: actionsCell
 						}}
@@ -465,8 +423,6 @@
 						cells={{
 							name: nameCell,
 							address: addressCell,
-							occupancy: occupancyCell,
-							available: availableCell,
 							updated_at: updatedAtCell,
 							actions: actionsCell
 						}}

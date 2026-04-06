@@ -6,8 +6,9 @@ import type {
 	Service,
 	ContractChange,
 	LeaveBalance,
-	LeavePayout
+	PayoutRequest
 } from '$lib/types/api/salary';
+import type { PaginatedResponse } from '$lib/types/api';
 
 export function listCaoSalaryScales() {
 	return api.get<ApiEnvelope<CaoSalaryScale[]>>('/salary/scales');
@@ -35,9 +36,29 @@ export function listLeaveBalancesForYear(year: number) {
 	return api.get<ApiEnvelope<LeaveBalance[]>>(`/salary/leave-balances?${query}`);
 }
 
-export function listLeavePayoutsForMonth(salaryMonth: string) {
-	const query = new URLSearchParams({ salary_month: salaryMonth }).toString();
-	return api.get<ApiEnvelope<LeavePayout[]>>(`/salary/leave-payouts?${query}`);
+export interface ListPayoutRequestsParams {
+	page: number;
+	page_size: number;
+	status?: 'pending' | 'approved' | 'rejected' | 'paid';
+	employee_search?: string;
+}
+
+export function listPayoutRequests(params: ListPayoutRequestsParams) {
+	const searchParams = new URLSearchParams();
+	searchParams.set('page', String(params.page));
+	searchParams.set('page_size', String(params.page_size));
+
+	if (params.status) {
+		searchParams.set('status', params.status);
+	}
+
+	const normalizedSearch = params.employee_search?.trim().slice(0, 120);
+	if (normalizedSearch) {
+		searchParams.set('employee_search', normalizedSearch);
+	}
+
+	const query = searchParams.toString();
+	return api.get<ApiEnvelope<PaginatedResponse<PayoutRequest>>>(`/payout-requests?${query}`);
 }
 
 export function getPayrollMonthSummary(params: {
@@ -54,7 +75,7 @@ export function getPayrollMonthSummary(params: {
 		query.set('employee_search', params.employee_search);
 	}
 
-	return api.get<any>(`/salary/payroll-month-summary?${query.toString()}`);
+	return api.get<any>(`/payroll-month-summary?${query.toString()}`);
 }
 
 export function sendSalarySlipEmail(payload: {

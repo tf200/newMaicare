@@ -24,13 +24,23 @@ export interface LeaveBalanceListItemResponse {
 	employee_id: string;
 	employee_name: string;
 	year: number;
-	legal_total_days: number;
-	extra_total_days: number;
-	legal_used_days: number;
-	extra_used_days: number;
-	legal_remaining_days: number;
-	extra_remaining_days: number;
-	total_remaining_days: number;
+	leave_budget: {
+		legal: {
+			total_hours: number;
+			used_hours: number;
+			remaining_hours: number;
+		};
+		budget: {
+			total_hours: number;
+			used_hours: number;
+			remaining_hours: number;
+		};
+	};
+	contract: {
+		contract_hours: number;
+		contract_type: string;
+		contract_start_date: string;
+	};
 	created_at: string;
 	updated_at: string;
 }

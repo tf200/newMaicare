@@ -9,18 +9,7 @@ export const LocationSchema = v.object({
 	house_number: v.pipe(v.string(), v.minLength(1, 'House number is required')),
 	house_number_addition: v.optional(v.string()),
 	street: v.pipe(v.string(), v.minLength(1, 'Street is required')),
-	city: v.pipe(v.string(), v.minLength(1, 'City is required')),
-	capacity: v.optional(
-		v.pipe(
-			v.union([v.number(), v.string()]),
-			v.transform((val) => {
-				if (typeof val === 'number') return val;
-				if (!val) return undefined;
-				const parsed = Number.parseInt(val, 10);
-				return Number.isNaN(parsed) ? undefined : parsed;
-			})
-		)
-	)
+	city: v.pipe(v.string(), v.minLength(1, 'City is required'))
 });
 
 export type LocationSchemaInput = v.InferInput<typeof LocationSchema>;

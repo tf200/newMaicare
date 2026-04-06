@@ -59,21 +59,47 @@
 
 	let { data } = $props<{
 		data: {
-			initial: HandbookSettingsLoadResult;
+			initialPromise: Promise<HandbookSettingsLoadResult>;
 		};
 	}>();
 
-	let handbookData = $state<HandbookSettingsLoadResult>(untrack(() => data.initial));
-	let selectedDepartmentId = $state<string | null>(
-		untrack(() => data.initial.departments[0]?.id ?? null)
-	);
+	let handbookData = $state<HandbookSettingsLoadResult>({
+		departments: [],
+		departmentTemplates: [],
+		loadError: null
+	});
+
+	let selectedDepartmentId = $state<string | null>(null);
 	let selectedVersionId = $state<string | null>(null);
-	let preferredDepartmentId = $state<string | null>(null);
-	let preferredVersionId = $state<string | null>(null);
+
 	let templateStatusByDepartmentId = $state<Record<string, LoadStatus>>({});
 	let stepStatusByVersionId = $state<Record<string, LoadStatus>>({});
 	let templateErrorByDepartmentId = $state<Record<string, string>>({});
 	let stepErrorByVersionId = $state<Record<string, string>>({});
+
+	// Load Initial Data
+	$effect(() => {
+		data.initialPromise.then((initial: HandbookSettingsLoadResult) => {
+			handbookData = initial;
+			const initialDepartmentId = initial.departments[0]?.id ?? null;
+
+			if (initialDepartmentId) {
+				selectedDepartmentId = initialDepartmentId;
+
+				void ensureDepartmentTemplatesLoaded(initialDepartmentId).then(() => {
+					const group = handbookData.departmentTemplates.find(
+						(g) => g.departmentId === initialDepartmentId
+					);
+					const defaultVersionId = getDefaultVersionId(group ?? null);
+					selectedVersionId = defaultVersionId;
+
+					if (defaultVersionId) {
+						void ensureVersionStepsLoaded(defaultVersionId);
+					}
+				});
+			}
+		});
+	});
 
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -181,7 +207,7 @@
 				(existingGroup?.versions ?? []).map((version) => [version.id, version.steps])
 			);
 
-			const versions = response.data.results
+			const versions = response.data
 				.map((template) =>
 					_mapTemplateVersion(template, existingStepsByVersionId.get(template.id) ?? [])
 				)
@@ -194,17 +220,6 @@
 			});
 
 			templateStatusByDepartmentId = { ...templateStatusByDepartmentId, [departmentId]: 'loaded' };
-
-			if (selectedDepartmentId === departmentId) {
-				const nextGroup = handbookData.departmentTemplates.find(
-					(group) => group.departmentId === departmentId
-				);
-				selectedVersionId =
-					preferredVersionId ||
-					nextGroup?.versions.find((version) => version.id === selectedVersionId)?.id ||
-					getDefaultVersionId(nextGroup ?? null);
-				preferredVersionId = null;
-			}
 		} catch (error) {
 			templateStatusByDepartmentId = { ...templateStatusByDepartmentId, [departmentId]: 'error' };
 			templateErrorByDepartmentId = {
@@ -253,16 +268,6 @@
 			};
 		}
 	}
-
-	$effect(() => {
-		if (!selectedDepartmentId) return;
-		void ensureDepartmentTemplatesLoaded(selectedDepartmentId);
-	});
-
-	$effect(() => {
-		if (!selectedVersionId) return;
-		void ensureVersionStepsLoaded(selectedVersionId);
-	});
 
 	const selectedDepartment = $derived(
 		handbookData.departments.find((department) => department.id === selectedDepartmentId) ?? null
@@ -395,17 +400,27 @@
 
 	function selectDepartment(departmentId: string) {
 		selectedDepartmentId = departmentId;
-		selectedVersionId = getDefaultVersionId(
-			handbookData.departmentTemplates.find((group) => group.departmentId === departmentId) ?? null
-		);
 		isEditMode = false;
 		closeToast();
+
+		void ensureDepartmentTemplatesLoaded(departmentId).then(() => {
+			const group = handbookData.departmentTemplates.find((g) => g.departmentId === departmentId);
+			const defaultVersionId =
+				group?.versions.find((v) => v.id === selectedVersionId)?.id ||
+				getDefaultVersionId(group ?? null);
+
+			selectedVersionId = defaultVersionId;
+			if (defaultVersionId) {
+				void ensureVersionStepsLoaded(defaultVersionId);
+			}
+		});
 	}
 
 	function selectVersion(versionId: string) {
 		selectedVersionId = versionId;
 		isEditMode = false;
 		closeToast();
+		void ensureVersionStepsLoaded(versionId);
 	}
 
 	function toggleEditMode() {
@@ -491,17 +506,24 @@
 	async function reloadData(
 		options: { departmentId?: string | null; versionId?: string | null } = {}
 	) {
-		preferredDepartmentId = options.departmentId ?? selectedDepartmentId;
-		preferredVersionId = options.versionId ?? selectedVersionId;
-		const targetDepartmentId = preferredDepartmentId ?? selectedDepartmentId;
-		if (!targetDepartmentId) return;
+		const targetDepartmentId = options.departmentId ?? selectedDepartmentId;
+		if (targetDepartmentId) {
+			selectedDepartmentId = targetDepartmentId;
+			await ensureDepartmentTemplatesLoaded(targetDepartmentId, true);
 
-		await ensureDepartmentTemplatesLoaded(targetDepartmentId, true);
+			const group = handbookData.departmentTemplates.find(
+				(group) => group.departmentId === targetDepartmentId
+			);
+			const nextVersionId =
+				options.versionId ??
+				group?.versions.find((version) => version.id === selectedVersionId)?.id ??
+				getDefaultVersionId(group ?? null);
 
-		const targetVersionId = preferredVersionId ?? selectedVersionId;
-		if (!targetVersionId) return;
-
-		await ensureVersionStepsLoaded(targetVersionId, true);
+			selectedVersionId = nextVersionId;
+			if (nextVersionId) {
+				await ensureVersionStepsLoaded(nextVersionId, true);
+			}
+		}
 	}
 
 	function getTemplateMutationError(error: unknown, fallback: string) {
@@ -838,140 +860,149 @@
 		</div>
 	</header>
 
-	{#if handbookData.loadError}
-		<div
-			class="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-800"
-		>
-			{handbookData.loadError}
+	{#await data.initialPromise}
+		<div class="flex h-64 items-center justify-center">
+			<div class="flex flex-col items-center gap-4">
+				<BookOpen class="h-8 w-8 animate-pulse text-brand/50" />
+				<p class="text-sm font-medium text-text-muted">Loading handbook templates...</p>
+			</div>
 		</div>
-	{/if}
+	{:then _}
+		{#if handbookData.loadError}
+			<div
+				class="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-800"
+			>
+				{handbookData.loadError}
+			</div>
+		{/if}
 
-	<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-		<aside class="space-y-6 lg:col-span-4">
-			<DepartmentsSidebar
-				departments={handbookData.departments}
-				departmentTemplates={handbookData.departmentTemplates}
-				{selectedDepartmentId}
-				{templateStatusByDepartmentId}
-				onSelectDepartment={selectDepartment}
-			/>
+		<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+			<aside class="space-y-6 lg:col-span-4">
+				<DepartmentsSidebar
+					departments={handbookData.departments}
+					departmentTemplates={handbookData.departmentTemplates}
+					{selectedDepartmentId}
+					{templateStatusByDepartmentId}
+					onSelectDepartment={selectDepartment}
+				/>
 
-			<VersionsPanel
-				{selectedDepartment}
-				{selectedDepartmentGroup}
-				{selectedDepartmentTemplateStatus}
-				templateError={selectedDepartment
-					? (templateErrorByDepartmentId[selectedDepartment.id] ?? null)
-					: null}
-				{selectedVersionId}
-				onSelectVersion={selectVersion}
-				onRetry={() => {
-					if (selectedDepartment) {
-						void ensureDepartmentTemplatesLoaded(selectedDepartment.id, true);
-					}
-				}}
-			/>
-		</aside>
-
-		<main class="space-y-8 lg:col-span-8">
-			{#if selectedDepartmentGroup && selectedVersion}
-				<VersionHeader
+				<VersionsPanel
+					{selectedDepartment}
 					{selectedDepartmentGroup}
-					{selectedVersion}
-					{isDraftVersion}
-					{isPublishedVersion}
-					{isArchivedVersion}
-					{isEditMode}
-					{isPublishing}
-					{canPublishSelectedDraft}
-					selectedVersionStepsLength={selectedVersionSteps.length}
-					onToggleEditMode={toggleEditMode}
-					onOpenPreview={() => (isPreviewOpen = true)}
-					onPublish={() => void handlePublish()}
-					onCloneDraft={openCloneDraftModal}
-					onOpenMetadata={openMetadataModal}
-					onAddStep={openAddStepModal}
+					{selectedDepartmentTemplateStatus}
+					templateError={selectedDepartment
+						? (templateErrorByDepartmentId[selectedDepartment.id] ?? null)
+						: null}
+					{selectedVersionId}
+					onSelectVersion={selectVersion}
+					onRetry={() => {
+						if (selectedDepartment) {
+							void ensureDepartmentTemplatesLoaded(selectedDepartment.id, true);
+						}
+					}}
 				/>
+			</aside>
 
-				<StepsSection
-					{selectedVersion}
-					{selectedVersionSteps}
-					{selectedVersionStepStatus}
-					stepError={stepErrorByVersionId[selectedVersion.id] ?? null}
-					{isDraftVersion}
-					{isEditMode}
-					{canEditSelectedDraft}
-					{reorderingStepId}
-					onAddStep={openAddStepModal}
-					onRetry={() => void ensureVersionStepsLoaded(selectedVersion.id, true)}
-					onReorderStep={(stepId, direction) => void handleReorderStep(stepId, direction)}
-					onEditStep={openEditStepModal}
-					onDeleteStep={openDeleteStepModal}
-					onOpenExternalResource={openExternalResource}
-				/>
-			{:else if selectedDepartment && selectedDepartmentTemplateStatus === 'loading'}
-				<div
-					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
-				>
-					<div class="rounded-3xl bg-brand/10 p-6 text-brand">
-						<BookOpen class="h-12 w-12" />
-					</div>
-					<h2 class="mt-6 text-2xl font-bold text-text">Loading department templates</h2>
-					<p class="mt-2 max-w-md text-text-muted">
-						Fetching handbook versions for {selectedDepartment.name}.
-					</p>
-				</div>
-			{:else if selectedDepartment && selectedDepartmentTemplateStatus === 'error'}
-				<div
-					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-rose-500/20 bg-rose-500/5 p-12 text-center"
-				>
-					<div class="rounded-3xl bg-rose-500/10 p-6 text-rose-600">
-						<AlertCircle class="h-12 w-12" />
-					</div>
-					<h2 class="mt-6 text-2xl font-bold text-text">Unable to load versions</h2>
-					<p class="mt-2 max-w-md text-text-muted">
-						{templateErrorByDepartmentId[selectedDepartment.id] ??
-							'Failed to load handbook templates.'}
-					</p>
-					<Button
-						class="mt-6"
-						onclick={() => void ensureDepartmentTemplatesLoaded(selectedDepartment.id, true)}
+			<main class="space-y-8 lg:col-span-8">
+				{#if selectedDepartmentGroup && selectedVersion}
+					<VersionHeader
+						{selectedDepartmentGroup}
+						{selectedVersion}
+						{isDraftVersion}
+						{isPublishedVersion}
+						{isArchivedVersion}
+						{isEditMode}
+						{isPublishing}
+						{canPublishSelectedDraft}
+						selectedVersionStepsLength={selectedVersionSteps.length}
+						onToggleEditMode={toggleEditMode}
+						onOpenPreview={() => (isPreviewOpen = true)}
+						onPublish={() => void handlePublish()}
+						onCloneDraft={openCloneDraftModal}
+						onOpenMetadata={openMetadataModal}
+						onAddStep={openAddStepModal}
+					/>
+
+					<StepsSection
+						{selectedVersion}
+						{selectedVersionSteps}
+						{selectedVersionStepStatus}
+						stepError={stepErrorByVersionId[selectedVersion.id] ?? null}
+						{isDraftVersion}
+						{isEditMode}
+						{canEditSelectedDraft}
+						{reorderingStepId}
+						onAddStep={openAddStepModal}
+						onRetry={() => void ensureVersionStepsLoaded(selectedVersion.id, true)}
+						onReorderStep={(stepId, direction) => void handleReorderStep(stepId, direction)}
+						onEditStep={openEditStepModal}
+						onDeleteStep={openDeleteStepModal}
+						onOpenExternalResource={openExternalResource}
+					/>
+				{:else if selectedDepartment && selectedDepartmentTemplateStatus === 'loading'}
+					<div
+						class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
 					>
-						Retry
-					</Button>
-				</div>
-			{:else if selectedDepartmentGroup}
-				<div
-					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
-				>
-					<div class="rounded-3xl bg-secondary/10 p-6 text-secondary">
-						<BookOpen class="h-12 w-12" />
+						<div class="rounded-3xl bg-brand/10 p-6 text-brand">
+							<BookOpen class="h-12 w-12" />
+						</div>
+						<h2 class="mt-6 text-2xl font-bold text-text">Loading department templates</h2>
+						<p class="mt-2 max-w-md text-text-muted">
+							Fetching handbook versions for {selectedDepartment.name}.
+						</p>
 					</div>
-					<h2 class="mt-6 text-2xl font-bold text-text">No versions for this department</h2>
-					<p class="mt-2 max-w-md text-text-muted">
-						Create the first draft for {selectedDepartmentGroup.departmentName} to start managing its
-						handbook template lifecycle.
-					</p>
-					<Button class="mt-6 gap-2" onclick={openCreateDraftModal}>
-						<Plus class="h-4 w-4" />
-						Create Draft
-					</Button>
-				</div>
-			{:else}
-				<div
-					class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
-				>
-					<div class="rounded-3xl bg-info/10 p-6 text-info">
-						<BookOpen class="h-12 w-12" />
+				{:else if selectedDepartment && selectedDepartmentTemplateStatus === 'error'}
+					<div
+						class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-rose-500/20 bg-rose-500/5 p-12 text-center"
+					>
+						<div class="rounded-3xl bg-rose-500/10 p-6 text-rose-600">
+							<AlertCircle class="h-12 w-12" />
+						</div>
+						<h2 class="mt-6 text-2xl font-bold text-text">Unable to load versions</h2>
+						<p class="mt-2 max-w-md text-text-muted">
+							{templateErrorByDepartmentId[selectedDepartment.id] ??
+								'Failed to load handbook templates.'}
+						</p>
+						<Button
+							class="mt-6"
+							onclick={() => void ensureDepartmentTemplatesLoaded(selectedDepartment.id, true)}
+						>
+							Retry
+						</Button>
 					</div>
-					<h2 class="mt-6 text-2xl font-bold text-text">Select a department</h2>
-					<p class="mt-2 max-w-md text-text-muted">
-						Choose a department on the left to review handbook versions and manage draft actions.
-					</p>
-				</div>
-			{/if}
-		</main>
-	</div>
+				{:else if selectedDepartmentGroup}
+					<div
+						class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
+					>
+						<div class="rounded-3xl bg-secondary/10 p-6 text-secondary">
+							<BookOpen class="h-12 w-12" />
+						</div>
+						<h2 class="mt-6 text-2xl font-bold text-text">No versions for this department</h2>
+						<p class="mt-2 max-w-md text-text-muted">
+							Create the first draft for {selectedDepartmentGroup.departmentName} to start managing its
+							handbook template lifecycle.
+						</p>
+						<Button class="mt-6 gap-2" onclick={openCreateDraftModal}>
+							<Plus class="h-4 w-4" />
+							Create Draft
+						</Button>
+					</div>
+				{:else}
+					<div
+						class="flex min-h-105 flex-col items-center justify-center rounded-3xl border border-border bg-surface/50 p-12 text-center"
+					>
+						<div class="rounded-3xl bg-info/10 p-6 text-info">
+							<BookOpen class="h-12 w-12" />
+						</div>
+						<h2 class="mt-6 text-2xl font-bold text-text">Select a department</h2>
+						<p class="mt-2 max-w-md text-text-muted">
+							Choose a department on the left to review handbook versions and manage draft actions.
+						</p>
+					</div>
+				{/if}
+			</main>
+		</div>
+	{/await}
 </div>
 
 <CreateDraftModal

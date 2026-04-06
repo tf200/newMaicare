@@ -140,14 +140,24 @@ export interface LeaveBalance {
 	leave_budget_hours_used: number;
 }
 
-export interface LeavePayout {
+export interface PayoutRequest {
 	id: string;
 	employee_id: string;
-	salary_month: string;
-	payout_code: string | null;
-	leave_type: string;
-	hours_requested: number;
+	employee_name: string;
+	created_by_employee_id: string;
+	requested_hours: number;
+	balance_year: number;
 	hourly_rate: number;
-	total_amount: number;
-	status: string;
+	gross_amount: number;
+	salary_month?: string;
+	status: 'pending' | 'approved' | 'rejected' | 'paid';
+	request_note?: string;
+	decision_note?: string;
+	decided_by_employee_id?: string;
+	paid_by_employee_id?: string;
+	requested_at: string;
+	decided_at?: string;
+	paid_at?: string;
+	created_at: string;
+	updated_at: string;
 }

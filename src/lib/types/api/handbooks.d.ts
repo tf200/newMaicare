@@ -192,7 +192,7 @@ export interface WaiveHandbookAssignmentResponse {
 	completed_at: string | null;
 }
 
-export type ListDepartmentTemplatesResponse = PaginatedResponse<HandbookTemplateApi>;
+export type ListDepartmentTemplatesResponse = HandbookTemplateApi[];
 
 export interface CreateHandbookTemplateRequest {
 	department_id: string;

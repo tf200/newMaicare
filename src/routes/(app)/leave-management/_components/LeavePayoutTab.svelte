@@ -2,7 +2,8 @@
 	import { Clock, CheckCircle, XCircle, Banknote, Search } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import type { LeavePayout } from '$lib/types/api/salary';
+	import type { PayoutRequest } from '$lib/types/api/salary';
+	import { listPayoutRequests } from '$lib/api/salary';
 
 	type PayoutStatus = 'pending' | 'approved' | 'rejected' | 'paid';
 	type RequestFilter = 'all' | 'pending' | 'approved' | 'rejected';
@@ -11,28 +12,6 @@
 		id: RequestFilter;
 		label: string;
 	}
-
-	interface PayoutRow {
-		id: string;
-		employee_id: string;
-		employee_name: string;
-		requested_hours: number;
-		balance_year: number;
-		hourly_rate: number;
-		gross_amount: number;
-		salary_month: string | null;
-		status: PayoutStatus;
-		requested_at: string;
-		created_at: string;
-	}
-
-	interface Props {
-		payouts?: LeavePayout[];
-		employeeNamesById?: Record<string, string>;
-		loading?: boolean;
-	}
-
-	let { payouts = [], employeeNamesById = {}, loading = false }: Props = $props();
 
 	const columns: DataTableColumn[] = [
 		{ key: 'employee', label: m.employee() },
@@ -87,7 +66,7 @@
 		}).format(new Date(dateStr));
 	};
 
-	const formatMonth = (monthStr: string | null) => {
+	const formatMonth = (monthStr: string | undefined | null) => {
 		if (!monthStr) return '-';
 		const [year, month] = monthStr.split('-');
 		return new Intl.DateTimeFormat('nl-NL', {
@@ -100,6 +79,12 @@
 	let requestFilter = $state<RequestFilter>('all');
 	let currentPage = $state(1);
 	let pageSize = $state(10);
+	
+	let data = $state<PayoutRequest[]>([]);
+	let totalCount = $state(0);
+	let loading = $state(false);
+	let requestSequence = 0;
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
 		{ id: 'all', label: m.all() },
@@ -129,44 +114,57 @@
 			: 'border border-border text-text-muted hover:text-text';
 	}
 
-	function normalizeStatus(status: string): PayoutStatus {
-		const normalized = status.toLowerCase();
-		if (normalized === 'approved') return 'approved';
-		if (normalized === 'rejected') return 'rejected';
-		if (normalized === 'paid') return 'paid';
-		if (normalized === 'pending') return 'pending';
-		return 'pending';
+	async function loadData() {
+		const reqId = ++requestSequence;
+		loading = true;
+		
+		try {
+			const status = requestFilter === 'all' ? undefined : requestFilter;
+			const res = await listPayoutRequests({
+				page: currentPage,
+				page_size: pageSize,
+				status,
+				employee_search: searchQuery
+			});
+			
+			if (reqId !== requestSequence) return;
+			
+			data = res.data.results ?? [];
+			totalCount = res.data.count ?? 0;
+		} catch (error) {
+			if (reqId !== requestSequence) return;
+			console.error(error);
+			data = [];
+			totalCount = 0;
+		} finally {
+			if (reqId === requestSequence) {
+				loading = false;
+			}
+		}
 	}
 
-	const tableRows = $derived.by<PayoutRow[]>(() =>
-		payouts.map((row) => {
-			const date = row.salary_month || new Date().toISOString();
-			const parsedYear = Number.parseInt(date.slice(0, 4), 10);
-			return {
-				id: row.id,
-				employee_id: row.employee_id,
-				employee_name: employeeNamesById[row.employee_id] ?? row.employee_id,
-				requested_hours: row.hours_requested,
-				balance_year: Number.isNaN(parsedYear) ? new Date().getFullYear() : parsedYear,
-				hourly_rate: row.hourly_rate,
-				gross_amount: row.total_amount,
-				salary_month: row.salary_month,
-				status: normalizeStatus(row.status),
-				requested_at: date,
-				created_at: date
-			};
-		})
-	);
-
-	const filteredRows = $derived.by(() =>
-		tableRows.filter((row) => {
-			const matchesSearch = row.employee_name.toLowerCase().includes(searchQuery.toLowerCase());
-			const matchesStatus = requestFilter === 'all' ? true : row.status === requestFilter;
-			return matchesSearch && matchesStatus;
-		})
-	);
+	$effect(() => {
+		// Dependencies: currentPage, pageSize, requestFilter
+		// Use local variables to register tracking
+		const _page = currentPage;
+		const _size = pageSize;
+		const _filter = requestFilter;
+		
+		void loadData();
+	});
+	
+	function handleSearchInput(event: Event) {
+		const val = (event.target as HTMLInputElement).value;
+		if (searchTimeout) clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => {
+			searchQuery = val;
+			currentPage = 1;
+			void loadData();
+		}, 300);
+	}
 
 	const employeeInitials = (name: string) => {
+		if (!name) return '';
 		return name
 			.split(' ')
 			.map((n) => n[0])
@@ -185,11 +183,7 @@
 			<input
 				type="search"
 				placeholder={m.search_employees()}
-				value={searchQuery}
-				oninput={(event) => {
-					searchQuery = (event.target as HTMLInputElement).value;
-					currentPage = 1;
-				}}
+				oninput={handleSearchInput}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 			/>
 		</div>
@@ -211,7 +205,7 @@
 	</div>
 {/snippet}
 
-{#snippet employeeCell(row: PayoutRow)}
+{#snippet employeeCell(row: PayoutRequest)}
 	<div class="flex items-center gap-3 py-1.5">
 		<div
 			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand shadow-sm shadow-brand/5"
@@ -227,13 +221,13 @@
 	</div>
 {/snippet}
 
-{#snippet hoursCell(row: PayoutRow)}
+{#snippet hoursCell(row: PayoutRequest)}
 	<span class="text-sm font-semibold text-text">
 		{row.requested_hours}h
 	</span>
 {/snippet}
 
-{#snippet amountCell(row: PayoutRow)}
+{#snippet amountCell(row: PayoutRequest)}
 	<div class="flex flex-col items-end">
 		<span class="text-sm font-bold text-text">
 			{currencyFormatter.format(row.gross_amount)}
@@ -244,13 +238,13 @@
 	</div>
 {/snippet}
 
-{#snippet monthCell(row: PayoutRow)}
+{#snippet monthCell(row: PayoutRequest)}
 	<span class="text-xs font-medium text-text-muted">
 		{formatMonth(row.salary_month)}
 	</span>
 {/snippet}
 
-{#snippet statusCell(row: PayoutRow)}
+{#snippet statusCell(row: PayoutRequest)}
 	{@const config = statusConfig[row.status]}
 	<div
 		class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold {config.bgColor} {config.color}"
@@ -260,13 +254,13 @@
 	</div>
 {/snippet}
 
-{#snippet dateCell(row: PayoutRow)}
+{#snippet dateCell(row: PayoutRequest)}
 	<span class="text-xs text-text-muted">
 		{formatDate(row.requested_at)}
 	</span>
 {/snippet}
 
-{#snippet actionsCell(row: PayoutRow)}
+{#snippet actionsCell(row: PayoutRequest)}
 	<div class="flex items-center justify-end gap-2">
 		{#if row.status === 'pending'}
 			<button
@@ -290,7 +284,7 @@
 <div class="animate-in fade-in slide-in-from-bottom-2 space-y-5">
 	<DataTable
 		{columns}
-		rows={filteredRows}
+		rows={data}
 		{loading}
 		rowKey="id"
 		title={m.leave_payout_title()}
@@ -299,7 +293,7 @@
 		headerInline
 		{currentPage}
 		{pageSize}
-		totalCount={filteredRows.length}
+		{totalCount}
 		onPageChange={(p) => (currentPage = p)}
 		cells={{
 			employee: employeeCell,

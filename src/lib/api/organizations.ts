@@ -83,8 +83,8 @@ export function listOrganizationLocations(
 
 	const query = searchParams.toString();
 	const endpoint = query
-		? `/organisations/${id}/locations?${query}`
-		: `/organisations/${id}/locations`;
+		? `/organizations/${id}/locations?${query}`
+		: `/organizations/${id}/locations`;
 
 	return api.get<ApiEnvelope<PaginatedResponse<OrganizationLocation>>>(endpoint);
 }

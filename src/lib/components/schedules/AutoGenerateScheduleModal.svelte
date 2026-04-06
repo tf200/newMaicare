@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { AlertTriangle, CheckCircle2, GripVertical, Sparkles, XCircle } from 'lucide-svelte';
+	import { AlertTriangle, CheckCircle2, GripVertical, Sparkles, X, XCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -55,6 +55,21 @@
 	let draftSlots = $state<GeneratedScheduleSlot[]>([]);
 	let dragPayload = $state<DragPayload | null>(null);
 	let dragError = $state<string | null>(null);
+	let generateRequestSeq = 0;
+
+	let draggedOverSlot = $state<string | null>(null);
+	let draggedOverBench = $state(false);
+	let dragErrorTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function setDragError(message: string | null) {
+		dragError = message;
+		if (dragErrorTimeout) clearTimeout(dragErrorTimeout);
+		if (message) {
+			dragErrorTimeout = setTimeout(() => {
+				dragError = null;
+			}, 4000);
+		}
+	}
 
 	const maxEmployeesPerCell = 2;
 
@@ -81,6 +96,9 @@
 
 	$effect(() => {
 		if (!open) {
+			generateRequestSeq += 1;
+			selectedEmployeeIds = [];
+			generating = false;
 			step = 'config';
 			generatedPlan = null;
 			draftSlots = [];
@@ -331,12 +349,12 @@
 			if (fromSlotKey) {
 				removeEmployeeFromSlot(fromSlotKey, employeeId);
 			}
-			dragError = null;
+			setDragError(null);
 			return;
 		}
 
 		if (destinationSlot.employee_ids.length >= maxEmployeesPerCell) {
-			dragError = 'This shift already has 2 employees. Move someone out first.';
+			setDragError('This shift already has 2 employees. Move someone out first.');
 			return;
 		}
 
@@ -349,7 +367,7 @@
 			employee_ids: [...destinationSlot.employee_ids, employeeId]
 		});
 
-		dragError = null;
+		setDragError(null);
 	}
 
 	function buildSaveSlots(): GeneratedScheduleSlot[] {
@@ -393,8 +411,19 @@
 		return dragPayload;
 	}
 
+	function onDragEnterSlot(slotKey: string) {
+		draggedOverSlot = slotKey;
+	}
+
+	function onDragLeaveSlot(slotKey: string) {
+		if (draggedOverSlot === slotKey) {
+			draggedOverSlot = null;
+		}
+	}
+
 	function onDropToSlot(event: DragEvent, slotKey: string) {
 		event.preventDefault();
+		draggedOverSlot = null;
 		const payload = parseDragPayload(event);
 		if (!payload) return;
 
@@ -402,14 +431,23 @@
 		dragPayload = null;
 	}
 
+	function onDragEnterBench() {
+		draggedOverBench = true;
+	}
+
+	function onDragLeaveBench() {
+		draggedOverBench = false;
+	}
+
 	function onDropToBench(event: DragEvent) {
 		event.preventDefault();
+		draggedOverBench = false;
 		const payload = parseDragPayload(event);
 		if (!payload?.fromSlotKey) return;
 
 		removeEmployeeFromSlot(payload.fromSlotKey, payload.employeeId);
 		dragPayload = null;
-		dragError = null;
+		setDragError(null);
 	}
 
 	async function handleGenerate() {
@@ -427,6 +465,7 @@
 		draftError = null;
 		dragError = null;
 		generating = true;
+		const requestSeq = ++generateRequestSeq;
 
 		try {
 			const response = await autoGenerateSchedules({
@@ -435,6 +474,7 @@
 				year,
 				employee_ids: selectedEmployeeIds
 			});
+			if (!open || requestSeq !== generateRequestSeq) return;
 
 			const plan = response.data;
 			generatedPlan = {
@@ -444,6 +484,8 @@
 			draftSlots = normalizeSlots(plan.slots);
 			step = 'review';
 		} catch (error) {
+			if (!open || requestSeq !== generateRequestSeq) return;
+
 			const message =
 				error instanceof Error && error.message
 					? error.message
@@ -453,7 +495,9 @@
 				? 'This week already has schedules for this location. Clear the week before generating a new plan.'
 				: message;
 		} finally {
-			generating = false;
+			if (requestSeq === generateRequestSeq) {
+				generating = false;
+			}
 		}
 	}
 
@@ -599,6 +643,8 @@
 					class="space-y-3 rounded-2xl border border-border/70 bg-surface p-3"
 					aria-label={m.unassigned_employees_label()}
 					ondragover={(event) => event.preventDefault()}
+					ondragenter={onDragEnterBench}
+					ondragleave={onDragLeaveBench}
 					ondrop={onDropToBench}
 				>
 					<div>
@@ -607,7 +653,7 @@
 					</div>
 
 					<div
-						class="bg-surface-subtle/30 flex flex-wrap gap-2 rounded-xl border border-dashed border-border/80 p-2.5"
+						class="bg-surface-subtle/30 flex max-h-[150px] flex-wrap gap-2 overflow-y-auto rounded-xl border border-dashed p-2.5 transition-colors {draggedOverBench ? 'border-rose-400 bg-rose-50/50' : 'border-border/80'}"
 					>
 						{#if unassignedEmployees.length > 0}
 							{#each unassignedEmployees as employee (employee.id)}
@@ -633,6 +679,7 @@
 						</h4>
 						<div class="max-h-[420px] space-y-2 overflow-auto pr-1">
 							{#each liveSummary as summary (summary.employee.id)}
+								{@const pct = Math.min(100, Math.round((summary.assignedMinutes / Math.max(1, summary.employee.target_minutes)) * 100))}
 								<div class="bg-surface-subtle/30 rounded-xl border border-border/70 p-2.5">
 									<div class="flex items-center justify-between gap-2">
 										<p class="truncate text-xs font-semibold text-text">
@@ -644,8 +691,14 @@
 											)}
 										</span>
 									</div>
+									<div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border/40">
+										<div
+											class="h-full rounded-full transition-all duration-300 {summary.overtimeMinutes > 0 ? 'bg-rose-500' : 'bg-primary'}"
+											style="width: {pct}%"
+										></div>
+									</div>
 									{#if summary.overtimeMinutes > 0}
-										<p class="mt-1 text-[11px] font-medium text-rose-700">
+										<p class="mt-1.5 text-[11px] font-medium text-rose-700">
 											{m.overtime_label({
 												minutes: formatMinutes(summary.overtimeMinutes)
 											})}
@@ -657,15 +710,15 @@
 					</div>
 				</section>
 
-				<section class="min-w-0 overflow-auto rounded-2xl border border-border/70 bg-surface">
+				<section class="relative min-w-0 overflow-auto rounded-2xl border border-border/70 bg-surface">
 					<div class="grid min-w-[980px] grid-cols-[220px_repeat(7,minmax(108px,1fr))]">
 						<div
-							class="bg-surface-subtle/80 sticky left-0 z-10 flex items-end border-r border-b border-border/60 p-3 text-[11px] font-semibold tracking-wide text-text-muted uppercase"
+							class="bg-surface-subtle/90 sticky top-0 left-0 z-30 flex items-end border-r border-b border-border/60 p-3 text-[11px] font-semibold tracking-wide text-text-muted uppercase backdrop-blur-sm"
 						>
 							{m.shift_label()}
 						</div>
 						{#each weekDays as day (day.date)}
-							<div class="bg-surface-subtle/80 border-r border-b border-border/60 p-2 text-center">
+							<div class="bg-surface-subtle/90 sticky top-0 z-20 border-r border-b border-border/60 p-2 text-center backdrop-blur-sm">
 								<p class="text-[10px] font-semibold tracking-wide text-text-muted uppercase">
 									{day.dayName}
 								</p>
@@ -691,22 +744,24 @@
 										name: template.name,
 										day: `${day.dayName} ${day.dayNumber}`
 									})}
-									class="min-h-[110px] border-r border-b border-border/60 bg-surface p-2"
+									class="min-h-[110px] border-r border-b border-border/60 bg-surface p-2 transition-colors {draggedOverSlot === slotKey ? 'bg-primary/5' : ''}"
 									ondragover={(event) => event.preventDefault()}
+									ondragenter={() => onDragEnterSlot(slotKey)}
+									ondragleave={() => onDragLeaveSlot(slotKey)}
 									ondrop={(event) => onDropToSlot(event, slotKey)}
 								>
 									<div
-										class="bg-surface-subtle/20 flex min-h-[92px] flex-col gap-1.5 rounded-lg border border-dashed border-border/70 p-1.5"
+										class="bg-surface-subtle/20 flex min-h-[92px] flex-col gap-1.5 rounded-lg border border-dashed p-1.5 transition-colors {draggedOverSlot === slotKey ? 'border-primary/50' : 'border-border/70'}"
 									>
 										{#if slot.employee_ids.length > 0}
 											{#each slot.employee_ids as employeeId (employeeId)}
 												{@const employee = employeeById.get(employeeId)}
 												<div
 													role="button"
-													tabindex="-1"
+													tabindex="0"
 													draggable="true"
 													ondragstart={(event) => startDrag(event, employeeId, slotKey)}
-													class="group/item flex cursor-grab items-center justify-between gap-1 rounded-md border border-border bg-surface px-1.5 py-1 text-xs font-medium text-text"
+													class="group/item flex cursor-grab items-center justify-between gap-1 rounded-md border border-border bg-surface px-1.5 py-1 text-xs font-medium text-text focus:ring-2 focus:ring-primary focus:outline-none"
 												>
 													<div class="flex min-w-0 items-center gap-1">
 														<GripVertical class="h-3 w-3 shrink-0 text-text-muted" />
@@ -716,14 +771,14 @@
 													</div>
 													<button
 														type="button"
-														class="rounded p-0.5 text-text-muted opacity-0 transition-opacity group-hover/item:opacity-100 hover:bg-border/60 hover:text-text"
+														class="rounded p-0.5 text-text-muted transition-colors hover:bg-rose-50 hover:text-rose-600 focus:ring-2 focus:ring-primary focus:outline-none"
 														onclick={(event) => {
 															event.stopPropagation();
 															removeEmployeeFromSlot(slotKey, employeeId);
 														}}
 														aria-label={m.remove_employee()}
 													>
-														X
+														<X class="h-3.5 w-3.5" />
 													</button>
 												</div>
 											{/each}

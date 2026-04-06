@@ -77,9 +77,6 @@ export interface OrganizationLocation {
 	house_number_addition: string | null;
 	postal_code: string;
 	city: string;
-	capacity: number | null;
-	occupied: number;
-	available: number;
 	shifts?: LocationShift[];
 	created_at: string;
 	updated_at: string;
@@ -215,7 +212,6 @@ export interface CreateLocationRequest {
 	house_number_addition?: string;
 	postal_code: string;
 	city: string;
-	capacity?: number;
 	shifts?: LocationShift[];
 }
 
@@ -226,7 +222,6 @@ export interface UpdateLocationRequest {
 	house_number_addition?: string;
 	postal_code?: string;
 	city?: string;
-	capacity?: number;
 	shifts?: LocationShift[];
 }
 

@@ -1,6 +1,8 @@
 import { api } from '$lib/api/client';
 import type {
 	ApiEnvelope,
+	CreateTimeEntryRequest,
+	CreateTimeEntryResponse,
 	ListTimeEntriesParams,
 	PaginatedResponse,
 	TimeEntryListItemResponse
@@ -34,7 +36,11 @@ export function listTimeEntries(params: ListTimeEntriesParams) {
 	}
 
 	const query = searchParams.toString();
-	const endpoint = query ? `/api/time-entries?${query}` : '/api/time-entries';
+	const endpoint = query ? `/time-entries?${query}` : '/api/time-entries';
 
 	return api.get<ApiEnvelope<PaginatedResponse<TimeEntryListItemResponse>>>(endpoint);
+}
+
+export function createTimeEntry(payload: CreateTimeEntryRequest) {
+	return api.post<ApiEnvelope<CreateTimeEntryResponse>>('/time-entries/admin', payload);
 }

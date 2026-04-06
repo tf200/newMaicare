@@ -163,9 +163,6 @@
 		<span class="font-medium text-text">{option.name}</span>
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
 			<span>{option.street} {option.house_number}, {option.city}</span>
-			<span class="{option.available > 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium">
-				{m.spots_available({ count: option.available })}
-			</span>
 		</div>
 	</div>
 {/snippet}
