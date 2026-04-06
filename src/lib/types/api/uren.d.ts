@@ -41,6 +41,7 @@ export interface TimeEntryListItemResponse {
 	approved_by_employee_id: string | null;
 	approved_by_name: string | null;
 	rejection_reason: string | null;
+	is_paid: boolean;
 	notes: string | null;
 	created_at: string;
 	updated_at: string;

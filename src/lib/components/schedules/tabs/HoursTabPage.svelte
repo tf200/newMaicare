@@ -2,7 +2,17 @@
 	import { onMount } from 'svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import { Clock, CheckCircle, FileText, Plus, Send, Search, XCircle, Eye } from 'lucide-svelte';
+	import {
+		Clock,
+		CheckCircle,
+		FileText,
+		Plus,
+		Send,
+		Search,
+		XCircle,
+		Eye,
+		Pencil
+	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { listTimeEntries } from '$lib/api/uren';
@@ -351,13 +361,22 @@
 {/snippet}
 
 {#snippet cellStatus(row: TimeEntryListItemResponse)}
-	<span
-		class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase {getStatusColor(
-			row.status
-		)}"
-	>
-		{getStatusLabel(row.status)}
-	</span>
+	<div class="flex items-center gap-1.5">
+		<span
+			class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase {getStatusColor(
+				row.status
+			)}"
+		>
+			{getStatusLabel(row.status)}
+		</span>
+		{#if row.is_paid}
+			<span
+				class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-emerald-700 uppercase dark:border-emerald-800/50 dark:text-emerald-400"
+			>
+				Paid
+			</span>
+		{/if}
+	</div>
 {/snippet}
 
 {#snippet cellHours(row: TimeEntryListItemResponse)}
@@ -405,6 +424,15 @@
 		>
 			<Eye class="h-4 w-4" />
 		</button>
+		{#if !row.is_paid}
+			<button
+				type="button"
+				class="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-text-muted transition-all hover:bg-border/30 hover:text-text"
+				title="Edit"
+			>
+				<Pencil class="h-4 w-4" />
+			</button>
+		{/if}
 	</div>
 {/snippet}
 
