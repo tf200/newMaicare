@@ -8,11 +8,7 @@
 		CheckCircle2,
 		XCircle,
 		Search,
-		Filter,
-		TrendingUp,
-		Zap,
-		Users,
-		Calendar
+		Filter
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -174,9 +170,6 @@
 	const historyRequests = $derived.by(() =>
 		swapRequests.filter((r) => !['pending', 'accepted_by_target'].includes(r.status))
 	);
-	const selectedRequest = $derived.by(
-		() => swapRequests.find((r) => r.id === selectedRequestId) ?? null
-	);
 
 	// Derived filtered lists
 	const filteredPendingRequests = $derived.by(() => {
@@ -296,6 +289,12 @@
 		}, 3500);
 	}
 
+	$effect(() => {
+		return () => {
+			if (toastTimeout) clearTimeout(toastTimeout);
+		};
+	});
+
 	function openAction(requestId: string, action: 'accept' | 'reject' | 'approve' | 'deny') {
 		selectedRequestId = requestId;
 		dialogAction = action;
@@ -370,7 +369,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-brand/20 to-emerald-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-brand/20 to-emerald-100/20 blur-2xl dark:from-brand/10 dark:to-emerald-900/20"
 		></div>
 		<div class="relative flex flex-col gap-6">
 			<div class="flex flex-wrap items-start justify-between gap-6">
@@ -392,7 +391,7 @@
 				<div
 					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
 				>
-					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]">
+					<div class="absolute -right-4 -bottom-4 text-warning opacity-[0.04]" aria-hidden="true">
 						<Clock class="h-32 w-32" />
 					</div>
 					<div class="relative">
@@ -408,7 +407,7 @@
 				<div
 					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
 				>
-					<div class="absolute -right-4 -bottom-4 text-brand opacity-[0.04]">
+					<div class="absolute -right-4 -bottom-4 text-brand opacity-[0.04]" aria-hidden="true">
 						<AlertCircle class="h-32 w-32" />
 					</div>
 					<div class="relative">
@@ -424,7 +423,7 @@
 				<div
 					class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
 				>
-					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]">
+					<div class="absolute -right-4 -bottom-4 text-success opacity-[0.04]" aria-hidden="true">
 						<CheckCircle2 class="h-32 w-32" />
 					</div>
 					<div class="relative">
@@ -458,7 +457,7 @@
 		</div>
 	</header>
 
-	<div class="animate-in fade-in rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
+	<div class="rounded-3xl border border-border/60 bg-surface p-6 shadow-sm">
 		<!-- Advanced filters -->
 		<div class="mb-6 space-y-4">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -470,11 +469,13 @@
 						type="search"
 						class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 						placeholder={m.swap_search_placeholder()}
+						aria-label={m.swap_search_placeholder()}
 						bind:value={searchQuery}
 					/>
 					{#if searchQuery}
 						<button
-							class="absolute top-1/2 right-3 -translate-y-1/2 text-text-muted transition hover:text-text"
+							class="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-text-muted transition hover:text-text focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
+							aria-label={m.swap_clear_filters()}
 							onclick={() => (searchQuery = '')}
 						>
 							<X class="h-4 w-4" />
@@ -485,7 +486,8 @@
 				<div class="flex flex-wrap items-center gap-2">
 					<select
 						bind:value={selectedDepartmentFilter}
-						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none"
+						aria-label={m.swap_all_departments()}
+						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none focus:ring-2 focus:ring-brand/20"
 					>
 						<option value={null}>{m.swap_all_departments()}</option>
 						{#each departments as dept}
@@ -495,7 +497,8 @@
 
 					<select
 						bind:value={selectedShiftTypeFilter}
-						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none"
+						aria-label={m.swap_all_shifts()}
+						class="h-9 rounded-xl border border-border/60 bg-surface px-3 text-xs font-semibold text-text outline-none focus:ring-2 focus:ring-brand/20"
 					>
 						<option value={null}>{m.swap_all_shifts()}</option>
 						{#each shiftTypes as type}
@@ -505,7 +508,7 @@
 
 					{#if hasActiveFilters}
 						<button
-							class="h-9 rounded-full border border-warning/20 bg-warning/5 px-4 text-xs font-semibold text-warning transition hover:bg-warning/10"
+							class="h-9 rounded-full border border-warning/20 bg-warning/5 px-4 text-xs font-semibold text-warning transition hover:bg-warning/10 focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 							onclick={clearAllFilters}
 						>
 							<Filter class="mr-1 inline h-3 w-3" />
@@ -518,11 +521,15 @@
 
 		<!-- Tab navigation -->
 		<div
+			role="tablist"
 			class="bg-surface-subtle/70 mb-6 flex flex-wrap gap-2 rounded-2xl border border-border/50 p-2"
 		>
 			{#each getTabItems as tab}
 				<button
-					class="rounded-xl px-4 py-2 text-sm font-semibold transition-all {activeTab === tab.value
+					role="tab"
+					aria-selected={activeTab === tab.value}
+					class="rounded-xl px-4 py-2 text-sm font-semibold transition-all focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none {activeTab ===
+					tab.value
 						? 'bg-surface text-text shadow-sm'
 						: 'text-text-muted hover:text-text'}"
 					onclick={() => {
@@ -541,34 +548,37 @@
 					<div
 						class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
 					>
-						<Clock class="h-10 w-10 text-text-subtle" />
+						<Clock class="h-10 w-10 text-text-subtle" aria-hidden="true" />
 						<span>{hasActiveFilters ? m.swap_empty_filtered() : m.swap_empty_pending()}</span>
 					</div>
 				{:else}
 					<div class="overflow-hidden rounded-2xl border border-border/60">
-						<table class="w-full text-sm">
+						<table
+							class="w-full text-sm"
+							aria-label={m.swap_tab_pending({ count: pendingRequests.length })}
+						>
 							<thead>
 								<tr class="bg-surface-subtle/60 border-b border-border/60">
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-										>Verzocht door</th
+										>{m.swap_col_requester()}</th
 									>
 									<th class="w-6 px-1 py-2.5"></th>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-										>Collega</th
+										>{m.swap_col_colleague()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-										>Datum</th
+										>{m.swap_col_date()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-										>Status</th
+										>{m.swap_col_status()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-right text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-										>Acties</th
+										>{m.swap_col_actions()}</th
 									>
 								</tr>
 							</thead>
@@ -643,19 +653,22 @@
 										<td class="px-4 py-3">
 											<div class="flex items-center justify-end gap-1">
 												<button
-													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/60 hover:text-text"
+													class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/60 hover:text-text focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 													title={m.swap_action_cancel()}
+													aria-label={m.swap_action_cancel()}
 													onclick={() => cancelSwap(request.id)}><X class="h-3.5 w-3.5" /></button
 												>
 												<button
-													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error"
+													class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 													title={m.swap_action_reject()}
+													aria-label={m.swap_action_reject()}
 													onclick={() => openAction(request.id, 'reject')}
 													><XCircle class="h-3.5 w-3.5" /></button
 												>
 												<button
-													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success"
+													class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 													title={m.swap_action_accept()}
+													aria-label={m.swap_action_accept()}
 													onclick={() => openAction(request.id, 'accept')}
 													><CheckCircle2 class="h-3.5 w-3.5" /></button
 												>
@@ -680,34 +693,37 @@
 					<div
 						class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
 					>
-						<Check class="h-10 w-10 text-text-subtle" />
+						<Check class="h-10 w-10 text-text-subtle" aria-hidden="true" />
 						<span>{m.swap_empty_approval()}</span>
 					</div>
 				{:else}
 					<div class="overflow-hidden rounded-2xl border border-brand/20">
-						<table class="w-full text-sm">
+						<table
+							class="w-full text-sm"
+							aria-label={m.swap_tab_approval({ count: awaitingApproval.length })}
+						>
 							<thead>
 								<tr class="border-b border-brand/15 bg-brand/5">
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
-										>Verzocht door</th
+										>{m.swap_col_requester()}</th
 									>
 									<th class="w-6 px-1 py-2.5"></th>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
-										>Collega</th
+										>{m.swap_col_colleague()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
-										>Datum</th
+										>{m.swap_col_date()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-brand/70 uppercase"
-										>Reactie collega</th
+										>{m.swap_col_response()}</th
 									>
 									<th
 										class="px-4 py-2.5 text-right text-[10px] font-bold tracking-widest text-brand/70 uppercase"
-										>Acties</th
+										>{m.swap_col_actions()}</th
 									>
 								</tr>
 							</thead>
@@ -782,14 +798,16 @@
 										<td class="px-4 py-3">
 											<div class="flex items-center justify-end gap-1">
 												<button
-													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error"
+													class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-error/10 hover:text-error focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 													title={m.swap_action_deny()}
+													aria-label={m.swap_action_deny()}
 													onclick={() => openAction(request.id, 'deny')}
 													><XCircle class="h-3.5 w-3.5" /></button
 												>
 												<button
-													class="flex h-7 w-7 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success"
+													class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none"
 													title={m.swap_action_approve()}
+													aria-label={m.swap_action_approve()}
 													onclick={() => openAction(request.id, 'approve')}
 													><CheckCircle2 class="h-3.5 w-3.5" /></button
 												>
@@ -805,34 +823,37 @@
 				<div
 					class="bg-surface-subtle/40 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-6 py-12 text-sm text-text-muted"
 				>
-					<ArrowLeftRight class="h-10 w-10 text-text-subtle" />
+					<ArrowLeftRight class="h-10 w-10 text-text-subtle" aria-hidden="true" />
 					<span>{m.swap_empty_history()}</span>
 				</div>
 			{:else}
-				<div class="overflow-hidden rounded-2xl border border-border/60 opacity-90">
-					<table class="w-full text-sm">
+				<div class="overflow-hidden rounded-2xl border border-border/60">
+					<table
+						class="w-full text-sm"
+						aria-label={m.swap_tab_history({ count: historyRequests.length })}
+					>
 						<thead>
 							<tr class="bg-surface-subtle/60 border-b border-border/60">
 								<th
 									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>Verzocht door</th
+									>{m.swap_col_requester()}</th
 								>
 								<th class="w-6 px-1 py-2.5"></th>
 								<th
 									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>Collega</th
+									>{m.swap_col_colleague()}</th
 								>
 								<th
 									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>Datum</th
+									>{m.swap_col_date()}</th
 								>
 								<th
 									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>Reactie</th
+									>{m.swap_col_reaction()}</th
 								>
 								<th
 									class="px-4 py-2.5 text-left text-[10px] font-bold tracking-widest text-text-subtle uppercase"
-									>Status</th
+									>{m.swap_col_status()}</th
 								>
 							</tr>
 						</thead>
@@ -1012,7 +1033,7 @@
 					</div>
 					{#if successAction === 'approved'}
 						<p class="mt-4 text-center text-xs text-text-muted">
-							De roosters zijn automatisch aangepast.
+							{m.swap_success_schedule_updated()}
 						</p>
 					{/if}
 				</div>
@@ -1028,7 +1049,7 @@
 				}}
 				class="w-full"
 			>
-				{m.leave_modal_cancel()}
+				{m.swap_modal_cancel()}
 			</Button>
 		</div>
 	{/snippet}
