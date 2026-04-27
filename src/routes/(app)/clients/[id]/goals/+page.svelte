@@ -116,7 +116,7 @@
 		good_progress:
 			'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30',
 		achieved:
-			'bg-teal-500/10 text-teal-700 border-teal-500/20 dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/30',
+			'bg-brand/10 text-brand-strong border-brand/20 dark:bg-brand/20 dark:text-brand dark:border-brand/30',
 		blocked:
 			'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
 	};
@@ -236,17 +236,17 @@
 			class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white/90 p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/90"
 		>
 			<div
-				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-teal-400/20 to-emerald-500/10 blur-2xl"
+				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-brand/20 to-brand-strong/10 blur-2xl"
 			></div>
 
 			<div class="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-2">
 					<div class="hidden"></div>
 					<div
-						class="flex items-center gap-3 text-sm font-semibold text-teal-600 dark:text-teal-400"
+						class="flex items-center gap-3 text-sm font-semibold text-brand dark:text-brand-strong"
 					>
 						<span
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 dark:bg-teal-500/10"
+							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 dark:bg-brand/20"
 						>
 							<Target class="h-5 w-5" />
 						</span>
@@ -264,7 +264,7 @@
 					<Button
 						disabled={!goalsData.can_update_goals}
 						onclick={() => (createGoalModalOpen = true)}
-						class="gap-2 bg-teal-600 text-white shadow-sm hover:opacity-90 dark:bg-teal-400 dark:text-black"
+						class="gap-2 bg-brand text-white shadow-sm hover:opacity-90 dark:bg-brand-strong dark:text-white"
 					>
 						<Plus class="h-4 w-4" />
 						{m.new_goal()}
@@ -332,7 +332,7 @@
 						<div class="grid gap-4 sm:grid-cols-2">
 							{#each goalsData.active_goals as goal (goal.id)}
 								<article
-									class="group relative flex flex-col justify-between rounded-3xl border border-zinc-100 bg-white p-6 shadow-xs transition-all duration-300 hover:border-teal-500/30 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-teal-400/30"
+									class="group relative flex flex-col justify-between rounded-3xl border border-zinc-100 bg-white p-6 shadow-xs transition-all duration-300 hover:border-brand/30 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-strong/30"
 								>
 									<div class="space-y-4">
 										<div class="flex items-start justify-between">
@@ -388,7 +388,7 @@
 											<Button
 												variant="ghost"
 												onclick={() => openProgressModal(goal.id, goal.title)}
-												class="h-9 w-full justify-between px-3 text-[11px] font-bold text-zinc-500 hover:text-teal-600 dark:text-zinc-400 dark:hover:text-teal-400"
+												class="h-9 w-full justify-between px-3 text-[11px] font-bold text-zinc-500 hover:text-brand dark:text-zinc-400 dark:hover:text-brand-strong"
 											>
 												{m.view_progress_history()}
 												<TrendingUp class="h-3.5 w-3.5" />
@@ -439,12 +439,12 @@
 						class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 					>
 						<div
-							class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-teal-500/5 blur-2xl"
+							class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-info/10 blur-2xl"
 						></div>
 						<div class="relative space-y-4">
 							<div class="flex items-center justify-between">
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400"
+									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-info/10 text-info dark:bg-info/20 dark:text-info"
 								>
 									<CalendarClock class="h-5 w-5" />
 								</div>
@@ -501,19 +501,19 @@
 						</div>
 					{:else}
 						<div
-							class="rounded-3xl border border-teal-100 bg-teal-50/30 p-6 shadow-sm dark:border-teal-900/30 dark:bg-teal-900/5"
+							class="rounded-3xl border border-success/20 bg-success/5 p-6 shadow-sm dark:border-success/30 dark:bg-success/5"
 						>
 							<div class="space-y-4">
-								<div class="flex items-center gap-2 text-teal-700 dark:text-teal-400">
+								<div class="flex items-center gap-2 text-success dark:text-success">
 									<CheckCircle2 class="h-5 w-5" />
 									<h3 class="text-lg font-bold">{m.ready_for_review()}</h3>
 								</div>
-								<p class="text-sm font-medium text-teal-600 dark:text-teal-400/80">
+								<p class="text-sm font-medium text-success dark:text-success/80">
 									{m.start_evaluation_description()}
 								</p>
 								<Button
 									disabled={!goalsData.is_responsible_employee}
-									class="h-12 w-full gap-2 rounded-xl bg-teal-600 font-bold text-white shadow-lg shadow-teal-500/10 hover:opacity-90 dark:bg-teal-500 dark:text-black"
+									class="h-12 w-full gap-2 rounded-xl bg-success font-bold text-white shadow-lg shadow-success/10 hover:opacity-90 dark:bg-success dark:text-white"
 									onclick={() => {
 										const clientId = page.params.id;
 										if (!clientId) return;
@@ -524,7 +524,7 @@
 									{m.start_evaluation()}
 								</Button>
 								{#if !goalsData.is_responsible_employee}
-									<p class="text-xs font-medium text-teal-700/80 dark:text-teal-400/80">
+									<p class="text-xs font-medium text-success/80 dark:text-success/80">
 										{m.only_coordinator_can_start()}
 									</p>
 								{/if}
@@ -543,7 +543,7 @@
 							{#if lastCompleted}
 								<div class="flex items-center gap-3">
 									<div
-										class="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+										class="flex h-8 w-8 items-center justify-center rounded-xl bg-success/10 text-success dark:bg-success/20 dark:text-success"
 									>
 										<CheckCircle2 class="h-4 w-4" />
 									</div>

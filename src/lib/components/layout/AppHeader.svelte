@@ -199,7 +199,7 @@
 							aria-label={m.profile()}
 						>
 							<div
-								class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-teal-400 to-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
+								class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-brand to-brand-strong text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
 							>
 								{displayInitials}
 							</div>

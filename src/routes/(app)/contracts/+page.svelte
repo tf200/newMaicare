@@ -18,6 +18,7 @@
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import CreateContractForm from '$lib/components/forms/CreateContractForm.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type {
@@ -418,10 +419,9 @@
 
 	{#await contractsDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-				<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
-				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-			</div>
+			{#each [1, 2, 3, 4] as _}
+				<StatCard loading label="" value="" />
+			{/each}
 		</div>
 
 		<DataTable
@@ -452,76 +452,40 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div
-				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-			>
-				<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
-					<FileText class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Total Contracts
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{contractsData.stats.total}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.all_matching_records()}</p>
-				</div>
-			</div>
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<CheckCircle2 class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Approved
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-						{contractsData.stats.approved}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.current_page()}</p>
-				</div>
-			</div>
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Timer class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.draft()}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl">
-						{contractsData.stats.draft}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.pending_completion()}</p>
-				</div>
-			</div>
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Clock class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Expiring Soon
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-						{contractsData.stats.expiringSoon}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.within_30_days()}</p>
-				</div>
-			</div>
+			<StatCard
+				label="Total Contracts"
+				value={contractsData.stats.total}
+				description={m.all_matching_records()}
+				icon={FileText}
+				iconColor="text-text"
+			/>
+			<StatCard
+				label="Approved"
+				value={contractsData.stats.approved}
+				description={m.current_page()}
+				icon={CheckCircle2}
+				valueColor="text-emerald-600"
+				iconColor="text-emerald-500"
+				hoverBorderColor="hover:border-emerald-500/30"
+			/>
+			<StatCard
+				label={m.draft()}
+				value={contractsData.stats.draft}
+				description={m.pending_completion()}
+				icon={Timer}
+				valueColor="text-amber-600"
+				iconColor="text-amber-500"
+				hoverBorderColor="hover:border-amber-500/30"
+			/>
+			<StatCard
+				label="Expiring Soon"
+				value={contractsData.stats.expiringSoon}
+				description={m.within_30_days()}
+				icon={Clock}
+				valueColor="text-rose-600"
+				iconColor="text-rose-500"
+				hoverBorderColor="hover:border-rose-500/30"
+			/>
 		</div>
 
 		<DataTable

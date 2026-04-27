@@ -35,7 +35,9 @@
 				attachment_ids: [],
 				care_type: 'ambulante',
 				price_time_unit: 'hourly',
-				hours_type: 'weekly'
+				hours_type: 'weekly',
+				financing_act: '',
+				financing_option: ''
 			} as unknown as ContractInput,
 			valibotClient(ContractSchema)
 		),
@@ -110,6 +112,8 @@
 		if ($form.care_type === 'accommodation') {
 			$form.hours = undefined;
 			$form.hours_type = undefined;
+		} else if (!$form.hours_type) {
+			$form.hours_type = 'weekly';
 		}
 		// Reset price_time_unit if it's no longer valid
 		const validUnits = timeUnitOptions.map((o) => o.value);

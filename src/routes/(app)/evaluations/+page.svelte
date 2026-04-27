@@ -11,6 +11,7 @@
 	} from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import CreateEvaluationForm from '$lib/components/forms/CreateEvaluationForm.svelte';
 	import type { PageData } from './$types';
 	import type { UpcomingEvaluation, DraftEvaluation, SubmittedEvaluation } from './+page';
@@ -122,74 +123,41 @@
 	{#await statsPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each [1, 2, 3] as _}
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-					<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
-					<div class="mt-3 h-3 w-36 animate-pulse rounded bg-border/70"></div>
-				</div>
+				<StatCard loading label="" value="" />
 			{/each}
 		</div>
 	{:then stats}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.attention_required()}
-					</div>
-					<AlertTriangle class="h-4 w-4 text-rose-500" />
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.attentionRequired}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.attention_required_description()}</p>
-			</div>
-
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.in_progress()}
-					</div>
-					<FileEdit class="h-4 w-4 text-info" />
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.inProgress}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.in_progress_description()}</p>
-			</div>
-
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="flex items-center justify-between">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.recently_finalized()}
-					</div>
-					<CheckCircle2 class="h-4 w-4 text-success" />
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-					{stats.recentlyFinalized}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.recently_finalized_description()}</p>
-			</div>
+			<StatCard
+				label={m.attention_required()}
+				value={stats.attentionRequired}
+				description={m.attention_required_description()}
+				icon={AlertTriangle}
+				iconPosition="inline"
+				iconColor="text-rose-500"
+			/>
+			<StatCard
+				label={m.in_progress()}
+				value={stats.inProgress}
+				description={m.in_progress_description()}
+				icon={FileEdit}
+				iconPosition="inline"
+				iconColor="text-info"
+			/>
+			<StatCard
+				label={m.recently_finalized()}
+				value={stats.recentlyFinalized}
+				description={m.recently_finalized_description()}
+				icon={CheckCircle2}
+				iconPosition="inline"
+				iconColor="text-success"
+			/>
 		</div>
 	{:catch}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.attention_required()}
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.in_progress()}
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.recently_finalized()}
-				</div>
-				<div class="mt-2 text-3xl font-bold tracking-tight text-text">—</div>
-			</div>
+			<StatCard label={m.attention_required()} value="—" />
+			<StatCard label={m.in_progress()} value="—" />
+			<StatCard label={m.recently_finalized()} value="—" />
 		</div>
 	{/await}
 

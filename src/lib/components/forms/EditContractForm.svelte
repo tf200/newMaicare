@@ -68,7 +68,9 @@
 				attachment_ids: [],
 				care_type: 'ambulante',
 				price_time_unit: 'hourly',
-				hours_type: 'weekly'
+				hours_type: 'weekly',
+				financing_act: '',
+				financing_option: ''
 			} as unknown as ContractSchemaInput,
 			valibotClient(ContractSchema)
 		),
@@ -139,22 +141,23 @@
 		if (!open || !contract) return;
 		if (initializedContractId === contract.id) return;
 
-		const initialData: ContractSchemaInput = {
-			client_id: contract.clientId || '',
-			sender_id: contract.sender.id,
-			care_name: contract.careName,
-			care_type: contract.careType,
-			start_date: toDateInput(contract.startDate),
-			end_date: toDateInput(contract.endDate),
-			price: contract.price,
-			price_time_unit: contract.priceTimeUnit,
-			hours: contract.hours ?? undefined,
-			hours_type: contract.hoursType ?? undefined,
-			financing_act: contract.financingAct,
-			financing_option: contract.financingOption,
-			type_id: contract.typeId ?? undefined,
-			reminder_period: contract.reminderPeriod,
-			VAT: contract.vat ?? undefined,
+			const initialData: ContractSchemaInput = {
+				client_id: contract.clientId || '',
+				sender_id: contract.sender.id,
+				care_name: contract.careName,
+				care_type: contract.careType,
+				start_date: toDateInput(contract.startDate),
+				end_date: toDateInput(contract.endDate),
+				price: contract.price,
+				price_time_unit: contract.priceTimeUnit,
+				hours: contract.hours ?? undefined,
+				hours_type:
+					contract.careType === 'ambulante' ? (contract.hoursType ?? 'weekly') : undefined,
+				financing_act: contract.financingAct,
+				financing_option: contract.financingOption,
+				type_id: contract.typeId ?? undefined,
+				reminder_period: contract.reminderPeriod,
+				VAT: contract.vat ?? undefined,
 			attachment_ids: contract.attachments.map(
 				(attachment: { id: string; name: string }) => attachment.id
 			)

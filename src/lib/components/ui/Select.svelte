@@ -12,7 +12,7 @@
 	let {
 		label,
 		options = [],
-		value = $bindable(''),
+		value = $bindable(),
 		onchange,
 		placeholder = undefined,
 		error = undefined,
