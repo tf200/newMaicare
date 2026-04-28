@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { Eye, HeartHandshake, MapPin, Search } from 'lucide-svelte';
+	import { Eye, HeartHandshake, MapPin, Search, Users, Calendar, Clock } from 'lucide-svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import type { InCareFilters, InCareLoadResult, InCareRow } from './+page';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import type { InCareFilters, InCareLoadResult, InCareStatsResult, InCareRow } from './+page';
 
 	let { data } = $props<{
 		data: {
@@ -17,10 +18,11 @@
 				sort: { direction: 'asc' | 'desc' };
 			};
 			inCareData: Promise<InCareLoadResult>;
+			inCareStats: Promise<InCareStatsResult>;
 		};
 	}>();
-
 	const inCareDataPromise = $derived(data.inCareData);
+	const inCareStatsPromise = $derived(data.inCareStats);
 	const initial = $derived(data.initial);
 	const currentPage = $derived(initial.page);
 	const pageSize = $derived(initial.pageSize);
@@ -229,10 +231,12 @@
 
 	{#await inCareDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-				<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-			</div>
+			{#each [1, 2, 3, 4] as i (i)}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
 
 		<DataTable
@@ -265,17 +269,50 @@
 			<InlineErrorBanner message={inCareData.loadError} onRetry={() => invalidateAll()} />
 		{/if}
 
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total In Care
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{inCareData.stats.total}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.clients()}</p>
+		{#await inCareStatsPromise}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				{#each [1, 2, 3, 4] as i (i)}
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+					</div>
+				{/each}
 			</div>
-		</div>
+		{:then inCareStats}
+			{#if inCareStats.loadError}
+				<InlineErrorBanner message={inCareStats.loadError} onRetry={() => invalidateAll()} />
+			{/if}
+
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<StatCard
+					label="Total In Care"
+					value={inCareStats.total}
+					description={m.clients()}
+					icon={Users}
+				/>
+				<StatCard
+					label="In Care"
+					value={inCareStats.clientsInCare}
+					description="Currently in care"
+					icon={HeartHandshake}
+					color="emerald"
+				/>
+				<StatCard
+					label="Scheduled"
+					value={inCareStats.clientsScheduledInCare}
+					description="Scheduled for intake"
+					icon={Calendar}
+					color="blue"
+				/>
+				<StatCard
+					label="Contracts Ending Soon"
+					value={inCareStats.contractsEndingSoon}
+					description={m.within_30_days()}
+					icon={Clock}
+					color="rose"
+				/>
+			</div>
+		{/await}
 
 		<DataTable
 			{columns}

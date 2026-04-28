@@ -82,6 +82,7 @@
 		description?: string;
 		icon?: ComponentType;
 		color?: StatCardColor;
+		valueAccent?: boolean;
 		children?: import('svelte').Snippet;
 	}
 
@@ -91,11 +92,13 @@
 		description,
 		icon: Icon,
 		color = 'neutral',
+		valueAccent,
 		children
 	}: Props = $props();
 
 	const colors = $derived(colorMap[color]);
 	const hasHover = $derived(color !== 'neutral');
+	const resolvedValueAccent = $derived(valueAccent ?? color !== 'neutral');
 </script>
 
 <div
@@ -112,7 +115,7 @@
 		<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 			{label}
 		</div>
-		<div class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl {colors.valueColor}">
+		<div class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl {resolvedValueAccent ? colors.valueColor : 'text-text'}">
 			{value}
 		</div>
 		{#if description}

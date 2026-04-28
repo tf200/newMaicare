@@ -16,6 +16,7 @@
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import { listLocations } from '$lib/api/locations';
 	import type { ClientStatus } from '$lib/types/api';
@@ -349,22 +350,12 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div
-				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-			>
-				<div class="absolute -right-4 -bottom-4 text-brand opacity-[0.03]">
-					<Activity class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.total_clients()}
-					</div>
-					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{clientsData.stats.total}
-					</div>
-					<p class="mt-1 text-xs font-medium text-text-muted">{m.client()}</p>
-				</div>
-			</div>
+			<StatCard
+				label={m.total_clients()}
+				value={clientsData.stats.total}
+				description={m.client()}
+				icon={Activity}
+			/>
 
 			{#await countsDataPromise}
 				{#each [1, 2, 3] as i (i)}
@@ -374,68 +365,30 @@
 					</div>
 				{/each}
 			{:then countsData}
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<UsersRound class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.in_or_scheduled_in_care()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.clientsInOrScheduledInCare}
-						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">
-							{m.in_or_scheduled_in_care_description()}
-						</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Clock class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.waiting_list()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.clientsOnWaitingList}
-						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">
-							{m.waiting_list_description()}
-						</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-slate-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-slate-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Building2 class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.out_or_scheduled_out()}
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.clientsOutOrScheduledOutOfCare}
-						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">
-							{m.out_or_scheduled_out_description()}
-						</p>
-					</div>
-				</div>
+				<StatCard
+					label={m.in_or_scheduled_in_care()}
+					value={countsData.counts.clientsInOrScheduledInCare}
+					description={m.in_or_scheduled_in_care_description()}
+					icon={UsersRound}
+					color="emerald"
+					valueAccent={false}
+				/>
+				<StatCard
+					label={m.waiting_list()}
+					value={countsData.counts.clientsOnWaitingList}
+					description={m.waiting_list_description()}
+					icon={Clock}
+					color="amber"
+					valueAccent={false}
+				/>
+				<StatCard
+					label={m.out_or_scheduled_out()}
+					value={countsData.counts.clientsOutOrScheduledOutOfCare}
+					description={m.out_or_scheduled_out_description()}
+					icon={Building2}
+					color="slate"
+					valueAccent={false}
+				/>
 			{/await}
 		</div>
 

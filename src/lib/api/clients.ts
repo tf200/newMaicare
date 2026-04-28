@@ -7,6 +7,7 @@ import type {
 	ListClientContractsResponse,
 	ListInCareClientsParams,
 	ListInCareClientsResponse,
+	InCareStatsResponse,
 	GetClientResponse,
 	ListWaitingListClientsParams,
 	ListWaitingListClientsResponse,
@@ -98,6 +99,10 @@ export function listInCareClients(params: ListInCareClientsParams) {
 	return api.get<ApiEnvelope<PaginatedResponse<ListInCareClientsResponse>>>(
 		`/clients/in-care?${query}`
 	);
+}
+
+export function getInCareStats() {
+	return api.get<ApiEnvelope<InCareStatsResponse>>('/clients/incare/stats');
 }
 
 export function listClients(params: ListClientsParams) {

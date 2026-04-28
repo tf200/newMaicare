@@ -36,6 +36,13 @@ export interface ListInCareClientsResponse {
 	has_active_contract: boolean;
 }
 
+export interface InCareStatsResponse {
+	clients_in_care: number;
+	clients_scheduled_in_care: number;
+	contracts_ending_soon: number;
+	total: number;
+}
+
 export interface ListInCareClientsParams {
 	page: number;
 	pageSize: number;

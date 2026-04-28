@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listInCareClients } from '$lib/api/clients';
+import { listInCareClients, getInCareStats } from '$lib/api/clients';
 import type { InCareClientStatus } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
@@ -25,6 +25,14 @@ export interface InCareLoadResult {
 	rows: InCareRow[];
 	stats: { total: number };
 	pagination: PaginationState<InCareFilters>;
+	loadError: string | null;
+}
+
+export interface InCareStatsResult {
+	clientsInCare: number;
+	clientsScheduledInCare: number;
+	contractsEndingSoon: number;
+	total: number;
 	loadError: string | null;
 }
 
@@ -107,6 +115,25 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
+	const inCareStats: Promise<InCareStatsResult> = getInCareStats()
+		.then((response) => ({
+			clientsInCare: response.data.clients_in_care,
+			clientsScheduledInCare: response.data.clients_scheduled_in_care,
+			contractsEndingSoon: response.data.contracts_ending_soon,
+			total: response.data.total,
+			loadError: null
+		}))
+		.catch((error): InCareStatsResult => {
+			const message = error instanceof Error ? error.message : 'Failed to load in-care stats.';
+			return {
+				clientsInCare: 0,
+				clientsScheduledInCare: 0,
+				contractsEndingSoon: 0,
+				total: 0,
+				loadError: message
+			};
+		});
+
 	return {
 		initial: {
 			page,
@@ -119,6 +146,7 @@ export const load: PageLoad = ({ url }) => {
 				direction: sortDirection
 			}
 		},
-		inCareData
+		inCareData,
+		inCareStats
 	};
 };

@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { Calendar, ClipboardList, ShieldAlert, Search, Eye, ClipboardCheck } from 'lucide-svelte';
+	import { Calendar, ClipboardList, ShieldAlert, Search, Eye, ClipboardCheck, Clock, CheckCircle2, FileText } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import type { RegistrationRow, RegistrationsLoadResult } from './+page';
 	import type { RegistrationFilters } from '$lib/types/registrations';
@@ -407,42 +408,33 @@
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.total_forms()}
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{registrationsData.pagination.count}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.submitted()}</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.pending_review()}
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl">
-					{pendingCount}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.pending()}</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.processed()}
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-					{processedCount}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.processed()}</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					{m.high_risk()}
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-					{highRiskCount}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.risk()} 3+</p>
-			</div>
+			<StatCard
+				label={m.total_forms()}
+				value={registrationsData.pagination.count}
+				description={m.submitted()}
+				icon={FileText}
+			/>
+			<StatCard
+				label={m.pending_review()}
+				value={pendingCount}
+				description={m.pending()}
+				icon={Clock}
+				color="secondary"
+			/>
+			<StatCard
+				label={m.processed()}
+				value={processedCount}
+				description={m.processed()}
+				icon={CheckCircle2}
+				color="emerald"
+			/>
+			<StatCard
+				label={m.high_risk()}
+				value={highRiskCount}
+				description={`${m.risk()} 3+`}
+				icon={ShieldAlert}
+				color="rose"
+			/>
 		</div>
 
 		<DataTable
