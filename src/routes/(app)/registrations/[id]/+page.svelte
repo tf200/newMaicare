@@ -994,7 +994,7 @@
 				>
 					{#if isHighRisk}
 						<div
-							class="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-rose-500 to-orange-500 opacity-50"
+							class="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-rose-500 to-secondary opacity-50"
 						></div>
 					{/if}
 

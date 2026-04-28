@@ -214,7 +214,7 @@
 							{m.no_account()}
 							<a
 								href="/register"
-								class="font-bold text-orange-600 transition-colors hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+								class="font-bold text-secondary transition-colors hover:text-secondary dark:text-secondary dark:hover:text-secondary"
 							>
 								{m.client_registration()}
 							</a>

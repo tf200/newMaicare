@@ -12,6 +12,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -97,11 +98,6 @@
 	}
 
 	type RequestFilter = 'all' | LeaveStatus;
-
-	interface RequestFilterPill {
-		id: RequestFilter;
-		label: string;
-	}
 
 	const leaveTypeConfig: Record<LeaveType, { label: () => string; className: string }> = {
 		vacation: {
@@ -346,12 +342,12 @@
 	const approvedCount = $derived.by(() => stats?.approved_requests ?? 0);
 	const sickCount = $derived.by(() => stats?.sickness_absence ?? 0);
 	const rejectedCount = $derived.by(() => stats?.rejected_requests ?? 0);
-	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
+	const requestFilterPills: FilterPill[] = [
 		{ id: 'all', label: m.all() },
-		{ id: 'pending', label: m.pending() },
-		{ id: 'approved', label: m.leave_stats_approved() },
-		{ id: 'rejected', label: m.leave_stats_rejected() }
-	]);
+		{ id: 'pending', label: m.pending(), color: 'amber' },
+		{ id: 'approved', label: m.leave_stats_approved(), color: 'emerald' },
+		{ id: 'rejected', label: m.leave_stats_rejected(), color: 'rose' }
+	];
 
 	const overviewTableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		overviewRows.map((row) => {
@@ -438,27 +434,6 @@
 			clearTimeout(timer);
 		};
 	});
-
-	function getFilterPillClass(pillId: RequestFilter) {
-		if (pillId === 'all') {
-			return requestFilter === pillId
-				? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		if (pillId === 'pending') {
-			return requestFilter === pillId
-				? 'bg-amber-500 text-white'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		if (pillId === 'approved') {
-			return requestFilter === pillId
-				? 'bg-emerald-600 text-white'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		return requestFilter === pillId
-			? 'bg-rose-600 text-white'
-			: 'border border-border text-text-muted hover:text-text';
-	}
 
 	let myLeaveBalances = $state<LeaveBalanceListItemResponse[]>([]);
 
@@ -808,21 +783,7 @@
 
 {#snippet requestFilters()}
 	<div class="flex w-full flex-wrap items-center justify-end gap-3">
-		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-			{#each requestFilterPills as pill (pill.id)}
-				<button
-					onclick={() => {
-						requestFilter = pill.id;
-						overviewCurrentPage = 1;
-					}}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
-						pill.id
-					)}"
-				>
-					{pill.label}
-				</button>
-			{/each}
-		</div>
+		<FilterPills pills={requestFilterPills} bind:activeId={requestFilter} onSelect={() => { overviewCurrentPage = 1; }} />
 	</div>
 {/snippet}
 

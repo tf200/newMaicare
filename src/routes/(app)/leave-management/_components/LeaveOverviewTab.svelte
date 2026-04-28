@@ -8,6 +8,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
@@ -67,11 +68,6 @@
 		days: number;
 		reason?: string;
 		status: LeaveRequestStatus;
-	}
-
-	interface RequestFilterPill {
-		id: RequestFilter;
-		label: string;
 	}
 
 	const columns: DataTableColumn[] = [
@@ -174,12 +170,12 @@
 		return arrivalMinutes - shiftMinutes;
 	}
 
-	const requestFilterPills = $derived.by<RequestFilterPill[]>(() => [
+	const requestFilterPills: FilterPill[] = [
 		{ id: 'all', label: m.all() },
-		{ id: 'pending', label: m.pending() },
-		{ id: 'approved', label: m.leave_stats_approved() },
-		{ id: 'rejected', label: m.leave_stats_rejected() }
-	]);
+		{ id: 'pending', label: m.pending(), color: 'amber' },
+		{ id: 'approved', label: m.leave_stats_approved(), color: 'emerald' },
+		{ id: 'rejected', label: m.leave_stats_rejected(), color: 'rose' }
+	];
 
 	const tableRows = $derived.by<OverviewLeaveRequestRow[]>(() =>
 		rows.map((row) => {
@@ -196,27 +192,6 @@
 				};
 			})
 		);
-
-	function getFilterPillClass(pillId: RequestFilter) {
-		if (pillId === 'all') {
-			return requestFilter === pillId
-				? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		if (pillId === 'pending') {
-			return requestFilter === pillId
-				? 'bg-amber-500 text-white'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		if (pillId === 'approved') {
-			return requestFilter === pillId
-				? 'bg-emerald-600 text-white'
-				: 'border border-border text-text-muted hover:text-text';
-		}
-		return requestFilter === pillId
-			? 'bg-rose-600 text-white'
-			: 'border border-border text-text-muted hover:text-text';
-	}
 
 	let decisionModalOpen = $state(false);
 	let decisionLoading = $state(false);
@@ -283,21 +258,7 @@
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
 			/>
 		</div>
-		<div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-			{#each requestFilterPills as pill (pill.id)}
-				<button
-					onclick={() => {
-						requestFilter = pill.id;
-						currentPage = 1;
-					}}
-					class="h-9 rounded-full px-4 text-xs font-semibold transition-all {getFilterPillClass(
-						pill.id
-					)}"
-				>
-					{pill.label}
-				</button>
-			{/each}
-		</div>
+		<FilterPills pills={requestFilterPills} bind:activeId={requestFilter} onSelect={() => { currentPage = 1; }} class="sm:w-auto" />
 	</div>
 {/snippet}
 

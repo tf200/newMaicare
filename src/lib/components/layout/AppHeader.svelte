@@ -128,8 +128,9 @@
 	});
 
 	const headerBase =
-		'fixed top-0 right-0 left-0 z-30 flex h-16 items-center border-b border-border/50 bg-glass-surface px-4 backdrop-blur-xl transition-[left,background-color,border-color,box-shadow] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none lg:px-8';
-	const headerOffset = () => (collapsed ? 'lg:left-20' : 'lg:left-72');
+		'fixed top-3 inset-x-3 z-30 flex h-16 items-center rounded-2xl bg-glass-surface px-4 backdrop-blur-xl ring-1 ring-border/50 shadow-sm transition-[left,background-color,border-color,box-shadow] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none lg:px-8';
+	const headerOffset = () =>
+		collapsed ? 'lg:left-[calc(5rem+12px)]' : 'lg:left-[calc(18rem+12px)]';
 </script>
 
 <header class="{headerBase} {headerOffset()}">
@@ -199,7 +200,7 @@
 							aria-label={m.profile()}
 						>
 							<div
-								class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-teal-400 to-emerald-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
+								class="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-brand to-success text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900"
 							>
 								{displayInitials}
 							</div>

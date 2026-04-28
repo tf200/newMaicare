@@ -5,6 +5,7 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import type { RegistrationRow, RegistrationsLoadResult } from './+page';
 	import type { RegistrationFilters } from '$lib/types/registrations';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -105,6 +106,12 @@
 			label: 'Ambulatory guidance',
 			className: 'bg-amber-500 text-white border border-amber-600/60'
 		}
+	];
+
+	const registrationFilterPills: FilterPill[] = [
+		{ id: '', label: m.all() },
+		{ id: 'pending', label: m.pending(), color: 'amber' },
+		{ id: 'processed', label: m.processed(), color: 'emerald' }
 	];
 
 	const statusMeta: Record<RegistrationRow['formStatus'], { label: string; className: string }> = {
@@ -222,34 +229,7 @@
 			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => setFilters({ ...filters, status: '' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status === ''
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.all()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'pending' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-				'pending'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.pending()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'processed' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-				'processed'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.processed()}
-			</button>
-		</div>
+		<FilterPills pills={registrationFilterPills} activeId={filters.status} onSelect={(id) => setFilters({ ...filters, status: id })} />
 
 		<div class="hidden h-6 w-px bg-border sm:block"></div>
 
@@ -359,7 +339,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">

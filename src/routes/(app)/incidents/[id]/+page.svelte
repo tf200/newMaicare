@@ -140,7 +140,7 @@
 	const severityColors: Record<IncidentSeverity, string> = {
 		near_incident: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
 		less_serious: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
-		serious: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+		serious: 'bg-secondary/10 text-secondary border-secondary/20',
 		fatal: 'bg-rose-500/10 text-rose-700 border-rose-500/20'
 	};
 
@@ -171,7 +171,7 @@
 	const recurrenceRiskColors: Record<RecurrenceRisk, string> = {
 		very_low: 'text-emerald-600',
 		means: 'text-amber-600',
-		high: 'text-orange-600',
+		high: 'text-secondary',
 		very_high: 'text-rose-600'
 	};
 
@@ -546,7 +546,7 @@
 						<div class="flex items-center justify-between border-b border-border/50 p-6">
 							<div class="flex items-center gap-3">
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600"
+									class="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary"
 								>
 									<Activity class="h-5 w-5" />
 								</div>

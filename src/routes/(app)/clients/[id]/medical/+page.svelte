@@ -382,7 +382,7 @@
 			class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 		>
 			<div
-				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-rose-200/60 to-orange-200/20 blur-2xl"
+				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-rose-200/60 to-secondary/20 blur-2xl"
 			></div>
 			<div class="relative space-y-2">
 				<div class="space-y-2">

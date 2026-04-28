@@ -92,7 +92,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border/60 bg-glass-surface p-8 shadow-sm backdrop-blur-xl"
 	>
 		<div
-			class="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-linear-to-br from-teal-500/10 to-emerald-500/5 blur-3xl"
+			class="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-linear-to-br from-indigo-500/10 to-emerald-500/5 blur-3xl"
 		></div>
 		<div class="relative">
 			<div class="flex items-center gap-2 text-xs font-bold tracking-widest text-brand uppercase">
@@ -108,9 +108,9 @@
 			<div class="mt-4 flex items-center gap-2">
 				<span class="relative flex h-2 w-2">
 					<span
-						class="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"
+						class="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary opacity-75"
 					></span>
-					<span class="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+					<span class="relative inline-flex h-2 w-2 rounded-full bg-secondary"></span>
 				</span>
 				<span class="text-sm font-medium text-text-muted">{m.dashboard_workspace_ready()}</span>
 			</div>

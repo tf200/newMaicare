@@ -84,10 +84,10 @@
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg px-4">
 	<!-- Background Orbs - Atmosphere & Depth -->
 	<div
-		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-teal-500/20 blur-[120px] dark:bg-teal-500/10"
+		class="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-500/20 blur-[120px] dark:bg-indigo-500/10"
 	></div>
 	<div
-		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-orange-500/15 blur-[120px]"
+		class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-secondary/15 blur-[120px]"
 	></div>
 
 	<!-- Main Card -->
@@ -147,7 +147,7 @@
 
 			<!-- Primary & Ghost Actions -->
 			<form class="space-y-4" onsubmit={handleVerify} in:fly={{ ...transition, delay: 300 }}>
-				<Button class="w-full py-7 text-lg shadow-teal-500/10" type="submit" {isLoading}>
+				<Button class="w-full py-7 text-lg shadow-indigo-500/10" type="submit" {isLoading}>
 					{isLoading ? m.twofa_verifying() : m.twofa_verify()}
 				</Button>
 
@@ -155,7 +155,7 @@
 					<Button
 						variant="ghost"
 						type="button"
-						class="text-xs font-semibold text-zinc-400 hover:text-teal-600"
+						class="text-xs font-semibold text-zinc-400 hover:text-indigo-600"
 					>
 						{m.twofa_resend()}
 					</Button>

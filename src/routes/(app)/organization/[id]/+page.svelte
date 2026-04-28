@@ -260,7 +260,7 @@
 				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
 			>
 				<div
-					class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-gradient-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+					class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-gradient-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
 				></div>
 				<div class="relative flex flex-wrap items-start justify-between gap-6">
 					<div class="space-y-3">
@@ -342,10 +342,10 @@
 						</div>
 					</div>
 					<div
-						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
+						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-secondary/30"
 					>
 						<div
-							class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+							class="absolute -right-4 -bottom-4 text-secondary opacity-[0.03] transition-opacity group-hover:opacity-10"
 						>
 							<Users class="h-32 w-32" />
 						</div>
@@ -354,7 +354,7 @@
 								{m.clients()}
 							</div>
 							<div
-								class="mt-2 text-2xl font-bold tracking-tight text-orange-600 sm:text-3xl dark:text-orange-400"
+								class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl dark:text-secondary"
 							>
 								{formatNumber(countsData.counts.client_count)}
 							</div>
@@ -385,7 +385,7 @@
 			<div class="grid gap-6 lg:grid-cols-[1fr_2.2fr]">
 				<aside class="space-y-6">
 					<div
-						class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-teal-900/10"
+						class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-indigo-900/10"
 					>
 						<h2 class="text-lg font-bold tracking-tight text-white">{m.organization_details()}</h2>
 						<div class="mt-6 space-y-4 text-sm">

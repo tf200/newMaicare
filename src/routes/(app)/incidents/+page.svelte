@@ -14,6 +14,7 @@
 		Plus
 	} from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import type { PageData } from './$types';
@@ -75,7 +76,7 @@
 		violence:
 			'border border-rose-700/60 bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-rose-700/30',
 		fire_water_damage:
-			'border border-orange-700/60 bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-orange-700/30',
+			'border border-secondary/60 bg-secondary px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-secondary/30',
 		accident:
 			'border border-amber-700/60 bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-amber-700/30',
 		client_absence:
@@ -89,6 +90,12 @@
 		other:
 			'border border-zinc-700/60 bg-zinc-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-zinc-700/30'
 	};
+
+	const confirmedFilterPills: FilterPill[] = [
+		{ id: '', label: m.all() },
+		{ id: 'true', label: m.confirmed(), color: 'emerald' },
+		{ id: 'false', label: m.pending(), color: 'amber' }
+	];
 
 	const columns: DataTableColumn[] = [
 		{ key: 'client', label: 'Client', width: '200px' },
@@ -162,7 +169,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-rose-100/70 to-orange-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-rose-100/70 to-secondary/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -249,10 +256,10 @@
 				</div>
 
 				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-orange-500/30"
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-secondary/30"
 				>
 					<div
-						class="absolute -right-4 -bottom-4 text-orange-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
+						class="absolute -right-4 -bottom-4 text-secondary opacity-[0.03] transition-opacity group-hover:opacity-10"
 					>
 						<Clock class="h-32 w-32" />
 					</div>
@@ -401,35 +408,7 @@
 					/>
 				</div>
 
-				<div class="flex flex-wrap items-center gap-2">
-					<button
-						onclick={() => setStatusFilter('')}
-						class="h-9 rounded-full px-4 text-xs font-semibold transition-all {confirmedFilter ===
-						''
-							? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-							: 'border border-border text-text-muted hover:text-text'}"
-					>
-						All
-					</button>
-					<button
-						onclick={() => setStatusFilter('true')}
-						class="h-9 rounded-full px-4 text-xs font-semibold transition-all {confirmedFilter ===
-						'true'
-							? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-							: 'border border-border text-text-muted hover:text-text'}"
-					>
-						Confirmed
-					</button>
-					<button
-						onclick={() => setStatusFilter('false')}
-						class="h-9 rounded-full px-4 text-xs font-semibold transition-all {confirmedFilter ===
-						'false'
-							? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-							: 'border border-border text-text-muted hover:text-text'}"
-					>
-						Pending
-					</button>
-				</div>
+				<FilterPills pills={confirmedFilterPills} bind:activeId={confirmedFilter} onSelect={(id) => { currentPage = 1; updateQuery(1, id as '' | 'true' | 'false', searchTerm); }} />
 			</div>
 		{/snippet}
 

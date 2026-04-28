@@ -160,7 +160,7 @@
 		evening_report: {
 			label: m.evening_report(),
 			icon: Sunset,
-			className: 'bg-orange-500 text-white border-orange-600/60 shadow-orange-600/30'
+			className: 'bg-secondary text-white border-secondary/60 shadow-secondary/30'
 		},
 		night_report: {
 			label: m.night_report(),
@@ -175,7 +175,7 @@
 		one_to_one_report: {
 			label: m.one_to_one_report(),
 			icon: UserRound,
-			className: 'bg-teal-600 text-white border-teal-700/60 shadow-teal-700/30'
+			className: 'bg-indigo-600 text-white border-indigo-700/60 shadow-indigo-700/30'
 		},
 		process_report: {
 			label: m.process_report(),
@@ -225,8 +225,8 @@
 		excited: {
 			label: m.excited(),
 			icon: Zap,
-			colorClass: 'text-teal-600 dark:text-teal-400',
-			bgClass: 'bg-teal-50 dark:bg-teal-500/10'
+			colorClass: 'text-indigo-600 dark:text-indigo-400',
+			bgClass: 'bg-indigo-50 dark:bg-indigo-500/10'
 		},
 		happy: {
 			label: m.happy(),
@@ -249,8 +249,8 @@
 		anxious: {
 			label: m.anxious(),
 			icon: AlertCircle,
-			colorClass: 'text-orange-600 dark:text-orange-400',
-			bgClass: 'bg-orange-50 dark:bg-orange-500/10'
+			colorClass: 'text-secondary dark:text-secondary',
+			bgClass: 'bg-secondary dark:bg-secondary/10'
 		},
 		depressed: {
 			label: m.depressed(),
@@ -415,7 +415,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-teal-100/70 to-emerald-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">

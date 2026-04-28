@@ -138,7 +138,7 @@
 			<button
 				onclick={handleSave}
 				disabled={!canSave || isSaving}
-				class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2 text-sm font-bold text-white shadow-md shadow-teal-600/20 transition-all hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-500 dark:text-black dark:hover:bg-teal-400"
+				class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:text-black dark:hover:bg-indigo-400"
 			>
 				{#if isSaving}
 					<Loader2 class="h-4 w-4 animate-spin" />
@@ -156,7 +156,7 @@
 		<div>
 			<div class="mb-3 flex items-center gap-2">
 				<span
-					class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400"
+					class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
 				>
 					<Target class="h-3.5 w-3.5" />
 				</span>
@@ -170,7 +170,7 @@
 
 			{#if topicsLoading}
 				<div class="flex items-center justify-center py-8">
-					<Loader2 class="h-6 w-6 animate-spin text-teal-600" />
+					<Loader2 class="h-6 w-6 animate-spin text-indigo-600" />
 					<p class="ml-3 text-sm text-zinc-500">{m.loading_topics()}</p>
 				</div>
 			{:else if topicsError}
@@ -187,8 +187,8 @@
 						<button
 							onclick={() => selectTopic(topic.id)}
 							class="group inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all duration-200 {isSelected
-								? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm ring-1 shadow-teal-500/10 ring-teal-500/20 dark:border-teal-400 dark:bg-teal-500/15 dark:text-teal-300'
-								: 'border-zinc-200 bg-white text-zinc-600 hover:border-teal-300 hover:bg-teal-50/50 hover:text-teal-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-teal-500/40 dark:hover:bg-teal-500/10'}"
+								? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm ring-1 shadow-indigo-500/10 ring-indigo-500/20 dark:border-indigo-400 dark:bg-indigo-500/15 dark:text-indigo-300'
+								: 'border-zinc-200 bg-white text-zinc-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10'}"
 						>
 							{#if isSelected}
 								<Check class="h-3.5 w-3.5" />

@@ -33,8 +33,8 @@
 	size="md"
 >
 	<div class="space-y-4 py-4">
-		<div class="rounded-2xl border border-orange-500/15 bg-orange-500/5 p-4">
-			<div class="flex gap-3 text-orange-700 dark:text-orange-300">
+		<div class="rounded-2xl border border-secondary/15 bg-secondary/5 p-4">
+			<div class="flex gap-3 text-secondary dark:text-secondary">
 				<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
 				<p class="text-sm font-medium">
 					Only active handbooks can be waived. This action records a lifecycle history event.

@@ -192,7 +192,7 @@
 		<section class={cardClass}>
 			<div class="mb-8 flex items-center gap-3">
 				<div
-					class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600"
+					class="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/10 text-secondary"
 				>
 					<KeyRound class="h-6 w-6" />
 				</div>

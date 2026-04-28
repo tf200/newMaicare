@@ -278,7 +278,7 @@
 			class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 		>
 			<div
-				class="pointer-events-none absolute -top-16 -right-16 h-44 w-44 rounded-full bg-linear-to-br from-teal-200/60 to-emerald-200/20 blur-2xl"
+				class="pointer-events-none absolute -top-16 -right-16 h-44 w-44 rounded-full bg-linear-to-br from-indigo-200/60 to-emerald-200/20 blur-2xl"
 			></div>
 			<div class="relative space-y-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">

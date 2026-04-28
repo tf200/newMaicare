@@ -388,9 +388,9 @@
 			case 'consultation':
 				return 'bg-blue-500/10 text-blue-700 border-blue-200';
 			case 'intake':
-				return 'bg-teal-500/10 text-teal-700 border-teal-200';
+				return 'bg-indigo-500/10 text-indigo-700 border-indigo-200';
 			case 'evaluation':
-				return 'bg-orange-500/10 text-orange-700 border-orange-200';
+				return 'bg-secondary/10 text-secondary border-secondary';
 			case 'treatment':
 				return 'bg-purple-500/10 text-purple-700 border-purple-200';
 			default:
@@ -513,7 +513,7 @@
 									viewDate = new Date(date);
 								}}
 								class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors hover:bg-border/30
-									{isToday(date) ? 'bg-teal-500 text-white hover:opacity-90' : ''}"
+									{isToday(date) ? 'bg-indigo-500 text-white hover:opacity-90' : ''}"
 							>
 								{date.getDate()}
 							</button>
@@ -574,7 +574,7 @@
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 								{formatDate(d, { weekday: 'short' })}
 							</div>
-							<div class="text-sm font-bold text-text {isToday(d) ? 'text-teal-700' : ''}">
+							<div class="text-sm font-bold text-text {isToday(d) ? 'text-indigo-700' : ''}">
 								{d.getDate()}
 							</div>
 						</div>
@@ -738,7 +738,7 @@
 								{formatDate(d, { weekday: 'long', month: 'short', day: 'numeric' })}
 								{#if isToday(d)}
 									<span
-										class="ml-2 rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-teal-700 uppercase"
+										class="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-indigo-700 uppercase"
 									>
 										{m.today()}
 									</span>

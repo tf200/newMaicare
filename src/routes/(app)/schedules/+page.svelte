@@ -68,7 +68,7 @@
 		'bg-indigo-500 text-white dark:bg-indigo-700',
 		'bg-sky-500 text-white dark:bg-sky-700',
 		'bg-rose-500 text-white dark:bg-rose-700',
-		'bg-orange-500 text-white dark:bg-orange-700',
+		'bg-secondary text-white dark:bg-secondary',
 		'bg-violet-500 text-white dark:bg-violet-700',
 		'bg-cyan-500 text-white dark:bg-cyan-700'
 	] as const;

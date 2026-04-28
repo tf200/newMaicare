@@ -14,6 +14,7 @@
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import { listLocations } from '$lib/api/locations';
@@ -104,6 +105,15 @@
 					'bg-slate-500 text-white border border-slate-600/60 shadow-sm shadow-slate-600/30'
 			}
 		};
+
+	const statusFilterPills: FilterPill[] = [
+		{ id: '', label: m.all() },
+		{ id: 'in_care', label: m.status_in_care(), color: 'emerald' },
+		{ id: 'on_waiting_list', label: m.status_waiting_list(), color: 'amber' },
+		{ id: 'scheduled_in_care', label: m.status_scheduled_in_care(), color: 'blue' },
+		{ id: 'scheduled_out_of_care', label: m.status_scheduled_out_of_care(), color: 'rose' },
+		{ id: 'out_of_care', label: m.status_out_of_care(), color: 'slate' }
+	];
 
 	const buildQuery = (
 		pageValue: number,
@@ -204,61 +214,7 @@
 			</div>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => applyStatus('')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus === ''
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.all()}
-			</button>
-			<button
-				onclick={() => applyStatus('in_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus ===
-				'in_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.status_in_care()}
-			</button>
-			<button
-				onclick={() => applyStatus('on_waiting_list')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus ===
-				'on_waiting_list'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.status_waiting_list()}
-			</button>
-			<button
-				onclick={() => applyStatus('scheduled_in_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus ===
-				'scheduled_in_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.status_scheduled_in_care()}
-			</button>
-			<button
-				onclick={() => applyStatus('scheduled_out_of_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus ===
-				'scheduled_out_of_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.status_scheduled_out_of_care()}
-			</button>
-			<button
-				onclick={() => applyStatus('out_of_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedStatus ===
-				'out_of_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.status_out_of_care()}
-			</button>
-		</div>
+		<FilterPills pills={statusFilterPills} activeId={appliedStatus} onSelect={(id) => applyStatus(id as ClientStatus | '')} />
 	</div>
 {/snippet}
 

@@ -568,7 +568,7 @@
 					<div class={cardClass}>
 						<div class="mb-6 flex items-center gap-3">
 							<div
-								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-600"
+								class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600"
 							>
 								<Briefcase class="h-5 w-5" />
 							</div>
@@ -941,15 +941,15 @@
 						{/each}
 					</div>
 
-					<div class="mt-8 flex gap-4 rounded-3xl bg-orange-500/5 p-6 ring-1 ring-orange-500/10">
+					<div class="mt-8 flex gap-4 rounded-3xl bg-secondary/5 p-6 ring-1 ring-secondary/10">
 						<div
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary/10 text-secondary"
 						>
 							<Globe class="h-5 w-5" />
 						</div>
 						<div>
 							<p
-								class="text-sm font-bold tracking-tight text-orange-600 uppercase dark:text-orange-400"
+								class="text-sm font-bold tracking-tight text-secondary uppercase dark:text-secondary"
 							>
 								Beta Features
 							</p>

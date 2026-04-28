@@ -216,8 +216,8 @@
 			{/if}
 		</div>
 
-		<div class="mt-4 rounded-xl border border-orange-500/10 bg-orange-500/5 p-3">
-			<div class="flex gap-2 text-orange-600 dark:text-orange-400">
+		<div class="mt-4 rounded-xl border border-secondary/10 bg-secondary/5 p-3">
+			<div class="flex gap-2 text-secondary dark:text-secondary">
 				<CircleAlert class="mt-0.5 h-4 w-4 shrink-0" />
 				<p class="text-xs font-medium">
 					{employeeHasAssignment

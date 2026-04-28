@@ -13,6 +13,7 @@
 		CreditCard
 	} from 'lucide-svelte';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
@@ -238,6 +239,13 @@
 		searchTerm = '';
 		updateQuery(1, { ...defaultFilters });
 	};
+
+	const invoiceFilterPills: FilterPill[] = [
+		{ id: '', label: m.all() },
+		{ id: 'outstanding', label: m.outstanding_status(), color: 'amber' },
+		{ id: 'paid', label: m.paid(), color: 'emerald' },
+		{ id: 'expired', label: m.overdue_status(), color: 'rose' }
+	];
 </script>
 
 {#snippet tableFilters()}
@@ -258,42 +266,7 @@
 			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => setFilters({ ...filters, status: undefined })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {!filters.status
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.all()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'outstanding' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-				'outstanding'
-					? 'bg-amber-500 text-white shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.outstanding_status()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'paid' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status === 'paid'
-					? 'bg-emerald-600 text-white shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.paid()}
-			</button>
-			<button
-				onclick={() => setFilters({ ...filters, status: 'expired' })}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {filters.status ===
-				'expired'
-					? 'bg-rose-600 text-white shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				{m.overdue_status()}
-			</button>
-		</div>
+		<FilterPills pills={invoiceFilterPills} activeId={filters.status ?? ''} onSelect={(id) => setFilters({ ...filters, status: id === '' ? undefined : id as InvoiceStatus })} />
 
 		<div class="hidden h-6 w-px bg-border sm:block"></div>
 
@@ -404,7 +377,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-teal-100/70 to-emerald-100/20 blur-2xl dark:from-teal-900/40 dark:to-emerald-900/20"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl dark:from-indigo-900/40 dark:to-emerald-900/20"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">

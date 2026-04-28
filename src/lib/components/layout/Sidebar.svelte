@@ -131,13 +131,13 @@
 	const transitionClass = 'transition-all duration-300 ease-in-out';
 
 	// UIUX.md: Items h-10, hover:bg-zinc-100, active:scale-95
-	const baseItem = `group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${transitionClass} active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-brand/20`;
+	const baseItem = `group relative flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${transitionClass} active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white/30`;
 
-	// UIUX.md: Active: bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400
-	const activeItem = 'bg-brand/10 text-brand';
+	// UIUX.md: Active: bg-white/10 text-white
+	const activeItem = 'bg-white/10 text-white';
 
-	// UIUX.md: Inactive hover:bg-zinc-100 dark:hover:bg-zinc-800
-	const inactiveItem = 'text-text-muted hover:bg-border/50 hover:text-text';
+	// UIUX.md: Inactive: text-white/80 hover:bg-white/10 hover:text-white
+	const inactiveItem = 'text-white/80 hover:bg-white/10 hover:text-white';
 
 	const normalizePath = (path: string) =>
 		path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path;
@@ -184,14 +184,13 @@
 ></div>
 
 <!-- Sidebar Container -->
-<!-- UIUX.md: bg-white dark:bg-zinc-900 border-r -->
 <aside
-	class="fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-surface {transitionClass}"
-	class:w-72={!collapsed}
+	class="fixed top-3 bottom-3 left-3 z-50 flex flex-col rounded-2xl bg-brand/90 ring-1 ring-white/15 shadow-2xl backdrop-blur-xl {transitionClass}"
+	class:w-[calc(18rem-24px)]={!collapsed}
 	class:translate-x-0={mobileOpen}
 	class:-translate-x-full={!mobileOpen}
 	class:lg:translate-x-0={true}
-	class:lg:w-20={collapsed}
+	class:lg:w-[calc(5rem-12px)]={collapsed}
 >
 	<!-- Header -->
 	<div class="flex h-16 items-center justify-between px-4">
@@ -203,31 +202,31 @@
 			<div
 				class="flex h-10 w-10 shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
 			>
-				<img src="/logo.webp" alt="MaiCare" class="h-10 w-10 object-contain" loading="eager" />
+				<img src="/logo.webp" alt="MaiCare" class="h-10 w-10 object-contain brightness-0 invert" loading="eager" />
 			</div>
 
 			<!-- Logo Text -->
 			<span
-				class="text-lg font-bold tracking-tight whitespace-nowrap text-text {transitionClass}"
+				class="text-lg font-bold tracking-tight whitespace-nowrap text-white {transitionClass}"
 				class:opacity-0={collapsed}
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-secondary">.</span>
+				MaiCare<span class="text-white/70">.</span>
 			</span>
 		</button>
 
 		<!-- Mobile Close Button -->
 		<button
 			onclick={() => (mobileOpen = false)}
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-border/50 hover:text-text lg:hidden"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
 		>
 			<X class="h-5 w-5" />
 		</button>
 	</div>
 
 	<!-- Navigation -->
-	<div class="flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
+	<div class="scrollarea flex-1 overflow-x-hidden overflow-y-auto px-3 py-6">
 		{#if sidebarState.scopedConfig}
 			<div class="mb-6 space-y-4 px-2" transition:slide={{ duration: 300 }}>
 				<!-- Back Button -->
@@ -236,7 +235,7 @@
 						sidebarState.clearScopedSidebar();
 						goto(localizeHref('/clients'));
 					}}
-					class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-text-muted transition-all hover:bg-border/30 hover:text-text active:scale-95"
+					class="group flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white active:scale-95"
 					class:justify-center={collapsed}
 				>
 					<ArrowLeft class="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
@@ -247,23 +246,23 @@
 
 				<!-- Client Info Card -->
 				<div
-					class="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-2 transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+					class="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 p-2 transition-all duration-300"
 					class:p-1={collapsed}
 					class:justify-center={collapsed}
 				>
 					<div
-						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-brand/20 to-brand/5 text-sm font-bold text-brand shadow-inner ring-1 ring-brand/10 transition-transform duration-300"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-sm font-bold text-white shadow-inner ring-1 ring-white/20 transition-transform duration-300"
 					>
 						{sidebarState.scopedConfig.initials || 'CP'}
 					</div>
 					{#if !collapsed}
 						<div class="flex flex-1 flex-col overflow-hidden">
 							<span
-								class="mb-1 text-[10px] leading-none font-bold tracking-widest text-text-muted uppercase"
+								class="mb-1 text-[10px] leading-none font-bold tracking-widest text-white/50 uppercase"
 							>
 								{m.client()}
 							</span>
-							<span class="truncate text-sm font-bold text-text">
+							<span class="truncate text-sm font-bold text-white">
 								{title || m.client_profile()}
 							</span>
 						</div>
@@ -272,10 +271,10 @@
 			</div>
 
 			<!-- Separator -->
-			<div class="mx-3 mb-6 border-b border-border/50"></div>
+			<div class="mx-3 mb-6 border-b border-white/15"></div>
 		{:else if title && !collapsed}
 			<div class="mb-4 px-3" transition:slide={{ duration: 300 }}>
-				<h2 class="text-xs font-semibold tracking-wider text-text-muted uppercase">
+				<h2 class="text-xs font-semibold tracking-wider text-white/50 uppercase">
 					{title}
 				</h2>
 			</div>
@@ -303,8 +302,8 @@
 							>
 								<item.icon
 									class="h-5 w-5 shrink-0 transition-colors duration-300 {active
-										? 'text-brand'
-										: 'text-text-subtle group-hover:text-text-muted'}"
+										? 'text-white'
+										: 'text-white/40 group-hover:text-white/60'}"
 								/>
 
 								<span
@@ -334,7 +333,7 @@
 										<button
 											onclick={() => goto(localizeHref(child.href))}
 											class="group flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium {transitionClass} outline-none active:scale-95
-										{childActive ? 'bg-brand/5 text-brand' : 'text-text-muted hover:bg-border/50 hover:text-text'}"
+										{childActive ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}"
 										>
 											{child.label}
 										</button>
@@ -351,10 +350,10 @@
 	<!-- Footer / Support -->
 	<div class="p-3">
 		<button
-			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-border/30 p-3 text-left transition-all duration-300 outline-none hover:border-secondary hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-secondary/20 active:scale-95"
+			class="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-white/20 bg-white/10 p-3 text-left transition-all duration-300 outline-none hover:border-white/40 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/30 active:scale-95"
 		>
 			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-text-muted shadow-sm"
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white/70 shadow-sm"
 			>
 				<HelpCircle class="h-4 w-4" />
 			</div>
@@ -365,9 +364,29 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				<span class="block text-sm font-semibold text-text">{m.support()}</span>
-				<span class="text-xs text-text-muted">{m.assistance_24_7()}</span>
+				<span class="block text-sm font-semibold text-white">{m.support()}</span>
+				<span class="text-xs text-white/80">{m.assistance_24_7()}</span>
 			</div>
 		</button>
 	</div>
 </aside>
+
+<style>
+	.scrollarea::-webkit-scrollbar {
+		width: 4px;
+	}
+	.scrollarea::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.scrollarea::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.2);
+		border-radius: 999px;
+	}
+	.scrollarea::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.35);
+	}
+	.scrollarea {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+	}
+</style>

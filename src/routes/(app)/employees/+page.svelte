@@ -125,7 +125,7 @@
 
 	const contractTypeClasses: Record<EmployeeRow['contractType'], string> = {
 		Loondienst: 'bg-success/10 text-success',
-		ZZP: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+		ZZP: 'bg-secondary/10 text-secondary dark:text-secondary',
 		None: 'bg-border text-text-muted'
 	};
 </script>

@@ -46,9 +46,9 @@ export const handbookStatusConfig: Record<HandbookStatus, HandbookStatusConfig> 
 	},
 	waived: {
 		label: 'Waived',
-		dotClass: 'bg-orange-500',
-		badgeClass: 'border border-orange-500/15 bg-orange-500/10 text-orange-700 dark:text-orange-300',
-		pillClass: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-orange-500/20'
+		dotClass: 'bg-secondary',
+		badgeClass: 'border border-secondary/15 bg-secondary/10 text-secondary dark:text-secondary',
+		pillClass: 'bg-secondary/10 text-secondary dark:text-secondary ring-1 ring-secondary/20'
 	}
 };
 

@@ -3,6 +3,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
 	import type { WaitingListFilters, WaitingListLoadResult, WaitingListRow } from './+page';
@@ -124,6 +125,12 @@
 		}
 	};
 
+	const admissionFilterPills: FilterPill[] = [
+		{ id: '', label: 'All' },
+		{ id: 'regular', label: 'Regular', color: 'blue' },
+		{ id: 'crisis', label: 'Crisis', color: 'rose' }
+	];
+
 	const careTypeMeta: Record<WaitingListRow['careType'], { label: string; className: string }> = {
 		protected_living: {
 			label: 'Protected living',
@@ -185,35 +192,7 @@
 			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => applyFilter('')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedAdmissionType ===
-				''
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				All
-			</button>
-			<button
-				onclick={() => applyFilter('regular')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedAdmissionType ===
-				'regular'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				Regular
-			</button>
-			<button
-				onclick={() => applyFilter('crisis')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedAdmissionType ===
-				'crisis'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				Crisis
-			</button>
-		</div>
+		<FilterPills pills={admissionFilterPills} activeId={appliedAdmissionType} onSelect={applyFilter} />
 	</div>
 {/snippet}
 
@@ -289,7 +268,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-amber-100/70 to-orange-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-amber-100/70 to-secondary/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">

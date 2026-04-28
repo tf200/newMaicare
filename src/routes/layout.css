@@ -10,13 +10,14 @@
 	--color-text: #18181b;
 	--color-text-muted: #71717a;
 	--color-text-subtle: #a1a1aa;
-	--color-brand: #0d9488;
-	--color-brand-strong: #14b8a6;
-	--color-secondary: #f97316; /* Warm Coral */
+	--color-brand: #4f46e5;
+	--color-brand-strong: #4338ca;
+	--color-secondary: #ea580c;
+	--color-brand-hover: #3730a3;
 	--color-success: #10b981;
 	--color-error: #f43f5e;
 	--color-warning: #fbbf24;
-	--color-info: #6366f1;
+	--color-info: #0891b2;
 
 	/* Glassmorphism */
 	--color-glass-surface: rgba(255, 255, 255, 0.8);
@@ -27,7 +28,7 @@
 	--color-btn-primary-text: #ffffff;
 
 	/* Leave Type Colors */
-	--color-leave-vacation: #0d9488;
+	--color-leave-vacation: #4f46e5;
 	--color-leave-sick: #f43f5e;
 	--color-leave-maternity: #ec4899;
 	--color-leave-late: #fbbf24;
@@ -42,33 +43,34 @@
 
 /* Dark mode overrides - controlled by JS toggle which respects system preference on init */
 :root.dark {
-	--color-bg: #000000;
-	--color-surface: #18181b;
-	--color-border: #27272a;
-	--color-text: #fafafa;
-	--color-text-muted: #a1a1aa;
-	--color-text-subtle: #71717a;
-	--color-brand: #2dd4bf;
-	--color-brand-strong: #14b8a6;
-	--color-secondary: #fb923c; /* Lighter Coral for Dark Mode */
+	--color-bg: #13131d;
+	--color-surface: #1c1c28;
+	--color-border: #2c2c3a;
+	--color-text: #eeeeee;
+	--color-text-muted: #9d9db0;
+	--color-text-subtle: #6d6d80;
+	--color-brand: #7c7ff7;
+	--color-brand-strong: #9b9efb;
+	--color-secondary: #fb923c;
+	--color-brand-hover: #6366f1;
 	--color-success: #34d399;
 	--color-error: #fb7185;
 	--color-warning: #fbbf24;
-	--color-info: #818cf8;
+	--color-info: #22d3ee;
 
-	--color-glass-surface: rgba(24, 24, 27, 0.8);
-	--color-glass-border: rgba(39, 39, 42, 0.5);
+	--color-glass-surface: rgba(28, 28, 40, 0.75);
+	--color-glass-border: rgba(44, 44, 58, 0.5);
 
 	--color-btn-primary-bg: var(--color-brand);
-	--color-btn-primary-text: #000000;
+	--color-btn-primary-text: #ffffff;
 
 	/* Leave Type Colors - Dark Mode */
-	--color-leave-vacation: #2dd4bf;
+	--color-leave-vacation: #7c7ff7;
 	--color-leave-sick: #fb7185;
-	--color-leave-maternity: #f472b6;
-	--color-leave-late: #fbbf24;
+	--color-leave-maternity: #f9a8d4;
+	--color-leave-late: #fcd34d;
 
-	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.6);
+	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.7);
 }
 
 body {

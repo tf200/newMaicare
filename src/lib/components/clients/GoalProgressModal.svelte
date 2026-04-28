@@ -76,9 +76,9 @@
 		},
 		achieved: {
 			label: m.progress_achieved(),
-			bg: 'bg-teal-500/10 dark:bg-teal-500/20',
-			text: 'text-teal-700 dark:text-teal-400',
-			border: 'border-teal-500/20 dark:border-teal-500/30',
+			bg: 'bg-indigo-500/10 dark:bg-indigo-500/20',
+			text: 'text-indigo-700 dark:text-indigo-400',
+			border: 'border-indigo-500/20 dark:border-indigo-500/30',
 			icon: CheckCircle2
 		},
 		blocked: {

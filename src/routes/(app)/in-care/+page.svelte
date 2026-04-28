@@ -3,6 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
+	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { InCareFilters, InCareLoadResult, InCareRow } from './+page';
@@ -51,6 +52,12 @@
 			className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30'
 		}
 	};
+
+	const inCareFilterPills: FilterPill[] = [
+		{ id: '', label: 'All' },
+		{ id: 'in_care', label: 'In care', color: 'emerald' },
+		{ id: 'scheduled_in_care', label: 'Scheduled', color: 'blue' }
+	];
 
 	const buildQuery = (
 		pageValue: number,
@@ -130,34 +137,7 @@
 			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				onclick={() => applyStatus('')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {selectedStatus === ''
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				All
-			</button>
-			<button
-				onclick={() => applyStatus('in_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {selectedStatus ===
-				'in_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				In care
-			</button>
-			<button
-				onclick={() => applyStatus('scheduled_in_care')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {selectedStatus ===
-				'scheduled_in_care'
-					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
-			>
-				Scheduled
-			</button>
-		</div>
+		<FilterPills pills={inCareFilterPills} activeId={selectedStatus} onSelect={(id) => applyStatus(id as '' | InCareRow['status'])} />
 	</div>
 {/snippet}
 
@@ -229,7 +209,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-emerald-100/70 to-teal-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-emerald-100/70 to-indigo-100/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">

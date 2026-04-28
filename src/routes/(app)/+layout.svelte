@@ -28,10 +28,10 @@
 	<div class="relative">
 		<div class="pointer-events-none absolute inset-0 overflow-hidden">
 			<div
-				class="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-teal-500/10 blur-[140px]"
+				class="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-[140px]"
 			></div>
 			<div
-				class="absolute -right-32 -bottom-48 h-96 w-96 rounded-full bg-orange-500/10 blur-[140px]"
+				class="absolute -right-32 -bottom-48 h-96 w-96 rounded-full bg-secondary/10 blur-[140px]"
 			></div>
 		</div>
 		<Sidebar bind:collapsed={isSidebarCollapsed} bind:mobileOpen={isSidebarMobileOpen} />
@@ -46,7 +46,7 @@
 			}}
 		/>
 		<main
-			class={`relative px-4 pt-24 pb-12 transition-[margin] duration-300 ease-in-out lg:px-8 ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'}`}
+			class={`relative px-4 pt-24 pb-12 transition-[margin] duration-300 ease-in-out lg:px-8 ${isSidebarCollapsed ? 'lg:ml-[calc(5rem+12px)]' : 'lg:ml-[calc(18rem+12px)]'}`}
 		>
 			<div class="mx-auto w-full max-w-7xl">
 				{@render children()}

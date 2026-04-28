@@ -72,7 +72,7 @@
 		evening_report: {
 			label: m.evening_report(),
 			icon: Sunset,
-			className: 'bg-orange-500/10 text-orange-600 border-orange-500/20'
+			className: 'bg-secondary/10 text-secondary border-secondary/20'
 		},
 		night_report: {
 			label: m.night_report(),
@@ -87,7 +87,7 @@
 		one_to_one_report: {
 			label: m.one_to_one_report(),
 			icon: UserRound,
-			className: 'bg-teal-600/10 text-teal-600 border-teal-600/20'
+			className: 'bg-indigo-600/10 text-indigo-600 border-indigo-600/20'
 		},
 		process_report: {
 			label: m.process_report(),
@@ -119,8 +119,8 @@
 		excited: {
 			label: m.excited(),
 			icon: Zap,
-			colorClass: 'text-teal-600 dark:text-teal-400',
-			bgClass: 'bg-teal-50 dark:bg-teal-500/10'
+			colorClass: 'text-indigo-600 dark:text-indigo-400',
+			bgClass: 'bg-indigo-50 dark:bg-indigo-500/10'
 		},
 		happy: {
 			label: m.happy(),
@@ -143,8 +143,8 @@
 		anxious: {
 			label: m.anxious(),
 			icon: AlertCircle,
-			colorClass: 'text-orange-600 dark:text-orange-400',
-			bgClass: 'bg-orange-50 dark:bg-orange-500/10'
+			colorClass: 'text-secondary dark:text-secondary',
+			bgClass: 'bg-secondary dark:bg-secondary/10'
 		},
 		depressed: {
 			label: m.depressed(),
