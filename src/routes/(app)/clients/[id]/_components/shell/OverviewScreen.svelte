@@ -10,14 +10,13 @@
 		MessageSquare,
 		Heart,
 		Building2,
-		FileCheck
 	} from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
+	import EditClientForm from '$lib/components/forms/EditClientForm.svelte';
 	import PutClientOutOfCareForm from '$lib/components/forms/PutClientOutOfCareForm.svelte';
-	import ClientFileUploadModal from '$lib/components/clients/ClientFileUploadModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import type { ClientOverviewViewModel } from '../../overview.shared';
@@ -41,8 +40,7 @@
 	let showPutOutOfCareForm = $state(false);
 	let showCreateIncidentForm = $state(false);
 	let showCreateProgressReportModal = $state(false);
-	let showUploadModal = $state(false);
-
+	let showEditClientForm = $state(false);
 	const openPutOutOfCareForm = () => {
 		showPutOutOfCareForm = true;
 	};
@@ -53,6 +51,10 @@
 
 	const openCreateProgressReportModal = () => {
 		showCreateProgressReportModal = true;
+	};
+
+	const openEditClientForm = () => {
+		showEditClientForm = true;
 	};
 
 	const formatDate = (dateString?: string) =>
@@ -143,14 +145,7 @@
 				{m.add_goal()}
 			</button>
 			<button
-				type="button"
-				onclick={() => (showUploadModal = true)}
-				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-			>
-				<FileCheck class="h-4 w-4" />
-				{m.upload_document()}
-			</button>
-			<button
+				onclick={openEditClientForm}
 				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong dark:text-zinc-900"
 			>
 				<Plus class="h-4 w-4" />
@@ -283,4 +278,9 @@
 	onCreated={() => invalidateAll()}
 />
 
-<ClientFileUploadModal bind:open={showUploadModal} clientId={client.id} />
+<EditClientForm
+	bind:open={showEditClientForm}
+	clientId={client.id}
+	onUpdated={() => invalidateAll()}
+/>
+

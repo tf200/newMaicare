@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { CheckCircle2, FileCheck } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import ClientFileUploadModal from '$lib/components/clients/ClientFileUploadModal.svelte';
 	import type { ClientOverviewData } from '$lib/mock/client-overview';
 
 	interface Props {
 		documentsChecklist: ClientOverviewData['documentsChecklist'];
+		clientId: string;
 	}
 
-	let { documentsChecklist }: Props = $props();
+	let { documentsChecklist, clientId }: Props = $props();
+	let showUploadModal = $state(false);
 </script>
 
 <div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
@@ -27,7 +30,13 @@
 			</div>
 		{/each}
 	</div>
-	<button class="mt-4 w-full rounded-xl bg-zinc-100 py-2 text-xs font-bold text-text transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+	<button
+		type="button"
+		onclick={() => (showUploadModal = true)}
+		class="mt-4 w-full rounded-xl bg-zinc-100 py-2 text-xs font-bold text-text transition hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+	>
 		{m.upload_document()}
 	</button>
 </div>
+
+<ClientFileUploadModal bind:open={showUploadModal} {clientId} />

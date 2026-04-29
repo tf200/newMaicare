@@ -5,14 +5,15 @@
 		LayoutDashboard,
 		UsersRound,
 		Calendar,
+		CalendarCheck,
+		Clock,
 		X,
 		HelpCircle,
 		ChevronDown,
 		HeartHandshake,
 		ArrowLeft,
 		CircleUser,
-		BadgeEuro,
-		BookOpen
+		BadgeEuro
 	} from 'lucide-svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -36,34 +37,25 @@
 			icon: LayoutDashboard,
 			permission: 'DASHBOARD.VIEW'
 		},
-		{
-			label: m.my_handbook(),
-			href: '/handbook',
-			icon: BookOpen
-		},
 		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
 		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
 		{
-			label: 'People',
+			label: m.employees(),
+			href: '/employees',
 			icon: CircleUser,
-			children: [
-				{ label: m.employees(), href: '/employees', permission: 'EMPLOYEE.VIEW' },
-				{
-					label: m.appointments(),
-					href: '/appointments',
-					permission: 'DASHBOARD.VIEW'
-				},
-				{ label: 'Templates', href: '/settings/handbooks' },
-				{ label: 'Handbooks', href: '/employees/handbooks', permission: 'EMPLOYEE.VIEW' },
-				{ label: m.schedules(), href: '/schedules', permission: 'DASHBOARD.VIEW' },
-				{ label: m.swap_page_title(), href: '/shift-swaps' },
-				{ label: m.leave(), href: '/leave' },
-				{
-					label: m.leave_management_label(),
-					href: '/leave-management',
-					permission: 'EMPLOYEE.VIEW'
-				}
-			]
+			permission: 'EMPLOYEE.VIEW'
+		},
+		{
+			label: m.appointments(),
+			href: '/appointments',
+			icon: CalendarCheck,
+			permission: 'DASHBOARD.VIEW'
+		},
+		{
+			label: m.schedules(),
+			href: '/schedules',
+			icon: Clock,
+			permission: 'DASHBOARD.VIEW'
 		},
 		{
 			label: m.care_coordination(),
@@ -185,7 +177,7 @@
 
 <!-- Sidebar Container -->
 <aside
-	class="fixed top-3 bottom-3 left-3 z-50 flex flex-col rounded-2xl bg-brand/90 ring-1 ring-white/15 shadow-2xl backdrop-blur-xl {transitionClass}"
+	class="fixed top-3 bottom-3 left-3 z-50 flex flex-col rounded-2xl bg-brand/90 shadow-2xl ring-1 ring-white/15 backdrop-blur-xl {transitionClass}"
 	class:w-[calc(18rem-24px)]={!collapsed}
 	class:translate-x-0={mobileOpen}
 	class:-translate-x-full={!mobileOpen}
@@ -202,7 +194,12 @@
 			<div
 				class="flex h-10 w-10 shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
 			>
-				<img src="/logo.webp" alt="MaiCare" class="h-10 w-10 object-contain brightness-0 invert" loading="eager" />
+				<img
+					src="/logo.webp"
+					alt="MaiCare"
+					class="h-10 w-10 object-contain brightness-0 invert"
+					loading="eager"
+				/>
 			</div>
 
 			<!-- Logo Text -->

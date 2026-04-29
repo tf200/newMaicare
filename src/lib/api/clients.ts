@@ -11,6 +11,7 @@ import type {
 	GetClientResponse,
 	ListWaitingListClientsParams,
 	ListWaitingListClientsResponse,
+	WaitingListStatsResponse,
 	PutClientInCareRequest,
 	PutClientOutOfCareRequest,
 	PutClientOutOfCareResponse,
@@ -39,7 +40,8 @@ import type {
 	CreateClientEmergencyContactParams,
 	CreateClientEmergencyContactResponse,
 	ListClientEmergencyContactsParams,
-	ListClientEmergencyContactsResponse
+	ListClientEmergencyContactsResponse,
+	UpdateClientRequest
 } from '$lib/types/api';
 
 export function listWaitingListClients(params: ListWaitingListClientsParams) {
@@ -64,6 +66,10 @@ export function listWaitingListClients(params: ListWaitingListClientsParams) {
 	);
 }
 
+export function getWaitingListStats() {
+	return api.get<ApiEnvelope<WaitingListStatsResponse>>('/clients/waiting-list/stats');
+}
+
 export function getClientById(id: string) {
 	return api.get<ApiEnvelope<GetClientResponse>>(`/clients/${id}`);
 }
@@ -77,6 +83,10 @@ export function putClientOutOfCare(id: string, payload: PutClientOutOfCareReques
 		`/clients/${id}/put-out-of-care`,
 		payload
 	);
+}
+
+export function updateClient(id: string, payload: UpdateClientRequest) {
+	return api.put<ApiEnvelope<GetClientResponse>>(`/clients/${id}`, payload);
 }
 
 export function listInCareClients(params: ListInCareClientsParams) {

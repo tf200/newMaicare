@@ -10,5 +10,3 @@ export * from './api/incidents';
 export * from './api/schedules';
 export * from './api/employees';
 export * from './api/settings';
-export * from './api/handbooks';
-export * from './api/leave';

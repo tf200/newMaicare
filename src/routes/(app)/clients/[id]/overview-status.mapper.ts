@@ -14,7 +14,6 @@ import {
 	formatAddress,
 	getDisplayName,
 	mapSeverityToTone,
-	maskBsn,
 	mergeAlerts,
 	toTitleCase
 } from './overview-mapper.shared';
@@ -108,7 +107,9 @@ const buildBaseOverview = (
 		senderName: payload.sender?.name ?? undefined,
 		phone: payload.sender?.phone_number ?? undefined,
 		email: payload.sender?.email_address ?? undefined,
-		maskedBsn: maskBsn(payload.client.bsn),
+		maskedBsn: payload.client.bsn ? String(payload.client.bsn) : '—',
+		bsnVerifiedBy: payload.client.bsn_verified_by ?? undefined,
+		bsnVerifiedByName: payload.client.bsn_verified_by_name ?? undefined,
 		address,
 		cityLine,
 		nationality: undefined,
@@ -127,7 +128,29 @@ const buildBaseOverview = (
 		intakeSummary: overrides.intakeSummary ?? buildIntakeSummary(payload.intake, goals),
 		documentsChecklist: buildDocumentsChecklist(payload.documents),
 		contractSummary: overrides.contractSummary,
-		quickLinks: overrides.quickLinks ?? buildQuickLinks(payload.counts)
+		quickLinks: overrides.quickLinks ?? buildQuickLinks(payload.counts),
+		education: payload.client.education
+			? {
+					currentlyEnrolled: payload.client.education.currently_enrolled,
+					institution: payload.client.education.institution,
+					mentorName: payload.client.education.mentor_name,
+					mentorPhone: payload.client.education.mentor_phone,
+					mentorEmail: payload.client.education.mentor_email,
+					additionalNotes: payload.client.education.additional_notes,
+					level: payload.client.education.level
+				}
+			: undefined,
+		work: payload.client.work
+			? {
+					currentlyEmployed: payload.client.work.currently_employed,
+					currentEmployer: payload.client.work.current_employer,
+					employerPhone: payload.client.work.employer_phone,
+					employerEmail: payload.client.work.employer_email,
+					currentPosition: payload.client.work.current_position,
+					startDate: payload.client.work.start_date,
+					additionalNotes: payload.client.work.additional_notes
+				}
+			: undefined
 	};
 };
 

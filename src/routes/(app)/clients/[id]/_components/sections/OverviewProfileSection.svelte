@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { User, MapPin, Phone, Building2, Mail } from 'lucide-svelte';
+	import { User, MapPin, Phone, Building2, Mail, IdCard } from 'lucide-svelte';
 	import type { ClientOverviewData } from '$lib/mock/client-overview';
 	import { m } from '$lib/paraglide/messages';
 
@@ -38,6 +38,28 @@
 					{client.gender}, {age}
 					{m.years()}
 				</p>
+			</div>
+		</div>
+		<div class="flex items-start gap-3">
+			<div
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/20 dark:text-cyan-400"
+			>
+				<IdCard class="h-4 w-4" />
+			</div>
+			<div>
+				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+					{m.bsn()}
+				</p>
+				<p class="text-sm font-medium text-text">{client.maskedBsn}</p>
+				{#if client.bsnVerifiedByName}
+					<p class="mt-0.5 text-xs text-text-muted">
+						{m.bsn_verified_by()} {client.bsnVerifiedByName}
+					</p>
+				{:else}
+					<p class="mt-0.5 inline-flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-red-500 uppercase dark:bg-red-500/20 dark:text-red-400">
+						{m.unverified()}
+					</p>
+				{/if}
 			</div>
 		</div>
 		<div class="flex items-start gap-3">

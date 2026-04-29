@@ -35,6 +35,7 @@ export type IncidentRecurrenceRisk = 'very_low' | 'means' | 'high' | 'very_high'
 export type IncidentCauseCategory =
 	| 'internal_personal'
 	| 'external_environmental'
+	| 'external'
 	| 'organizational'
 	| 'technical'
 	| 'employee_related'
@@ -66,6 +67,7 @@ export type IncidentFollowUpAction =
 	| 'internal_review'
 	| 'official_report'
 	| 'notify_inspectorate'
+	| 'notify_referrer'
 	| 'other';
 
 export interface IncidentDetailResponse {

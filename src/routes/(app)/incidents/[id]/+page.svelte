@@ -21,7 +21,7 @@
 	} from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
-	import { confirmIncident } from '$lib/api/incidents';
+	import { confirmIncident, getIncidentFile } from '$lib/api/incidents';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -51,6 +51,22 @@
 	let isEditModalOpen = $state(false);
 	let isConfirmingIncident = $state(false);
 	let confirmIncidentError = $state<string | null>(null);
+	let isExportingPdf = $state(false);
+
+	const handleExportPdf = async (incidentId: string) => {
+		if (isExportingPdf) return;
+		isExportingPdf = true;
+		try {
+			const { blob } = await getIncidentFile(incidentId);
+			const url = URL.createObjectURL(blob);
+			window.open(url, '_blank');
+			setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		} catch {
+			// Error is logged by client — could surface a toast here
+		} finally {
+			isExportingPdf = false;
+		}
+	};
 
 	const openConfirmModal = () => {
 		confirmIncidentError = null;
@@ -178,6 +194,7 @@
 	const causeCategoryLabels: Record<CauseCategory, () => string> = {
 		internal_personal: () => m.internal_personal(),
 		external_environmental: () => m.external_environmental(),
+		external: () => m.external_environmental(),
 		organizational: () => m.organizational(),
 		technical: () => m.technical(),
 		employee_related: () => m.employee_related(),
@@ -217,6 +234,7 @@
 		internal_review: () => m.internal_review(),
 		official_report: () => m.official_report(),
 		notify_inspectorate: () => m.notify_inspectorate(),
+		notify_referrer: () => m.notify_referrer(),
 		other: () => m.other()
 	};
 </script>
@@ -297,10 +315,12 @@
 
 				<div class="flex flex-wrap items-center justify-end gap-2">
 					<button
-						class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+						onclick={() => handleExportPdf(incident.id)}
+						disabled={isExportingPdf}
+						class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 					>
 						<FileText class="h-4 w-4" />
-						{m.export_pdf()}
+						{isExportingPdf ? m.loading() : m.export_pdf()}
 					</button>
 					<button
 						onclick={() => (isEditModalOpen = true)}

@@ -13,6 +13,13 @@ export interface ListWaitingListClientsResponse {
 	admission_type: 'crisis_admission' | 'regular_placement' | null;
 }
 
+export interface WaitingListStatsResponse {
+	total_clients: number;
+	total_crisis: number;
+	total_regular: number;
+	avg_days_in_waitlist: number;
+}
+
 export interface ListWaitingListClientsParams {
 	page: number;
 	pageSize: number;
@@ -455,11 +462,33 @@ export interface GetClientEvaluationSummary {
 	last_completed: GetClientEvaluationSummaryLastCompleted | null;
 }
 
+export interface GetClientEducation {
+	currently_enrolled: boolean;
+	institution: string | null;
+	mentor_name: string | null;
+	mentor_phone: string | null;
+	mentor_email: string | null;
+	additional_notes: string | null;
+	level: string;
+}
+
+export interface GetClientWork {
+	currently_employed: boolean;
+	current_employer: string | null;
+	employer_phone: string | null;
+	employer_email: string | null;
+	current_position: string | null;
+	start_date: string | null;
+	additional_notes: string | null;
+}
+
 export interface GetClientCore {
 	id: string;
 	first_name: string;
 	last_name: string;
 	bsn: string | number | null;
+	bsn_verified_by?: string | null;
+	bsn_verified_by_name?: string | null;
 	file_number: string | number | null;
 	gender: ClientGender | null;
 	date_of_birth: string | null;
@@ -467,6 +496,8 @@ export interface GetClientCore {
 	care_type: IntakeCareType | null;
 	address: GetClientAddress | null;
 	location: GetClientLocation | null;
+	education?: GetClientEducation | null;
+	work?: GetClientWork | null;
 }
 
 export interface GetClientResponse {
@@ -631,3 +662,33 @@ export interface ListClientEmergencyContactsParams {
 
 export type ListClientEmergencyContactsResponse =
 	PaginatedResponse<CreateClientEmergencyContactResponse>;
+
+export interface UpdateClientRequest {
+	first_name: string;
+	last_name: string;
+	date_of_birth?: string | null;
+	identity?: boolean;
+	bsn?: string | null;
+	bsn_verified_by?: string | null;
+	nationality?: string | null;
+	email?: string | null;
+	phone_number?: string | null;
+	gender?: ClientGender | null;
+	filenumber?: string | null;
+	sender_id?: string | null;
+	location_id?: string | null;
+	education_currently_enrolled?: boolean;
+	education_institution?: string | null;
+	education_mentor_name?: string | null;
+	education_mentor_phone?: string | null;
+	education_mentor_email?: string | null;
+	education_additional_notes?: string | null;
+	education_level?: string | null;
+	work_currently_employed?: boolean;
+	work_current_employer?: string | null;
+	work_employer_phone?: string | null;
+	work_employer_email?: string | null;
+	work_current_position?: string | null;
+	work_start_date?: string | null;
+	work_additional_notes?: string | null;
+}

@@ -34,29 +34,29 @@ export function listOrganizations(params: ListOrganizationsParams = {}) {
 	}
 
 	const query = searchParams.toString();
-	const endpoint = query ? `/organisations?${query}` : '/organisations';
+	const endpoint = query ? `/organizations?${query}` : '/organizations';
 
 	return api.get<ApiEnvelope<PaginatedResponse<OrganizationListItem>>>(endpoint);
 }
 
 export function createOrganization(payload: CreateOrganizationRequest) {
-	return api.post<ApiEnvelope<OrganizationListItem>>('/organisations', payload);
+	return api.post<ApiEnvelope<OrganizationListItem>>('/organizations', payload);
 }
 
 export function getOrganization(id: string) {
-	return api.get<ApiEnvelope<GetOrganizationResponse>>(`/organisations/${id}`);
+	return api.get<ApiEnvelope<GetOrganizationResponse>>(`/organizations/${id}`);
 }
 
 export function updateOrganization(id: string, payload: UpdateOrganizationRequest) {
-	return api.put<ApiEnvelope<GetOrganizationResponse>>(`/organisations/${id}`, payload);
+	return api.put<ApiEnvelope<GetOrganizationResponse>>(`/organizations/${id}`, payload);
 }
 
 export function getOrganizationCounts(id: string) {
-	return api.get<ApiEnvelope<OrganizationCounts>>(`/organisations/${id}/counts`);
+	return api.get<ApiEnvelope<OrganizationCounts>>(`/organizations/${id}/counts`);
 }
 
 export function getGlobalOrganizationCounts() {
-	return api.get<ApiEnvelope<GlobalOrganizationCounts>>('/organisations/count');
+	return api.get<ApiEnvelope<GlobalOrganizationCounts>>('/organizations/count');
 }
 
 export interface ListOrganizationLocationsParams {
@@ -83,14 +83,14 @@ export function listOrganizationLocations(
 
 	const query = searchParams.toString();
 	const endpoint = query
-		? `/organisations/${id}/locations?${query}`
-		: `/organisations/${id}/locations`;
+		? `/organizations/${id}/locations?${query}`
+		: `/organizations/${id}/locations`;
 
 	return api.get<ApiEnvelope<PaginatedResponse<OrganizationLocation>>>(endpoint);
 }
 
 export function createOrganizationLocation(id: string, payload: CreateLocationRequest) {
-	return api.post<ApiEnvelope<OrganizationLocation>>(`/organisations/${id}/locations`, payload);
+	return api.post<ApiEnvelope<OrganizationLocation>>(`/organizations/${id}/locations`, payload);
 }
 
 export function getLocation(id: string) {

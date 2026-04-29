@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type BlobResponse } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateIncidentRequest,
@@ -47,4 +47,8 @@ export function createIncident(clientId: string, payload: CreateIncidentRequest)
 
 export function updateIncident(incidentId: string, payload: CreateIncidentRequest) {
 	return api.put<ApiEnvelope<unknown>>(`/incidents/${incidentId}`, payload);
+}
+
+export function getIncidentFile(incidentId: string): Promise<BlobResponse> {
+	return api.requestBlob(`/incidents/${incidentId}/file`, { method: 'GET' });
 }

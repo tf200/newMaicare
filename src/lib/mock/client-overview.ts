@@ -52,6 +52,8 @@ export interface ClientOverviewData {
 	phone?: string;
 	email?: string;
 	maskedBsn: string;
+	bsnVerifiedBy?: string;
+	bsnVerifiedByName?: string;
 	address: string;
 	cityLine: string;
 	nationality?: string;
@@ -84,6 +86,24 @@ export interface ClientOverviewData {
 		financing?: string;
 		outstandingInvoices?: { count: number; amount: string };
 	};
+	education?: {
+		currentlyEnrolled: boolean;
+		institution: string | null;
+		mentorName: string | null;
+		mentorPhone: string | null;
+		mentorEmail: string | null;
+		additionalNotes: string | null;
+		level: string;
+	};
+	work?: {
+		currentlyEmployed: boolean;
+		currentEmployer: string | null;
+		employerPhone: string | null;
+		employerEmail: string | null;
+		currentPosition: string | null;
+		startDate: string | null;
+		additionalNotes: string | null;
+	};
 	quickLinks: ClientQuickLink[];
 }
 
@@ -102,7 +122,9 @@ const baseClient: Omit<
 	senderName: 'Centrum voor Jeugd en Gezin',
 	phone: '+31 6 3012 8890',
 	email: 'noah.vdijk@example.com',
-	maskedBsn: '***.**.482',
+	maskedBsn: '482615739',
+	bsnVerifiedBy: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+	bsnVerifiedByName: 'Eva Jansen',
 	address: 'Bosstraat 17A',
 	cityLine: '3072 XL Rotterdam',
 	nationality: 'Dutch',
@@ -147,6 +169,24 @@ const baseClient: Omit<
 		endDate: '2026-06-30',
 		financing: 'WMO - Option B',
 		outstandingInvoices: { count: 2, amount: 'EUR 1,140.00' }
+	},
+	education: {
+		currentlyEnrolled: true,
+		institution: 'Rotterdam College',
+		mentorName: 'Mw. J. de Vries',
+		mentorPhone: '+31 6 1234 5678',
+		mentorEmail: 'j.devries@rotterdamcollege.nl',
+		additionalNotes: 'Follows a practical education program with additional support.',
+		level: 'MBO-2'
+	},
+	work: {
+		currentlyEmployed: true,
+		currentEmployer: 'Jumbo Supermarkt',
+		employerPhone: '+31 10 234 5678',
+		employerEmail: 'manager@jumbo.nl',
+		currentPosition: 'Vakkenvuller (Shelf Stocker)',
+		startDate: '2025-09-01',
+		additionalNotes: 'Works 3 days a week, supported by job coach.'
 	}
 };
 

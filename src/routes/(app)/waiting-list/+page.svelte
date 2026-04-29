@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { ClipboardList, Search, AlertTriangle, Eye, HeartHandshake } from 'lucide-svelte';
+	import { ClipboardList, Search, AlertTriangle, Eye, HeartHandshake, Users, Clock } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
-	import type { WaitingListFilters, WaitingListLoadResult, WaitingListRow } from './+page';
+	import type { WaitingListFilters, WaitingListLoadResult, WaitingListStatsResult, WaitingListRow } from './+page';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 
@@ -19,10 +20,12 @@
 				sort: { direction: 'asc' | 'desc' };
 			};
 			waitingListData: Promise<WaitingListLoadResult>;
+			waitingListStats: Promise<WaitingListStatsResult>;
 		};
 	}>();
 
 	const waitingListDataPromise = $derived.by(() => data.waitingListData);
+	const waitingListStatsPromise = $derived.by(() => data.waitingListStats);
 	const initial = $derived.by(() => data.initial);
 	const currentPage = $derived.by(() => initial.page);
 	const pageSize = $derived.by(() => initial.pageSize);
@@ -286,14 +289,53 @@
 		</div>
 	</header>
 
-	{#await waitingListDataPromise}
+	{#await waitingListStatsPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-				<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-			</div>
+			{#each Array(4) as _}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
+	{:then waitingListStats}
+		{#if waitingListStats.loadError}
+			<InlineErrorBanner message={waitingListStats.loadError} onRetry={() => invalidateAll()} />
+		{/if}
 
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<StatCard
+				label="Total Waiting"
+				value={waitingListStats.totalClients}
+				description={m.client()}
+				icon={Users}
+				color="brand"
+			/>
+			<StatCard
+				label="Crisis"
+				value={waitingListStats.totalCrisis}
+				description="Crisis admissions"
+				icon={AlertTriangle}
+				color="rose"
+			/>
+			<StatCard
+				label="Regular"
+				value={waitingListStats.totalRegular}
+				description="Regular placements"
+				icon={HeartHandshake}
+				color="emerald"
+			/>
+			<StatCard
+				label="Avg Days Waiting"
+				value={waitingListStats.avgDaysInWaitlist}
+				description="Average days in waitlist"
+				icon={Clock}
+				color="amber"
+			/>
+		</div>
+	{/await}
+
+	{#await waitingListDataPromise}
 		<DataTable
 			{columns}
 			rows={[]}
@@ -328,18 +370,6 @@
 		{#if waitingListData.loadError}
 			<InlineErrorBanner message={waitingListData.loadError} onRetry={() => invalidateAll()} />
 		{/if}
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total Waiting
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{waitingListData.stats.total}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.client()}</p>
-			</div>
-		</div>
 
 		<DataTable
 			{columns}

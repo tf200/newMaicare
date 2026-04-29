@@ -142,6 +142,20 @@
 		}
 	];
 
+	const sectionColorVar: Record<AppointmentSectionKey, string> = {
+		general_information: 'var(--color-brand)',
+		important_contacts: 'var(--color-info)',
+		household_info: 'var(--color-info)',
+		organization_agreements: 'var(--color-brand)',
+		youth_officer_agreements: 'var(--color-success)',
+		treatment_agreements: 'var(--color-success)',
+		smoking_rules: 'var(--color-warning)',
+		work: 'var(--color-secondary)',
+		school_internship: 'var(--color-success)',
+		travel: 'var(--color-info)',
+		leave: 'var(--color-secondary)'
+	};
+
 	const emptyDraft = () =>
 		Object.fromEntries(sections.map((section) => [section.key, ''])) as Record<
 			AppointmentSectionKey,
@@ -278,7 +292,13 @@
 			class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 		>
 			<div
-				class="pointer-events-none absolute -top-16 -right-16 h-44 w-44 rounded-full bg-linear-to-br from-indigo-200/60 to-emerald-200/20 blur-2xl"
+				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-200/60 to-emerald-200/20 blur-2xl"
+			></div>
+			<div
+				class="pointer-events-none absolute -bottom-16 -left-12 h-36 w-36 rounded-full bg-linear-to-br from-cyan-200/25 to-indigo-200/15 blur-2xl"
+			></div>
+			<div
+				class="pointer-events-none absolute top-1/3 right-1/3 h-20 w-20 rounded-full bg-linear-to-br from-amber-200/15 to-orange-200/10 blur-xl"
 			></div>
 			<div class="relative space-y-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
@@ -354,21 +374,36 @@
 
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 			{#each sections as section (section.key)}
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-					<div class="mb-4 flex items-start justify-between gap-3">
+				{@const accentVar = sectionColorVar[section.key]}
+				<div
+					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+				>
+					<div
+						class="pointer-events-none absolute inset-x-0 top-0 h-20 rounded-t-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+						style="background: linear-gradient(to bottom, color-mix(in srgb, {accentVar} 8%, transparent), transparent)"
+					></div>
+					<div class="relative mb-4 flex items-start justify-between gap-3">
 						<div>
 							<div class="mb-1 flex items-center gap-2 text-sm font-bold text-text">
-								<section.icon class="h-4 w-4 text-brand" />
+								<span
+									class="flex h-7 w-7 items-center justify-center rounded-xl"
+									style="background: color-mix(in srgb, {accentVar} 14%, transparent)"
+								>
+									<section.icon class="h-4 w-4" style="color: {accentVar}" />
+								</span>
 								<span>{section.title}</span>
 							</div>
 							<p class="text-xs font-medium text-text-muted">{section.description}</p>
 						</div>
-						<span class="rounded-full bg-brand/10 px-2 py-1 text-xs font-semibold text-brand"
-							>{isEditing
+						<span
+							class="rounded-full px-2 py-1 text-xs font-semibold"
+							style="background: color-mix(in srgb, {accentVar} 14%, transparent); color: {accentVar}"
+						>
+							{isEditing
 								? countDraftItems(draftText[section.key])
 								: appointmentCard[section.key].length}
-							{m.items()}</span
-						>
+							{m.items()}
+						</span>
 					</div>
 
 					{#if isEditing}
@@ -380,11 +415,17 @@
 					{:else if appointmentCard[section.key].length > 0}
 						<ul class="space-y-2">
 							{#each appointmentCard[section.key] as item, index (`${section.key}-${index}`)}
-								<li class="rounded-xl bg-bg px-3 py-2 text-sm text-text">{item}</li>
+								<li
+									class="rounded-xl px-3 py-2 text-sm text-text"
+									style="background: color-mix(in srgb, {accentVar} 8%, transparent)"
+								>{item}</li>
 							{/each}
 						</ul>
 					{:else}
-						<p class="rounded-xl bg-bg px-3 py-2 text-sm text-text-muted">
+						<p
+							class="rounded-xl px-3 py-2 text-sm text-text-muted"
+							style="background: color-mix(in srgb, {accentVar} 8%, transparent)"
+						>
 							{m.no_info_added()}
 						</p>
 					{/if}
