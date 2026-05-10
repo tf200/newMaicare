@@ -27,6 +27,49 @@ export interface EmployeeListItem {
 	contract_end_date: string | null;
 }
 
+export interface EmployeeDetail {
+	id: string;
+	user_id: string;
+	first_name: string;
+	last_name: string;
+	bsn: string;
+	street: string;
+	house_number: string;
+	house_number_addition: string | null;
+	postal_code: string;
+	city: string;
+	position: string | null;
+	employee_number: string | null;
+	employment_number: string | null;
+	private_email_address: string | null;
+	work_email_address: string | null;
+	private_phone_number: string | null;
+	work_phone_number: string | null;
+	date_of_birth: string | null;
+	home_telephone_number: string | null;
+	created_at: string;
+	gender: string;
+	location_id: string | null;
+	department_id: string | null;
+	manager_employee_id: string | null;
+	has_borrowed: boolean;
+	out_of_service: boolean | null;
+	is_archived: boolean;
+	contract_hours: number | null;
+	contract_end_date: string | null;
+	contract_start_date: string | null;
+	contract_type: string;
+	contract_rate: number | null;
+	profile_picture: string | null;
+	department_name: string | null;
+	manager_first_name: string | null;
+	manager_last_name: string | null;
+	role: {
+		id: string;
+		name: string;
+	};
+}
+
 export type EmployeeGender = 'male' | 'female' | 'not_specified';
 
 export interface CreateEmployeeRequest {
@@ -103,6 +146,10 @@ export function listEmployees(params: ListEmployeesParams = {}) {
 
 export function createEmployee(payload: CreateEmployeeRequest) {
 	return api.post<ApiEnvelope<CreateEmployeeResponse>>('/employees', payload);
+}
+
+export function getEmployee(id: string) {
+	return api.get<ApiEnvelope<EmployeeDetail>>(`/employees/${id}`);
 }
 
 export function getEmployeeProfileDetails() {

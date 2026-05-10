@@ -220,7 +220,9 @@
 
 {#snippet actionsCell(row: EmployeeRow)}
 	<div class="flex items-center justify-end gap-2 text-xs font-semibold">
-		<button class="text-text-muted transition hover:text-brand">{m.view()}</button>
+		<a href={`/employees/${row.id}`} class="text-text-muted transition hover:text-brand"
+			>{m.view()}</a
+		>
 	</div>
 {/snippet}
 
