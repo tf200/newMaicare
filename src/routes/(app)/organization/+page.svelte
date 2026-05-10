@@ -127,18 +127,7 @@
 				onblur={applySearch}
 			/>
 		</div>
-		<div class="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
-			<button
-				class="rounded-lg bg-border/50 px-3 py-1.5 text-xs font-semibold text-text transition hover:bg-border"
-			>
-				All
-			</button>
-			<button
-				class="rounded-lg px-3 py-1.5 text-xs font-semibold text-text-muted transition hover:bg-border/30 hover:text-text"
-			>
-				{m.multi_location()}
-			</button>
-		</div>
+
 	</div>
 {/snippet}
 
