@@ -112,7 +112,10 @@
 
 	let { collapsed = $bindable(false), mobileOpen = $bindable(false) } = $props();
 
-	let expandedItems = $state<Record<string, boolean>>({});
+	let expandedItems = $state<Record<string, boolean>>({
+		[m.care_coordination()]: true,
+		[m.finances()]: true
+	});
 
 	const toggleExpand = (label: string) => {
 		if (collapsed) return;
