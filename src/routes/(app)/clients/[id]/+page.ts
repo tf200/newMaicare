@@ -1,21 +1,21 @@
 import type { PageLoad } from './$types';
-import { error } from '@sveltejs/kit';
-import { getClientById } from '$lib/api/clients';
 import { createOverviewViewModel, type OverviewLoadResult } from './overview.shared';
 import { mapClientOverviewByStatus } from './overview-status.mapper';
 
-export const load: PageLoad = async ({ params }) => {
-	try {
-		const response = await getClientById(params.id);
-		const overview = mapClientOverviewByStatus(response.data);
-		return {
-			overviewData: Promise.resolve({
+export const load: PageLoad = ({ parent }) => {
+	const overviewData: Promise<OverviewLoadResult> = parent().then(({ clientData }) =>
+		clientData.then((result) => {
+			if (!result.client) {
+				return { overview: null, loadError: result.loadError ?? 'Failed to load client overview.' };
+			}
+
+			const overview = mapClientOverviewByStatus(result.client);
+			return {
 				overview: createOverviewViewModel(overview, overview.status),
 				loadError: null
-			} satisfies OverviewLoadResult)
-		};
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Failed to load client overview.';
-		error(500, message);
-	}
+			};
+		})
+	);
+
+	return { overviewData };
 };

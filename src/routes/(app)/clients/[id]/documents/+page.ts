@@ -47,9 +47,11 @@ const buildEmptyCard = (clientId: string): AppointmentCardDocument => ({
 	updated_at: null
 });
 
-export const load: PageLoad = ({ params }) => {
+export const load: PageLoad = ({ params, fetch, depends }) => {
+	depends(`app:client:${params.id}:appointment-card`);
 	const appointmentCardData: Promise<AppointmentCardLoadResult> = getClientAppointmentCard(
-		params.id
+		params.id,
+		{ fetchFn: fetch }
 	)
 		.then((response) => {
 			if (!response.data) {

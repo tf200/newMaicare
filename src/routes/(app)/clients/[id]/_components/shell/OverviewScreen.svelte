@@ -9,9 +9,9 @@
 		ChevronRight,
 		MessageSquare,
 		Heart,
-		Building2,
+		Building2
 	} from 'lucide-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
@@ -19,6 +19,7 @@
 	import PutClientOutOfCareForm from '$lib/components/forms/PutClientOutOfCareForm.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { resolve } from '$app/paths';
 	import type { ClientOverviewViewModel } from '../../overview.shared';
 	import { formatOverviewDate } from '../overview-date';
 	import OverviewMainColumn from '../sections/OverviewMainColumn.svelte';
@@ -75,6 +76,21 @@
 		return formatDayCount(days);
 	};
 
+	const getQuickLinkHref = (route: string) => {
+		switch (route) {
+			case 'contracts':
+				return resolve('/(app)/clients/[id]/contracts', { id: client.id });
+			case 'reports':
+				return resolve('/(app)/clients/[id]/reports', { id: client.id });
+			case 'goals':
+				return resolve('/(app)/clients/[id]/goals', { id: client.id });
+			case 'documents':
+				return resolve('/(app)/clients/[id]/documents', { id: client.id });
+			default:
+				return resolve('/(app)/clients/[id]', { id: client.id });
+		}
+	};
+
 	const statusLabels = {
 		on_waiting_list: m.status_on_waiting_list(),
 		scheduled_in_care: m.status_scheduled_in_care(),
@@ -95,7 +111,10 @@
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
-			<a href="/clients" class="flex items-center gap-1 transition-colors hover:text-text">
+			<a
+				href={resolve('/(app)/clients')}
+				class="flex items-center gap-1 transition-colors hover:text-text"
+			>
 				<ArrowLeft class="h-4 w-4" />
 				{m.clients()}
 			</a>
@@ -240,7 +259,7 @@
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
 		{#each client.quickLinks as link, index (`${link.href}-${index}`)}
 			<a
-				href={link.href}
+				href={getQuickLinkHref(link.href)}
 				class="group flex flex-col items-center justify-center rounded-2xl border border-border bg-surface p-4 text-center transition hover:border-brand/30 hover:shadow-md"
 			>
 				<span class="text-2xl font-bold text-text group-hover:text-brand">{link.count}</span>
@@ -261,7 +280,7 @@
 	<PutClientOutOfCareForm
 		bind:open={showPutOutOfCareForm}
 		clientId={client.id}
-		onSuccess={() => invalidateAll()}
+		onSuccess={() => invalidate(`app:client:${client.id}:detail`)}
 	/>
 {/if}
 
@@ -269,18 +288,21 @@
 	bind:open={showCreateIncidentForm}
 	preselectedClientId={client.id}
 	preselectedClientDisplay={`${client.firstName} ${client.lastName}`.trim()}
-	onCreated={() => invalidateAll()}
+	onCreated={() => invalidate(`app:client:${client.id}:detail`)}
 />
 
 <CreateProgressReportModal
 	bind:open={showCreateProgressReportModal}
 	preselectedClientId={client.id}
-	onCreated={() => invalidateAll()}
+	onCreated={() =>
+		Promise.all([
+			invalidate(`app:client:${client.id}:detail`),
+			invalidate(`app:client:${client.id}:reports`)
+		])}
 />
 
 <EditClientForm
 	bind:open={showEditClientForm}
 	clientId={client.id}
-	onUpdated={() => invalidateAll()}
+	onUpdated={() => invalidate(`app:client:${client.id}:detail`)}
 />
-

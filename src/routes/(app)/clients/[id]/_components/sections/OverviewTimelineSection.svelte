@@ -9,17 +9,26 @@
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { resolve } from '$app/paths';
 	import type { ClientTimelineItem } from '$lib/mock/client-overview';
 	import { formatOverviewDate } from '../overview-date';
 
 	interface Props {
+		clientId: string;
 		timeline: ClientTimelineItem[];
 	}
 
-	let { timeline }: Props = $props();
+	let { clientId, timeline }: Props = $props();
 
 	const formatDate = (dateString?: string) =>
 		formatOverviewDate(dateString, getLocale(), m.not_available_short());
+
+	const getTimelineHref = (item: ClientTimelineItem) => {
+		if (item.type === 'report') return resolve('/(app)/clients/[id]/reports', { id: clientId });
+		if (item.type === 'evaluation') return resolve('/(app)/clients/[id]/goals', { id: clientId });
+		if (item.type === 'document') return resolve('/(app)/clients/[id]/documents', { id: clientId });
+		return resolve('/(app)/clients/[id]', { id: clientId });
+	};
 </script>
 
 <section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
@@ -61,7 +70,7 @@
 					</div>
 					<p class="text-xs text-text-muted">{item.meta}</p>
 					<a
-						href={item.link}
+						href={getTimelineHref(item)}
 						class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand hover:underline"
 					>
 						{m.view_details()}

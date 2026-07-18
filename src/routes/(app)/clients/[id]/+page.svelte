@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { OverviewLoadResult } from './overview.shared';
 	import OverviewScreen from './_components/shell/OverviewScreen.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import { invalidate } from '$app/navigation';
 
 	let { data } = $props<{
 		data: {
@@ -15,5 +17,12 @@
 		<div class="h-[420px] animate-pulse rounded-3xl border border-border bg-surface"></div>
 	</div>
 {:then result}
-	<OverviewScreen overview={result.overview} />
+	{#if result.overview}
+		<OverviewScreen overview={result.overview} />
+	{:else}
+		<InlineErrorBanner
+			message={result.loadError ?? 'Failed to load client overview.'}
+			onRetry={() => invalidate(`app:client:${data.clientId}:detail`)}
+		/>
+	{/if}
 {/await}

@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { Calendar, Clock3, HandCoins, ShieldCheck, ScrollText } from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
@@ -53,7 +55,7 @@
 		}).format(new Date(date));
 
 	const buildQuery = (nextPage: number, nextPageSize: number) => {
-		const searchParams = new URLSearchParams();
+		const searchParams = new SvelteURLSearchParams();
 		searchParams.set('page', String(nextPage));
 		searchParams.set('page_size', String(nextPageSize));
 		return searchParams.toString();
@@ -62,7 +64,13 @@
 	const updatePage = (nextPage: number) => {
 		const query = buildQuery(nextPage, initial.pageSize);
 		if (page.url.searchParams.toString() === query) return;
-		goto(`?${query}`, { replaceState: true, keepFocus: true, noScroll: true });
+		// The query string is constructed separately so pagination remains in the URL.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		goto(resolve('/(app)/clients/[id]/contracts', { id: page.params.id ?? '' }) + `?${query}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 </script>
 

@@ -19,15 +19,17 @@ const toPositiveInt = (value: string | null, fallback: number) => {
 	return parsed;
 };
 
-export const load: PageLoad = ({ params, url }) => {
+export const load: PageLoad = ({ params, url, fetch, depends }) => {
 	const page = toPositiveInt(url.searchParams.get('page'), 1);
 	const requestedPageSize = toPositiveInt(url.searchParams.get('page_size'), 10);
 	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
+	depends(`app:client:${params.id}:contracts`);
 
 	const contractsData: Promise<ClientContractsLoadResult> = listClientContracts(
 		params.id,
 		page,
-		pageSize
+		pageSize,
+		{ fetchFn: fetch }
 	)
 		.then((response) => ({
 			rows: response.data.results,

@@ -28,5 +28,5 @@
 		<OverviewIntakeSection intakeSummary={client.intakeSummary} />
 	</div>
 
-	<OverviewTimelineSection timeline={client.timeline} />
+	<OverviewTimelineSection clientId={client.id} timeline={client.timeline} />
 </div>

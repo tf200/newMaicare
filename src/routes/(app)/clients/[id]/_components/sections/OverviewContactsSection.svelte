@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Mail, Phone, Users } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import CreateEmergencyContactModal from '$lib/components/forms/CreateEmergencyContactModal.svelte';
 	import EmergencyContactsListModal from '$lib/components/modals/EmergencyContactsListModal.svelte';
 	import type { ClientOverviewContact } from '$lib/mock/client-overview';
@@ -112,7 +112,7 @@
 <CreateEmergencyContactModal
 	bind:open={showCreateModal}
 	{clientId}
-	onCreated={() => invalidateAll()}
+	onCreated={() => invalidate(`app:client:${clientId}:detail`)}
 />
 
 <EmergencyContactsListModal bind:open={showListModal} {clientId} />

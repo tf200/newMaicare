@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { Activity, ChevronRight } from 'lucide-svelte';
 	import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
@@ -97,7 +97,7 @@
 		<PutClientInCareForm
 			bind:open={showPutInCareForm}
 			clientId={client.id}
-			onSuccess={() => invalidateAll()}
+			onSuccess={() => invalidate(`app:client:${client.id}:detail`)}
 		/>
 	{/if}
 {/if}

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import type { Component } from 'svelte';
 	import {
 		deleteClientProgressReport,
 		getClientProgressReport,
@@ -34,6 +36,7 @@
 	} from 'lucide-svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
 	import ViewProgressReportModal from '$lib/components/forms/ViewProgressReportModal.svelte';
@@ -44,14 +47,37 @@
 		EmotionalState,
 		UpdateProgressReportRequest
 	} from '$lib/types/api/clients';
+	import type { ClientReportsLoadResult } from './+page';
 
 	let { data } = $props<{
 		data: {
-			reports: ListProgressReportsResponse[];
+			initial: { page: number; pageSize: number; type?: ProgressReportType };
+			reportsData: Promise<ClientReportsLoadResult>;
 			clientId: string;
 			clientName?: string;
 		};
 	}>();
+
+	let reportsData = $state.raw<ClientReportsLoadResult>({
+		reports: [],
+		pagination: { page: 1, pageSize: 10, count: 0 },
+		loadError: null
+	});
+	let reportsLoading = $state(true);
+
+	$effect(() => {
+		let cancelled = false;
+		reportsLoading = true;
+		void data.reportsData.then((nextReportsData: ClientReportsLoadResult) => {
+			if (cancelled) return;
+			reportsData = nextReportsData;
+			reportsLoading = false;
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	let searchQuery = $state('');
 
@@ -68,7 +94,8 @@
 		};
 	});
 
-	let activeFilters = $state<Record<string, any>>({});
+	type ReportFilters = Record<string, boolean | string | number | undefined>;
+	let activeFilters = $state<ReportFilters>({});
 	let isCreateModalOpen = $state(false);
 	let isViewModalOpen = $state(false);
 	let selectedReportId = $state<string | null>(null);
@@ -78,6 +105,11 @@
 	let reportActionLoading = $state(false);
 	let viewReportError = $state<string | null>(null);
 	let viewReportAbortController: AbortController | null = null;
+	let viewReportRequestId = 0;
+
+	$effect(() => {
+		return () => viewReportAbortController?.abort();
+	});
 
 	const openReport = async (reportId: string, editMode = false) => {
 		selectedReportId = reportId;
@@ -89,6 +121,7 @@
 
 		viewReportAbortController?.abort();
 		viewReportAbortController = new AbortController();
+		const requestId = ++viewReportRequestId;
 
 		try {
 			const response = await getClientProgressReport(
@@ -96,12 +129,14 @@
 				reportId,
 				viewReportAbortController.signal
 			);
-			viewReport = response.data;
+			if (requestId === viewReportRequestId) viewReport = response.data;
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'AbortError') return;
-			viewReportError = error instanceof Error ? error.message : 'Failed to load progress report';
+			if (requestId === viewReportRequestId) {
+				viewReportError = error instanceof Error ? error.message : 'Failed to load progress report';
+			}
 		} finally {
-			viewReportLoading = false;
+			if (requestId === viewReportRequestId) viewReportLoading = false;
 		}
 	};
 
@@ -114,7 +149,7 @@
 		try {
 			const response = await updateClientProgressReport(data.clientId, selectedReportId, payload);
 			viewReport = response.data;
-			await invalidateAll();
+			await invalidate(`app:client:${data.clientId}:reports`);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update progress report';
 			viewReportError = message;
@@ -137,7 +172,7 @@
 				selectedReportId = null;
 				viewReport = null;
 			}
-			await invalidateAll();
+			await invalidate(`app:client:${data.clientId}:reports`);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete progress report';
 			if (selectedReportId === reportId) {
@@ -151,7 +186,10 @@
 		}
 	};
 
-	const typeMeta: Record<ProgressReportType, { label: string; icon: any; className: string }> = {
+	const typeMeta: Record<
+		ProgressReportType,
+		{ label: string; icon: Component; className: string }
+	> = {
 		morning_report: {
 			label: m.morning_report(),
 			icon: Sun,
@@ -214,7 +252,7 @@
 
 	const emotionalStateMeta: Record<
 		EmotionalState,
-		{ label: string; icon: any; colorClass: string; bgClass: string }
+		{ label: string; icon: Component; colorClass: string; bgClass: string }
 	> = {
 		normal: {
 			label: m.normal(),
@@ -270,7 +308,7 @@
 	];
 
 	const filteredReports = $derived(
-		data.reports.filter((report: ListProgressReportsResponse) => {
+		reportsData.reports.filter((report: ListProgressReportsResponse) => {
 			const matchesSearch =
 				searchQuery === '' ||
 				(report.title?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
@@ -442,10 +480,34 @@
 		</div>
 	</header>
 
+	{#if reportsData.loadError}
+		<InlineErrorBanner
+			message={reportsData.loadError}
+			onRetry={() => invalidate(`app:client:${data.clientId}:reports`)}
+		/>
+	{/if}
+
 	<DataTable
 		{columns}
 		rows={filteredReports}
-		pagination={false}
+		loading={reportsLoading}
+		pagination={{
+			mode: 'server',
+			page: reportsData.pagination.page,
+			pageSize: reportsData.pagination.pageSize,
+			totalCount: reportsData.pagination.count,
+			onPageChange: (nextPage) =>
+				goto(
+					// eslint-disable-next-line svelte/no-navigation-without-resolve
+					resolve('/(app)/clients/[id]/reports', { id: data.clientId }) +
+						`?page=${nextPage}&page_size=${reportsData.pagination.pageSize}`,
+					{
+						replaceState: true,
+						keepFocus: true,
+						noScroll: true
+					}
+				)
+		}}
 		title={m.reports_history()}
 		description={m.reports_history_description()}
 		filters={tableFilters}
@@ -471,7 +533,7 @@
 
 			<div class="mt-6 flex flex-wrap gap-3">
 				{#each Object.entries(emotionalStateMeta) as [key, meta] (key)}
-					{@const count = data.reports.filter(
+					{@const count = reportsData.reports.filter(
 						(r: ListProgressReportsResponse) => r.emotional_state === key
 					).length}
 					{#if count > 0}
@@ -502,7 +564,7 @@
 
 			<div class="mt-6 space-y-3">
 				{#each Object.entries(typeMeta) as [key, meta] (key)}
-					{@const count = data.reports.filter(
+					{@const count = reportsData.reports.filter(
 						(r: ListProgressReportsResponse) => r.type === key
 					).length}
 					{#if count > 0}
@@ -512,7 +574,7 @@
 								<div class="h-1.5 w-32 overflow-hidden rounded-full bg-border">
 									<div
 										class="h-full bg-brand"
-										style="width: {(count / data.reports.length) * 100}%"
+										style="width: {(count / reportsData.reports.length) * 100}%"
 									></div>
 								</div>
 								<span class="text-xs font-bold text-text">{count}</span>
@@ -528,7 +590,7 @@
 		bind:open={isCreateModalOpen}
 		preselectedClientId={data.clientId}
 		onCreated={async () => {
-			await invalidateAll();
+			await invalidate(`app:client:${data.clientId}:reports`);
 		}}
 	/>
 

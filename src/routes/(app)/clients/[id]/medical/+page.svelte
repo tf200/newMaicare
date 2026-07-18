@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
@@ -173,21 +173,21 @@
 	const formatStatusLabel = (value: string) => value.replace('_', ' ');
 
 	const handleDiagnosisCreated = async () => {
-		await invalidateAll();
+		await invalidate(`app:client:${page.params.id}:medical`);
 	};
 
 	const handleDiagnosisUpdated = async () => {
 		selectedDiagnosisId = null;
-		await invalidateAll();
+		await invalidate(`app:client:${page.params.id}:medical`);
 	};
 
 	const handleMedicationCreated = async () => {
-		await invalidateAll();
+		await invalidate(`app:client:${page.params.id}:medical`);
 	};
 
 	const handleMedicationUpdated = async () => {
 		selectedMedicationOrderId = null;
-		await invalidateAll();
+		await invalidate(`app:client:${page.params.id}:medical`);
 	};
 
 	const handleMedicationEdit = (orderId: string) => {
@@ -482,7 +482,10 @@
 		</div>
 
 		{#if medicalOverviewData.loadError}
-			<InlineErrorBanner message={medicalOverviewData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={medicalOverviewData.loadError}
+				onRetry={() => invalidate(`app:client:${page.params.id}:medical`)}
+			/>
 		{/if}
 
 		<DataTable

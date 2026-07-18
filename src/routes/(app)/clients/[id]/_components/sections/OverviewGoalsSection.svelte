@@ -2,6 +2,7 @@
 	import { Target } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages';
 	import type { ClientOverviewGoal } from '$lib/mock/client-overview';
 
@@ -31,7 +32,7 @@
 			</h3>
 		</div>
 		<button
-			onclick={() => goto(`/clients/${page.params.id}/goals`)}
+			onclick={() => goto(resolve('/(app)/clients/[id]/goals', { id: page.params.id ?? '' }))}
 			class="text-xs font-bold text-brand transition hover:underline">{m.view_all()}</button
 		>
 	</div>

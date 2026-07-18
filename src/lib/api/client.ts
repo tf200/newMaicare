@@ -4,7 +4,7 @@ import { browser } from '$app/environment';
 import { resolve } from '$app/paths';
 import type { ApiEnvelope, ApiErrorEnvelope, RefreshTokenData } from '$lib/types/api';
 
-type FetchOptions = RequestInit & {
+export type ApiRequestOptions = RequestInit & {
 	requiresAuth?: boolean;
 	fetchFn?: typeof fetch;
 };
@@ -90,7 +90,11 @@ class ApiClient {
 		}
 	}
 
-	async request<T>(endpoint: string, options: FetchOptions = {}, hasRetried = false): Promise<T> {
+	async request<T>(
+		endpoint: string,
+		options: ApiRequestOptions = {},
+		hasRetried = false
+	): Promise<T> {
 		const { requiresAuth = true, fetchFn = fetch, ...fetchOptions } = options;
 		const url = `${this.baseUrl}${endpoint}`;
 
@@ -127,7 +131,7 @@ class ApiClient {
 						try {
 							await this.refreshPromise;
 							return this.request<T>(endpoint, options, true);
-						} catch (error) {
+						} catch {
 							this.clearAuth();
 							await goto(resolve('/(auth)/login'));
 							throw new Error('Unauthorized');
@@ -188,11 +192,11 @@ class ApiClient {
 		return new ApiClientError(message, status, { code, details });
 	}
 
-	get<T>(endpoint: string, options?: FetchOptions) {
+	get<T>(endpoint: string, options?: ApiRequestOptions) {
 		return this.request<T>(endpoint, { ...options, method: 'GET' });
 	}
 
-	post<T>(endpoint: string, body: unknown, options?: FetchOptions) {
+	post<T>(endpoint: string, body: unknown, options?: ApiRequestOptions) {
 		return this.request<T>(endpoint, {
 			...options,
 			method: 'POST',
@@ -200,7 +204,7 @@ class ApiClient {
 		});
 	}
 
-	put<T>(endpoint: string, body: unknown, options?: FetchOptions) {
+	put<T>(endpoint: string, body: unknown, options?: ApiRequestOptions) {
 		return this.request<T>(endpoint, {
 			...options,
 			method: 'PUT',
@@ -208,7 +212,7 @@ class ApiClient {
 		});
 	}
 
-	patch<T>(endpoint: string, body: unknown, options?: FetchOptions) {
+	patch<T>(endpoint: string, body: unknown, options?: ApiRequestOptions) {
 		return this.request<T>(endpoint, {
 			...options,
 			method: 'PATCH',
@@ -216,13 +220,13 @@ class ApiClient {
 		});
 	}
 
-	delete<T>(endpoint: string, options?: FetchOptions) {
+	delete<T>(endpoint: string, options?: ApiRequestOptions) {
 		return this.request<T>(endpoint, { ...options, method: 'DELETE' });
 	}
 
 	async requestBlob(
 		endpoint: string,
-		options: FetchOptions = {},
+		options: ApiRequestOptions = {},
 		hasRetried = false
 	): Promise<BlobResponse> {
 		const { requiresAuth = true, fetchFn = fetch, ...fetchOptions } = options;
@@ -257,7 +261,7 @@ class ApiClient {
 						try {
 							await this.refreshPromise;
 							return this.requestBlob(endpoint, options, true);
-						} catch (error) {
+						} catch {
 							this.clearAuth();
 							await goto(resolve('/(auth)/login'));
 							throw new Error('Unauthorized');
@@ -315,7 +319,7 @@ class ApiClient {
 		}
 	}
 
-	postBlob(endpoint: string, options?: FetchOptions) {
+	postBlob(endpoint: string, options?: ApiRequestOptions) {
 		return this.requestBlob(endpoint, { ...options, method: 'POST' });
 	}
 }

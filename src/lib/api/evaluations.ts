@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	PaginatedResponse,
@@ -74,17 +74,22 @@ export function getGoalEvaluation(evaluationId: string) {
 	return api.get<ApiEnvelope<GoalEvaluationResponse>>(`/evaluations/${evaluationId}`);
 }
 
-export function getClientGoals(clientId: string) {
-	return api.get<ApiEnvelope<ClientGoalsOverviewResponse>>(`/clients/${clientId}/goals`);
+export function getClientGoals(clientId: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<ClientGoalsOverviewResponse>>(`/clients/${clientId}/goals`, options);
 }
 
-export function listClientSubmittedEvaluations(clientId: string, params: ListEvaluationsParams) {
+export function listClientSubmittedEvaluations(
+	clientId: string,
+	params: ListEvaluationsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.pageSize));
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListClientSubmittedEvaluationsResponse>>>(
-		`/clients/${clientId}/evaluations/submitted?${searchParams.toString()}`
+		`/clients/${clientId}/evaluations/submitted?${searchParams.toString()}`,
+		options
 	);
 }
 

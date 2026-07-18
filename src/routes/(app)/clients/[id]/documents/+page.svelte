@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import {
 		generateClientAppointmentCardDocument,
@@ -231,7 +231,7 @@
 			await upsertClientAppointmentCard(clientId, toPayload(draftText));
 			isEditing = false;
 			generationMessage = m.appointment_card_saved();
-			await invalidateAll();
+			await invalidate(`app:client:${clientId}:appointment-card`);
 		} catch (error) {
 			saveError = error instanceof Error ? error.message : m.failed_save_appointment_card();
 		} finally {
@@ -347,7 +347,10 @@
 		</header>
 
 		{#if appointmentCardData.loadError}
-			<InlineErrorBanner message={appointmentCardData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={appointmentCardData.loadError}
+				onRetry={() => invalidate(`app:client:${appointmentCard.client_id}:appointment-card`)}
+			/>
 		{/if}
 
 		{#if saveError}
@@ -418,7 +421,9 @@
 								<li
 									class="rounded-xl px-3 py-2 text-sm text-text"
 									style="background: color-mix(in srgb, {accentVar} 8%, transparent)"
-								>{item}</li>
+								>
+									{item}
+								</li>
 							{/each}
 						</ul>
 					{:else}

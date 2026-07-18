@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { SvelteURL, SvelteURLSearchParams } from 'svelte/reactivity';
+	import { goto, invalidate } from '$app/navigation';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import {
 		Target,
 		CalendarClock,
@@ -101,7 +102,11 @@
 	};
 
 	const handleEvaluationSaved = async () => {
-		await invalidateAll();
+		await Promise.all([
+			invalidate(`app:client:${page.params.id}:goals`),
+			invalidate(`app:client:${page.params.id}:evaluation-history`),
+			invalidate(`app:client:${page.params.id}:detail`)
+		]);
 	};
 
 	const initial = $derived(data.initial);
@@ -168,10 +173,13 @@
 	const updateHistoryPage = (nextPage: number) => {
 		const query = buildQuery(nextPage, initial.pageSize);
 		if (page.url.searchParams.toString() === query) return;
-		const nextUrl = new SvelteURL(page.url);
-		nextUrl.search = query;
-		window.history.replaceState(window.history.state, '', nextUrl);
-		void invalidateAll();
+		// The query string is constructed separately so pagination remains in the URL.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(resolve('/(app)/clients/[id]/goals', { id: page.params.id ?? '' }) + `?${query}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 </script>
 
@@ -590,7 +598,10 @@
 	clientId={page.params.id ?? ''}
 	onSave={async (goal: CreateGoalRequest) => {
 		await createClientGoal(page.params.id ?? '', goal);
-		await invalidateAll();
+		await Promise.all([
+			invalidate(`app:client:${page.params.id}:goals`),
+			invalidate(`app:client:${page.params.id}:detail`)
+		]);
 	}}
 	onGenerate={async (topicId: string) => {
 		const res = await generateClientGoalSuggestion(page.params.id ?? '', topicId);
@@ -605,7 +616,10 @@
 		goal={selectedGoalToEdit}
 		onSave={async (goalId: string, data: UpdateClientGoalRequest) => {
 			await updateClientGoal(page.params.id ?? '', goalId, data);
-			await invalidateAll();
+			await Promise.all([
+				invalidate(`app:client:${page.params.id}:goals`),
+				invalidate(`app:client:${page.params.id}:detail`)
+			]);
 		}}
 		onCancel={() => (updateGoalModalOpen = false)}
 	/>

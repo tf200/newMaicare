@@ -54,14 +54,16 @@ function getDaysLeft(dateValue: string | null): number | null {
 	return Math.max(0, Math.ceil((dueDate.getTime() - today.getTime()) / DAY_IN_MS));
 }
 
-export const load: PageLoad = ({ params, url }) => {
+export const load: PageLoad = ({ params, url, fetch, depends }) => {
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const pageSize = Math.max(
 		1,
 		Number(url.searchParams.get('page_size') ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE
 	);
+	depends(`app:client:${params.id}:goals`);
+	depends(`app:client:${params.id}:evaluation-history`);
 
-	const goalsRequest = getClientGoals(params.id)
+	const goalsRequest = getClientGoals(params.id, { fetchFn: fetch })
 		.then((res) => ({
 			payload: {
 				next_evaluation_date: res.data.next_evaluation_date,
@@ -95,7 +97,11 @@ export const load: PageLoad = ({ params, url }) => {
 			error: error instanceof Error ? error.message : 'Failed to load client goals.'
 		}));
 
-	const historyRequest = listClientSubmittedEvaluations(params.id, { page, pageSize })
+	const historyRequest = listClientSubmittedEvaluations(
+		params.id,
+		{ page, pageSize },
+		{ fetchFn: fetch }
+	)
 		.then((res) => ({
 			payload: {
 				history: res.data.results,

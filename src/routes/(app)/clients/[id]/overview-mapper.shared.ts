@@ -128,12 +128,16 @@ export const buildQuickLinks = (
 	counts: GetClientResponse['counts'],
 	overrides?: Partial<Record<ClientOverviewData['quickLinks'][number]['label'], number>>
 ): ClientOverviewData['quickLinks'] => [
-	{ label: 'Contracts', count: overrides?.Contracts ?? counts.contracts, href: '#' },
-	{ label: 'Incidents', count: counts.incidents, href: '#' },
-	{ label: 'Reports', count: counts.reports, href: '#' },
-	{ label: 'Evaluations', count: counts.evaluations, href: '#' },
-	{ label: 'Documents', count: counts.documents, href: '#' },
-	{ label: 'Appointments', count: overrides?.Appointments ?? counts.appointments, href: '#' }
+	{ label: 'Contracts', count: overrides?.Contracts ?? counts.contracts, href: 'contracts' },
+	{ label: 'Incidents', count: counts.incidents, href: 'overview' },
+	{ label: 'Reports', count: counts.reports, href: 'reports' },
+	{ label: 'Evaluations', count: counts.evaluations, href: 'goals' },
+	{ label: 'Documents', count: counts.documents, href: 'documents' },
+	{
+		label: 'Appointments',
+		count: overrides?.Appointments ?? counts.appointments,
+		href: 'documents'
+	}
 ];
 
 export const buildContractSummary = (

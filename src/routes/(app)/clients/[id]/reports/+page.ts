@@ -28,27 +28,42 @@ const parseReportType = (value: string | null): ProgressReportType | undefined =
 	return undefined;
 };
 
-export const load: PageLoad = async ({ params, url }) => {
+export interface ClientReportsLoadResult {
+	reports: ListProgressReportsResponse[];
+	pagination: {
+		page: number;
+		pageSize: number;
+		count: number;
+	};
+	loadError: string | null;
+}
+
+export const load: PageLoad = ({ params, url, fetch, depends }) => {
 	const page = toPositiveInt(url.searchParams.get('page'), 1);
 	const requestedPageSize = toPositiveInt(url.searchParams.get('page_size'), 10);
 	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
 	const type = parseReportType(url.searchParams.get('type'));
+	depends(`app:client:${params.id}:reports`);
 
-	let reports: ListProgressReportsResponse[] = [];
-
-	try {
-		const response = await listClientProgressReports(params.id, {
-			page,
-			page_size: pageSize,
-			type
-		});
-		reports = response.data.results;
-	} catch (error) {
-		console.error('Failed to load progress reports:', error);
-	}
+	const reportsData: Promise<ClientReportsLoadResult> = listClientProgressReports(
+		params.id,
+		{ page, page_size: pageSize, type },
+		{ fetchFn: fetch }
+	)
+		.then((response) => ({
+			reports: response.data.results,
+			pagination: { page, pageSize: response.data.page_size, count: response.data.count },
+			loadError: null
+		}))
+		.catch((error) => ({
+			reports: [],
+			pagination: { page, pageSize, count: 0 },
+			loadError: error instanceof Error ? error.message : 'Failed to load progress reports.'
+		}));
 
 	return {
-		reports,
+		initial: { page, pageSize, type },
+		reportsData,
 		clientId: params.id
 	};
 };

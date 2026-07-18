@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { sidebarState } from '$lib/state/sidebar.svelte';
-	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import {
 		HeartPulse,
 		LayoutDashboard,
@@ -14,45 +14,52 @@
 	let { data, children } = $props();
 
 	$effect(() => {
-		const clientId = page.params.id;
-		sidebarState.setScopedSidebar(
-			[
-				{
-					label: m.overview(),
-					href: `/clients/${clientId}`,
-					icon: LayoutDashboard
-				},
-				{
-					label: 'Medical Dossier',
-					href: `/clients/${clientId}/medical`,
-					icon: HeartPulse
-				},
-				{
-					label: 'Appointment Card',
-					href: `/clients/${clientId}/documents`,
-					icon: CalendarCheck
-				},
-				{
-					label: 'Goals',
-					href: `/clients/${clientId}/goals`,
-					icon: Target
-				},
-				{
-					label: 'Reports',
-					href: `/clients/${clientId}/reports`,
-					icon: FileBarChart
-				},
-				{
-					label: 'Contracts',
-					href: `/clients/${clientId}/contracts`,
-					icon: ScrollText
-				}
-			],
-			data.clientName,
-			data.clientInitials
-		);
+		const clientId = data.clientId;
+		let disposed = false;
+
+		void data.clientData.then((client) => {
+			if (disposed) return;
+
+			sidebarState.setScopedSidebar(
+				[
+					{
+						label: m.overview(),
+						href: resolve('/(app)/clients/[id]', { id: clientId }),
+						icon: LayoutDashboard
+					},
+					{
+						label: m.medical_dossier(),
+						href: resolve('/(app)/clients/[id]/medical', { id: clientId }),
+						icon: HeartPulse
+					},
+					{
+						label: m.appointment_card(),
+						href: resolve('/(app)/clients/[id]/documents', { id: clientId }),
+						icon: CalendarCheck
+					},
+					{
+						label: m.goals(),
+						href: resolve('/(app)/clients/[id]/goals', { id: clientId }),
+						icon: Target
+					},
+					{
+						label: m.progress_reports(),
+						href: resolve('/(app)/clients/[id]/reports', { id: clientId }),
+						icon: FileBarChart
+					},
+					{
+						label: m.contracts(),
+						href: resolve('/(app)/clients/[id]/contracts', { id: clientId }),
+						icon: ScrollText
+					}
+				],
+				client.clientName,
+				client.clientInitials
+			);
+		});
 
 		return () => {
+			disposed = true;
 			sidebarState.clearScopedSidebar();
 		};
 	});

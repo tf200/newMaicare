@@ -7,9 +7,11 @@ export interface ClientMedicalOverviewLoadResult {
 	loadError: string | null;
 }
 
-export const load: PageLoad = ({ params }) => {
+export const load: PageLoad = ({ params, fetch, depends }) => {
+	depends(`app:client:${params.id}:medical`);
 	const medicalOverviewData: Promise<ClientMedicalOverviewLoadResult> = getClientMedicalOverview(
-		params.id
+		params.id,
+		{ fetchFn: fetch }
 	)
 		.then((response) => ({
 			overview: response.data,

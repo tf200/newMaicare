@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	ListClientsData,
@@ -70,8 +70,8 @@ export function getWaitingListStats() {
 	return api.get<ApiEnvelope<WaitingListStatsResponse>>('/clients/waiting-list/stats');
 }
 
-export function getClientById(id: string) {
-	return api.get<ApiEnvelope<GetClientResponse>>(`/clients/${id}`);
+export function getClientById(id: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<GetClientResponse>>(`/clients/${id}`, options);
 }
 
 export function putClientInCare(id: string, payload: PutClientInCareRequest) {
@@ -142,18 +142,27 @@ export function getClientStatusCounts() {
 	return api.get<ApiEnvelope<ClientStatusCountsResponse>>('/clients/status-counts');
 }
 
-export function listClientContracts(id: string, page: number, pageSize: number) {
+export function listClientContracts(
+	id: string,
+	page: number,
+	pageSize: number,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(page));
 	searchParams.set('page_size', String(pageSize));
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListClientContractsResponse>>>(
-		`/clients/${id}/contracts?${searchParams.toString()}`
+		`/clients/${id}/contracts?${searchParams.toString()}`,
+		options
 	);
 }
 
-export function getClientAppointmentCard(id: string) {
-	return api.get<ApiEnvelope<GetAppointmentCardResponse>>(`/clients/${id}/appointment_cards`);
+export function getClientAppointmentCard(id: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<GetAppointmentCardResponse>>(
+		`/clients/${id}/appointment_cards`,
+		options
+	);
 }
 
 export function upsertClientAppointmentCard(id: string, payload: UpdateAppointmentCardRequest) {
@@ -164,8 +173,11 @@ export function generateClientAppointmentCardDocument(id: string) {
 	return api.postBlob(`/clients/${id}/appointment_cards/generate_document`);
 }
 
-export function getClientMedicalOverview(id: string) {
-	return api.get<ApiEnvelope<GetClientMedicalOverviewResponse>>(`/clients/${id}/medical/overview`);
+export function getClientMedicalOverview(id: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<GetClientMedicalOverviewResponse>>(
+		`/clients/${id}/medical/overview`,
+		options
+	);
 }
 
 export function createClientDiagnosis(id: string, payload: CreateClientDiagnosisRequest) {
@@ -219,7 +231,11 @@ export function updateClientMedicationOrder(
 	);
 }
 
-export function listClientProgressReports(id: string, params: ListProgressReportsParams) {
+export function listClientProgressReports(
+	id: string,
+	params: ListProgressReportsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.page_size));
@@ -229,7 +245,8 @@ export function listClientProgressReports(id: string, params: ListProgressReport
 	}
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListProgressReportsResponse>>>(
-		`/clients/${id}/progress_reports?${searchParams.toString()}`
+		`/clients/${id}/progress_reports?${searchParams.toString()}`,
+		options
 	);
 }
 

@@ -7,7 +7,7 @@ export interface ClientOverviewViewModel {
 }
 
 export interface OverviewLoadResult {
-	overview: ClientOverviewViewModel;
+	overview: ClientOverviewViewModel | null;
 	loadError: string | null;
 }
 
