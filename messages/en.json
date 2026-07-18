@@ -1764,5 +1764,15 @@
     "dashboard_quick_start_view_reports_desc": "Check progress reports and evaluation status.",
     "tooltip_learn_more": "Learn more",
     "tooltip_dismiss": "Got it",
-    "tooltip_dont_show": "Don't show again"
+    "tooltip_dont_show": "Don't show again",
+    "reset_password": "Reset Password",
+    "reset_password_description": "Set a new secure password for {name}.",
+    "password_required": "Password is required.",
+    "password_min_length": "Password must be at least 8 characters long.",
+    "password_reset_success": "Password reset successfully.",
+    "password_reset_success_desc": "Please copy this new password and provide it securely to the employee. They will need it to log in.",
+    "generate": "Generate",
+    "resetting": "Resetting...",
+    "copy": "Copy",
+    "copied": "Copied!"
 }

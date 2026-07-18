@@ -194,3 +194,8 @@ export function getMyScheduleTimeline(params: GetMyScheduleTimelineParams) {
 		`/employees/profile/schedules?${query.toString()}`
 	);
 }
+
+export function resetEmployeePassword(id: string, payload: { new_password: string }) {
+	return api.put<ApiEnvelope<{ message: string }>>(`/employees/${id}/password`, payload);
+}
+

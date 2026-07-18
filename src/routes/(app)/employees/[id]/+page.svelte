@@ -20,8 +20,10 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import EditEmployeeForm from '$lib/components/forms/EditEmployeeForm.svelte';
+	import ResetPasswordModal from '$lib/components/forms/ResetPasswordModal.svelte';
 	import type { EmployeeDetail } from '$lib/api/employees';
 	import type { EmployeeDetailLoadResult } from './+page';
+	import { m } from '$lib/paraglide/messages';
 
 	type DetailItem = {
 		label: string;
@@ -44,6 +46,7 @@
 
 	const employeeDataPromise = $derived.by(() => data.employeeData);
 	let editEmployeeOpen = $state(false);
+	let resetPasswordOpen = $state(false);
 
 	const getFullName = (employee: EmployeeDetail) =>
 		`${employee.first_name} ${employee.last_name}`.trim() || 'Unknown employee';
@@ -177,6 +180,9 @@
 		</a>
 
 		<div class="flex items-center gap-2">
+			<Button variant="ghost" class="text-text-muted hover:text-text" onclick={() => (resetPasswordOpen = true)}>
+				{m.reset_password()}
+			</Button>
 			<Button variant="secondary" onclick={() => (editEmployeeOpen = true)}>Edit employee</Button>
 		</div>
 	</div>
@@ -412,6 +418,18 @@
 				employee={result.employee}
 				onUpdated={() => invalidate('app:employees:detail')}
 			/>
+		{/await}
+	{/if}
+
+	{#if resetPasswordOpen}
+		{#await employeeDataPromise then result}
+			{#if result.employee}
+				<ResetPasswordModal
+					bind:open={resetPasswordOpen}
+					employeeId={result.employee.id}
+					employeeName={getFullName(result.employee)}
+				/>
+			{/if}
 		{/await}
 	{/if}
 </section>

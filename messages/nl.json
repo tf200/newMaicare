@@ -1766,5 +1766,15 @@
     "dashboard_quick_start_view_reports_desc": "Controleer voortgangsrapporten en evaluatiestatus.",
     "tooltip_learn_more": "Meer informatie",
     "tooltip_dismiss": "Begrepen",
-    "tooltip_dont_show": "Niet meer tonen"
+    "tooltip_dont_show": "Niet meer tonen",
+    "reset_password": "Wachtwoord resetten",
+    "reset_password_description": "Stel een nieuw veilig wachtwoord in voor {name}.",
+    "password_required": "Wachtwoord is verplicht.",
+    "password_min_length": "Wachtwoord moet minimaal 8 tekens lang zijn.",
+    "password_reset_success": "Wachtwoord succesvol gereset.",
+    "password_reset_success_desc": "Kopieer dit nieuwe wachtwoord en verstrek het veilig aan de medewerker. Ze hebben het nodig om in te loggen.",
+    "generate": "Genereren",
+    "resetting": "Resetten...",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd!"
 }
