@@ -6,7 +6,8 @@ export interface EmployeeDetailLoadResult {
 	loadError: string | null;
 }
 
-export const load: PageLoad = ({ params }) => {
+export const load: PageLoad = ({ params, depends }) => {
+	depends('app:employees:detail');
 	const employeeData: Promise<EmployeeDetailLoadResult> = getEmployee(params.id)
 		.then((response) => ({
 			employee: response.data,

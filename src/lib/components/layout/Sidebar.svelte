@@ -198,7 +198,7 @@
 				class="flex h-10 w-10 shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
 			>
 				<img
-					src="/logo.webp"
+					src="/maicare-mark.svg"
 					alt="MaiCare"
 					class="h-10 w-10 object-contain brightness-0 invert"
 					loading="eager"
@@ -212,7 +212,10 @@
 				class:w-0={collapsed}
 				class:translate-x-[-10px]={collapsed}
 			>
-				MaiCare<span class="text-white/70">.</span>
+				<span class="block leading-none">MAICARE</span>
+				<span class="mt-1 block text-[0.52rem] font-medium tracking-[0.32em] text-white/70"
+					>SOLUTIONS</span
+				>
 			</span>
 		</button>
 

@@ -67,7 +67,7 @@ export interface EmployeeDetail {
 	role: {
 		id: string;
 		name: string;
-	};
+	} | null;
 }
 
 export type EmployeeGender = 'male' | 'female' | 'not_specified';
@@ -124,6 +124,26 @@ export interface CreateEmployeeResponse {
 	is_archived: boolean;
 }
 
+export interface UpdateEmployeeRequest {
+	first_name?: string;
+	last_name?: string;
+	position?: string;
+	department_id?: string;
+	manager_employee_id?: string;
+	employee_number?: string;
+	employment_number?: string;
+	private_email_address?: string;
+	private_phone_number?: string;
+	work_phone_number?: string;
+	date_of_birth?: string;
+	home_telephone_number?: string;
+	gender?: 'male' | 'female' | 'other' | 'unknown';
+	location_id?: string;
+	has_borrowed?: boolean;
+	out_of_service?: boolean;
+	is_archived?: boolean;
+}
+
 export function listEmployees(params: ListEmployeesParams = {}) {
 	const query = new URLSearchParams();
 	if (params.page != null) query.set('page', String(params.page));
@@ -150,6 +170,10 @@ export function createEmployee(payload: CreateEmployeeRequest) {
 
 export function getEmployee(id: string) {
 	return api.get<ApiEnvelope<EmployeeDetail>>(`/employees/${id}`);
+}
+
+export function updateEmployee(id: string, payload: UpdateEmployeeRequest) {
+	return api.put<ApiEnvelope<EmployeeDetail>>(`/employees/${id}`, payload);
 }
 
 export function getEmployeeProfileDetails() {

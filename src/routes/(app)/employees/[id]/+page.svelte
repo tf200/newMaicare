@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		ArrowLeft,
 		BadgeCheck,
@@ -18,6 +19,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import EditEmployeeForm from '$lib/components/forms/EditEmployeeForm.svelte';
 	import type { EmployeeDetail } from '$lib/api/employees';
 	import type { EmployeeDetailLoadResult } from './+page';
 
@@ -41,6 +43,7 @@
 	}>();
 
 	const employeeDataPromise = $derived.by(() => data.employeeData);
+	let editEmployeeOpen = $state(false);
 
 	const getFullName = (employee: EmployeeDetail) =>
 		`${employee.first_name} ${employee.last_name}`.trim() || 'Unknown employee';
@@ -136,7 +139,7 @@
 				items: [
 					{ label: 'Department', value: employee.department_name ?? 'Not assigned' },
 					{ label: 'Position', value: employee.position ?? 'Not set' },
-					{ label: 'Role', value: employee.role.name },
+					{ label: 'Role', value: employee.role?.name ?? 'Not assigned' },
 					{ label: 'Manager', value: managerName || 'Not assigned' },
 					{ label: 'Employee number', value: employee.employee_number ?? 'Not set' },
 					{ label: 'Employment number', value: employee.employment_number ?? 'Not set' }
@@ -166,7 +169,7 @@
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<a
-			href="/employees"
+			href={resolve('/(app)/employees')}
 			class="inline-flex items-center gap-2 text-sm font-bold text-text-muted transition hover:text-brand"
 		>
 			<ArrowLeft class="h-4 w-4" />
@@ -174,8 +177,7 @@
 		</a>
 
 		<div class="flex items-center gap-2">
-			<Button variant="ghost">Archive</Button>
-			<Button variant="secondary">Edit employee</Button>
+			<Button variant="secondary" onclick={() => (editEmployeeOpen = true)}>Edit employee</Button>
 		</div>
 	</div>
 
@@ -196,7 +198,7 @@
 		{#if result.loadError || !result.employee}
 			<InlineErrorBanner
 				message={result.loadError ?? 'Employee could not be found.'}
-				onRetry={() => invalidateAll()}
+				onRetry={() => invalidate('app:employees:detail')}
 			/>
 		{:else}
 			{@const employee = result.employee}
@@ -232,7 +234,7 @@
 										class="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand"
 									>
 										<ShieldCheck class="h-3.5 w-3.5" />
-										{employee.role.name}
+										{employee.role?.name ?? 'Not assigned'}
 									</span>
 								</div>
 								<div>
@@ -402,4 +404,14 @@
 			</div>
 		{/if}
 	{/await}
+
+	{#if editEmployeeOpen}
+		{#await employeeDataPromise then result}
+			<EditEmployeeForm
+				bind:open={editEmployeeOpen}
+				employee={result.employee}
+				onUpdated={() => invalidate('app:employees:detail')}
+			/>
+		{/await}
+	{/if}
 </section>

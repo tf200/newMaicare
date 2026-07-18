@@ -3,32 +3,32 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-	/* Semantic Colors - Light mode defaults */
-	--color-bg: #fafafa;
+	/* MaiCare blue system - light mode defaults */
+	--color-bg: #f5f8fc;
 	--color-surface: #ffffff;
-	--color-border: #e4e4e7;
-	--color-text: #18181b;
-	--color-text-muted: #71717a;
-	--color-text-subtle: #a1a1aa;
-	--color-brand: #4f46e5;
-	--color-brand-strong: #4338ca;
-	--color-secondary: #ea580c;
-	--color-brand-hover: #3730a3;
+	--color-border: #dce5f0;
+	--color-text: #142343;
+	--color-text-muted: #5f718c;
+	--color-text-subtle: #8b9bb1;
+	--color-brand: #2867a8;
+	--color-brand-strong: #253b80;
+	--color-secondary: #159fd3;
+	--color-brand-hover: #204f8d;
 	--color-success: #10b981;
 	--color-error: #f43f5e;
 	--color-warning: #fbbf24;
-	--color-info: #0891b2;
+	--color-info: #168fc2;
 
 	/* Glassmorphism */
-	--color-glass-surface: rgba(255, 255, 255, 0.8);
-	--color-glass-border: rgba(228, 228, 231, 0.5);
+	--color-glass-surface: rgba(255, 255, 255, 0.84);
+	--color-glass-border: rgba(192, 211, 230, 0.58);
 
 	/* Primary Button */
 	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #ffffff;
 
 	/* Leave Type Colors */
-	--color-leave-vacation: #4f46e5;
+	--color-leave-vacation: #2867a8;
 	--color-leave-sick: #f43f5e;
 	--color-leave-maternity: #ec4899;
 	--color-leave-late: #fbbf24;
@@ -37,44 +37,45 @@
 	--radius-card: 24px;
 	--radius-control: 12px;
 	--radius-pill: 999px;
-	--shadow-card: 0 10px 30px -20px rgba(24, 24, 27, 0.35);
+	--shadow-card: 0 12px 32px -20px rgba(22, 57, 101, 0.28);
 	--font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 /* Dark mode overrides - controlled by JS toggle which respects system preference on init */
 :root.dark {
-	--color-bg: #13131d;
-	--color-surface: #1c1c28;
-	--color-border: #2c2c3a;
-	--color-text: #eeeeee;
-	--color-text-muted: #9d9db0;
-	--color-text-subtle: #6d6d80;
-	--color-brand: #7c7ff7;
-	--color-brand-strong: #9b9efb;
-	--color-secondary: #fb923c;
-	--color-brand-hover: #6366f1;
+	--color-bg: #0b1528;
+	--color-surface: #12213a;
+	--color-border: #263b5a;
+	--color-text: #eef6ff;
+	--color-text-muted: #9fb1c9;
+	--color-text-subtle: #7187a5;
+	--color-brand: #42a9dc;
+	--color-brand-strong: #74c5eb;
+	--color-secondary: #27aae1;
+	--color-brand-hover: #258dc4;
 	--color-success: #34d399;
 	--color-error: #fb7185;
 	--color-warning: #fbbf24;
-	--color-info: #22d3ee;
+	--color-info: #55c7ec;
 
-	--color-glass-surface: rgba(28, 28, 40, 0.75);
-	--color-glass-border: rgba(44, 44, 58, 0.5);
+	--color-glass-surface: rgba(18, 33, 58, 0.78);
+	--color-glass-border: rgba(67, 99, 139, 0.46);
 
 	--color-btn-primary-bg: var(--color-brand);
 	--color-btn-primary-text: #ffffff;
 
 	/* Leave Type Colors - Dark Mode */
-	--color-leave-vacation: #7c7ff7;
+	--color-leave-vacation: #42a9dc;
 	--color-leave-sick: #fb7185;
 	--color-leave-maternity: #f9a8d4;
 	--color-leave-late: #fcd34d;
 
-	--shadow-card: 0 16px 40px -24px rgba(0, 0, 0, 0.7);
+	--shadow-card: 0 16px 40px -24px rgba(0, 8, 24, 0.78);
 }
 
 body {
 	background: var(--color-bg);
+	background-image: radial-gradient(circle at 100% 0%, rgba(39, 170, 225, 0.07), transparent 32rem);
 	color: var(--color-text);
 	font-family: var(--font-sans);
 }
