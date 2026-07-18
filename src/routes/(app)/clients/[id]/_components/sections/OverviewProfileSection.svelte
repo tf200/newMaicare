@@ -17,11 +17,10 @@
 </script>
 
 <div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-	<div class="mb-5 flex items-center justify-between">
+	<div class="mb-5">
 		<h3 class="text-[11px] font-bold tracking-[0.15em] text-text-subtle uppercase">
 			{m.client_profile()}
 		</h3>
-		<button class="text-xs font-bold text-brand">{m.edit()}</button>
 	</div>
 	<div class="space-y-4">
 		<div class="flex items-start gap-3">
@@ -53,10 +52,13 @@
 				<p class="text-sm font-medium text-text">{client.maskedBsn}</p>
 				{#if client.bsnVerifiedByName}
 					<p class="mt-0.5 text-xs text-text-muted">
-						{m.bsn_verified_by()} {client.bsnVerifiedByName}
+						{m.bsn_verified_by()}
+						{client.bsnVerifiedByName}
 					</p>
 				{:else}
-					<p class="mt-0.5 inline-flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-red-500 uppercase dark:bg-red-500/20 dark:text-red-400">
+					<p
+						class="mt-0.5 inline-flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-red-500 uppercase dark:bg-red-500/20 dark:text-red-400"
+					>
 						{m.unverified()}
 					</p>
 				{/if}
