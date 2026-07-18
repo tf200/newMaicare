@@ -497,6 +497,8 @@
     "school_internship_desc": "Education and internship commitments.",
     "travel": "Travel",
     "travel_desc": "Transport permissions and travel routines.",
+    "leave": "Leave",
+    "leave_desc": "Leave permissions and arrangements.",
     "client_care_plan": "Client Care Plan",
     "goals_evaluations": "Goals & Evaluations",
     "goals_evaluations_description": "Monitor progress and review achievements for this care period.",

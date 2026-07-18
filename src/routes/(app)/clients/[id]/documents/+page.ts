@@ -51,26 +51,16 @@ export const load: PageLoad = ({ params }) => {
 	const appointmentCardData: Promise<AppointmentCardLoadResult> = getClientAppointmentCard(
 		params.id
 	)
-		.then((response) => ({
-			appointmentCard: {
-				id: response.data.id,
-				client_id: response.data.client_id,
-				general_information: response.data.general_information,
-				important_contacts: response.data.important_contacts,
-				household_info: response.data.household_info,
-				organization_agreements: response.data.organization_agreements,
-				youth_officer_agreements: response.data.youth_officer_agreements,
-				treatment_agreements: response.data.treatment_agreements,
-				smoking_rules: response.data.smoking_rules,
-				work: response.data.work,
-				school_internship: response.data.school_internship,
-				travel: response.data.travel,
-				leave: response.data.leave,
-				created_at: response.data.created_at,
-				updated_at: response.data.updated_at
-			},
-			loadError: null
-		}))
+		.then((response) => {
+			if (!response.data) {
+				return { appointmentCard: buildEmptyCard(params.id), loadError: null };
+			}
+
+			return {
+				appointmentCard: response.data,
+				loadError: null
+			};
+		})
 		.catch((error) => ({
 			appointmentCard: buildEmptyCard(params.id),
 			loadError: error instanceof Error ? error.message : 'Failed to load appointment card.'
