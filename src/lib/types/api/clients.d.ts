@@ -59,11 +59,7 @@ export interface ListInCareClientsParams {
 }
 
 export type ClientStatus =
-	| 'in_care'
-	| 'on_waiting_list'
-	| 'scheduled_in_care'
-	| 'scheduled_out_of_care'
-	| 'out_of_care';
+	'in_care' | 'on_waiting_list' | 'scheduled_in_care' | 'scheduled_out_of_care' | 'out_of_care';
 
 export interface ListClientsResponse {
 	id: string;
@@ -532,13 +528,7 @@ export type ProgressReportType =
 	| 'other';
 
 export type EmotionalState =
-	| 'normal'
-	| 'excited'
-	| 'happy'
-	| 'sad'
-	| 'angry'
-	| 'anxious'
-	| 'depressed';
+	'normal' | 'excited' | 'happy' | 'sad' | 'angry' | 'anxious' | 'depressed';
 
 export interface ProgressReport {
 	id: string;
@@ -677,6 +667,7 @@ export interface UpdateClientRequest {
 	filenumber?: string | null;
 	sender_id?: string | null;
 	location_id?: string | null;
+	coordinator_employee_id?: string;
 	education_currently_enrolled?: boolean;
 	education_institution?: string | null;
 	education_mentor_name?: string | null;

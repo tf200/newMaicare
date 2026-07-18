@@ -17,7 +17,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { EditClientSchema, type EditClientSchemaInput } from '$lib/schemas/client';
 	import { m } from '$lib/paraglide/messages';
-	import type { GetClientResponse, UpdateClientRequest } from '$lib/types/api';
+	import type { UpdateClientRequest } from '$lib/types/api';
 
 	interface Props {
 		open?: boolean;
@@ -30,6 +30,7 @@
 	let errorMessage = $state('');
 	let isLoadingData = $state(false);
 	let initializedId = $state<string | null>(null);
+	let coordinatorName = $state('');
 	const formId = 'edit-client-form';
 
 	const { form, errors, enhance, delayed, reset } = superForm(
@@ -48,6 +49,7 @@
 				filenumber: '',
 				sender_id: '',
 				location_id: '',
+				coordinator_employee_id: '',
 				education_currently_enrolled: false,
 				education_institution: '',
 				education_mentor_name: '',
@@ -89,6 +91,7 @@
 							filenumber: trimToUndefined(form.data.filenumber) ?? null,
 							sender_id: trimToUndefined(form.data.sender_id) ?? null,
 							location_id: trimToUndefined(form.data.location_id) ?? null,
+							coordinator_employee_id: trimToUndefined(form.data.coordinator_employee_id),
 							education_currently_enrolled: form.data.education_currently_enrolled,
 							education_institution: trimToUndefined(form.data.education_institution) ?? null,
 							education_mentor_name: trimToUndefined(form.data.education_mentor_name) ?? null,
@@ -149,13 +152,15 @@
 				filenumber: String(data.client.file_number ?? ''),
 				sender_id: '',
 				location_id: data.client.location?.id ?? '',
+				coordinator_employee_id: data.coordinator?.employee_id ?? '',
 				education_currently_enrolled: data.client.education?.currently_enrolled ?? false,
 				education_institution: data.client.education?.institution ?? '',
 				education_mentor_name: data.client.education?.mentor_name ?? '',
 				education_mentor_phone: data.client.education?.mentor_phone ?? '',
 				education_mentor_email: data.client.education?.mentor_email ?? '',
 				education_additional_notes: data.client.education?.additional_notes ?? '',
-				education_level: (data.client.education?.level as EditClientSchemaInput['education_level']) ?? 'none',
+				education_level:
+					(data.client.education?.level as EditClientSchemaInput['education_level']) ?? 'none',
 				work_currently_employed: data.client.work?.currently_employed ?? false,
 				work_current_employer: data.client.work?.current_employer ?? '',
 				work_employer_phone: data.client.work?.employer_phone ?? '',
@@ -164,6 +169,8 @@
 				work_start_date: toDateInput(data.client.work?.start_date),
 				work_additional_notes: data.client.work?.additional_notes ?? ''
 			};
+			coordinatorName =
+				`${data.coordinator?.first_name ?? ''} ${data.coordinator?.last_name ?? ''}`.trim();
 
 			reset({ data: initialData });
 			initializedId = clientId;
@@ -183,6 +190,7 @@
 	const handleCancel = () => {
 		errorMessage = '';
 		initializedId = null;
+		coordinatorName = '';
 		open = false;
 	};
 
@@ -216,7 +224,13 @@
 	};
 
 	const loadEmployees = async (query: string) => {
-		const res = await listEmployees({ search: query, page: 1, pageSize: 50 });
+		const res = await listEmployees({
+			search: query,
+			page: 1,
+			pageSize: 50,
+			isArchived: false,
+			outOfService: false
+		});
 		return res.data.results.map((emp) => ({
 			label: `${emp.first_name} ${emp.last_name}`.trim(),
 			value: emp.id
@@ -224,18 +238,11 @@
 	};
 </script>
 
-<Modal
-	bind:open
-	title={m.edit_client_title()}
-	description={m.edit_client_description()}
-	size="2xl"
->
+<Modal bind:open title={m.edit_client_title()} description={m.edit_client_description()} size="2xl">
 	{#if isLoadingData}
 		<div class="flex items-center justify-center py-16">
 			<div class="flex flex-col items-center gap-3">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-brand"
-				></div>
+				<div class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-brand"></div>
 				<p class="text-sm text-text-muted">{m.loading()}</p>
 			</div>
 		</div>
@@ -308,15 +315,8 @@
 						bind:value={$form.filenumber}
 						error={formatFormError($errors.filenumber)}
 					/>
-					<Input
-						label={m.bsn()}
-						bind:value={$form.bsn}
-						error={formatFormError($errors.bsn)}
-					/>
-					<Checkbox
-						label={m.identity_verified()}
-						bind:checked={$form.identity}
-					/>
+					<Input label={m.bsn()} bind:value={$form.bsn} error={formatFormError($errors.bsn)} />
+					<Checkbox label={m.identity_verified()} bind:checked={$form.identity} />
 					{#if $form.identity}
 						<SearchSelect
 							label={m.bsn_verified_by()}
@@ -346,14 +346,20 @@
 						bind:value={$form.sender_id}
 						placeholder={m.search_sender_placeholder()}
 					/>
+					<SearchSelect
+						label={m.main_coordinator()}
+						loadOptions={loadEmployees}
+						bind:value={$form.coordinator_employee_id}
+						bind:displayValue={coordinatorName}
+						placeholder={m.select_coordinator()}
+						searchPlaceholder={m.search_employees()}
+					/>
 				</div>
 			</section>
 
 			<!-- Education -->
 			<section class="space-y-4">
-				<h3
-					class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase"
-				>
+				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
 					{m.education_section()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -405,16 +411,11 @@
 
 			<!-- Work -->
 			<section class="space-y-4">
-				<h3
-					class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase"
-				>
+				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
 					{m.work_section()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-					<Checkbox
-						label={m.currently_employed()}
-						bind:checked={$form.work_currently_employed}
-					/>
+					<Checkbox label={m.currently_employed()} bind:checked={$form.work_currently_employed} />
 					{#if $form.work_currently_employed}
 						<div></div>
 						<Input

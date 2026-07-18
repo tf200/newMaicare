@@ -2,7 +2,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { goto, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { Component } from 'svelte';
 	import {
 		deleteClientProgressReport,
 		getClientProgressReport,
@@ -188,7 +187,7 @@
 
 	const typeMeta: Record<
 		ProgressReportType,
-		{ label: string; icon: Component; className: string }
+		{ label: string; icon: typeof Sun; className: string }
 	> = {
 		morning_report: {
 			label: m.morning_report(),
@@ -252,7 +251,7 @@
 
 	const emotionalStateMeta: Record<
 		EmotionalState,
-		{ label: string; icon: Component; colorClass: string; bgClass: string }
+		{ label: string; icon: typeof Sun; colorClass: string; bgClass: string }
 	> = {
 		normal: {
 			label: m.normal(),
@@ -323,9 +322,10 @@
 			const matchesType = activeTypes.length === 0 || activeTypes.includes(report.type);
 
 			const reportDate = new Date(report.date);
-			const matchesDateFrom =
-				!activeFilters.date_from || reportDate >= new Date(activeFilters.date_from);
-			const matchesDateTo = !activeFilters.date_to || reportDate <= new Date(activeFilters.date_to);
+			const dateFrom = activeFilters.date_from;
+			const dateTo = activeFilters.date_to;
+			const matchesDateFrom = typeof dateFrom !== 'string' || reportDate >= new Date(dateFrom);
+			const matchesDateTo = typeof dateTo !== 'string' || reportDate <= new Date(dateTo);
 
 			return matchesSearch && matchesType && matchesDateFrom && matchesDateTo;
 		})
