@@ -114,39 +114,41 @@
 							id="password"
 							bind:value={password}
 							placeholder={m.login_password_placeholder()}
+							class="pr-12"
 							required
-						/>
-						<button
-							type="button"
-							onclick={() => (showPassword = !showPassword)}
-							class="absolute top-[46px] right-3 p-1.5 text-text-subtle transition-colors hover:text-text"
 						>
-							{#if showPassword}
-								<svg
-									class="h-5 w-5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									><path
-										d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-									/><line x1="1" y1="1" x2="23" y2="23" /></svg
-								>
-							{:else}
-								<svg
-									class="h-5 w-5"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-										cx="12"
-										cy="12"
-										r="3"
-									/></svg
-								>
-							{/if}
-						</button>
+							<button
+								type="button"
+								onclick={() => (showPassword = !showPassword)}
+								class="absolute inset-y-0 right-3 flex items-center p-1.5 text-text-subtle transition-colors hover:text-text"
+							>
+								{#if showPassword}
+									<svg
+										class="h-5 w-5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										><path
+											d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+										/><line x1="1" y1="1" x2="23" y2="23" /></svg
+									>
+								{:else}
+									<svg
+										class="h-5 w-5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+											cx="12"
+											cy="12"
+											r="3"
+										/></svg
+									>
+								{/if}
+							</button>
+						</Input>
 						<a
 							href="/forgot-password"
 							class="absolute top-0 right-1 text-xs font-bold text-secondary transition-colors hover:opacity-80"

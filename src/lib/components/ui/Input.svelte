@@ -7,6 +7,7 @@
 		error?: string;
 		value?: string | number;
 		size?: SelectSize;
+		children?: import('svelte').Snippet;
 	}
 
 	let {
@@ -15,6 +16,7 @@
 		value = $bindable(),
 		size = 'lg',
 		class: className,
+		children,
 		...props
 	}: Props = $props();
 
@@ -33,6 +35,9 @@
 			bind:value
 			class="w-full rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow] duration-200 placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 {sizeClass} {className}"
 		/>
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 	{#if error}
 		<p class="ml-1 text-xs font-medium text-error">{error}</p>
