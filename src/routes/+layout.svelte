@@ -4,8 +4,10 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { setAuthState } from '$lib/state/auth.svelte';
+	import { setThemeState } from '$lib/state/theme.svelte';
 
 	setAuthState();
+	setThemeState();
 
 	let { children } = $props();
 </script>

@@ -16,6 +16,7 @@
 	import DropdownItem from '$lib/components/ui/DropdownItem.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { getThemeState } from '$lib/state/theme.svelte';
 	import { goto } from '$app/navigation';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import Breadcrumbs from '$lib/components/ui/Breadcrumbs.svelte';
@@ -37,6 +38,7 @@
 	}: Props = $props();
 
 	const auth = getAuthState();
+	const theme = getThemeState();
 	const breadcrumbsState = getBreadcrumbsState();
 
 	const fallbackBreadcrumbs = $derived.by(() => {
@@ -98,35 +100,6 @@
 		return user.email?.slice(0, 2).toUpperCase() ?? 'MC';
 	});
 
-	const resolveInitialTheme = () => {
-		if (typeof window === 'undefined') {
-			return false;
-		}
-
-		const stored = window.localStorage.getItem('theme');
-		if (stored === 'dark') {
-			return true;
-		}
-		if (stored === 'light') {
-			return false;
-		}
-
-		return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-	};
-
-	let isDark = $state(resolveInitialTheme());
-
-	$effect(() => {
-		if (typeof document === 'undefined') {
-			return;
-		}
-
-		const root = document.documentElement;
-		root.className = isDark ? 'dark' : '';
-		root.style.colorScheme = isDark ? 'dark' : 'light';
-		window.localStorage.theme = isDark ? 'dark' : 'light';
-	});
-
 	const headerBase =
 		'fixed top-3 inset-x-3 z-30 flex h-16 items-center rounded-2xl bg-glass-surface px-4 backdrop-blur-xl ring-1 ring-border/50 shadow-sm transition-[left,background-color,border-color,box-shadow] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none lg:px-8';
 	const headerOffset = () =>
@@ -172,11 +145,9 @@
 				<button
 					class="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-surface/70 text-text-muted shadow-sm transition hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none motion-reduce:transition-none dark:focus-visible:ring-offset-zinc-900"
 					aria-label={m.toggle_theme()}
-					onclick={() => {
-						isDark = !isDark;
-					}}
+					onclick={theme.toggle}
 				>
-					{#if isDark}
+					{#if theme.isDark}
 						<Sun class="h-4 w-4" />
 					{:else}
 						<Moon class="h-4 w-4" />
@@ -218,7 +189,7 @@
 							<p class="text-xs font-bold text-text">{displayName || m.dashboard()}</p>
 							<p class="truncate text-[10px] text-text-muted">{displaySubtitle}</p>
 						</div>
-						<DropdownItem label="User Preferences" icon={User} href={localizeHref('/profile')} />
+						<DropdownItem label="User Preferences" icon={User} href={localizeHref('/settings')} />
 						<DropdownItem
 							label={m.settings()}
 							icon={Settings}

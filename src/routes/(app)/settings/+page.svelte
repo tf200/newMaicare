@@ -3,6 +3,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { requestEnable2fa, requestSetup2fa } from '$lib/api/auth';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { getThemeState, type ThemePreference } from '$lib/state/theme.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Toggle from '$lib/components/ui/Toggle.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -40,6 +41,7 @@
 	import type { SettingsProfileLoadResult, SettingsProfilePageData } from './+page';
 
 	const auth = getAuthState();
+	const themeState = getThemeState();
 	let { data }: { data: SettingsProfilePageData } = $props();
 
 	const initial = $derived(data.initial);
@@ -192,24 +194,12 @@
 	let timezone = $state('Europe/Amsterdam');
 	let emailNotifications = $state(true);
 	let pushNotifications = $state(false);
-	let theme = $state('system');
+	const theme = $derived(themeState.preference);
 
 	$effect(() => {
 		if (profile) {
 			twoFactorEnabled = profile.two_factor_enabled;
 		}
-	});
-
-	$effect(() => {
-		if (typeof document === 'undefined') return;
-		const root = document.documentElement;
-		const isDark =
-			theme === 'dark' ||
-			(theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-		root.classList.toggle('dark', isDark);
-		root.style.colorScheme = isDark ? 'dark' : 'light';
-		window.localStorage.theme = theme;
 	});
 
 	let isSaving = $state(false);
@@ -378,7 +368,7 @@
 		{ label: 'America/New_York (GMT-5)', value: 'America/New_York' }
 	];
 
-	const themes = [
+	const themes: { label: string; value: ThemePreference }[] = [
 		{ label: m.light(), value: 'light' },
 		{ label: m.dark(), value: 'dark' },
 		{ label: m.system(), value: 'system' }
@@ -906,7 +896,7 @@
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 						{#each themes as t (t.value)}
 							<button
-								onclick={() => (theme = t.value)}
+								onclick={() => themeState.setPreference(t.value)}
 								class="group/theme relative flex flex-col items-center gap-4 rounded-3xl border p-6 transition-all duration-300
                                 {theme === t.value
 									? 'border-brand bg-brand/5 shadow-sm ring-1 ring-brand'
