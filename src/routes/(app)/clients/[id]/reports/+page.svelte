@@ -445,6 +445,7 @@
 	<DataTable
 		{columns}
 		rows={filteredReports}
+		pagination={false}
 		title={m.reports_history()}
 		description={m.reports_history_description()}
 		filters={tableFilters}

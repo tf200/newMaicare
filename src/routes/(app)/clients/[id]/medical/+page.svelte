@@ -488,15 +488,11 @@
 		<DataTable
 			columns={medicationColumns}
 			rows={medicationRows}
-			currentPage={1}
-			pageSize={Math.max(1, medicationRows.length)}
-			totalCount={medicationRows.length}
+			pagination={false}
 			title={m.active_medication_orders()}
 			description={m.active_medication_orders_description()}
 			emptyTitle={m.no_active_medication_orders()}
 			emptyDescription={m.medication_orders_empty()}
-			emptyActionLabel="No action"
-			emptyActionDisabled
 			actions={medicationActions}
 			cells={{
 				medication: medicationCell,

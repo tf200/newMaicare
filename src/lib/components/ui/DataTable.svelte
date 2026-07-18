@@ -16,6 +16,23 @@
 		sortable?: boolean;
 	}
 
+	export interface DataTablePagination {
+		mode: 'local' | 'server';
+		page: number;
+		pageSize: number;
+		totalCount?: number;
+		onPageChange?: (page: number) => void;
+	}
+
+	export interface DataTableEmptyState {
+		title?: string;
+		description?: string;
+		action?: {
+			label: string;
+			onClick: () => void;
+		};
+	}
+
 	type RowData = Record<string, unknown>;
 
 	export interface Props {
@@ -32,7 +49,12 @@
 		rowKey?: string | ((row: any, index: number) => string);
 		actions?: Snippet;
 		filters?: Snippet;
+		toolbar?: Snippet;
 		cells?: Record<string, Snippet<[any]>>;
+		pagination?: DataTablePagination | false;
+		empty?: DataTableEmptyState;
+		error?: string;
+		onRetry?: () => void;
 		currentPage?: number;
 		pageSize?: number;
 		totalCount?: number;
@@ -60,7 +82,12 @@
 		rowKey,
 		actions,
 		filters,
+		toolbar,
 		cells,
+		pagination,
+		empty,
+		error,
+		onRetry,
 		currentPage = $bindable(1),
 		pageSize = 10,
 		totalCount,
@@ -96,9 +123,23 @@
 		return `${index}`;
 	};
 
-	const showHeader = () => Boolean(title || description || actions || filters);
+	const showHeader = () => Boolean(title || description || toolbar || actions || filters);
+	const paginationEnabled = $derived(pagination !== false);
+	const paginationMode = $derived(
+		pagination ? pagination.mode : totalCount == null ? 'local' : 'server'
+	);
+	const displayedPage = $derived(pagination ? pagination.page : currentPage);
+	const displayedPageSize = $derived(pagination ? pagination.pageSize : pageSize);
+	const displayedTotalCount = $derived(
+		pagination ? (pagination.totalCount ?? rows.length) : (totalCount ?? rows.length)
+	);
 
 	const handlePageChange = (nextPage: number) => {
+		if (pagination) {
+			pagination.onPageChange?.(nextPage);
+			return;
+		}
+
 		if (onPageChange) {
 			onPageChange(nextPage);
 			return;
@@ -107,7 +148,18 @@
 	};
 
 	const handleEmptyAction = () => {
-		if (emptyAction) emptyAction();
+		empty?.action?.onClick() ?? emptyAction?.();
+	};
+
+	const handleRowClick = (event: MouseEvent, row: any) => {
+		// Cell controls own their interaction and must not also activate the row.
+		if (
+			(event.target as Element | null)?.closest(
+				'a, button, input, select, textarea, [data-table-stop-row-click]'
+			)
+		)
+			return;
+		onRowClick?.(row);
 	};
 
 	const handleSort = (columnKey: string) => {
@@ -118,11 +170,12 @@
 		onSort(columnKey, direction);
 	};
 
-	const effectiveTotal = $derived.by(() => totalCount ?? rows.length);
 	const paginatedRows = $derived.by(() =>
-		totalCount == null ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize) : rows
+		paginationMode === 'local'
+			? rows.slice((displayedPage - 1) * displayedPageSize, displayedPage * displayedPageSize)
+			: rows
 	);
-	const loadingRows = $derived.by(() => Math.max(1, pageSize));
+	const loadingRows = $derived.by(() => Math.max(1, displayedPageSize));
 </script>
 
 <section
@@ -149,15 +202,32 @@
 				{/if}
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				{#if filters}
-					<div class="w-full sm:w-auto">
-						{@render filters?.()}
-					</div>
-				{/if}
-				{#if actions}
-					{@render actions?.()}
+				{#if toolbar}
+					{@render toolbar()}
+				{:else}
+					{#if filters}
+						<div class="w-full sm:w-auto">
+							{@render filters()}
+						</div>
+					{/if}
+					{#if actions}
+						{@render actions()}
+					{/if}
 				{/if}
 			</div>
+		</div>
+	{/if}
+
+	{#if error}
+		<div
+			class="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-medium text-error sm:mx-6"
+		>
+			<span>{error}</span>
+			{#if onRetry}
+				<button class="rounded-lg px-2 py-1 text-xs font-bold hover:bg-error/10" onclick={onRetry}
+					>Retry</button
+				>
+			{/if}
 		</div>
 	{/if}
 
@@ -167,7 +237,7 @@
 				<tr>
 					{#each columns as column (column.key)}
 						<th
-							class="px-6 py-4 {alignClass(column.align)} {column.headerClass ??
+							class="group px-6 py-4 {alignClass(column.align)} {column.headerClass ??
 								column.class ??
 								''} {column.sortable && onSort ? 'cursor-pointer select-none hover:text-text' : ''}"
 							style={column.width ? `width:${column.width}` : undefined}
@@ -215,13 +285,13 @@
 					<tr>
 						<td colspan={columns.length} class="px-6 py-12 text-center">
 							<EmptyState
-								title={emptyTitle}
-								description={emptyDescription}
-								primaryAction={emptyAction
+								title={empty?.title ?? emptyTitle}
+								description={empty?.description ?? emptyDescription}
+								primaryAction={empty?.action || emptyAction
 									? {
-											label: emptyActionLabel,
+											label: empty?.action?.label ?? emptyActionLabel,
 											onclick: handleEmptyAction,
-											disabled: emptyActionDisabled
+											disabled: empty ? false : emptyActionDisabled
 										}
 									: undefined}
 								size="md"
@@ -231,7 +301,7 @@
 				{:else}
 					{#each paginatedRows as row, index (getRowKey(row, index))}
 						<tr
-							onclick={() => onRowClick?.(row)}
+							onclick={(event) => handleRowClick(event, row)}
 							class="border-b border-border/50 py-4 transition-colors duration-200 last:border-0 hover:bg-border/20 {onRowClick
 								? 'cursor-pointer'
 								: ''}"
@@ -256,12 +326,14 @@
 		</table>
 	</div>
 
-	<div class="border-t border-border px-6 py-4">
-		<Pagination
-			{currentPage}
-			{pageSize}
-			totalCount={loading ? 0 : effectiveTotal}
-			onPageChange={handlePageChange}
-		/>
-	</div>
+	{#if paginationEnabled}
+		<div class="border-t border-border px-6 py-4">
+			<Pagination
+				currentPage={displayedPage}
+				pageSize={displayedPageSize}
+				totalCount={loading ? 0 : displayedTotalCount}
+				onPageChange={handlePageChange}
+			/>
+		</div>
+	{/if}
 </section>

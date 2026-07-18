@@ -208,6 +208,7 @@
 		description="Manage organizational structure and units."
 		{columns}
 		rows={departments}
+		pagination={false}
 		rowKey="id"
 		cells={{
 			name: nameCell,

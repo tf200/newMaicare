@@ -243,6 +243,7 @@
 			<DataTable
 				columns={upcomingColumns}
 				rows={[]}
+				pagination={false}
 				loading
 				rowKey="clientId"
 				title={m.upcoming_evaluations()}
@@ -260,6 +261,7 @@
 			<DataTable
 				columns={upcomingColumns}
 				rows={upcoming}
+				pagination={false}
 				rowKey="clientId"
 				title={m.upcoming_evaluations()}
 				description={m.upcoming_evaluations_description()}
@@ -276,6 +278,7 @@
 			<DataTable
 				columns={upcomingColumns}
 				rows={[]}
+				pagination={false}
 				rowKey="clientId"
 				title={m.upcoming_evaluations()}
 				description={m.upcoming_evaluations_description()}
@@ -339,6 +342,7 @@
 				<DataTable
 					columns={draftColumns}
 					rows={[]}
+					pagination={false}
 					loading
 					rowKey="evaluationId"
 					title={m.recent_drafts()}
@@ -354,6 +358,7 @@
 				<DataTable
 					columns={draftColumns}
 					rows={drafts}
+					pagination={false}
 					rowKey="evaluationId"
 					title={m.recent_drafts()}
 					description={m.recent_drafts_description()}
@@ -368,6 +373,7 @@
 				<DataTable
 					columns={draftColumns}
 					rows={[]}
+					pagination={false}
 					rowKey="evaluationId"
 					title={m.recent_drafts()}
 					description={m.recent_drafts_description()}
@@ -427,6 +433,7 @@
 				<DataTable
 					columns={submittedColumns}
 					rows={[]}
+					pagination={false}
 					loading
 					rowKey="evaluationId"
 					title={m.recently_submitted()}
@@ -442,6 +449,7 @@
 				<DataTable
 					columns={submittedColumns}
 					rows={submitted}
+					pagination={false}
 					rowKey="evaluationId"
 					title={m.recently_submitted()}
 					description={m.recently_submitted_description()}
@@ -456,6 +464,7 @@
 				<DataTable
 					columns={submittedColumns}
 					rows={[]}
+					pagination={false}
 					rowKey="evaluationId"
 					title={m.recently_submitted()}
 					description={m.recently_submitted_description()}

@@ -408,7 +408,14 @@
 					/>
 				</div>
 
-				<FilterPills pills={confirmedFilterPills} bind:activeId={confirmedFilter} onSelect={(id) => { currentPage = 1; updateQuery(1, id as '' | 'true' | 'false', searchTerm); }} />
+				<FilterPills
+					pills={confirmedFilterPills}
+					bind:activeId={confirmedFilter}
+					onSelect={(id) => {
+						currentPage = 1;
+						updateQuery(1, id as '' | 'true' | 'false', searchTerm);
+					}}
+				/>
 			</div>
 		{/snippet}
 
@@ -422,6 +429,8 @@
 				{currentPage}
 				{pageSize}
 				totalCount={0}
+				filters={tableFilters}
+				rowKey="id"
 			/>
 		{:then incidentsData}
 			{@const incidents = incidentsData.incidents}
