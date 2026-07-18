@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { SvelteURL, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import {
@@ -158,7 +159,7 @@
 	];
 
 	const buildQuery = (nextPage: number, nextPageSize: number) => {
-		const searchParams = new URLSearchParams();
+		const searchParams = new SvelteURLSearchParams();
 		searchParams.set('page', String(nextPage));
 		searchParams.set('page_size', String(nextPageSize));
 		return searchParams.toString();
@@ -167,7 +168,7 @@
 	const updateHistoryPage = (nextPage: number) => {
 		const query = buildQuery(nextPage, initial.pageSize);
 		if (page.url.searchParams.toString() === query) return;
-		const nextUrl = new URL(page.url);
+		const nextUrl = new SvelteURL(page.url);
 		nextUrl.search = query;
 		window.history.replaceState(window.history.state, '', nextUrl);
 		void invalidateAll();
@@ -202,7 +203,7 @@
 	</span>
 {/snippet}
 
-{#snippet historyActionsCell(row: HistoryRow)}
+{#snippet historyActionsCell()}
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
@@ -499,7 +500,7 @@
 								</Button>
 							</div>
 						</div>
-					{:else}
+					{:else if goalsData.is_responsible_employee}
 						<div
 							class="rounded-3xl border border-indigo-100 bg-indigo-50/30 p-6 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/5"
 						>
@@ -512,7 +513,6 @@
 									{m.start_evaluation_description()}
 								</p>
 								<Button
-									disabled={!goalsData.is_responsible_employee}
 									class="h-12 w-full gap-2 rounded-xl bg-indigo-600 font-bold text-white shadow-lg shadow-indigo-500/10 hover:opacity-90 dark:bg-indigo-500 dark:text-black"
 									onclick={() => {
 										const clientId = page.params.id;
@@ -523,11 +523,6 @@
 									<Plus class="h-4 w-4" />
 									{m.start_evaluation()}
 								</Button>
-								{#if !goalsData.is_responsible_employee}
-									<p class="text-xs font-medium text-indigo-700/80 dark:text-indigo-400/80">
-										{m.only_coordinator_can_start()}
-									</p>
-								{/if}
 							</div>
 						</div>
 					{/if}
