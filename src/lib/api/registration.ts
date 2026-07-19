@@ -158,6 +158,6 @@ export function getRegistrationCounts(options: { fetchFn?: typeof fetch } = {}) 
 	return api.get<ApiEnvelope<RegistrationCountsResponse>>('/registration_forms/counts', options);
 }
 
-export function getRegistrationForm(id: string) {
-	return api.get<ApiEnvelope<GetRegistrationFormResponse>>(`/registration_forms/${id}`);
+export function getRegistrationForm(id: string, options: { fetchFn?: typeof fetch } = {}) {
+	return api.get<ApiEnvelope<GetRegistrationFormResponse>>(`/registration_forms/${id}`, options);
 }

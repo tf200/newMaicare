@@ -1,9 +1,35 @@
 import { getRegistrationForm } from '$lib/api/registration';
+import type { GetRegistrationFormResponse } from '$lib/types/api';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ params }) => {
-	const response = await getRegistrationForm(params.id);
+export interface RegistrationDetailLoadResult {
+	registration: GetRegistrationFormResponse | null;
+	loadError: string | null;
+}
+
+async function loadRegistrationDetail(
+	id: string,
+	fetchFn: typeof fetch
+): Promise<RegistrationDetailLoadResult> {
+	try {
+		const response = await getRegistrationForm(id, { fetchFn });
+
+		return {
+			registration: response.data,
+			loadError: null
+		};
+	} catch (error) {
+		return {
+			registration: null,
+			loadError: error instanceof Error ? error.message : 'Failed to load registration.'
+		};
+	}
+}
+
+export const load: PageLoad = ({ params, fetch, depends }) => {
+	depends('app:registrations:detail');
+
 	return {
-		registration: response.data
+		registrationData: loadRegistrationDetail(params.id, fetch)
 	};
 };
