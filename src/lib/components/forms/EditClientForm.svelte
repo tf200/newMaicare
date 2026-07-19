@@ -17,15 +17,16 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { EditClientSchema, type EditClientSchemaInput } from '$lib/schemas/client';
 	import { m } from '$lib/paraglide/messages';
-	import type { UpdateClientRequest } from '$lib/types/api';
+	import type { GetClientResponse, UpdateClientRequest } from '$lib/types/api';
 
 	interface Props {
 		open?: boolean;
 		clientId?: string | null;
+		clientData?: GetClientResponse | null;
 		onUpdated?: () => void;
 	}
 
-	let { open = $bindable(false), clientId = null, onUpdated }: Props = $props();
+	let { open = $bindable(false), clientId = null, clientData = null, onUpdated }: Props = $props();
 
 	let errorMessage = $state('');
 	let isLoadingData = $state(false);
@@ -129,51 +130,58 @@
 		return value.split('T')[0] ?? '';
 	};
 
+	const populateForm = (data: GetClientResponse) => {
+		const initialData: EditClientSchemaInput = {
+			first_name: data.client.first_name ?? '',
+			last_name: data.client.last_name ?? '',
+			date_of_birth: toDateInput(data.client.date_of_birth),
+			identity: false,
+			bsn: typeof data.client.bsn === 'string' ? data.client.bsn : String(data.client.bsn ?? ''),
+			bsn_verified_by: '',
+			nationality: '',
+			email: data.sender?.email_address ?? '',
+			phone_number: data.sender?.phone_number ?? '',
+			gender: data.client.gender ?? undefined,
+			filenumber: String(data.client.file_number ?? ''),
+			sender_id: '',
+			location_id: data.client.location?.id ?? '',
+			coordinator_employee_id: data.coordinator?.employee_id ?? '',
+			education_currently_enrolled: data.client.education?.currently_enrolled ?? false,
+			education_institution: data.client.education?.institution ?? '',
+			education_mentor_name: data.client.education?.mentor_name ?? '',
+			education_mentor_phone: data.client.education?.mentor_phone ?? '',
+			education_mentor_email: data.client.education?.mentor_email ?? '',
+			education_additional_notes: data.client.education?.additional_notes ?? '',
+			education_level:
+				(data.client.education?.level as EditClientSchemaInput['education_level']) ?? 'none',
+			work_currently_employed: data.client.work?.currently_employed ?? false,
+			work_current_employer: data.client.work?.current_employer ?? '',
+			work_employer_phone: data.client.work?.employer_phone ?? '',
+			work_employer_email: data.client.work?.employer_email ?? '',
+			work_current_position: data.client.work?.current_position ?? '',
+			work_start_date: toDateInput(data.client.work?.start_date),
+			work_additional_notes: data.client.work?.additional_notes ?? ''
+		};
+		coordinatorName =
+			`${data.coordinator?.first_name ?? ''} ${data.coordinator?.last_name ?? ''}`.trim();
+
+		reset({ data: initialData });
+		initializedId = clientId;
+	};
+
 	const fetchAndPopulate = async () => {
 		if (!clientId) return;
+		if (clientData) {
+			populateForm(clientData);
+			return;
+		}
+
 		isLoadingData = true;
 		errorMessage = '';
 
 		try {
 			const response = await getClientById(clientId);
-			const data = response.data;
-
-			const initialData: EditClientSchemaInput = {
-				first_name: data.client.first_name ?? '',
-				last_name: data.client.last_name ?? '',
-				date_of_birth: toDateInput(data.client.date_of_birth),
-				identity: false,
-				bsn: typeof data.client.bsn === 'string' ? data.client.bsn : String(data.client.bsn ?? ''),
-				bsn_verified_by: '',
-				nationality: '',
-				email: data.sender?.email_address ?? '',
-				phone_number: data.sender?.phone_number ?? '',
-				gender: data.client.gender ?? undefined,
-				filenumber: String(data.client.file_number ?? ''),
-				sender_id: '',
-				location_id: data.client.location?.id ?? '',
-				coordinator_employee_id: data.coordinator?.employee_id ?? '',
-				education_currently_enrolled: data.client.education?.currently_enrolled ?? false,
-				education_institution: data.client.education?.institution ?? '',
-				education_mentor_name: data.client.education?.mentor_name ?? '',
-				education_mentor_phone: data.client.education?.mentor_phone ?? '',
-				education_mentor_email: data.client.education?.mentor_email ?? '',
-				education_additional_notes: data.client.education?.additional_notes ?? '',
-				education_level:
-					(data.client.education?.level as EditClientSchemaInput['education_level']) ?? 'none',
-				work_currently_employed: data.client.work?.currently_employed ?? false,
-				work_current_employer: data.client.work?.current_employer ?? '',
-				work_employer_phone: data.client.work?.employer_phone ?? '',
-				work_employer_email: data.client.work?.employer_email ?? '',
-				work_current_position: data.client.work?.current_position ?? '',
-				work_start_date: toDateInput(data.client.work?.start_date),
-				work_additional_notes: data.client.work?.additional_notes ?? ''
-			};
-			coordinatorName =
-				`${data.coordinator?.first_name ?? ''} ${data.coordinator?.last_name ?? ''}`.trim();
-
-			reset({ data: initialData });
-			initializedId = clientId;
+			populateForm(response.data);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : m.failed_load_client();
 		} finally {
@@ -197,7 +205,8 @@
 	const genderOptions = [
 		{ value: 'male', label: m.male() },
 		{ value: 'female', label: m.female() },
-		{ value: 'other', label: m.other() }
+		{ value: 'other', label: m.other() },
+		{ value: 'unknown', label: m.unknown() }
 	];
 
 	const educationLevelOptions = [

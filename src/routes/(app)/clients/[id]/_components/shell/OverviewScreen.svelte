@@ -31,6 +31,7 @@
 
 	let { overview }: Props = $props();
 	const client = $derived(overview.client);
+	const clientDetail = $derived(overview.clientDetail);
 	const status = $derived(overview.status);
 	const breadcrumbSectionLabel = $derived(overview.breadcrumbSectionLabel);
 	const isWaitlistClient = $derived(status === 'on_waiting_list');
@@ -304,5 +305,6 @@
 <EditClientForm
 	bind:open={showEditClientForm}
 	clientId={client.id}
+	clientData={clientDetail}
 	onUpdated={() => invalidate(`app:client:${client.id}:detail`)}
 />

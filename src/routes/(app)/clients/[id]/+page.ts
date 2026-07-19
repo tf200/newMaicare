@@ -11,7 +11,7 @@ export const load: PageLoad = ({ parent }) => {
 
 			const overview = mapClientOverviewByStatus(result.client);
 			return {
-				overview: createOverviewViewModel(overview, overview.status),
+				overview: createOverviewViewModel(overview, result.client, overview.status),
 				loadError: null
 			};
 		})

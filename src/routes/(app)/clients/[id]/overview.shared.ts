@@ -1,7 +1,9 @@
 import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
+import type { GetClientResponse } from '$lib/types/api';
 
 export interface ClientOverviewViewModel {
 	client: ClientOverviewData;
+	clientDetail: GetClientResponse;
 	status: ClientOverviewStatus;
 	breadcrumbSectionLabel?: string;
 }
@@ -20,10 +22,12 @@ const breadcrumbLabels: Record<ClientOverviewStatus, string> = {
 };
 export const createOverviewViewModel = (
 	client: ClientOverviewData,
+	clientDetail: GetClientResponse,
 	status: ClientOverviewStatus,
 	breadcrumbSectionLabel = breadcrumbLabels[status]
 ): ClientOverviewViewModel => ({
 	client,
+	clientDetail,
 	status,
 	breadcrumbSectionLabel
 });

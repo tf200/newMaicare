@@ -10,7 +10,7 @@ export const EditClientSchema = v.object({
 	nationality: v.optional(v.string()),
 	email: v.optional(v.string()),
 	phone_number: v.optional(v.string()),
-	gender: v.optional(v.picklist(['male', 'female', 'other'])),
+	gender: v.optional(v.picklist(['male', 'female', 'other', 'unknown'])),
 	filenumber: v.optional(v.string()),
 	sender_id: v.optional(v.string()),
 	location_id: v.optional(v.string()),

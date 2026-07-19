@@ -88,6 +88,6 @@ export interface Enable2faResponse {
 
 export type FormStatus = 'pending' | 'processed';
 
-export type ClientGender = 'male' | 'female' | 'other';
+export type ClientGender = 'male' | 'female' | 'other' | 'unknown';
 
 export type EducationLevel = 'primary' | 'secondary' | 'higher' | 'none';

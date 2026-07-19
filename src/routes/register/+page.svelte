@@ -189,7 +189,8 @@
 	const genderOptions = [
 		{ label: m.male(), value: 'male' },
 		{ label: m.female(), value: 'female' },
-		{ label: m.other(), value: 'other' }
+		{ label: m.other(), value: 'other' },
+		{ label: m.unknown(), value: 'unknown' }
 	];
 
 	function addGoal() {

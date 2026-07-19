@@ -219,7 +219,8 @@
 	const genderOptions = [
 		{ label: 'Male', value: 'male' },
 		{ label: 'Female', value: 'female' },
-		{ label: 'Other', value: 'other' }
+		{ label: 'Other', value: 'other' },
+		{ label: 'Unknown', value: 'unknown' }
 	];
 
 	const formatDate = (dateString: string | undefined) => {
@@ -298,7 +299,8 @@
 	const genderColors: Record<ClientGender, string> = {
 		male: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
 		female: 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-		other: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20'
+		other: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20',
+		unknown: 'bg-slate-500/10 text-slate-700 border-slate-500/20'
 	};
 
 	const educationColors: Record<EducationLevel, string> = {
@@ -429,7 +431,7 @@
 				<button
 					onclick={saveChanges}
 					disabled={!hasChanges || isSaving}
-					class="hover:bg-brand-hover inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all disabled:opacity-50"
+					class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover disabled:opacity-50"
 				>
 					{#if isSaving}
 						<div
@@ -446,14 +448,14 @@
 				{#if registration.form_status === 'pending'}
 					<button
 						onclick={() => (showProcessForm = true)}
-						class="hover:bg-brand-hover inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30"
+						class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 					>
 						{m.process_application()}
 					</button>
 				{:else if registration.intake_form_id}
 					<a
 						href={`/intakes/${registration.intake_form_id}`}
-						class="hover:bg-brand-hover inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30"
+						class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 					>
 						<ClipboardCheck class="h-4 w-4" />
 						{m.view_intake()}
@@ -461,7 +463,7 @@
 				{:else}
 					<button
 						onclick={() => (showIntakeWizard = true)}
-						class="hover:bg-brand-hover inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30"
+						class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 					>
 						<ClipboardCheck class="h-4 w-4" />
 						{m.start_intake()}
