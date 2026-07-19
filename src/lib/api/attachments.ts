@@ -4,6 +4,7 @@ import type {
 	InitUploadResponse,
 	ConfirmUploadRequest,
 	ConfirmUploadResponse,
+	GetAttachmentResponse,
 	ApiEnvelope
 } from '$lib/types/api';
 
@@ -70,6 +71,11 @@ export class AttachmentService {
 			'/attachments/upload/confirm',
 			params
 		);
+		return response.data;
+	}
+
+	static async getAttachment(id: string): Promise<GetAttachmentResponse> {
+		const response = await api.get<ApiEnvelope<GetAttachmentResponse>>(`/attachments/${id}`);
 		return response.data;
 	}
 

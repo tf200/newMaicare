@@ -37,6 +37,7 @@
 		UpdateRegistrationFormRequest
 	} from '$lib/types/api';
 	import { updateRegistrationForm } from '$lib/api/registration';
+	import { AttachmentService } from '$lib/api/attachments';
 	import ProcessRegistrationForm from '$lib/components/forms/ProcessRegistrationForm.svelte';
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
 	import { invalidate } from '$app/navigation';
@@ -111,6 +112,7 @@
 	let originalEditForm = $state<EditableRegistrationForm | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+	let downloadingDocumentId = $state<string | null>(null);
 
 	const hasChanges = $derived(
 		isEditing && editForm && JSON.stringify(editForm) !== JSON.stringify(originalEditForm)
@@ -476,39 +478,68 @@
 	}
 
 	type RegistrationDocumentValue = RegistrationDocument | string | null | undefined;
-	type DisplayDocument = { name: string; id: string; fileName: string | null; size: number | null };
+	type DisplayDocument = {
+		key: string;
+		label: string;
+		document: RegistrationDocument | null;
+		legacyId: string | null;
+	};
 
 	function getDocumentId(value: RegistrationDocumentValue): string | null {
 		if (typeof value === 'string') return value;
 		return value?.id ?? null;
 	}
 
-	function formatDocumentId(value: string): string {
-		return value.split('/').pop()?.substring(0, 8) ?? value.substring(0, 8);
-	}
-
-	function getDocumentFileName(value: RegistrationDocumentValue): string | null {
-		return typeof value === 'object' && value ? value.name : null;
-	}
-
-	function getDocumentSize(value: RegistrationDocumentValue): number | null {
-		return typeof value === 'object' && value ? value.size : null;
+	function getDocument(value: RegistrationDocumentValue): RegistrationDocument | null {
+		return typeof value === 'object' && value ? value : null;
 	}
 
 	function getRegistrationDocuments(registration: GetRegistrationFormResponse): DisplayDocument[] {
 		return [
-			{ name: m.referral_document(), value: registration.document_referral },
-			{ name: m.education_report(), value: registration.document_education_report },
-			{ name: m.psychiatric_report(), value: registration.document_psychiatric_report },
-			{ name: m.diagnosis_info(), value: registration.document_diagnosis },
-			{ name: m.safety_plan(), value: registration.document_safety_plan },
-			{ name: m.id_copy(), value: registration.document_id_copy }
-		].flatMap(({ name, value }) => {
-			const id = getDocumentId(value);
-			return id
-				? [{ name, id, fileName: getDocumentFileName(value), size: getDocumentSize(value) }]
-				: [];
-		});
+			{ key: 'referral', label: m.referral_document(), value: registration.document_referral },
+			{
+				key: 'education',
+				label: m.education_report(),
+				value: registration.document_education_report
+			},
+			{
+				key: 'psychiatric',
+				label: m.psychiatric_report(),
+				value: registration.document_psychiatric_report
+			},
+			{ key: 'diagnosis', label: m.diagnosis_info(), value: registration.document_diagnosis },
+			{ key: 'safety', label: m.safety_plan(), value: registration.document_safety_plan },
+			{ key: 'identity', label: m.id_copy(), value: registration.document_id_copy }
+		].map(({ key, label, value }) => ({
+			key,
+			label,
+			document: getDocument(value),
+			legacyId: getDocumentId(value)
+		}));
+	}
+
+	function formatFileSize(bytes: number): string {
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	}
+
+	async function downloadDocument(documentId: string) {
+		if (downloadingDocumentId) return;
+
+		downloadingDocumentId = documentId;
+		try {
+			const attachment = await AttachmentService.getAttachment(documentId);
+			if (!attachment.file_url) {
+				throw new Error(m.failed_download_file());
+			}
+
+			window.open(attachment.file_url, '_blank', 'noopener,noreferrer');
+		} catch (error) {
+			showToast(error instanceof Error ? error.message : m.failed_download_file(), 'error');
+		} finally {
+			downloadingDocumentId = null;
+		}
 	}
 </script>
 
@@ -1305,88 +1336,168 @@
 							{/if}
 						</section>
 
-						<!-- Context & Background -->
-						<section class="grid gap-6 md:grid-cols-2">
-							<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-								<div class="mb-4 flex items-center gap-3">
-									<div
-										class="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
-									>
-										<Briefcase class="h-4 w-4" />
-									</div>
-									<h3 class="font-bold text-text">{m.work_education()}</h3>
-								</div>
-								<div class="space-y-4 text-sm">
-									<div class="flex justify-between border-b border-border/50 pb-2">
-										<span class="text-text-muted">{m.education_level()}</span>
-										<span
-											class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase {registration
-												.education?.level
-												? educationColors[registration.education.level as EducationLevel]
-												: 'bg-zinc-100 text-zinc-500'}"
-										>
-											{registration.education?.level || m.not_specified()}
-										</span>
-									</div>
-									<div class="flex justify-between border-b border-border/50 pb-2">
-										<span class="text-text-muted">{m.currently_employed()}</span>
-										<span class="font-medium text-text"
-											>{registration.work?.currently_employed ? m.yes() : m.no()}</span
-										>
-									</div>
-									{#if registration.work?.current_employer}
-										<div class="flex flex-col gap-1 pt-1">
-											<span class="text-text-muted">{m.employer()}</span>
-											<span class="font-medium text-text">{registration.work.current_employer}</span
+						<!-- Documents -->
+						<section class="space-y-6">
+							{#each [getRegistrationDocuments(registration)] as documents (documents)}
+								{@const uploadedCount = documents.filter((document) => document.legacyId).length}
+								<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
+									<div class="border-b border-border bg-bg/50 p-5">
+										<div class="flex items-start justify-between gap-4">
+											<div class="flex items-center gap-3">
+												<div
+													class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand"
+												>
+													<FileText class="h-5 w-5" />
+												</div>
+												<div>
+													<h3 class="font-semibold tracking-tight text-text">{m.documents()}</h3>
+													<p class="mt-0.5 text-xs text-text-muted">
+														{m.documents_uploaded_count({
+															uploaded: uploadedCount,
+															total: documents.length
+														})}
+													</p>
+												</div>
+											</div>
+											<span
+												class="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand tabular-nums"
 											>
+												{uploadedCount}/{documents.length}
+											</span>
 										</div>
-									{/if}
-								</div>
-							</div>
-
-							<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-								<div class="mb-4 flex items-center gap-3">
-									<div
-										class="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800"
-									>
-										<FileText class="h-4 w-4" />
-									</div>
-									<h3 class="font-bold text-text">{m.documents()}</h3>
-								</div>
-								<div class="space-y-2">
-									{#each getRegistrationDocuments(registration) as doc (doc.id)}
-										<div
-											class="group flex items-center gap-3 rounded-xl border border-transparent bg-zinc-50 p-2.5 transition-all hover:border-border hover:bg-white hover:shadow-sm dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
-										>
+										<div class="mt-4 h-1.5 overflow-hidden rounded-full bg-border/60">
 											<div
-												class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-brand shadow-sm ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10"
-											>
-												<FileText class="h-4 w-4" />
-											</div>
-											<div class="min-w-0 flex-1">
-												<p class="truncate text-sm font-medium text-text">
-													{doc.fileName ?? doc.name}
-												</p>
-												<p class="text-xs text-text-subtle">
-													{m.id_label()}: {formatDocumentId(doc.id)}...
-												</p>
-											</div>
-											<button
-												class="rounded-lg p-1.5 text-text-subtle opacity-0 transition-all group-hover:opacity-100 hover:bg-zinc-100 hover:text-text dark:hover:bg-zinc-700"
-											>
-												<Download class="h-4 w-4" />
-											</button>
+												class="h-full rounded-full bg-brand transition-[width] duration-500"
+												style:width={`${(uploadedCount / documents.length) * 100}%`}
+											></div>
 										</div>
-									{:else}
-										<p class="text-sm py-4 text-center text-text-subtle">{m.no_documents()}</p>
-									{/each}
+									</div>
+
+									<div class="grid gap-2 p-3 md:grid-cols-2">
+										{#each documents as document (document.key)}
+											<div
+												class="flex min-h-20 items-center gap-3 rounded-2xl border p-3.5 {document.legacyId
+													? 'border-success/20 bg-success/5'
+													: 'border-dashed border-border bg-bg/40'}"
+											>
+												<div
+													class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {document.legacyId
+														? 'bg-success/10 text-success'
+														: 'bg-surface text-text-subtle ring-1 ring-border'}"
+												>
+													{#if document.legacyId}
+														<CheckCircle2 class="h-5 w-5" />
+													{:else}
+														<FileText class="h-5 w-5" />
+													{/if}
+												</div>
+
+												<div class="min-w-0 flex-1">
+													<div class="flex items-center justify-between gap-2">
+														<p class="truncate text-sm font-semibold text-text">{document.label}</p>
+														<span
+															class="shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase {document.legacyId
+																? 'bg-success/10 text-success'
+																: 'bg-border/60 text-text-subtle'}"
+														>
+															{document.legacyId ? m.uploaded() : m.not_uploaded()}
+														</span>
+													</div>
+													{#if document.document}
+														<p
+															class="mt-1 truncate text-xs text-text-muted"
+															title={document.document.name}
+														>
+															{document.document.name}
+															<span class="px-1 text-text-subtle">·</span>
+															{formatFileSize(document.document.size)}
+														</p>
+													{:else if document.legacyId}
+														<p class="mt-1 text-xs text-text-muted">{m.uploaded_file()}</p>
+													{:else}
+														<p class="mt-1 text-xs text-text-subtle">{m.document_not_provided()}</p>
+													{/if}
+												</div>
+												{#if document.legacyId}
+													<button
+														type="button"
+														onclick={() => document.legacyId && downloadDocument(document.legacyId)}
+														disabled={downloadingDocumentId !== null}
+														class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-brand hover:text-white hover:ring-brand disabled:cursor-wait disabled:opacity-60"
+														title={m.download_file()}
+														aria-label={m.download_file()}
+													>
+														{#if downloadingDocumentId === document.legacyId}
+															<span
+																class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+															></span>
+														{:else}
+															<Download class="h-4 w-4" />
+														{/if}
+													</button>
+												{/if}
+											</div>
+										{/each}
+									</div>
 								</div>
-							</div>
+							{/each}
 						</section>
 					</div>
 
 					<!-- Right Column: Sidebar (1/3 width on XL) -->
 					<div class="space-y-6">
+						<!-- Education & Work Summary -->
+						<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+							<div class="mb-5 flex items-center gap-3">
+								<div
+									class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand"
+								>
+									<Briefcase class="h-4 w-4" />
+								</div>
+								<div class="min-w-0">
+									<h3 class="truncate text-base font-semibold tracking-tight text-text">
+										{m.work_education()}
+									</h3>
+									<p class="text-xs text-text-muted">{m.education_work_summary()}</p>
+								</div>
+							</div>
+
+							<div class="divide-y divide-border/60 border-t border-border/60">
+								<div class="flex items-center justify-between gap-3 py-3.5">
+									<span class="text-xs font-medium text-text-muted">{m.education_level()}</span>
+									<span
+										class="inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase {registration
+											.education?.level
+											? educationColors[registration.education.level as EducationLevel]
+											: 'bg-zinc-100 text-zinc-500'}"
+									>
+										{registration.education?.level || m.not_specified()}
+									</span>
+								</div>
+								<div class="py-3.5">
+									<span class="text-xs font-medium text-text-muted">{m.institution_name()}</span>
+									<p class="mt-1 truncate text-sm font-semibold text-text">
+										{registration.education?.institution || m.not_specified()}
+									</p>
+								</div>
+								<div class="py-3.5">
+									<div class="flex items-center justify-between gap-3">
+										<span class="text-xs font-medium text-text-muted">{m.currently_employed()}</span
+										>
+										<span
+											class="h-2 w-2 shrink-0 rounded-full {registration.work?.currently_employed
+												? 'bg-success'
+												: 'bg-text-subtle'}"
+										></span>
+									</div>
+									<p class="mt-1 truncate text-sm font-semibold text-text">
+										{registration.work?.current_employer ||
+											(registration.work?.currently_employed ? m.yes() : m.no())}
+									</p>
+								</div>
+							</div>
+						</div>
+
 						<!-- Client Details Card -->
 						<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 							<div class="mb-5 flex items-center justify-between">

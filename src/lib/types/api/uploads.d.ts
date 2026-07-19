@@ -21,6 +21,13 @@ export interface ConfirmUploadResponse {
 	size: number;
 }
 
+export interface GetAttachmentResponse {
+	file_url: string;
+	file_id: string;
+	created_at: string;
+	size: number;
+}
+
 export interface RegistrationUploadSessionResponse {
 	registration_token: string;
 }
