@@ -2,16 +2,89 @@ import { api } from './client';
 import type {
 	ApiEnvelope,
 	GetRegistrationFormResponse,
+	InitRegistrationUploadRequest,
+	InitRegistrationUploadResponse,
 	ListRegistrationFormsParams,
 	ListRegistrationFormsResponse,
 	PaginatedResponse,
 	ProcessRegistrationRequest,
+	RegistrationUploadSessionResponse,
 	RegistrationRequest,
 	UpdateRegistrationFormRequest
 } from '$lib/types/api';
 
-export async function submitRegistration(data: RegistrationRequest): Promise<void> {
-	await api.post('/registration_forms', data);
+export async function submitRegistration(
+	data: RegistrationRequest,
+	registrationToken: string
+): Promise<void> {
+	await api.post('/registration_forms', data, {
+		requiresAuth: false,
+		headers: {
+			'X-Registration-Token': registrationToken
+		}
+	});
+}
+
+export async function createRegistrationUploadSession(): Promise<RegistrationUploadSessionResponse> {
+	const response = await api.post<ApiEnvelope<RegistrationUploadSessionResponse>>(
+		'/public/registration-upload-sessions',
+		{},
+		{ requiresAuth: false }
+	);
+	return response.data;
+}
+
+export async function initRegistrationUpload(
+	data: InitRegistrationUploadRequest,
+	registrationToken: string
+): Promise<InitRegistrationUploadResponse> {
+	const response = await api.post<ApiEnvelope<InitRegistrationUploadResponse>>(
+		'/public/registration-uploads/init',
+		data,
+		{
+			requiresAuth: false,
+			headers: {
+				'X-Registration-Token': registrationToken
+			}
+		}
+	);
+	return response.data;
+}
+
+export function uploadRegistrationFile(
+	uploadUrl: string,
+	file: File,
+	contentType: InitRegistrationUploadRequest['content_type'],
+	onProgress?: (progress: number) => void
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+
+		xhr.open('PUT', uploadUrl);
+		xhr.setRequestHeader('Content-Type', contentType);
+
+		if (onProgress) {
+			xhr.upload.onprogress = (event) => {
+				if (event.lengthComputable) {
+					onProgress(Math.round((event.loaded / event.total) * 100));
+				}
+			};
+		}
+
+		xhr.onload = () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				resolve();
+			} else {
+				reject(new Error(`Storage upload failed with status ${xhr.status}: ${xhr.statusText}`));
+			}
+		};
+
+		xhr.onerror = () => {
+			reject(new Error('Storage upload failed before the server responded.'));
+		};
+
+		xhr.send(file);
+	});
 }
 
 export async function processRegistrationForm(

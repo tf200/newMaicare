@@ -6,12 +6,24 @@
 	import FileUpload from '$lib/components/ui/FileUpload.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { Plus, Trash2 } from 'lucide-svelte';
 	import { lookupAddressByPostcode } from '$lib/api/pdok';
-	import { submitRegistration } from '$lib/api/registration';
-	import type { ClientGender, EducationLevel } from '$lib/types/api';
+	import {
+		createRegistrationUploadSession,
+		initRegistrationUpload,
+		submitRegistration,
+		uploadRegistrationFile
+	} from '$lib/api/registration';
+	import type { ClientGender, EducationLevel, InitRegistrationUploadRequest } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+
+	const MAX_REGISTRATION_UPLOAD_SIZE = 20 * 1024 * 1024;
+	const REGISTRATION_UPLOAD_ACCEPT = 'application/pdf,image/jpeg,image/png';
+	const SUPPORTED_REGISTRATION_UPLOAD_TYPES = new Set<
+		InitRegistrationUploadRequest['content_type']
+	>(['application/pdf', 'image/jpeg', 'image/png']);
 
 	// Form State
 	let form = $state({
@@ -108,6 +120,9 @@
 	let lookupMessage = $state('');
 	let isSubmitting = $state(false);
 	let submitError = $state('');
+	let registrationToken = $state<string | null>(null);
+	let isPreparingUploadSession = $state(false);
+	let uploadSessionError = $state('');
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const steps = [
@@ -128,6 +143,26 @@
 	};
 
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
+
+	async function createUploadSession() {
+		if (registrationToken || isPreparingUploadSession) return;
+
+		isPreparingUploadSession = true;
+		uploadSessionError = '';
+
+		try {
+			const session = await createRegistrationUploadSession();
+			registrationToken = session.registration_token;
+		} catch (error) {
+			uploadSessionError = error instanceof Error ? error.message : m.upload_session_failed();
+		} finally {
+			isPreparingUploadSession = false;
+		}
+	}
+
+	onMount(() => {
+		void createUploadSession();
+	});
 
 	const runLookup = async (postcodeValue: string, numberValue: string) => {
 		if (!isPostalCodeValid(postcodeValue)) return;
@@ -175,7 +210,15 @@
 		submitError = '';
 		isSubmitting = true;
 		try {
-			await submitRegistration(form);
+			if (!registrationToken) {
+				await createUploadSession();
+			}
+
+			if (!registrationToken) {
+				throw new Error(uploadSessionError || m.upload_session_not_ready());
+			}
+
+			await submitRegistration(form, registrationToken);
 			alert(m.registration_submitted_success());
 			// Reset form or redirect
 			window.location.href = '/';
@@ -201,6 +244,45 @@
 	function removeGoal(index: number) {
 		if (!form.client_goals) return;
 		form.client_goals = form.client_goals.filter((_, i) => i !== index);
+	}
+
+	async function uploadRegistrationDocument(
+		file: File,
+		onProgress?: (progress: number) => void
+	): Promise<{ file_id: string }> {
+		if (
+			!SUPPORTED_REGISTRATION_UPLOAD_TYPES.has(
+				file.type as InitRegistrationUploadRequest['content_type']
+			)
+		) {
+			throw new Error(m.registration_upload_type_error());
+		}
+
+		if (file.size > MAX_REGISTRATION_UPLOAD_SIZE) {
+			throw new Error(m.registration_upload_size_error());
+		}
+
+		if (!registrationToken) {
+			await createUploadSession();
+		}
+
+		if (!registrationToken) {
+			throw new Error(uploadSessionError || m.upload_session_not_ready());
+		}
+
+		const contentType = file.type as InitRegistrationUploadRequest['content_type'];
+		const initData = await initRegistrationUpload(
+			{
+				filename: file.name,
+				content_type: contentType,
+				size: file.size
+			},
+			registrationToken
+		);
+
+		await uploadRegistrationFile(initData.upload_url, file, contentType, onProgress);
+
+		return { file_id: initData.file_id };
 	}
 </script>
 
@@ -599,7 +681,7 @@
 									</div>
 									{#if form.client_goals && form.client_goals.length > 0}
 										<div class="space-y-2">
-											{#each form.client_goals as _, index (index)}
+											{#each form.client_goals, index (index)}
 												<div class="flex gap-2">
 													<Input
 														bind:value={form.client_goals[index]}
@@ -698,36 +780,75 @@
 						<h2 class="mb-6 text-2xl font-bold text-text">{m.documents()}</h2>
 						<p class="mb-6 text-text-muted">{m.upload_documents()}</p>
 
+						{#if isPreparingUploadSession}
+							<div
+								class="mb-6 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info"
+							>
+								{m.preparing_upload_session()}
+							</div>
+						{:else if uploadSessionError}
+							<div
+								class="mb-6 rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+							>
+								<p>{uploadSessionError}</p>
+								<button
+									type="button"
+									onclick={createUploadSession}
+									class="mt-2 rounded-lg px-2 py-1 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error"
+								>
+									{m.retry()}
+								</button>
+							</div>
+						{/if}
+
 						<div class="grid gap-6 md:grid-cols-2">
 							<FileUpload
 								label={m.referral_document()}
 								bind:fileId={form.document_referral}
-								accept=".pdf,.doc,.docx"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 							<FileUpload
 								label={m.education_report()}
 								bind:fileId={form.document_education_report}
-								accept=".pdf,.doc,.docx"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 							<FileUpload
 								label={m.psychiatric_report()}
 								bind:fileId={form.document_psychiatric_report}
-								accept=".pdf,.doc,.docx"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 							<FileUpload
 								label={m.diagnosis_info()}
 								bind:fileId={form.document_diagnosis}
-								accept=".pdf,.doc,.docx"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 							<FileUpload
 								label={m.safety_plan()}
 								bind:fileId={form.document_safety_plan}
-								accept=".pdf,.doc,.docx"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 							<FileUpload
 								label={m.id_copy()}
 								bind:fileId={form.document_id_copy}
-								accept=".pdf,.jpg,.png"
+								accept={REGISTRATION_UPLOAD_ACCEPT}
+								disabled={!registrationToken || isPreparingUploadSession || !!uploadSessionError}
+								helperText={m.registration_upload_helper()}
+								uploadFile={uploadRegistrationDocument}
 							/>
 						</div>
 

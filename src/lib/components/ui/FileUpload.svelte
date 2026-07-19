@@ -1,29 +1,42 @@
 <script lang="ts">
 	import { uploadManager } from '$lib/state/upload.svelte';
-	import { fade } from 'svelte/transition';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		label?: string;
 		error?: string;
 		accept?: string;
+		disabled?: boolean;
 		fileId?: string | null;
 		class?: string;
+		helperText?: string;
 		onUpload?: (fileId: string, fileName: string) => void;
+		uploadFile?: (
+			file: File,
+			onProgress?: (progress: number) => void
+		) => Promise<{ file_id: string }>;
 	}
 
 	let {
 		label,
 		error,
 		accept,
+		disabled = false,
 		fileId = $bindable(null),
 		class: className,
-		onUpload
+		helperText,
+		onUpload,
+		uploadFile
 	}: Props = $props();
 
-	let inputElement: HTMLInputElement;
-	let currentUpload = $state<{ progress: number; status: string; error?: string } | null>(null);
+	const inputId = $props.id();
+	let localUpload = $state<{
+		progress: number;
+		status: 'uploading' | 'completed' | 'error';
+		error?: string;
+	} | null>(null);
 	let fileName = $state<string | null>(null);
+	let inputResetKey = $state(0);
 
 	async function handleFileSelect(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -31,29 +44,42 @@
 		if (!selected) return;
 
 		fileName = selected.name;
+		localUpload = uploadFile ? { progress: 0, status: 'uploading' } : null;
 
 		try {
-			// Create a tracking object for this local component instance
-			// We could also search uploadManager.uploads by file name/size if we wanted more global sync
-			const result = await uploadManager.uploadFile(selected);
+			const result = uploadFile
+				? await uploadFile(selected, (progress) => {
+						if (localUpload) localUpload.progress = progress;
+					})
+				: await uploadManager.uploadFile(selected);
+
+			if (localUpload) {
+				localUpload.status = 'completed';
+				localUpload.progress = 100;
+			}
+
 			fileId = result.file_id;
 			if (onUpload) onUpload(result.file_id, selected.name);
 		} catch (err) {
-			console.error('Upload failed:', err);
+			const message = err instanceof Error ? err.message : m.upload_failed();
+			if (localUpload) {
+				localUpload.status = 'error';
+				localUpload.error = message;
+			} else {
+				localUpload = { progress: 0, status: 'error', error: message };
+			}
 		}
 	}
 
 	// Find the active upload in the manager to show progress
-	let activeUpload = $derived(uploadManager.uploads.find((u) => u.file.name === fileName));
-
-	function triggerSelect() {
-		inputElement.click();
-	}
+	let managedUpload = $derived(uploadManager.uploads.find((u) => u.file.name === fileName));
+	let activeUpload = $derived(localUpload ?? managedUpload);
 
 	function removeFile() {
 		fileId = null;
 		fileName = null;
-		if (inputElement) inputElement.value = '';
+		localUpload = null;
+		inputResetKey += 1;
 	}
 </script>
 
@@ -67,19 +93,22 @@
 	<div
 		class="relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border bg-surface p-6 transition-all hover:border-brand/50"
 	>
-		<input
-			type="file"
-			bind:this={inputElement}
-			class="hidden"
-			{accept}
-			onchange={handleFileSelect}
-		/>
+		{#key inputResetKey}
+			<input
+				id={inputId}
+				type="file"
+				class="hidden"
+				{accept}
+				{disabled}
+				onchange={handleFileSelect}
+			/>
+		{/key}
 
 		{#if !fileName}
-			<button
-				type="button"
-				onclick={triggerSelect}
-				class="flex cursor-pointer flex-col items-center gap-2 text-text-muted transition-colors hover:text-brand"
+			<label
+				for={inputId}
+				aria-disabled={disabled}
+				class="flex cursor-pointer flex-col items-center gap-2 text-text-muted transition-colors hover:text-brand aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:text-text-muted"
 			>
 				<div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
 					<svg
@@ -98,8 +127,8 @@
 					</svg>
 				</div>
 				<span class="text-sm font-medium">{m.click_to_upload()}</span>
-				<span class="text-xs">{m.max_size_10mb()}</span>
-			</button>
+				<span class="text-xs">{helperText ?? m.max_size_10mb()}</span>
+			</label>
 		{:else}
 			<div class="flex w-full flex-col gap-3">
 				<div class="flex items-center justify-between">
@@ -153,8 +182,9 @@
 					<button
 						type="button"
 						onclick={removeFile}
+						{disabled}
 						aria-label={m.remove_file()}
-						class="text-text-muted transition-colors hover:text-error"
+						class="text-text-muted transition-colors hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"

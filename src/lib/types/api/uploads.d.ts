@@ -20,3 +20,19 @@ export interface ConfirmUploadResponse {
 	created_at: string;
 	size: number;
 }
+
+export interface RegistrationUploadSessionResponse {
+	registration_token: string;
+}
+
+export interface InitRegistrationUploadRequest {
+	filename: string;
+	content_type: 'application/pdf' | 'image/jpeg' | 'image/png';
+	size: number;
+}
+
+export interface InitRegistrationUploadResponse {
+	upload_url: string;
+	file_id: string;
+	key?: string;
+}
