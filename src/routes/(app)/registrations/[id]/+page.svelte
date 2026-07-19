@@ -707,12 +707,6 @@
 								{m.edit_registration()}
 							</button>
 						</PermissionGuard>
-						<button
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-surface px-4 text-sm font-semibold text-text shadow-sm ring-1 ring-border transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800"
-						>
-							<Download class="h-4 w-4 text-text-subtle" />
-							{m.export_pdf()}
-						</button>
 					{:else}
 						{#if hasChanges}
 							<button
