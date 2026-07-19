@@ -3,6 +3,7 @@
 	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
 	import { processRegistrationForm } from '$lib/api/registration';
@@ -32,7 +33,7 @@
 				admission_type: 'crisis_admission',
 				intake_appointment_location: '',
 				proposed_dates: ['']
-			} as any,
+			} satisfies ProcessRegistrationInput,
 			valibotClient(ProcessRegistrationSchema)
 		),
 		{
@@ -91,23 +92,13 @@
 >
 	<form id={formId} use:enhance class="space-y-6">
 		<!-- Admission Type -->
-		<div class="space-y-2">
-			<label for="admission-type" class="ml-1 text-sm font-semibold text-text-muted">
-				{m.admission_type()}
-			</label>
-			<select
-				id="admission-type"
-				bind:value={$form.admission_type}
-				class="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
-			>
-				{#each admissionOptions as option (option.value)}
-					<option value={option.value}>{option.label}</option>
-				{/each}
-			</select>
-			{#if formatFormError($errors.admission_type)}
-				<p class="ml-1 text-xs font-medium text-error">{formatFormError($errors.admission_type)}</p>
-			{/if}
-		</div>
+		<Select
+			id="admission-type"
+			label={m.admission_type()}
+			options={admissionOptions}
+			bind:value={$form.admission_type}
+			error={formatFormError($errors.admission_type)}
+		/>
 
 		<!-- Location -->
 		<Input
@@ -128,7 +119,7 @@
 			</div>
 
 			<div class="space-y-2">
-				{#each $form.proposed_dates as date, index (index)}
+				{#each $form.proposed_dates, index (index)}
 					<div class="flex gap-2">
 						<div class="w-full">
 							<DateTimePicker

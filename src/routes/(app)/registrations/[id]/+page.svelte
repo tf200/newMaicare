@@ -32,11 +32,12 @@
 		EducationLevel,
 		FormStatus,
 		RegistrationDocument,
+		RegistrationDocumentType,
 		RegistrationEducationPayload,
 		RegistrationWorkPayload,
 		UpdateRegistrationFormRequest
 	} from '$lib/types/api';
-	import { updateRegistrationForm } from '$lib/api/registration';
+	import { updateRegistrationDocument, updateRegistrationForm } from '$lib/api/registration';
 	import { AttachmentService } from '$lib/api/attachments';
 	import ProcessRegistrationForm from '$lib/components/forms/ProcessRegistrationForm.svelte';
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
@@ -113,6 +114,14 @@
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
 	let downloadingDocumentId = $state<string | null>(null);
+	let uploadingDocumentKey = $state<string | null>(null);
+	let documentUploadProgress = $state<Record<string, number>>({});
+	let documentUploadErrors = $state<Record<string, string | null>>({});
+	let documentInputResetKeys = $state<Record<string, number>>({});
+
+	const allowedRegistrationDocumentTypes = ['application/pdf', 'image/jpeg', 'image/png'] as const;
+	const maxRegistrationDocumentSize = 20 * 1024 * 1024;
+	const registrationDocumentAccept = allowedRegistrationDocumentTypes.join(',');
 
 	const hasChanges = $derived(
 		isEditing && editForm && JSON.stringify(editForm) !== JSON.stringify(originalEditForm)
@@ -280,11 +289,7 @@
 	}
 
 	async function refreshRegistrationDetail() {
-		await Promise.all([
-			invalidate('app:registrations:detail'),
-			invalidate('app:registrations:list'),
-			invalidate('app:registrations:stats')
-		]);
+		await invalidate('app:registrations:detail');
 	}
 
 	async function retryRegistrationDetail() {
@@ -481,6 +486,7 @@
 	type DisplayDocument = {
 		key: string;
 		label: string;
+		documentType: RegistrationDocumentType;
 		document: RegistrationDocument | null;
 		legacyId: string | null;
 	};
@@ -496,26 +502,137 @@
 
 	function getRegistrationDocuments(registration: GetRegistrationFormResponse): DisplayDocument[] {
 		return [
-			{ key: 'referral', label: m.referral_document(), value: registration.document_referral },
+			{
+				key: 'referral',
+				label: m.referral_document(),
+				documentType: 'document_referral' as const,
+				value: registration.document_referral
+			},
 			{
 				key: 'education',
 				label: m.education_report(),
+				documentType: 'document_education_report' as const,
 				value: registration.document_education_report
+			},
+			{
+				key: 'action',
+				label: m.action_plan(),
+				documentType: 'document_action_plan' as const,
+				value: registration.document_action_plan
 			},
 			{
 				key: 'psychiatric',
 				label: m.psychiatric_report(),
+				documentType: 'document_psychiatric_report' as const,
 				value: registration.document_psychiatric_report
 			},
-			{ key: 'diagnosis', label: m.diagnosis_info(), value: registration.document_diagnosis },
-			{ key: 'safety', label: m.safety_plan(), value: registration.document_safety_plan },
-			{ key: 'identity', label: m.id_copy(), value: registration.document_id_copy }
-		].map(({ key, label, value }) => ({
+			{
+				key: 'diagnosis',
+				label: m.diagnosis_info(),
+				documentType: 'document_diagnosis' as const,
+				value: registration.document_diagnosis
+			},
+			{
+				key: 'safety',
+				label: m.safety_plan(),
+				documentType: 'document_safety_plan' as const,
+				value: registration.document_safety_plan
+			},
+			{
+				key: 'identity',
+				label: m.id_copy(),
+				documentType: 'document_id_copy' as const,
+				value: registration.document_id_copy
+			}
+		].map(({ key, label, documentType, value }) => ({
 			key,
 			label,
+			documentType,
 			document: getDocument(value),
 			legacyId: getDocumentId(value)
 		}));
+	}
+
+	function validateRegistrationDocument(file: File): string | null {
+		if (
+			!allowedRegistrationDocumentTypes.includes(
+				file.type as (typeof allowedRegistrationDocumentTypes)[number]
+			)
+		) {
+			return m.invalid_document_type();
+		}
+
+		if (file.size > maxRegistrationDocumentSize) {
+			return m.document_too_large();
+		}
+
+		return null;
+	}
+
+	async function replaceRegistrationDocument(
+		registrationId: string,
+		document: DisplayDocument,
+		file: File
+	) {
+		if (uploadingDocumentKey) return;
+
+		const validationError = validateRegistrationDocument(file);
+		if (validationError) {
+			documentUploadErrors = { ...documentUploadErrors, [document.key]: validationError };
+			return;
+		}
+
+		uploadingDocumentKey = document.key;
+		documentUploadProgress = { ...documentUploadProgress, [document.key]: 0 };
+		documentUploadErrors = { ...documentUploadErrors, [document.key]: null };
+
+		try {
+			const initData = await AttachmentService.initUpload({
+				filename: file.name,
+				content_type: file.type,
+				size: file.size
+			});
+
+			await AttachmentService.uploadToStorage(initData.upload_url, file, (progress) => {
+				documentUploadProgress = { ...documentUploadProgress, [document.key]: progress };
+			});
+
+			await updateRegistrationDocument(registrationId, {
+				document_type: document.documentType,
+				file_id: initData.file_id
+			});
+
+			showToast(m.document_replaced(), 'success');
+			documentInputResetKeys = {
+				...documentInputResetKeys,
+				[document.key]: (documentInputResetKeys[document.key] ?? 0) + 1
+			};
+			await invalidate('app:registrations:detail');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : m.failed_replace_document();
+			documentUploadErrors = { ...documentUploadErrors, [document.key]: message };
+			showToast(message, 'error');
+		} finally {
+			uploadingDocumentKey = null;
+			documentUploadProgress = { ...documentUploadProgress, [document.key]: 0 };
+		}
+	}
+
+	function handleRegistrationDocumentSelect(
+		registrationId: string,
+		document: DisplayDocument,
+		event: Event
+	) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		void replaceRegistrationDocument(registrationId, document, file);
+	}
+
+	function openRegistrationDocumentPicker(documentKey: string) {
+		if (uploadingDocumentKey) return;
+		globalThis.document.getElementById(`registration-document-${documentKey}`)?.click();
 	}
 
 	function formatFileSize(bytes: number): string {
@@ -579,7 +696,7 @@
 			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 				<div class="hidden"></div>
 
-				<div class="flex flex-wrap items-center justify-end gap-2">
+				<div class="flex flex-wrap items-center justify-end gap-2 md:ml-auto">
 					{#if !isEditing}
 						<PermissionGuard permission="REGISTRATION_FORM.UPDATE">
 							<button
@@ -1375,17 +1492,34 @@
 
 									<div class="grid gap-2 p-3 md:grid-cols-2">
 										{#each documents as document (document.key)}
+											{@const isUploadingDocument = uploadingDocumentKey === document.key}
+											{@const uploadError = documentUploadErrors[document.key]}
 											<div
-												class="flex min-h-20 items-center gap-3 rounded-2xl border p-3.5 {document.legacyId
+												class="relative flex min-h-20 items-center gap-3 overflow-hidden rounded-2xl border p-3.5 {document.legacyId
 													? 'border-success/20 bg-success/5'
 													: 'border-dashed border-border bg-bg/40'}"
 											>
+												{#key documentInputResetKeys[document.key] ?? 0}
+													<input
+														id={`registration-document-${document.key}`}
+														type="file"
+														accept={registrationDocumentAccept}
+														class="hidden"
+														disabled={uploadingDocumentKey !== null}
+														onchange={(event) =>
+															handleRegistrationDocumentSelect(registration.id, document, event)}
+													/>
+												{/key}
 												<div
 													class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {document.legacyId
 														? 'bg-success/10 text-success'
 														: 'bg-surface text-text-subtle ring-1 ring-border'}"
 												>
-													{#if document.legacyId}
+													{#if isUploadingDocument}
+														<span
+															class="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent"
+														></span>
+													{:else if document.legacyId}
 														<CheckCircle2 class="h-5 w-5" />
 													{:else}
 														<FileText class="h-5 w-5" />
@@ -1417,24 +1551,62 @@
 													{:else}
 														<p class="mt-1 text-xs text-text-subtle">{m.document_not_provided()}</p>
 													{/if}
+													{#if isUploadingDocument}
+														<p class="mt-1 text-xs font-medium text-brand">
+															{m.document_uploading()}
+															{documentUploadProgress[document.key] ?? 0}%
+														</p>
+													{:else if uploadError}
+														<p class="mt-1 text-xs font-medium text-error">{uploadError}</p>
+													{/if}
 												</div>
-												{#if document.legacyId}
-													<button
-														type="button"
-														onclick={() => document.legacyId && downloadDocument(document.legacyId)}
-														disabled={downloadingDocumentId !== null}
-														class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-brand hover:text-white hover:ring-brand disabled:cursor-wait disabled:opacity-60"
-														title={m.download_file()}
-														aria-label={m.download_file()}
-													>
-														{#if downloadingDocumentId === document.legacyId}
-															<span
-																class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-															></span>
-														{:else}
-															<Download class="h-4 w-4" />
-														{/if}
-													</button>
+												<div class="flex shrink-0 items-center gap-2">
+													<PermissionGuard permission="REGISTRATION_FORM.UPDATE">
+														<button
+															type="button"
+															onclick={() => openRegistrationDocumentPicker(document.key)}
+															disabled={uploadingDocumentKey !== null}
+															class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-surface px-3 text-xs font-bold text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-brand hover:text-white hover:ring-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-surface disabled:hover:text-text-subtle disabled:hover:ring-border"
+															title={document.legacyId ? m.replace_document() : m.upload_document()}
+															aria-label={document.legacyId
+																? m.replace_document()
+																: m.upload_document()}
+														>
+															<Plus class="h-4 w-4" />
+															<span class="hidden sm:inline">
+																{document.legacyId ? m.replace_document() : m.upload_document()}
+															</span>
+														</button>
+													</PermissionGuard>
+
+													{#if document.legacyId}
+														<button
+															type="button"
+															onclick={() =>
+																document.legacyId && downloadDocument(document.legacyId)}
+															disabled={downloadingDocumentId !== null || isUploadingDocument}
+															class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-brand hover:text-white hover:ring-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+															title={m.download_file()}
+															aria-label={m.download_file()}
+														>
+															{#if downloadingDocumentId === document.legacyId}
+																<span
+																	class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+																></span>
+															{:else}
+																<Download class="h-4 w-4" />
+															{/if}
+														</button>
+													{/if}
+												</div>
+
+												{#if isUploadingDocument}
+													<div class="absolute inset-x-0 bottom-0 h-1 bg-border/60">
+														<div
+															class="h-full bg-brand transition-all duration-300"
+															style:width={`${documentUploadProgress[document.key] ?? 0}%`}
+														></div>
+													</div>
 												{/if}
 											</div>
 										{/each}

@@ -33,6 +33,7 @@ export class AttachmentService {
 			const xhr = new XMLHttpRequest();
 
 			xhr.open('PUT', url);
+			xhr.setRequestHeader('Content-Type', file.type);
 
 			if (onProgress) {
 				xhr.upload.onprogress = (event) => {

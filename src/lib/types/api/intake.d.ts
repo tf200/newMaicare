@@ -40,6 +40,20 @@ export interface RegistrationDocument {
 	size: number;
 }
 
+export type RegistrationDocumentType =
+	| 'document_referral'
+	| 'document_education_report'
+	| 'document_action_plan'
+	| 'document_psychiatric_report'
+	| 'document_diagnosis'
+	| 'document_safety_plan'
+	| 'document_id_copy';
+
+export interface UpdateRegistrationDocumentRequest {
+	document_type: RegistrationDocumentType;
+	file_id: string;
+}
+
 export interface RegistrationRequest {
 	client_first_name: string;
 	client_last_name: string;
@@ -128,6 +142,7 @@ export interface UpdateRegistrationFormRequest extends Partial<
 		RegistrationRequest,
 		| 'document_referral'
 		| 'document_education_report'
+		| 'document_action_plan'
 		| 'document_psychiatric_report'
 		| 'document_diagnosis'
 		| 'document_safety_plan'

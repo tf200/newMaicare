@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { listRegistrationForms } from '$lib/api/registration';
+import { getRegistrationCounts, listRegistrationForms } from '$lib/api/registration';
 import type { ListRegistrationFormsResponse } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 import type { RegistrationFilters } from '$lib/types/registrations';
@@ -24,6 +24,16 @@ export interface RegistrationRow {
 export interface RegistrationsLoadResult {
 	registrations: RegistrationRow[];
 	pagination: PaginationState<RegistrationFilters>;
+	loadError: string | null;
+}
+
+export interface RegistrationCountsLoadResult {
+	counts: {
+		total: number;
+		pendingReview: number;
+		processed: number;
+		highRisk: number;
+	};
 	loadError: string | null;
 }
 
@@ -52,6 +62,7 @@ const parseBoolean = (value: string | null) => {
 
 export const load: PageLoad = ({ url, fetch, depends }) => {
 	depends('app:registrations:list');
+	depends('app:registrations:stats');
 
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
@@ -122,12 +133,35 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 			};
 		});
 
+	const registrationsCountsData: Promise<RegistrationCountsLoadResult> = getRegistrationCounts({
+		fetchFn: fetch
+	})
+		.then((response) => ({
+			counts: {
+				total: response.data.total,
+				pendingReview: response.data.pending_review,
+				processed: response.data.processed,
+				highRisk: response.data.high_risk
+			},
+			loadError: null
+		}))
+		.catch((error): RegistrationCountsLoadResult => ({
+			counts: {
+				total: 0,
+				pendingReview: 0,
+				processed: 0,
+				highRisk: 0
+			},
+			loadError: error instanceof Error ? error.message : 'Failed to load registration counts.'
+		}));
+
 	return {
 		initial: {
 			page,
 			pageSize,
 			filters
 		},
-		registrationsData
+		registrationsData,
+		registrationsCountsData
 	};
 };

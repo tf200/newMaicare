@@ -9,6 +9,7 @@ import type {
 	PaginatedResponse,
 	ProcessRegistrationRequest,
 	RegistrationCountsResponse,
+	UpdateRegistrationDocumentRequest,
 	RegistrationUploadSessionResponse,
 	RegistrationRequest,
 	UpdateRegistrationFormRequest
@@ -100,6 +101,13 @@ export async function updateRegistrationForm(
 	data: UpdateRegistrationFormRequest
 ): Promise<void> {
 	await api.put(`/registration_forms/${id}`, data);
+}
+
+export async function updateRegistrationDocument(
+	id: string,
+	data: UpdateRegistrationDocumentRequest
+): Promise<void> {
+	await api.put(`/registration_forms/${id}/documents`, data);
 }
 
 export function listRegistrationForms(

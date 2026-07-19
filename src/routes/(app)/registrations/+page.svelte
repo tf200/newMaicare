@@ -17,8 +17,11 @@
 	import Filters from '$lib/components/ui/FilterDropdown.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
-	import type { RegistrationRow, RegistrationsLoadResult } from './+page';
-	import type { RegistrationCountsLoadResult } from './+layout';
+	import type {
+		RegistrationCountsLoadResult,
+		RegistrationRow,
+		RegistrationsLoadResult
+	} from './+page';
 	import type { RegistrationFilters } from '$lib/types/registrations';
 	import { afterNavigate, goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
