@@ -31,12 +31,15 @@
 		ClientGender,
 		EducationLevel,
 		FormStatus,
+		RegistrationEducationPayload,
+		RegistrationWorkPayload,
 		UpdateRegistrationFormRequest
 	} from '$lib/types/api';
 	import { updateRegistrationForm } from '$lib/api/registration';
 	import ProcessRegistrationForm from '$lib/components/forms/ProcessRegistrationForm.svelte';
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -53,6 +56,40 @@
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
 
+	type EditableEducation = Omit<
+		RegistrationEducationPayload,
+		'institution' | 'mentor_name' | 'mentor_phone' | 'mentor_email' | 'additional_notes' | 'level'
+	> & {
+		institution: string;
+		mentor_name: string;
+		mentor_phone: string;
+		mentor_email: string;
+		additional_notes: string;
+		level: EducationLevel | '';
+	};
+
+	type EditableWork = Omit<
+		RegistrationWorkPayload,
+		| 'current_employer'
+		| 'employer_phone'
+		| 'employer_email'
+		| 'current_position'
+		| 'start_date'
+		| 'additional_notes'
+	> & {
+		current_employer: string;
+		employer_phone: string;
+		employer_email: string;
+		current_position: string;
+		start_date: string;
+		additional_notes: string;
+	};
+
+	type EditableRegistrationForm = Omit<GetRegistrationFormResponse, 'education' | 'work'> & {
+		education: EditableEducation;
+		work: EditableWork;
+	};
+
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		breadcrumbs.items = [
@@ -68,8 +105,8 @@
 	// Edit State
 	let isEditing = $state(false);
 	let isSaving = $state(false);
-	let editForm = $state<GetRegistrationFormResponse | null>(null);
-	let originalEditForm = $state<GetRegistrationFormResponse | null>(null);
+	let editForm = $state<EditableRegistrationForm | null>(null);
+	let originalEditForm = $state<EditableRegistrationForm | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -77,9 +114,33 @@
 		isEditing && editForm && JSON.stringify(editForm) !== JSON.stringify(originalEditForm)
 	);
 
+	function toEditableRegistrationForm(form: GetRegistrationFormResponse): EditableRegistrationForm {
+		return {
+			...form,
+			education: {
+				institution: form.education?.institution ?? '',
+				mentor_name: form.education?.mentor_name ?? '',
+				mentor_phone: form.education?.mentor_phone ?? '',
+				mentor_email: form.education?.mentor_email ?? '',
+				currently_enrolled: form.education?.currently_enrolled ?? false,
+				additional_notes: form.education?.additional_notes ?? '',
+				level: form.education?.level ?? ''
+			},
+			work: {
+				current_employer: form.work?.current_employer ?? '',
+				employer_phone: form.work?.employer_phone ?? '',
+				employer_email: form.work?.employer_email ?? '',
+				current_position: form.work?.current_position ?? '',
+				currently_employed: form.work?.currently_employed ?? false,
+				start_date: form.work?.start_date ?? '',
+				additional_notes: form.work?.additional_notes ?? ''
+			}
+		};
+	}
+
 	function startEditing() {
-		const draft = JSON.parse(JSON.stringify(registration)) as GetRegistrationFormResponse;
-		const originalDraft = JSON.parse(JSON.stringify(registration)) as GetRegistrationFormResponse;
+		const draft = toEditableRegistrationForm(JSON.parse(JSON.stringify(registration)));
+		const originalDraft = toEditableRegistrationForm(JSON.parse(JSON.stringify(registration)));
 		if (!draft.client_goals) draft.client_goals = [''];
 		if (!originalDraft.client_goals) originalDraft.client_goals = [''];
 		editForm = draft;
@@ -88,7 +149,12 @@
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
-	function buildUpdatePayload(form: GetRegistrationFormResponse): UpdateRegistrationFormRequest {
+	const emptyToNull = (value: string | null | undefined) => {
+		const trimmed = value?.trim() ?? '';
+		return trimmed ? trimmed : null;
+	};
+
+	function buildUpdatePayload(form: EditableRegistrationForm): UpdateRegistrationFormRequest {
 		return {
 			client_first_name: form.client_first_name,
 			client_last_name: form.client_last_name,
@@ -119,20 +185,24 @@
 			guardian2_relationship: form.guardian2_relationship,
 			guardian2_phone_number: form.guardian2_phone_number,
 			guardian2_email: form.guardian2_email,
-			education_institution: form.education_institution,
-			education_mentor_name: form.education_mentor_name,
-			education_mentor_phone: form.education_mentor_phone,
-			education_mentor_email: form.education_mentor_email,
-			education_currently_enrolled: form.education_currently_enrolled,
-			education_additional_notes: form.education_additional_notes,
-			education_level: form.education_level,
-			work_current_employer: form.work_current_employer,
-			work_employer_phone: form.work_employer_phone,
-			work_employer_email: form.work_employer_email,
-			work_current_position: form.work_current_position,
-			work_currently_employed: form.work_currently_employed,
-			work_start_date: form.work_start_date,
-			work_additional_notes: form.work_additional_notes,
+			education: {
+				institution: emptyToNull(form.education?.institution),
+				mentor_name: emptyToNull(form.education?.mentor_name),
+				mentor_phone: emptyToNull(form.education?.mentor_phone),
+				mentor_email: emptyToNull(form.education?.mentor_email),
+				currently_enrolled: form.education?.currently_enrolled ?? false,
+				additional_notes: emptyToNull(form.education?.additional_notes),
+				level: form.education?.level || null
+			},
+			work: {
+				current_employer: emptyToNull(form.work?.current_employer),
+				employer_phone: emptyToNull(form.work?.employer_phone),
+				employer_email: emptyToNull(form.work?.employer_email),
+				current_position: emptyToNull(form.work?.current_position),
+				currently_employed: form.work?.currently_employed ?? false,
+				start_date: emptyToNull(form.work?.start_date),
+				additional_notes: emptyToNull(form.work?.additional_notes)
+			},
 			care_protected_living: form.care_protected_living,
 			care_assisted_independent_living: form.care_assisted_independent_living,
 			care_room_training_center: form.care_room_training_center,
@@ -223,6 +293,13 @@
 		{ label: 'Unknown', value: 'unknown' }
 	];
 
+	const educationLevelOptions: Array<{ label: string; value: EducationLevel }> = [
+		{ label: m.education_primary(), value: 'primary' },
+		{ label: m.education_secondary(), value: 'secondary' },
+		{ label: m.education_higher(), value: 'higher' },
+		{ label: m.education_none(), value: 'none' }
+	];
+
 	const formatDate = (dateString: string | undefined) => {
 		if (!dateString) return 'N/A';
 		return new Date(dateString).toLocaleDateString('nl-NL', {
@@ -243,14 +320,6 @@
 			month: 'short',
 			year: 'numeric'
 		});
-	};
-
-	const formatFileSize = (bytes: number) => {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 	};
 
 	const formatDateTime = (dateString: string | undefined | null) => {
@@ -454,7 +523,7 @@
 					</button>
 				{:else if registration.intake_form_id}
 					<a
-						href={`/intakes/${registration.intake_form_id}`}
+						href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
 						class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 					>
 						<ClipboardCheck class="h-4 w-4" />
@@ -698,30 +767,35 @@
 					</div>
 					<div class="space-y-6">
 						<div class="grid gap-6 sm:grid-cols-2">
-							<Input label={m.education_level()} bind:value={editForm.education_level} />
+							<Select
+								label={m.education_level()}
+								options={educationLevelOptions}
+								bind:value={editForm.education.level}
+								placeholder={m.select_option()}
+							/>
 							<div class="flex items-end pb-2">
 								<Checkbox
 									label={m.currently_enrolled()}
-									bind:checked={editForm.education_currently_enrolled}
+									bind:checked={editForm.education.currently_enrolled}
 								/>
 							</div>
 							<Input
 								label={m.institution_name()}
-								bind:value={editForm.education_institution}
+								bind:value={editForm.education.institution}
 								class="sm:col-span-2"
 							/>
 						</div>
 						<div class="border-t border-border pt-6">
 							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label={m.current_employer()} bind:value={editForm.work_current_employer} />
+								<Input label={m.current_employer()} bind:value={editForm.work.current_employer} />
 								<div class="flex items-end pb-2">
 									<Checkbox
 										label={m.currently_employed()}
-										bind:checked={editForm.work_currently_employed}
+										bind:checked={editForm.work.currently_employed}
 									/>
 								</div>
-								<Input label={m.position()} bind:value={editForm.work_current_position} />
-								<DatePicker label={m.start_date()} bind:value={editForm.work_start_date} />
+								<Input label={m.position()} bind:value={editForm.work.current_position} />
+								<DatePicker label={m.start_date()} bind:value={editForm.work.start_date} />
 							</div>
 						</div>
 					</div>
@@ -826,7 +900,7 @@
 								</Button>
 							</div>
 							<div class="space-y-3">
-								{#each editForm.client_goals ?? [] as _, index (index)}
+								{#each editForm.client_goals ?? [] as goal, index (`${index}-${goal}`)}
 									<div class="flex gap-2">
 										<Input
 											bind:value={editForm.client_goals![index]}
@@ -1152,23 +1226,24 @@
 							<div class="flex justify-between border-b border-border/50 pb-2">
 								<span class="text-text-muted">{m.education_level()}</span>
 								<span
-									class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase {registration.education_level
-										? educationColors[registration.education_level as EducationLevel]
+									class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase {registration
+										.education?.level
+										? educationColors[registration.education.level as EducationLevel]
 										: 'bg-zinc-100 text-zinc-500'}"
 								>
-									{registration.education_level || m.not_specified()}
+									{registration.education?.level || m.not_specified()}
 								</span>
 							</div>
 							<div class="flex justify-between border-b border-border/50 pb-2">
 								<span class="text-text-muted">{m.currently_employed()}</span>
 								<span class="font-medium text-text"
-									>{registration.work_currently_employed ? m.yes() : m.no()}</span
+									>{registration.work?.currently_employed ? m.yes() : m.no()}</span
 								>
 							</div>
-							{#if registration.work_current_employer}
+							{#if registration.work?.current_employer}
 								<div class="flex flex-col gap-1 pt-1">
 									<span class="text-text-muted">{m.employer()}</span>
-									<span class="font-medium text-text">{registration.work_current_employer}</span>
+									<span class="font-medium text-text">{registration.work.current_employer}</span>
 								</div>
 							{/if}
 						</div>

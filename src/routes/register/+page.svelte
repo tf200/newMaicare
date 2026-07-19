@@ -16,7 +16,12 @@
 		submitRegistration,
 		uploadRegistrationFile
 	} from '$lib/api/registration';
-	import type { ClientGender, EducationLevel, InitRegistrationUploadRequest } from '$lib/types/api';
+	import type {
+		ClientGender,
+		EducationLevel,
+		InitRegistrationUploadRequest,
+		RegistrationRequest
+	} from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
 
 	const MAX_REGISTRATION_UPLOAD_SIZE = 20 * 1024 * 1024;
@@ -24,6 +29,7 @@
 	const SUPPORTED_REGISTRATION_UPLOAD_TYPES = new Set<
 		InitRegistrationUploadRequest['content_type']
 	>(['application/pdf', 'image/jpeg', 'image/png']);
+	type RegistrationEducationLevel = EducationLevel | '';
 
 	// Form State
 	let form = $state({
@@ -71,7 +77,7 @@
 		education_mentor_email: '',
 		education_currently_enrolled: false,
 		education_additional_notes: '',
-		education_level: '' as EducationLevel,
+		education_level: '' as RegistrationEducationLevel,
 
 		// Work
 		work_current_employer: '',
@@ -143,6 +149,11 @@
 	};
 
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
+	const emptyToNull = (value: string) => {
+		const trimmed = value.trim();
+		return trimmed ? trimmed : null;
+	};
+	const emptyDateToNull = (value: string) => (value ? value : null);
 
 	async function createUploadSession() {
 		if (registrationToken || isPreparingUploadSession) return;
@@ -218,7 +229,7 @@
 				throw new Error(uploadSessionError || m.upload_session_not_ready());
 			}
 
-			await submitRegistration(form, registrationToken);
+			await submitRegistration(buildRegistrationPayload(), registrationToken);
 			alert(m.registration_submitted_success());
 			// Reset form or redirect
 			window.location.href = '/';
@@ -236,6 +247,13 @@
 		{ label: m.unknown(), value: 'unknown' }
 	];
 
+	const educationLevelOptions: Array<{ label: string; value: EducationLevel }> = [
+		{ label: m.education_primary(), value: 'primary' },
+		{ label: m.education_secondary(), value: 'secondary' },
+		{ label: m.education_higher(), value: 'higher' },
+		{ label: m.education_none(), value: 'none' }
+	];
+
 	function addGoal() {
 		if (!form.client_goals) form.client_goals = [];
 		form.client_goals = [...form.client_goals, ''];
@@ -244,6 +262,48 @@
 	function removeGoal(index: number) {
 		if (!form.client_goals) return;
 		form.client_goals = form.client_goals.filter((_, i) => i !== index);
+	}
+
+	function buildRegistrationPayload(): RegistrationRequest {
+		const {
+			education_institution,
+			education_mentor_name,
+			education_mentor_phone,
+			education_mentor_email,
+			education_currently_enrolled,
+			education_additional_notes,
+			education_level,
+			work_current_employer,
+			work_employer_phone,
+			work_employer_email,
+			work_current_position,
+			work_currently_employed,
+			work_start_date,
+			work_additional_notes,
+			...payload
+		} = form;
+
+		return {
+			...payload,
+			education: {
+				institution: emptyToNull(education_institution),
+				mentor_name: emptyToNull(education_mentor_name),
+				mentor_phone: emptyToNull(education_mentor_phone),
+				mentor_email: emptyToNull(education_mentor_email),
+				currently_enrolled: education_currently_enrolled,
+				additional_notes: emptyToNull(education_additional_notes),
+				level: education_level || null
+			},
+			work: {
+				current_employer: emptyToNull(work_current_employer),
+				employer_phone: emptyToNull(work_employer_phone),
+				employer_email: emptyToNull(work_employer_email),
+				current_position: emptyToNull(work_current_position),
+				currently_employed: work_currently_employed,
+				start_date: emptyDateToNull(work_start_date),
+				additional_notes: emptyToNull(work_additional_notes)
+			}
+		};
 	}
 
 	async function uploadRegistrationDocument(
@@ -590,10 +650,11 @@
 									placeholder={m.placeholder_school_university()}
 									class="md:col-span-2"
 								/>
-								<Input
+								<Select
 									label={m.level()}
+									options={educationLevelOptions}
 									bind:value={form.education_level}
-									placeholder={m.placeholder_education_level_example()}
+									placeholder={m.select_option()}
 								/>
 								<Input
 									label={m.mentor_name()}

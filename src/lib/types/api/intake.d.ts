@@ -8,18 +8,30 @@ export type IntakeCareType =
 	| 'other';
 
 export type IntakeParticipantsEnum =
-	| 'client'
-	| 'referrer'
-	| 'parents/guardians'
-	| 'care_coordinator'
-	| 'other';
+	'client' | 'referrer' | 'parents/guardians' | 'care_coordinator' | 'other';
 
 export type IntakeConclusionEnum =
-	| 'suitable'
-	| 'unsuitable'
-	| 'further_investigation'
-	| 'possible_palcement_date'
-	| 'other';
+	'suitable' | 'unsuitable' | 'further_investigation' | 'possible_palcement_date' | 'other';
+
+export interface RegistrationEducationPayload {
+	institution?: string | null;
+	mentor_name?: string | null;
+	mentor_phone?: string | null;
+	mentor_email?: string | null;
+	currently_enrolled: boolean;
+	additional_notes?: string | null;
+	level?: EducationLevel | null;
+}
+
+export interface RegistrationWorkPayload {
+	current_employer?: string | null;
+	employer_phone?: string | null;
+	employer_email?: string | null;
+	current_position?: string | null;
+	currently_employed: boolean;
+	start_date?: string | null;
+	additional_notes?: string | null;
+}
 
 export interface RegistrationRequest {
 	client_first_name: string;
@@ -52,20 +64,8 @@ export interface RegistrationRequest {
 	guardian2_relationship?: string;
 	guardian2_phone_number?: string;
 	guardian2_email?: string;
-	education_institution?: string;
-	education_mentor_name?: string;
-	education_mentor_phone?: string;
-	education_mentor_email?: string;
-	education_currently_enrolled: boolean;
-	education_additional_notes?: string;
-	education_level?: EducationLevel;
-	work_current_employer?: string;
-	work_employer_phone?: string;
-	work_employer_email?: string;
-	work_current_position?: string;
-	work_currently_employed: boolean;
-	work_start_date?: string;
-	work_additional_notes?: string;
+	education?: RegistrationEducationPayload;
+	work?: RegistrationWorkPayload;
 	care_protected_living?: boolean;
 	care_assisted_independent_living?: boolean;
 	care_room_training_center?: boolean;
@@ -94,6 +94,8 @@ export interface RegistrationRequest {
 }
 
 export interface GetRegistrationFormResponse extends RegistrationRequest {
+	education: RegistrationEducationPayload;
+	work: RegistrationWorkPayload;
 	id: string;
 	risk_count: number;
 	form_status: FormStatus;
@@ -125,6 +127,8 @@ export interface UpdateRegistrationFormRequest extends Partial<
 	>
 > {
 	client_gender?: ClientGender | 'unknown';
+	education?: RegistrationEducationPayload | null;
+	work?: RegistrationWorkPayload | null;
 }
 
 export interface ListRegistrationFormsResponse {
@@ -142,6 +146,13 @@ export interface ListRegistrationFormsResponse {
 	form_status: FormStatus;
 	intake_form_id?: string | null;
 	submitted_at: string;
+}
+
+export interface RegistrationCountsResponse {
+	total: number;
+	pending_review: number;
+	processed: number;
+	high_risk: number;
 }
 
 export interface ListRegistrationFormsParams {

@@ -8,6 +8,7 @@ import type {
 	ListRegistrationFormsResponse,
 	PaginatedResponse,
 	ProcessRegistrationRequest,
+	RegistrationCountsResponse,
 	RegistrationUploadSessionResponse,
 	RegistrationRequest,
 	UpdateRegistrationFormRequest
@@ -151,6 +152,10 @@ export function listRegistrationForms(
 	const endpoint = query ? `/registration_forms?${query}` : '/registration_forms';
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListRegistrationFormsResponse>>>(endpoint, options);
+}
+
+export function getRegistrationCounts(options: { fetchFn?: typeof fetch } = {}) {
+	return api.get<ApiEnvelope<RegistrationCountsResponse>>('/registration_forms/counts', options);
 }
 
 export function getRegistrationForm(id: string) {

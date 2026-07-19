@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { Calendar, ClipboardList, ShieldAlert, Search, Eye, ClipboardCheck, Clock, CheckCircle2, FileText } from 'lucide-svelte';
+	import {
+		Calendar,
+		ClipboardList,
+		ShieldAlert,
+		Search,
+		Eye,
+		ClipboardCheck,
+		Clock,
+		CheckCircle2,
+		FileText
+	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -8,9 +18,12 @@
 	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import type { RegistrationRow, RegistrationsLoadResult } from './+page';
+	import type { RegistrationCountsLoadResult } from './+layout';
 	import type { RegistrationFilters } from '$lib/types/registrations';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let { data } = $props<{
 		data: {
@@ -20,10 +33,12 @@
 				filters: RegistrationFilters;
 			};
 			registrationsData: Promise<RegistrationsLoadResult>;
+			registrationsCountsData: Promise<RegistrationCountsLoadResult>;
 		};
 	}>();
 
 	const registrationsDataPromise = $derived.by(() => data.registrationsData);
+	const registrationsCountsDataPromise = $derived.by(() => data.registrationsCountsData);
 	const initial = $derived.by(() => data.initial);
 	const currentPage = $derived.by(() => initial.page);
 	const pageSize = $derived.by(() => initial.pageSize);
@@ -31,7 +46,7 @@
 	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
 	let searchTerm = $state('');
 
-	$effect(() => {
+	afterNavigate(() => {
 		if (searchTerm !== appliedSearch) {
 			searchTerm = appliedSearch;
 		}
@@ -56,27 +71,27 @@
 		items: Array<{ key: keyof RegistrationFilters; label: string }>;
 	}> = [
 		{
-			label: 'Behavioral Risks',
+			label: m.behavioral_risks(),
 			items: [
-				{ key: 'riskAggressiveBehavior', label: 'Aggressive behavior' },
-				{ key: 'riskSexualBehavior', label: 'Sexual behavior' },
-				{ key: 'riskFlightBehavior', label: 'Flight behavior' }
+				{ key: 'riskAggressiveBehavior', label: m.aggressive_behavior() },
+				{ key: 'riskSexualBehavior', label: m.sexual_behavior() },
+				{ key: 'riskFlightBehavior', label: m.flight_behavior() }
 			]
 		},
 		{
-			label: 'Clinical Factors',
+			label: m.clinical_factors(),
 			items: [
-				{ key: 'riskPsychiatricIssues', label: 'Psychiatric issues' },
-				{ key: 'riskSuicidalSelfharm', label: 'Suicidal / Self-harm' },
-				{ key: 'riskSubstanceAbuse', label: 'Substance abuse' },
-				{ key: 'riskDayNightRhythm', label: 'Day/night rhythm' }
+				{ key: 'riskPsychiatricIssues', label: m.psychiatric_issues() },
+				{ key: 'riskSuicidalSelfharm', label: m.suicidal_selfharm() },
+				{ key: 'riskSubstanceAbuse', label: m.substance_abuse() },
+				{ key: 'riskDayNightRhythm', label: m.day_night_rhythm() }
 			]
 		},
 		{
-			label: 'Safety & Legal',
+			label: m.safety_legal(),
 			items: [
-				{ key: 'riskCriminalHistory', label: 'Criminal history' },
-				{ key: 'riskWeaponPossession', label: 'Weapon possession' }
+				{ key: 'riskCriminalHistory', label: m.criminal_history() },
+				{ key: 'riskWeaponPossession', label: m.weapon_possession() }
 			]
 		}
 	];
@@ -89,22 +104,22 @@
 	const careOptions: Array<{ key: keyof RegistrationRow; label: string; className: string }> = [
 		{
 			key: 'careProtectedLiving',
-			label: 'Protected living',
+			label: m.protected_living(),
 			className: 'bg-emerald-600 text-white border border-emerald-700/60'
 		},
 		{
 			key: 'careAssistedIndependentLiving',
-			label: 'Assisted living',
+			label: m.assisted_independent_living(),
 			className: 'bg-blue-600 text-white border border-blue-700/60'
 		},
 		{
 			key: 'careRoomTrainingCenter',
-			label: 'Room training',
+			label: m.room_training_center(),
 			className: 'bg-purple-600 text-white border border-purple-700/60'
 		},
 		{
 			key: 'careAmbulatoryGuidance',
-			label: 'Ambulatory guidance',
+			label: m.ambulatory_guidance(),
 			className: 'bg-amber-500 text-white border border-amber-600/60'
 		}
 	];
@@ -174,7 +189,7 @@
 	};
 
 	const buildQuery = (pageValue: number, nextFilters: RegistrationFilters) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 
@@ -198,7 +213,11 @@
 	const updateQuery = (pageValue: number, nextFilters: RegistrationFilters) => {
 		const nextQuery = buildQuery(pageValue, nextFilters);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(resolve(`/(app)/registrations?${nextQuery}`), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const applySearch = () => {
@@ -210,6 +229,8 @@
 		searchTerm = '';
 		updateQuery(1, { ...defaultFilters });
 	};
+
+	const registrationHref = (id: string) => resolve('/(app)/registrations/[id]', { id });
 </script>
 
 {#snippet tableFilters()}
@@ -230,7 +251,11 @@
 			/>
 		</div>
 
-		<FilterPills pills={registrationFilterPills} activeId={filters.status} onSelect={(id) => setFilters({ ...filters, status: id })} />
+		<FilterPills
+			pills={registrationFilterPills}
+			activeId={filters.status}
+			onSelect={(id) => setFilters({ ...filters, status: id })}
+		/>
 
 		<div class="hidden h-6 w-px bg-border sm:block"></div>
 
@@ -326,7 +351,7 @@
 {#snippet actionsCell(row: RegistrationRow)}
 	<div class="flex justify-end gap-1">
 		<a
-			href="/registrations/{row.id}"
+			href={registrationHref(row.id)}
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
 			title={m.view_registration()}
 		>
@@ -358,29 +383,71 @@
 		</div>
 	</header>
 
-	{#await registrationsDataPromise}
+	{#await registrationsCountsDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			{#each [1, 2, 3, 4] as _}
+			{#each [1, 2, 3, 4] as item (item)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 				</div>
 			{/each}
 		</div>
+	{:then countsData}
+		{#if countsData.loadError}
+			<InlineErrorBanner
+				message={countsData.loadError}
+				onRetry={() => invalidate('app:registrations:stats')}
+			/>
+		{/if}
 
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<StatCard
+				label={m.total_forms()}
+				value={countsData.counts.total}
+				description={m.submitted()}
+				icon={FileText}
+			/>
+			<StatCard
+				label={m.pending_review()}
+				value={countsData.counts.pendingReview}
+				description={m.pending()}
+				icon={Clock}
+				color="secondary"
+			/>
+			<StatCard
+				label={m.processed()}
+				value={countsData.counts.processed}
+				description={m.processed()}
+				icon={CheckCircle2}
+				color="emerald"
+			/>
+			<StatCard
+				label={m.high_risk()}
+				value={countsData.counts.highRisk}
+				description={`${m.risk()} 3+`}
+				icon={ShieldAlert}
+				color="rose"
+			/>
+		</div>
+	{/await}
+
+	{#await registrationsDataPromise}
 		<DataTable
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/registrations/${row.id}`)}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
+			onRowClick={(row) => goto(registrationHref(row.id))}
 			rowKey="id"
 			title={m.registration_intake()}
 			description={m.registration_intake_description()}
-			filters={tableFilters}
+			toolbar={tableFilters}
 			cells={{
 				client: clientCell,
 				referrer: referrerCell,
@@ -393,62 +460,29 @@
 		/>
 	{:then registrationsData}
 		{@const registrations = registrationsData.registrations}
-		{@const pendingCount = registrations.filter(
-			(row: RegistrationRow) => row.formStatus === 'pending'
-		).length}
-		{@const processedCount = registrations.filter(
-			(row: RegistrationRow) => row.formStatus === 'processed'
-		).length}
-		{@const highRiskCount = registrations.filter(
-			(row: RegistrationRow) => row.riskCount >= 3
-		).length}
 
 		{#if registrationsData.loadError}
-			<InlineErrorBanner message={registrationsData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={registrationsData.loadError}
+				onRetry={() => invalidate('app:registrations:list')}
+			/>
 		{/if}
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<StatCard
-				label={m.total_forms()}
-				value={registrationsData.pagination.count}
-				description={m.submitted()}
-				icon={FileText}
-			/>
-			<StatCard
-				label={m.pending_review()}
-				value={pendingCount}
-				description={m.pending()}
-				icon={Clock}
-				color="secondary"
-			/>
-			<StatCard
-				label={m.processed()}
-				value={processedCount}
-				description={m.processed()}
-				icon={CheckCircle2}
-				color="emerald"
-			/>
-			<StatCard
-				label={m.high_risk()}
-				value={highRiskCount}
-				description={`${m.risk()} 3+`}
-				icon={ShieldAlert}
-				color="rose"
-			/>
-		</div>
 
 		<DataTable
 			{columns}
 			rows={registrations}
-			currentPage={registrationsData.pagination.page}
-			pageSize={registrationsData.pagination.pageSize}
-			totalCount={registrationsData.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/registrations/${row.id}`)}
+			pagination={{
+				mode: 'server',
+				page: registrationsData.pagination.page,
+				pageSize: registrationsData.pagination.pageSize,
+				totalCount: registrationsData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
+			onRowClick={(row) => goto(registrationHref(row.id))}
 			rowKey="id"
 			title={m.registration_intake()}
 			description={m.registration_intake_description()}
-			filters={tableFilters}
+			toolbar={tableFilters}
 			cells={{
 				client: clientCell,
 				referrer: referrerCell,

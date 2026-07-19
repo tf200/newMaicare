@@ -50,7 +50,9 @@ const parseBoolean = (value: string | null) => {
 	return undefined;
 };
 
-export const load: PageLoad = ({ url, fetch }) => {
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	depends('app:registrations:list');
+
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const status = (url.searchParams.get('status') ?? '') as RegistrationFilters['status'];
