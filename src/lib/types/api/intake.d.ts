@@ -33,6 +33,13 @@ export interface RegistrationWorkPayload {
 	additional_notes?: string | null;
 }
 
+export interface RegistrationDocument {
+	id: string;
+	name: string;
+	file: string;
+	size: number;
+}
+
 export interface RegistrationRequest {
 	client_first_name: string;
 	client_last_name: string;
@@ -82,12 +89,13 @@ export interface RegistrationRequest {
 	risk_other?: boolean;
 	risk_other_description?: string;
 	risk_additional_notes?: string;
-	document_referral?: string | null;
-	document_education_report?: string | null;
-	document_psychiatric_report?: string | null;
-	document_diagnosis?: string | null;
-	document_safety_plan?: string | null;
-	document_id_copy?: string | null;
+	document_referral?: RegistrationDocument | string | null;
+	document_education_report?: RegistrationDocument | string | null;
+	document_action_plan?: RegistrationDocument | string | null;
+	document_psychiatric_report?: RegistrationDocument | string | null;
+	document_diagnosis?: RegistrationDocument | string | null;
+	document_safety_plan?: RegistrationDocument | string | null;
+	document_id_copy?: RegistrationDocument | string | null;
 	application_date: string;
 	client_goals?: string[];
 	application_reason?: string;

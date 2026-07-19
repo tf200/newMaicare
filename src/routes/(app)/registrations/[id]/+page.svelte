@@ -31,6 +31,7 @@
 		ClientGender,
 		EducationLevel,
 		FormStatus,
+		RegistrationDocument,
 		RegistrationEducationPayload,
 		RegistrationWorkPayload,
 		UpdateRegistrationFormRequest
@@ -472,6 +473,42 @@
 				active: registration.care_ambulatory_guidance
 			}
 		];
+	}
+
+	type RegistrationDocumentValue = RegistrationDocument | string | null | undefined;
+	type DisplayDocument = { name: string; id: string; fileName: string | null; size: number | null };
+
+	function getDocumentId(value: RegistrationDocumentValue): string | null {
+		if (typeof value === 'string') return value;
+		return value?.id ?? null;
+	}
+
+	function formatDocumentId(value: string): string {
+		return value.split('/').pop()?.substring(0, 8) ?? value.substring(0, 8);
+	}
+
+	function getDocumentFileName(value: RegistrationDocumentValue): string | null {
+		return typeof value === 'object' && value ? value.name : null;
+	}
+
+	function getDocumentSize(value: RegistrationDocumentValue): number | null {
+		return typeof value === 'object' && value ? value.size : null;
+	}
+
+	function getRegistrationDocuments(registration: GetRegistrationFormResponse): DisplayDocument[] {
+		return [
+			{ name: m.referral_document(), value: registration.document_referral },
+			{ name: m.education_report(), value: registration.document_education_report },
+			{ name: m.psychiatric_report(), value: registration.document_psychiatric_report },
+			{ name: m.diagnosis_info(), value: registration.document_diagnosis },
+			{ name: m.safety_plan(), value: registration.document_safety_plan },
+			{ name: m.id_copy(), value: registration.document_id_copy }
+		].flatMap(({ name, value }) => {
+			const id = getDocumentId(value);
+			return id
+				? [{ name, id, fileName: getDocumentFileName(value), size: getDocumentSize(value) }]
+				: [];
+		});
 	}
 </script>
 
@@ -1317,7 +1354,7 @@
 									<h3 class="font-bold text-text">{m.documents()}</h3>
 								</div>
 								<div class="space-y-2">
-									{#each [{ name: m.referral_document(), id: registration.document_referral }, { name: m.education_report(), id: registration.document_education_report }, { name: m.psychiatric_report(), id: registration.document_psychiatric_report }, { name: m.diagnosis_info(), id: registration.document_diagnosis }, { name: m.safety_plan(), id: registration.document_safety_plan }, { name: m.id_copy(), id: registration.document_id_copy }].filter((d) => d.id) as doc (doc.name)}
+									{#each getRegistrationDocuments(registration) as doc (doc.id)}
 										<div
 											class="group flex items-center gap-3 rounded-xl border border-transparent bg-zinc-50 p-2.5 transition-all hover:border-border hover:bg-white hover:shadow-sm dark:bg-zinc-900/50 dark:hover:bg-zinc-800"
 										>
@@ -1327,9 +1364,11 @@
 												<FileText class="h-4 w-4" />
 											</div>
 											<div class="min-w-0 flex-1">
-												<p class="truncate text-sm font-medium text-text">{doc.name}</p>
+												<p class="truncate text-sm font-medium text-text">
+													{doc.fileName ?? doc.name}
+												</p>
 												<p class="text-xs text-text-subtle">
-													{m.id_label()}: {doc.id?.split('/').pop()?.substring(0, 8)}...
+													{m.id_label()}: {formatDocumentId(doc.id)}...
 												</p>
 											</div>
 											<button
