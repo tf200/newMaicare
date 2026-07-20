@@ -12,10 +12,18 @@
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import type { IntakeRow as IntakeRowData, IntakeFilters, IntakesLoadResult } from './+page';
-	import { goto, invalidateAll } from '$app/navigation';
+	import type {
+		IntakeRow as IntakeRowData,
+		IntakeFilters,
+		IntakesLoadResult,
+		IntakesStatsLoadResult
+	} from './+page';
+	import { goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	type IntakeRow = IntakeRowData & {
 		hasClient: boolean;
@@ -29,10 +37,12 @@
 				filters: IntakeFilters;
 			};
 			intakesData: Promise<IntakesLoadResult>;
+			statsData: Promise<IntakesStatsLoadResult>;
 		};
 	}>();
 
 	const intakesDataPromise = $derived.by(() => data.intakesData);
+	const statsDataPromise = $derived.by(() => data.statsData);
 	const initial = $derived.by(() => data.initial);
 	const currentPage = $derived.by(() => initial.page);
 	const pageSize = $derived.by(() => initial.pageSize);
@@ -52,33 +62,33 @@
 	const careOptions: Array<{ key: keyof IntakeRow; label: string; className: string }> = [
 		{
 			key: 'careProtectedLiving',
-			label: 'Protected living',
-			className: 'bg-emerald-600 text-white border border-emerald-700/60'
+			label: m.protected_living(),
+			className: 'border border-success/25 bg-success/10 text-success'
 		},
 		{
 			key: 'careAssistedIndependentLiving',
-			label: 'Assisted living',
-			className: 'bg-blue-600 text-white border border-blue-700/60'
+			label: m.assisted_independent_living(),
+			className: 'border border-info/25 bg-info/10 text-info'
 		},
 		{
 			key: 'careRoomTrainingCenter',
-			label: 'Room training',
-			className: 'bg-purple-600 text-white border border-purple-700/60'
+			label: m.room_training_center(),
+			className: 'border border-brand/25 bg-brand/10 text-brand'
 		},
 		{
 			key: 'careAmbulatoryGuidance',
-			label: 'Ambulatory guidance',
-			className: 'bg-amber-500 text-white border border-amber-600/60'
+			label: m.ambulatory_guidance(),
+			className: 'border border-warning/25 bg-warning/10 text-warning'
 		}
 	];
 
 	const columns: DataTableColumn[] = [
 		{ key: 'client', label: m.client(), headerClass: 'pl-14' },
-		{ key: 'intakeDate', label: 'Intake Date' },
+		{ key: 'intakeDate', label: m.intake_date() },
 		{ key: 'intakeStatus', label: m.intake_status() },
-		{ key: 'goalAssessment', label: 'Goal Assessment' },
+		{ key: 'goalAssessment', label: m.goal_assessment() },
 		{ key: 'care', label: m.care_type() },
-		{ key: 'location', label: 'Location' },
+		{ key: 'location', label: m.location() },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
 
@@ -99,35 +109,33 @@
 	const getCareTags = (row: IntakeRow) => careOptions.filter((option) => Boolean(row[option.key]));
 
 	const statusStyles: Record<IntakeRow['intakeStatus'], string> = {
-		suitable: 'bg-emerald-600 text-white border-emerald-700/60 shadow-sm shadow-emerald-700/30',
-		unsuitable: 'bg-rose-600 text-white border-rose-700/60 shadow-sm shadow-rose-700/30',
-		further_investigation:
-			'bg-amber-500 text-white border-amber-600/60 shadow-sm shadow-amber-600/30',
-		possible_palcement_date:
-			'bg-blue-600 text-white border-blue-700/60 shadow-sm shadow-blue-700/30',
-		other: 'bg-border text-text-muted border-border'
+		suitable: 'border-success/25 bg-success/10 text-success',
+		unsuitable: 'border-error/25 bg-error/10 text-error',
+		further_investigation: 'border-warning/25 bg-warning/10 text-warning',
+		possible_palcement_date: 'border-info/25 bg-info/10 text-info',
+		other: 'border-border bg-border/30 text-text-muted'
 	};
 
 	const statusLabels: Record<IntakeRow['intakeStatus'], string> = {
-		suitable: 'Suitable',
-		unsuitable: 'Unsuitable',
-		further_investigation: 'Further investigation',
-		possible_palcement_date: 'Possible placement date',
-		other: 'Other'
+		suitable: m.suitable(),
+		unsuitable: m.unsuitable(),
+		further_investigation: m.further_investigation(),
+		possible_palcement_date: m.possible_placement_date(),
+		other: m.other()
 	};
 
 	const statusOptions: Array<{ value: IntakeFilters['status']; label: string }> = [
 		{ value: '', label: m.all() },
-		{ value: 'suitable', label: 'Suitable' },
-		{ value: 'unsuitable', label: 'Unsuitable' },
-		{ value: 'further_investigation', label: 'Further investigation' },
-		{ value: 'possible_palcement_date', label: 'Possible placement date' },
-		{ value: 'other', label: 'Other' }
+		{ value: 'suitable', label: m.suitable() },
+		{ value: 'unsuitable', label: m.unsuitable() },
+		{ value: 'further_investigation', label: m.further_investigation() },
+		{ value: 'possible_palcement_date', label: m.possible_placement_date() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const filterGroups = $derived([
 		{
-			label: 'Status',
+			label: m.status(),
 			items: statusOptions
 				.filter((o) => o.value !== '')
 				.map((o) => ({ key: o.value, label: o.label }))
@@ -143,7 +151,7 @@
 	});
 
 	const buildQuery = (pageValue: number, nextFilters: IntakeFilters) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 
@@ -160,12 +168,20 @@
 	const updateQuery = (pageValue: number, nextFilters: IntakeFilters) => {
 		const nextQuery = buildQuery(pageValue, nextFilters);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		const nextHref = `${resolve('/(app)/intakes')}?${nextQuery}`;
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- route is resolved above; only query params are composed dynamically.
+		goto(nextHref, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
+
+	const viewIntake = (id: string) => goto(resolve('/(app)/intakes/[id]', { id }));
 
 	const handleFilterUpdate = (newState: Record<string, boolean | string | number | undefined>) => {
 		const activeKeys = Object.entries(newState)
-			.filter(([_, v]) => Boolean(v))
+			.filter(([, v]) => Boolean(v))
 			.map(([k]) => k);
 
 		let newStatus: IntakeFilters['status'] = '';
@@ -216,7 +232,7 @@
 			onUpdate={handleFilterUpdate}
 			onClear={() => setFilters({ ...filters, status: '' })}
 			title={m.filter_by_status()}
-			buttonLabel="Status"
+			buttonLabel={m.status()}
 		/>
 	</div>
 {/snippet}
@@ -233,9 +249,9 @@
 				<p class="text-sm font-semibold text-text">{formatClientName(row)}</p>
 				{#if row.hasClient}
 					<span
-						class="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 ring-1 ring-emerald-500/20"
+						class="rounded-full bg-success/10 px-1.5 py-0.5 text-[10px] font-bold text-success ring-1 ring-success/20"
 					>
-						Converted
+						{m.converted()}
 					</span>
 				{/if}
 			</div>
@@ -264,17 +280,17 @@
 {#snippet goalAssessmentCell(row: IntakeRow)}
 	{#if row.goalAssessmentStatus === 'done'}
 		<span
-			class="inline-flex items-center rounded-full border border-emerald-700/60 bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-emerald-700/30"
+			class="inline-flex items-center rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success"
 		>
 			<CheckCircle class="mr-1.5 h-3.5 w-3.5" />
-			Done
+			{m.done()}
 		</span>
 	{:else}
 		<span
-			class="inline-flex items-center rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-secondary/30"
+			class="inline-flex items-center rounded-full border border-warning/25 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning"
 		>
 			<Clock class="mr-1.5 h-3.5 w-3.5" />
-			Pending
+			{m.pending()}
 		</span>
 	{/if}
 {/snippet}
@@ -306,8 +322,10 @@
 {#snippet actionsCell(row: IntakeRow)}
 	<div class="flex justify-end gap-1">
 		<button
-			onclick={() => goto(`/intakes/${row.id}`)}
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			type="button"
+			onclick={() => viewIntake(row.id)}
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:outline-none"
+			aria-label={m.view_intake()}
 			title={m.view_intake()}
 		>
 			<Eye class="h-4 w-4" />
@@ -320,7 +338,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-blue-100/70 to-indigo-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-brand/10 to-info/10 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -352,15 +370,18 @@
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/intakes/${row.id}`)}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
+			onRowClick={(row) => viewIntake(row.id)}
 			rowKey="id"
 			title={m.intake()}
 			description={m.intake_management_description()}
-			filters={tableFilters}
+			toolbar={tableFilters}
 			cells={{
 				client: clientCell,
 				intakeDate: intakeDateCell,
@@ -373,76 +394,76 @@
 		/>
 	{:then intakesData}
 		{#if intakesData.loadError}
-			<InlineErrorBanner message={intakesData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={intakesData.loadError}
+				onRetry={() => invalidate('app:intakes:list')}
+			/>
 		{/if}
 
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div
-				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-			>
-				<div class="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-5">
-					<ClipboardList class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Total Intakes
+			<StatCard
+				label={m.total_matching_intakes()}
+				value={intakesData.pagination.count}
+				description={m.active_filters_scope()}
+				icon={ClipboardList}
+			/>
+
+			{#await statsDataPromise}
+				<StatCard
+					label={m.further_investigation()}
+					value="—"
+					description={m.global_total_scope()}
+					icon={Search}
+					color="amber"
+				/>
+				<StatCard
+					label={m.without_goals()}
+					value="—"
+					description={m.global_total_scope()}
+					icon={Clock}
+					color="rose"
+				/>
+			{:then statsData}
+				{#if statsData.loadError}
+					<div class="sm:col-span-2 xl:col-span-2">
+						<InlineErrorBanner
+							message={statsData.loadError}
+							onRetry={() => invalidate('app:intakes:stats')}
+						/>
 					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{intakesData.stats.total}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.all()}</p>
-				</div>
-			</div>
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Search class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Further Investigation
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-500 sm:text-3xl">
-						{intakesData.stats.furtherInvestigation}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.requires_review()}</p>
-				</div>
-			</div>
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Clock class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Without Goals
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-						{intakesData.stats.withoutGoals}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.needs_goal_definition()}</p>
-				</div>
-			</div>
+				{/if}
+				<StatCard
+					label={m.further_investigation()}
+					value={statsData.stats.furtherInvestigation}
+					description={m.global_total_scope()}
+					icon={Search}
+					color="amber"
+				/>
+				<StatCard
+					label={m.without_goals()}
+					value={statsData.stats.withoutGoals}
+					description={m.global_total_scope()}
+					icon={Clock}
+					color="rose"
+				/>
+			{/await}
 		</div>
 
 		<DataTable
 			{columns}
 			rows={intakesData.intakes}
-			currentPage={intakesData.pagination.page}
-			pageSize={intakesData.pagination.pageSize}
-			totalCount={intakesData.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(`/intakes/${row.id}`)}
+			pagination={{
+				mode: 'server',
+				page: intakesData.pagination.page,
+				pageSize: intakesData.pagination.pageSize,
+				totalCount: intakesData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
+			onRowClick={(row) => viewIntake(row.id)}
 			rowKey="id"
 			title={m.intake()}
 			description={m.intake_management_description()}
-			filters={tableFilters}
+			toolbar={tableFilters}
 			cells={{
 				client: clientCell,
 				intakeDate: intakeDateCell,

@@ -1,5 +1,6 @@
 import type { PageLoad } from './$types';
 import { getIntakeFormsTotals, listIntakeForms } from '$lib/api/intakes';
+import { m } from '$lib/paraglide/messages';
 import type {
 	AssignedLocationAddress,
 	IntakeConclusionEnum,
@@ -31,12 +32,15 @@ export interface IntakeFilters {
 
 export interface IntakesLoadResult {
 	intakes: IntakeRow[];
+	pagination: PaginationState<IntakeFilters>;
+	loadError: string | null;
+}
+
+export interface IntakesStatsLoadResult {
 	stats: {
-		total: number;
 		furtherInvestigation: number;
 		withoutGoals: number;
 	};
-	pagination: PaginationState<IntakeFilters>;
 	loadError: string | null;
 }
 
@@ -77,17 +81,30 @@ const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
 	};
 };
 
-export const load: PageLoad = ({ url }) => {
+export const load: PageLoad = ({ depends, url }) => {
+	depends('app:intakes:list');
+	depends('app:intakes:stats');
+
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const search = url.searchParams.get('search') ?? '';
 	const normalizedSearch = search.trim();
 	const status = (url.searchParams.get('status') ?? '') as IntakeFilters['status'];
-	const totalsPromise = getIntakeFormsTotals()
-		.then((response) => response.data)
-		.catch(() => ({
-			further_investigation_total: 0,
-			without_goals_total: 0
+
+	const statsData: Promise<IntakesStatsLoadResult> = getIntakeFormsTotals()
+		.then((response) => ({
+			stats: {
+				furtherInvestigation: response.data.further_investigation_total,
+				withoutGoals: response.data.without_goals_total
+			},
+			loadError: null
+		}))
+		.catch((error): IntakesStatsLoadResult => ({
+			stats: {
+				furtherInvestigation: 0,
+				withoutGoals: 0
+			},
+			loadError: error instanceof Error ? error.message : m.failed_load_intake_statistics()
 		}));
 
 	const intakesData: Promise<IntakesLoadResult> = listIntakeForms({
@@ -96,18 +113,12 @@ export const load: PageLoad = ({ url }) => {
 		search: normalizedSearch || undefined,
 		status: status === '' ? undefined : status
 	})
-		.then(async (response) => {
-			const totals = await totalsPromise;
+		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 			const mapped = results.map(mapIntake);
 
 			return {
 				intakes: mapped,
-				stats: {
-					total: count,
-					furtherInvestigation: totals.further_investigation_total,
-					withoutGoals: totals.without_goals_total
-				},
 				pagination: {
 					count,
 					page,
@@ -123,14 +134,9 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies IntakesLoadResult;
 		})
 		.catch((error): IntakesLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load intakes.';
+			const message = error instanceof Error ? error.message : m.failed_load_intakes();
 			return {
 				intakes: [],
-				stats: {
-					total: 0,
-					furtherInvestigation: 0,
-					withoutGoals: 0
-				},
 				pagination: {
 					count: 0,
 					page,
@@ -155,6 +161,7 @@ export const load: PageLoad = ({ url }) => {
 				status
 			}
 		},
-		intakesData
+		intakesData,
+		statsData
 	};
 };
