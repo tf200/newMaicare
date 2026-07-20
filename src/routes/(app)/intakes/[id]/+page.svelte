@@ -85,16 +85,8 @@
 		});
 	});
 
-	const refreshIntake = async () => {
-		if (!intake) return;
-		const version = ++requestVersion;
-		const refreshed = await intakes.getById(intake.id);
-		if (version !== requestVersion) return;
-		intake = refreshed.data;
-	};
-
 	const invalidateIntakeResources = (...resources: string[]) => {
-		void Promise.all(resources.map((resource) => invalidate(resource)));
+		return Promise.all(resources.map((resource) => invalidate(resource)));
 	};
 
 	const handleSaveIntake = async () => {
@@ -102,8 +94,7 @@
 		try {
 			actionError = null;
 			actionSuccess = null;
-			await refreshIntake();
-			invalidateIntakeResources('app:intakes:detail', 'app:intakes:list');
+			await invalidateIntakeResources('app:intakes:detail', 'app:intakes:list');
 			actionSuccess = m.intake_form_updated();
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : m.failed_refresh_intake();
@@ -123,8 +114,11 @@
 			actionError = null;
 			actionSuccess = null;
 			await intakes.updateGoals(intake.id, requestData);
-			await refreshIntake();
-			invalidateIntakeResources('app:intakes:detail', 'app:intakes:list', 'app:intakes:stats');
+			await invalidateIntakeResources(
+				'app:intakes:detail',
+				'app:intakes:list',
+				'app:intakes:stats'
+			);
 			actionSuccess = m.goals_updated();
 			isGoalModalOpen = false;
 		} catch (err) {
@@ -138,8 +132,11 @@
 			actionError = null;
 			actionSuccess = null;
 			await intakes.updateConclusion(intake.id, payload);
-			await refreshIntake();
-			invalidateIntakeResources('app:intakes:detail', 'app:intakes:list', 'app:intakes:stats');
+			await invalidateIntakeResources(
+				'app:intakes:detail',
+				'app:intakes:list',
+				'app:intakes:stats'
+			);
 			actionSuccess = m.intake_conclusion_updated();
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : m.failed_update_conclusion();
@@ -153,8 +150,11 @@
 			actionSuccess = null;
 			isPromoting = true;
 			const response = await intakes.promote(intake.id);
-			await refreshIntake();
-			invalidateIntakeResources('app:intakes:detail', 'app:intakes:list', 'app:intakes:stats');
+			await invalidateIntakeResources(
+				'app:intakes:detail',
+				'app:intakes:list',
+				'app:intakes:stats'
+			);
 			actionSuccess = m.intake_promoted({
 				contacts: String(response.data.emergency_contacts_created)
 			});
