@@ -43,12 +43,17 @@
 	let senderId = $state('');
 	let senderName = $state('');
 	let assignedLocationId = $state('');
+	let assignedLocationName = $state('');
 	let riskAssessment = $state('');
 	let intakeConclusion = $state<IntakeConclusionEnum>('suitable');
 	let intakeConclusionNotes = $state('');
 	let signature = $state('');
 
 	const normalizeSelfSufficiency = (value: number) => Math.min(5, Math.max(0, Math.round(value)));
+	const formatLocationLabel = (location: GetIntakeFormResponse['location']) => {
+		if (!location) return '';
+		return location.city ? `${location.name} (${location.city})` : location.name;
+	};
 
 	const syncFormFromIntake = () => {
 		dateOfIntake = intake.date_of_intake;
@@ -61,6 +66,7 @@
 		senderId = intake.sender_id || '';
 		senderName = intake.sender_name || '';
 		assignedLocationId = intake.assigned_location_id || '';
+		assignedLocationName = formatLocationLabel(intake.location);
 		riskAssessment = intake.risk_assessment || '';
 		intakeConclusion = intake.intake_conclusion;
 		intakeConclusionNotes = intake.intake_conclusion_notes || '';
@@ -343,6 +349,7 @@
 						<SearchSelect
 							label={m.assigned_location()}
 							bind:value={assignedLocationId}
+							bind:displayValue={assignedLocationName}
 							error={fieldErrors.assignedLocationId}
 							loadOptions={async (query) => {
 								const res = await listLocations({ search: query, pageSize: 50 });
