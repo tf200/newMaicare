@@ -338,7 +338,7 @@ export interface UpdateIntakeRequest {
 	family_situation?: string;
 	psychological_state?: string;
 	self_sufficiency?: number;
-	evaluation_interval_weeks?: number;
+	evaluation_intervals_weeks?: number;
 	sender_id?: string;
 	assigned_location_id?: string;
 	risk_assessment?: string;

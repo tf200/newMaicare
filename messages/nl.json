@@ -852,6 +852,8 @@
 	"intake_promoted": "Intake gepromoveerd naar cliënt ({contacts} contacten gemigreerd).",
 	"failed_promote_intake": "Kan intake niet promoveren naar cliënt.",
 	"promote_warning": "Deze intake is gemarkeerd als geschikt, maar de cliënt is nog niet aan de wachtlijst toegevoegd. Promoveer deze intake om de onboarding te voltooien.",
+	"intake_not_available": "Intake niet beschikbaar",
+	"failed_load_intake_detail": "Kan intakedetails niet laden.",
 	"back_to_organizations": "Terug naar organisaties",
 	"add_location": "Locatie toevoegen",
 	"locations": "Locaties",

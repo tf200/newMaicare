@@ -15,7 +15,9 @@
 		GetIntakeFormResponse,
 		IntakeCareType,
 		IntakeParticipantsEnum,
-		IntakeConclusionEnum
+		IntakeConclusionEnum,
+		OrganizationLocation,
+		SenderListItem
 	} from '$lib/types/api';
 
 	interface Props {
@@ -45,6 +47,8 @@
 	let intakeConclusion = $state<IntakeConclusionEnum>('suitable');
 	let intakeConclusionNotes = $state('');
 	let signature = $state('');
+
+	const normalizeSelfSufficiency = (value: number) => Math.min(5, Math.max(0, Math.round(value)));
 
 	const syncFormFromIntake = () => {
 		dateOfIntake = intake.date_of_intake;
@@ -99,8 +103,8 @@
 		const errors: Record<string, string> = {};
 		if (!familySituation) errors.familySituation = 'Family situation is required';
 		if (!psychologicalState) errors.psychologicalState = 'Psychological state is required';
-		if (selfSufficiency < 0 || selfSufficiency > 100)
-			errors.selfSufficiency = 'Must be between 0-100';
+		if (!Number.isInteger(selfSufficiency) || selfSufficiency < 0 || selfSufficiency > 5)
+			errors.selfSufficiency = 'Must be a whole number between 0-5';
 		if (evaluationIntervalWeeks <= 0) errors.evaluationIntervalWeeks = 'Must be at least 1 week';
 		if (!dateOfIntake) errors.dateOfIntake = 'Date is required';
 		if (!careType) errors.careType = 'Care type is required';
@@ -134,8 +138,8 @@
 				intake_participants: intakeParticipants,
 				family_situation: familySituation,
 				psychological_state: psychologicalState,
-				self_sufficiency: Number(selfSufficiency),
-				evaluation_interval_weeks: Number(evaluationIntervalWeeks),
+				self_sufficiency: normalizeSelfSufficiency(selfSufficiency),
+				evaluation_intervals_weeks: Number(evaluationIntervalWeeks),
 				sender_id: senderId,
 				assigned_location_id: assignedLocationId,
 				risk_assessment: riskAssessment,
@@ -154,7 +158,7 @@
 	};
 </script>
 
-{#snippet senderItem(option: any)}
+{#snippet senderItem(option: SenderListItem)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{option.name}</span>
 		<div class="flex items-center gap-1.5 text-xs text-text-muted">
@@ -167,7 +171,7 @@
 	</div>
 {/snippet}
 
-{#snippet locationItem(option: any)}
+{#snippet locationItem(option: OrganizationLocation)}
 	<div class="flex flex-col py-0.5">
 		<span class="font-medium text-text">{option.name}</span>
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
@@ -237,7 +241,8 @@
 								bind:value={selfSufficiency}
 								error={fieldErrors.selfSufficiency}
 								min="0"
-								max="100"
+								max="5"
+								step="1"
 							/>
 						</div>
 					</div>

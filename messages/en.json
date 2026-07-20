@@ -850,6 +850,8 @@
 	"intake_promoted": "Intake promoted to client ({contacts} contacts migrated).",
 	"failed_promote_intake": "Failed to promote intake to client.",
 	"promote_warning": "This intake is marked as suitable, but the client has not been added to the waiting list yet. Promote this intake to complete onboarding.",
+	"intake_not_available": "Intake not available",
+	"failed_load_intake_detail": "Failed to load intake details.",
 	"back_to_organizations": "Back to organizations",
 	"add_location": "Add location",
 	"locations": "Locations",

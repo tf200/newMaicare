@@ -1,15 +1,31 @@
 import { intakes } from '$lib/api/intakes';
 import type { PageLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { m } from '$lib/paraglide/messages';
+import type { GetIntakeFormResponse } from '$lib/types/api';
 
-export const load: PageLoad = async ({ params }) => {
-	try {
-		const res = await intakes.getById(params.id);
-		return {
-			intake: res.data
-		};
-	} catch (e) {
-		console.error('Failed to load intake:', e);
-		throw error(404, 'Intake not found');
-	}
+export interface IntakeDetailLoadResult {
+	intake: GetIntakeFormResponse | null;
+	loadError: string | null;
+}
+
+export const load: PageLoad = ({ depends, params }) => {
+	depends('app:intakes:detail');
+
+	const intakeData: Promise<IntakeDetailLoadResult> = intakes
+		.getById(params.id)
+		.then((response) => ({
+			intake: response.data,
+			loadError: null
+		}))
+		.catch((error): IntakeDetailLoadResult => ({
+			intake: null,
+			loadError: error instanceof Error ? error.message : m.failed_load_intake_detail()
+		}));
+
+	return {
+		initial: {
+			id: params.id
+		},
+		intakeData
+	};
 };
