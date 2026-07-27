@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import { onDestroy } from 'svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -17,12 +18,12 @@
 		onCreated?: () => void;
 	}
 
-	const typeOptions = [
+	const typeOptions = $derived([
 		{ value: 'main_provider', label: m.main_provider() },
 		{ value: 'local_authority', label: m.local_authority() },
 		{ value: 'particular_party', label: m.private_individual() },
 		{ value: 'healthcare_institution', label: m.healthcare_institution() }
-	] as const;
+	] as const);
 
 	let { open = $bindable(false), onCreated }: Props = $props();
 
@@ -30,9 +31,10 @@
 	let isLookupLoading = $state(false);
 	let errorMessage = $state('');
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	let lookupSequence = 0;
 	const formId = 'create-sender-form';
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, submitting, reset } = superForm(
 		defaults(
 			{
 				types: 'main_provider',
@@ -46,6 +48,7 @@
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
+					errorMessage = '';
 					try {
 						const postalCode = trimToUndefined(form.data.postal_code);
 						const contacts: CreateSenderRequest['contacts'] = form.data.contacts
@@ -73,7 +76,7 @@
 						};
 
 						await createSender(payload);
-						reset();
+						clearTransientState();
 						open = false;
 						onCreated?.();
 					} catch (error) {
@@ -95,16 +98,35 @@
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
 
 	const handleCancel = () => {
-		reset();
+		clearTransientState();
 		open = false;
 	};
 
+	const clearTransientState = () => {
+		if (lookupTimer) {
+			clearTimeout(lookupTimer);
+			lookupTimer = null;
+		}
+		lookupSequence += 1;
+		lookupMessage = '';
+		isLookupLoading = false;
+		errorMessage = '';
+		reset();
+	};
+
+	onDestroy(() => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupSequence += 1;
+	});
+
 	const runLookup = async (postcodeValue: string, numberValue: string) => {
 		if (!isPostalCodeValid(postcodeValue)) return;
+		const sequence = ++lookupSequence;
 		isLookupLoading = true;
 		lookupMessage = '';
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
+			if (sequence !== lookupSequence || !open) return;
 			if (!result) {
 				lookupMessage = m.address_not_found_manual();
 				return;
@@ -112,17 +134,22 @@
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
+			if (sequence !== lookupSequence || !open) return;
 			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
-			isLookupLoading = false;
+			if (sequence === lookupSequence) isLookupLoading = false;
 		}
 	};
 
 	const scheduleLookup = (postcodeValue: string, numberValue: string) => {
 		lookupMessage = '';
-		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupSequence += 1;
+		isLookupLoading = false;
+		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		lookupTimer = setTimeout(() => {
+			lookupTimer = null;
 			void runLookup(postcodeValue, numberValue);
 		}, 400);
 	};
@@ -144,12 +171,18 @@
 	title={m.create_sender()}
 	description={m.create_sender_description()}
 	class="max-w-3xl"
+	closeLabel={m.close()}
+	dismissible={!$submitting}
+	onClose={clearTransientState}
 >
-	<form id={formId} use:enhance class="max-h-[70vh] space-y-6 overflow-y-auto pr-2">
+	<form id={formId} use:enhance class="space-y-6">
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
+				id="create-sender-name"
 				label={m.sender_name()}
 				placeholder={m.placeholder_sender_organization()}
+				autocomplete="organization"
+				required
 				bind:value={$form.name}
 				error={formatFormError($errors.name)}
 			/>
@@ -160,20 +193,25 @@
 				<select
 					id="sender-type"
 					bind:value={$form.types}
-					class="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+					aria-invalid={$errors.types ? 'true' : undefined}
+					aria-describedby={$errors.types ? 'sender-type-error' : undefined}
+					class="w-full rounded-xl border border-border bg-surface px-4 py-3.5 text-text outline-hidden transition-[border-color,box-shadow] focus:border-brand focus:ring-2 focus:ring-brand/20"
 				>
 					{#each typeOptions as option (option.value)}
 						<option value={option.value}>{option.label}</option>
 					{/each}
 				</select>
 				{#if $errors.types}
-					<p class="ml-1 text-xs font-medium text-error">{formatFormError($errors.types)}</p>
+					<p id="sender-type-error" class="ml-1 text-xs font-medium text-error">
+						{formatFormError($errors.types)}
+					</p>
 				{/if}
 			</div>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 			<Input
+				id="create-sender-postal-code"
 				label={m.postal_code()}
 				placeholder={m.example_postal_code()}
 				bind:value={$form.postal_code}
@@ -191,8 +229,10 @@
 					}
 				}}
 				error={formatFormError($errors.postal_code)}
+				autocomplete="postal-code"
 			/>
 			<Input
+				id="create-sender-house-number"
 				label={m.house_number()}
 				placeholder={m.example_house_number()}
 				bind:value={$form.house_number}
@@ -204,66 +244,95 @@
 				error={formatFormError($errors.house_number)}
 			/>
 			<Input
+				id="create-sender-house-number-addition"
 				label={m.addition_optional()}
 				placeholder={m.example_house_number_addition()}
 				bind:value={$form.house_number_addition}
+				error={formatFormError($errors.house_number_addition)}
 			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
+				id="create-sender-street"
 				label={m.street()}
 				placeholder={m.example_street_name()}
 				bind:value={$form.street}
 				error={formatFormError($errors.street)}
+				autocomplete="street-address"
 			/>
 			<Input
+				id="create-sender-city"
 				label={m.city()}
 				placeholder={m.example_city_name()}
 				bind:value={$form.city}
 				error={formatFormError($errors.city)}
+				autocomplete="address-level2"
 			/>
 		</div>
 
 		{#if isLookupLoading}
-			<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
+			<div class="text-xs font-medium text-text-muted" role="status" aria-live="polite">
+				{m.looking_up_address()}
+			</div>
 		{/if}
 		{#if lookupMessage}
-			<div class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+			<div
+				class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+				role="status"
+				aria-live="polite"
+			>
 				{lookupMessage}
 			</div>
 		{/if}
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-			<Input label={m.country()} placeholder={m.example_country()} bind:value={$form.land} />
 			<Input
+				id="create-sender-country"
+				label={m.country()}
+				placeholder={m.example_country()}
+				bind:value={$form.land}
+				error={formatFormError($errors.land)}
+				autocomplete="country-name"
+			/>
+			<Input
+				id="create-sender-phone"
 				label={m.phone_number()}
 				placeholder={m.example_phone_nl()}
 				bind:value={$form.phone_number}
+				error={formatFormError($errors.phone_number)}
+				type="tel"
+				autocomplete="tel"
 			/>
 			<Input
+				id="create-sender-client-number"
 				label={m.client_number()}
 				placeholder={m.placeholder_client_number()}
 				bind:value={$form.client_number}
+				error={formatFormError($errors.client_number)}
 			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
+				id="create-sender-kvk"
 				label={m.kvk_number()}
 				placeholder={m.placeholder_kvk_number()}
 				bind:value={$form.KVKnumber}
+				error={formatFormError($errors.KVKnumber)}
 			/>
 			<Input
+				id="create-sender-btw"
 				label={m.btw_number()}
 				placeholder={m.placeholder_btw_number()}
 				bind:value={$form.BTWnumber}
+				error={formatFormError($errors.BTWnumber)}
 			/>
 		</div>
 
 		<div class="space-y-4">
-			<div class="flex items-center justify-between">
-				<div>
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div class="min-w-0">
 					<h3 class="text-sm font-semibold text-text">{m.contacts()}</h3>
 					<p class="text-xs text-text-muted">{m.contacts_hint()}</p>
 				</div>
@@ -274,21 +343,30 @@
 					<div class="rounded-2xl border border-border bg-surface/80 p-4">
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 							<Input
+								id={`create-sender-contact-${index}-name`}
 								label={m.contact_name()}
 								placeholder={m.placeholder_contact_name()}
 								bind:value={contact.name}
+								error={formatFormError($errors.contacts?.[index]?.name)}
+								autocomplete="name"
 							/>
 							<Input
+								id={`create-sender-contact-${index}-email`}
 								label={m.email_address()}
 								placeholder={m.placeholder_contact_email()}
 								type="email"
 								bind:value={contact.email}
 								error={formatFormError($errors.contacts?.[index]?.email)}
+								autocomplete="email"
 							/>
 							<Input
+								id={`create-sender-contact-${index}-phone`}
 								label={m.phone_number()}
 								placeholder={m.example_phone_nl()}
 								bind:value={contact.phone_number}
+								error={formatFormError($errors.contacts?.[index]?.phone_number)}
+								type="tel"
+								autocomplete="tel"
 							/>
 						</div>
 						<div class="mt-3 flex justify-end">
@@ -302,18 +380,21 @@
 		</div>
 
 		{#if errorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{errorMessage}
 			</div>
 		{/if}
-
-		<button type="submit" class="hidden" aria-hidden="true"></button>
 	</form>
 
 	{#snippet footer()}
-		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>{m.create_sender()}</Button>
+		<div class="flex flex-wrap justify-end gap-3">
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$submitting} disabled={$submitting}>
+				{m.create_sender()}
+			</Button>
 		</div>
 	{/snippet}
 </Modal>

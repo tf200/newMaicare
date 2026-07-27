@@ -12,11 +12,16 @@
 		header = undefined,
 		footer = undefined,
 		size = 'md' as ModalSize,
+		closeLabel = 'Close',
+		dismissible = true,
+		onClose = undefined,
 		class: className = ''
 	} = $props();
 
 	function close() {
+		if (!dismissible) return;
 		open = false;
+		onClose?.();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -44,7 +49,7 @@
 	>
 		<!-- Backdrop -->
 		<div
-			class="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm transition-all"
+			class="fixed inset-0 bg-text/40 backdrop-blur-sm transition-all"
 			transition:fade={{ duration: 200 }}
 			onclick={close}
 			role="button"
@@ -71,8 +76,11 @@
 					</div>
 				{/if}
 				<button
+					type="button"
 					onclick={close}
-					class="rounded-full p-2 text-text-subtle transition-colors hover:bg-border/50 hover:text-text"
+					aria-label={closeLabel}
+					disabled={!dismissible}
+					class="rounded-full p-2 text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
 				>
 					<X class="h-5 w-5" />
 				</button>

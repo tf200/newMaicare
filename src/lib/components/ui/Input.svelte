@@ -33,6 +33,8 @@
 		<input
 			{...props}
 			bind:value
+			aria-invalid={error ? 'true' : props['aria-invalid']}
+			aria-describedby={error && props.id ? `${props.id}-error` : props['aria-describedby']}
 			class="w-full rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow] duration-200 placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 {sizeClass} {className}"
 		/>
 		{#if children}
@@ -40,6 +42,8 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
+		<p id={props.id ? `${props.id}-error` : undefined} class="ml-1 text-xs font-medium text-error">
+			{error}
+		</p>
 	{/if}
 </div>
