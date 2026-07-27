@@ -237,7 +237,7 @@
 </script>
 
 {#snippet tableFilters()}
-	<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
 		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
@@ -246,7 +246,7 @@
 				type="text"
 				placeholder={m.search_registrations()}
 				bind:value={searchTerm}
-				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-48 lg:w-56"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
