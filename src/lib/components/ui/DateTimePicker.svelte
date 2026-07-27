@@ -5,30 +5,47 @@
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { SvelteDate } from 'svelte/reactivity';
 
+	interface Props {
+		label?: string;
+		value?: string;
+		error?: string;
+		id?: string;
+		previousLabel?: string;
+		nextLabel?: string;
+		changeViewLabel?: string;
+	}
+
+	const generatedId = $props.id();
 	let {
 		label = undefined,
 		value = $bindable(),
 		error = undefined,
-		id = `datetime-${Math.random().toString(36).substr(2, 9)}`
-	} = $props();
+		id = generatedId,
+		previousLabel = m.previous(),
+		nextLabel = m.next(),
+		changeViewLabel = m.select_date_time_placeholder()
+	}: Props = $props();
 
 	type View = 'days' | 'months' | 'years';
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	const addDays = (date: Date, amount: number) => {
-		const next = new Date(date);
+		const next = new SvelteDate(date);
 		next.setDate(next.getDate() + amount);
 		return next;
 	};
 
 	let isOpen = $state(false);
-	let triggerEl = $state<HTMLElement>();
-	let dropdownEl = $state<HTMLElement>();
+	let triggerEl = $state<HTMLButtonElement>();
+	let dropdownEl = $state<HTMLDivElement>();
+	let dialogId = $derived(`${id}-dialog`);
+	let errorId = $derived(`${id}-error`);
 	// Parse the initial value or default to now
-	const initialDate = value ? new Date(value) : new Date();
-	let viewDate = $state(initialDate);
+	const initialDate = value ? new SvelteDate(value) : new SvelteDate();
+	const viewDate = initialDate;
 
 	// Keep track of time separately to persist it when changing dates
 	let selectedHour = $state(initialDate.getHours());
@@ -54,7 +71,7 @@
 
 	// Array of days to render
 	let calendarDays = $derived.by(() => {
-		let arr = [];
+		const arr: Array<Date | null> = [];
 		for (let i = 0; i < firstDayOfMonth; i++) arr.push(null);
 		for (let i = 1; i <= daysInMonth; i++)
 			arr.push(new Date(viewDate.getFullYear(), viewDate.getMonth(), i));
@@ -88,7 +105,7 @@
 
 	function updateValue() {
 		// Create a new date object from viewDate but with selected time
-		const finalDate = new Date(viewDate);
+		const finalDate = new SvelteDate(viewDate);
 		finalDate.setHours(selectedHour);
 		finalDate.setMinutes(selectedMinute);
 		value = finalDate.toISOString();
@@ -97,7 +114,7 @@
 	function selectDate(date: Date) {
 		if (!date) return;
 		// Update viewDate to the selected date
-		viewDate = new Date(date);
+		viewDate.setTime(date.getTime());
 		updateValue();
 		// Don't close immediately, let user adjust time if needed
 	}
@@ -107,32 +124,36 @@
 	}
 
 	function selectMonth(monthIndex: number) {
-		viewDate = new Date(viewDate.getFullYear(), monthIndex, 1);
+		viewDate.setDate(1);
+		viewDate.setMonth(monthIndex);
 		view = 'days';
 	}
 
 	function selectYear(year: number) {
-		viewDate = new Date(year, viewDate.getMonth(), 1);
+		viewDate.setDate(1);
+		viewDate.setFullYear(year);
 		view = 'months';
 	}
 
 	function next() {
 		if (view === 'days') {
-			viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+			viewDate.setDate(1);
+			viewDate.setMonth(viewDate.getMonth() + 1);
 		} else if (view === 'months') {
-			viewDate = new Date(viewDate.getFullYear() + 1, viewDate.getMonth(), 1);
+			viewDate.setFullYear(viewDate.getFullYear() + 1);
 		} else {
-			viewDate = new Date(viewDate.getFullYear() + 12, viewDate.getMonth(), 1);
+			viewDate.setFullYear(viewDate.getFullYear() + 12);
 		}
 	}
 
 	function prev() {
 		if (view === 'days') {
-			viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+			viewDate.setDate(1);
+			viewDate.setMonth(viewDate.getMonth() - 1);
 		} else if (view === 'months') {
-			viewDate = new Date(viewDate.getFullYear() - 1, viewDate.getMonth(), 1);
+			viewDate.setFullYear(viewDate.getFullYear() - 1);
 		} else {
-			viewDate = new Date(viewDate.getFullYear() - 12, viewDate.getMonth(), 1);
+			viewDate.setFullYear(viewDate.getFullYear() - 12);
 		}
 	}
 
@@ -142,7 +163,12 @@
 		else view = 'days';
 	}
 
-	function handleOutsideClick(node: HTMLElement) {
+	function toggle() {
+		isOpen = !isOpen;
+		if (!isOpen) view = 'days';
+	}
+
+	function manageRoot(node: HTMLDivElement) {
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as Node;
 			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
@@ -151,15 +177,27 @@
 			}
 		};
 		document.addEventListener('click', handleClick);
-		return {
-			destroy() {
-				document.removeEventListener('click', handleClick);
-			}
+		return () => {
+			document.removeEventListener('click', handleClick);
+		};
+	}
+
+	function captureTrigger(node: HTMLButtonElement) {
+		triggerEl = node;
+		return () => {
+			if (triggerEl === node) triggerEl = undefined;
+		};
+	}
+
+	function captureDropdown(node: HTMLDivElement) {
+		dropdownEl = node;
+		return () => {
+			if (dropdownEl === node) dropdownEl = undefined;
 		};
 	}
 
 	// Helper to check if a date is the currently selected date (ignoring time for calendar visual)
-	function isSameDay(d1: Date, d2String: string) {
+	function isSameDay(d1: Date, d2String?: string) {
 		if (!d2String) return false;
 		const d2 = new Date(d2String);
 		return (
@@ -170,7 +208,7 @@
 	}
 </script>
 
-<div class="space-y-2" use:handleOutsideClick>
+<div class="space-y-2" {@attach manageRoot}>
 	{#if label}
 		<label for={id} class="ml-1 text-sm font-semibold text-text">
 			{label}
@@ -180,10 +218,18 @@
 	<div class="relative">
 		<button
 			{id}
-			bind:this={triggerEl}
+			{@attach captureTrigger}
 			type="button"
-			onclick={() => (isOpen = !isOpen)}
-			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20"
+			onclick={toggle}
+			role="combobox"
+			aria-haspopup="dialog"
+			aria-controls={dialogId}
+			aria-expanded={isOpen}
+			aria-invalid={error ? true : undefined}
+			aria-describedby={error ? errorId : undefined}
+			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3.5 text-left text-text outline-hidden transition-all focus:ring-2 focus:ring-brand/20 {error
+				? 'border-error'
+				: ''}"
 		>
 			<CalendarIcon class="h-4 w-4 text-text-muted" />
 			{#if formattedValue}
@@ -195,19 +241,23 @@
 
 		{#if isOpen && triggerEl}
 			<div
-				bind:this={dropdownEl}
+				{@attach captureDropdown}
 				use:portal
 				use:floating={{ anchor: triggerEl }}
-				class="z-[9999] mt-2 flex w-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5"
+				id={dialogId}
+				role="dialog"
+				aria-label={label ?? m.select_date_time_placeholder()}
+				class="z-[9999] mt-2 flex w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5 sm:flex-row"
 				transition:scale={{ start: 0.95, duration: 150 }}
 			>
 				<!-- Calendar Section -->
-				<div class="w-72 p-4">
+				<div class="w-full p-4 sm:w-72">
 					<!-- Date Picker Header -->
 					<div class="mb-4 flex items-center justify-between">
 						<button
 							type="button"
 							onclick={prev}
+							aria-label={previousLabel}
 							class="rounded-lg p-1 text-text hover:bg-border/50"
 						>
 							<ChevronLeft class="h-5 w-5" />
@@ -215,6 +265,7 @@
 						<button
 							type="button"
 							onclick={toggleView}
+							aria-label={changeViewLabel}
 							class="font-semibold text-text transition-colors hover:text-brand"
 						>
 							{headerText}
@@ -222,6 +273,7 @@
 						<button
 							type="button"
 							onclick={next}
+							aria-label={nextLabel}
 							class="rounded-lg p-1 text-text hover:bg-border/50"
 						>
 							<ChevronRight class="h-5 w-5" />
@@ -247,6 +299,13 @@
 											<button
 												type="button"
 												onclick={() => selectDate(date)}
+												aria-label={date.toLocaleDateString(resolveLocale(), {
+													weekday: 'long',
+													year: 'numeric',
+													month: 'long',
+													day: 'numeric'
+												})}
+												aria-pressed={isSameDay(date, value)}
 												class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
                                             {isSameDay(date, value)
 													? 'bg-brand font-bold text-white hover:opacity-90'
@@ -271,6 +330,8 @@
 										<button
 											type="button"
 											onclick={() => selectMonth(i)}
+											aria-label={month}
+											aria-pressed={viewDate.getMonth() === i}
 											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
                                         {viewDate.getMonth() === i
 												? 'bg-brand font-bold text-white hover:opacity-90'
@@ -292,6 +353,7 @@
 										<button
 											type="button"
 											onclick={() => selectYear(year)}
+											aria-pressed={viewDate.getFullYear() === year}
 											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
                                         {viewDate.getFullYear() === year
 												? 'bg-brand font-bold text-white hover:opacity-90'
@@ -307,12 +369,14 @@
 				</div>
 
 				<!-- Time Picker Section -->
-				<div class="flex w-40 flex-col border-l border-border p-4">
+				<div
+					class="flex w-full flex-col border-t border-border p-4 sm:w-40 sm:border-t-0 sm:border-l"
+				>
 					<div class="mb-4 flex items-center gap-2">
 						<Clock class="h-4 w-4 text-text-muted" />
 						<span class="text-xs font-semibold text-text-muted">{m.time()}</span>
 					</div>
-					<div class="flex flex-1 flex-col justify-center gap-4">
+					<div class="grid flex-1 grid-cols-2 gap-4 sm:flex sm:flex-col sm:justify-center">
 						<div class="space-y-1.5">
 							<label for="{id}-hour" class="text-xs font-medium text-text-muted">{m.hour()}</label>
 							<select
@@ -347,6 +411,6 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
+		<p id={errorId} class="ml-1 text-xs font-medium text-error">{error}</p>
 	{/if}
 </div>

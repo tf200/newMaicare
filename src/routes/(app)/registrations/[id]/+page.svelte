@@ -17,14 +17,10 @@
 		Download,
 		ClipboardCheck,
 		Target,
-		Edit3,
-		Save,
-		X,
-		RotateCcw,
-		Plus,
-		Trash2
+		Plus
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import type {
 		GetRegistrationFormResponse,
@@ -32,67 +28,24 @@
 		EducationLevel,
 		FormStatus,
 		RegistrationDocument,
-		RegistrationDocumentType,
-		RegistrationEducationPayload,
-		RegistrationWorkPayload,
-		UpdateRegistrationFormRequest
+		RegistrationDocumentType
 	} from '$lib/types/api';
-	import { updateRegistrationDocument, updateRegistrationForm } from '$lib/api/registration';
+	import { updateRegistrationDocument } from '$lib/api/registration';
 	import { AttachmentService } from '$lib/api/attachments';
 	import ProcessRegistrationForm from '$lib/components/forms/ProcessRegistrationForm.svelte';
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
 	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onDestroy } from 'svelte';
-	import Input from '$lib/components/ui/Input.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Checkbox from '$lib/components/ui/Checkbox.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import DatePicker from '$lib/components/ui/DatePicker.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import { fade, slide } from 'svelte/transition';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import RegistrationEditForm from './_components/RegistrationEditForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
-
-	type EditableEducation = Omit<
-		RegistrationEducationPayload,
-		'institution' | 'mentor_name' | 'mentor_phone' | 'mentor_email' | 'additional_notes' | 'level'
-	> & {
-		institution: string;
-		mentor_name: string;
-		mentor_phone: string;
-		mentor_email: string;
-		additional_notes: string;
-		level: EducationLevel | '';
-	};
-
-	type EditableWork = Omit<
-		RegistrationWorkPayload,
-		| 'current_employer'
-		| 'employer_phone'
-		| 'employer_email'
-		| 'current_position'
-		| 'start_date'
-		| 'additional_notes'
-	> & {
-		current_employer: string;
-		employer_phone: string;
-		employer_email: string;
-		current_position: string;
-		start_date: string;
-		additional_notes: string;
-	};
-
-	type EditableRegistrationForm = Omit<GetRegistrationFormResponse, 'education' | 'work'> & {
-		education: EditableEducation;
-		work: EditableWork;
-	};
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
@@ -106,11 +59,7 @@
 		};
 	});
 
-	// Edit State
 	let isEditing = $state(false);
-	let isSaving = $state(false);
-	let editForm = $state<EditableRegistrationForm | null>(null);
-	let originalEditForm = $state<EditableRegistrationForm | null>(null);
 	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
 	let downloadingDocumentId = $state<string | null>(null);
@@ -122,122 +71,6 @@
 	const allowedRegistrationDocumentTypes = ['application/pdf', 'image/jpeg', 'image/png'] as const;
 	const maxRegistrationDocumentSize = 20 * 1024 * 1024;
 	const registrationDocumentAccept = allowedRegistrationDocumentTypes.join(',');
-
-	const hasChanges = $derived(
-		isEditing && editForm && JSON.stringify(editForm) !== JSON.stringify(originalEditForm)
-	);
-
-	function toEditableRegistrationForm(form: GetRegistrationFormResponse): EditableRegistrationForm {
-		return {
-			...form,
-			education: {
-				institution: form.education?.institution ?? '',
-				mentor_name: form.education?.mentor_name ?? '',
-				mentor_phone: form.education?.mentor_phone ?? '',
-				mentor_email: form.education?.mentor_email ?? '',
-				currently_enrolled: form.education?.currently_enrolled ?? false,
-				additional_notes: form.education?.additional_notes ?? '',
-				level: form.education?.level ?? ''
-			},
-			work: {
-				current_employer: form.work?.current_employer ?? '',
-				employer_phone: form.work?.employer_phone ?? '',
-				employer_email: form.work?.employer_email ?? '',
-				current_position: form.work?.current_position ?? '',
-				currently_employed: form.work?.currently_employed ?? false,
-				start_date: form.work?.start_date ?? '',
-				additional_notes: form.work?.additional_notes ?? ''
-			}
-		};
-	}
-
-	function startEditing(registration: GetRegistrationFormResponse) {
-		const draft = toEditableRegistrationForm(JSON.parse(JSON.stringify(registration)));
-		const originalDraft = toEditableRegistrationForm(JSON.parse(JSON.stringify(registration)));
-		if (!draft.client_goals) draft.client_goals = [''];
-		if (!originalDraft.client_goals) originalDraft.client_goals = [''];
-		editForm = draft;
-		originalEditForm = originalDraft;
-		isEditing = true;
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}
-
-	const emptyToNull = (value: string | null | undefined) => {
-		const trimmed = value?.trim() ?? '';
-		return trimmed ? trimmed : null;
-	};
-
-	function buildUpdatePayload(form: EditableRegistrationForm): UpdateRegistrationFormRequest {
-		return {
-			client_first_name: form.client_first_name,
-			client_last_name: form.client_last_name,
-			client_date_of_birth: form.client_date_of_birth,
-			client_bsn_number: form.client_bsn_number,
-			client_gender: form.client_gender,
-			client_nationality: form.client_nationality,
-			client_phone_number: form.client_phone_number,
-			client_email: form.client_email,
-			client_street: form.client_street,
-			client_house_number: form.client_house_number,
-			client_house_number_addition: form.client_house_number_addition,
-			client_postal_code: form.client_postal_code,
-			client_city: form.client_city,
-			referrer_first_name: form.referrer_first_name,
-			referrer_last_name: form.referrer_last_name,
-			referrer_organization: form.referrer_organization,
-			referrer_job_title: form.referrer_job_title,
-			referrer_phone_number: form.referrer_phone_number,
-			referrer_email: form.referrer_email,
-			guardian1_first_name: form.guardian1_first_name,
-			guardian1_last_name: form.guardian1_last_name,
-			guardian1_relationship: form.guardian1_relationship,
-			guardian1_phone_number: form.guardian1_phone_number,
-			guardian1_email: form.guardian1_email,
-			guardian2_first_name: form.guardian2_first_name,
-			guardian2_last_name: form.guardian2_last_name,
-			guardian2_relationship: form.guardian2_relationship,
-			guardian2_phone_number: form.guardian2_phone_number,
-			guardian2_email: form.guardian2_email,
-			education: {
-				institution: emptyToNull(form.education?.institution),
-				mentor_name: emptyToNull(form.education?.mentor_name),
-				mentor_phone: emptyToNull(form.education?.mentor_phone),
-				mentor_email: emptyToNull(form.education?.mentor_email),
-				currently_enrolled: form.education?.currently_enrolled ?? false,
-				additional_notes: emptyToNull(form.education?.additional_notes),
-				level: form.education?.level || null
-			},
-			work: {
-				current_employer: emptyToNull(form.work?.current_employer),
-				employer_phone: emptyToNull(form.work?.employer_phone),
-				employer_email: emptyToNull(form.work?.employer_email),
-				current_position: emptyToNull(form.work?.current_position),
-				currently_employed: form.work?.currently_employed ?? false,
-				start_date: emptyToNull(form.work?.start_date),
-				additional_notes: emptyToNull(form.work?.additional_notes)
-			},
-			care_protected_living: form.care_protected_living,
-			care_assisted_independent_living: form.care_assisted_independent_living,
-			care_room_training_center: form.care_room_training_center,
-			care_ambulatory_guidance: form.care_ambulatory_guidance,
-			application_reason: form.application_reason,
-			client_goals: form.client_goals,
-			risk_aggressive_behavior: form.risk_aggressive_behavior,
-			risk_suicidal_selfharm: form.risk_suicidal_selfharm,
-			risk_substance_abuse: form.risk_substance_abuse,
-			risk_psychiatric_issues: form.risk_psychiatric_issues,
-			risk_criminal_history: form.risk_criminal_history,
-			risk_flight_behavior: form.risk_flight_behavior,
-			risk_weapon_possession: form.risk_weapon_possession,
-			risk_sexual_behavior: form.risk_sexual_behavior,
-			risk_day_night_rhythm: form.risk_day_night_rhythm,
-			risk_other: form.risk_other,
-			risk_other_description: form.risk_other_description,
-			risk_additional_notes: form.risk_additional_notes,
-			application_date: form.application_date,
-			referrer_signature: form.referrer_signature
-		};
-	}
 
 	function showToast(message: string, type: 'success' | 'warning' | 'error') {
 		toast = { message, type };
@@ -259,71 +92,40 @@
 		if (toastTimer) clearTimeout(toastTimer);
 	});
 
-	function cancelEditing() {
-		if (hasChanges && !confirm(m.discard_changes())) return;
-		isEditing = false;
-		editForm = null;
+	async function refreshRegistrationResources() {
+		await Promise.all([
+			invalidate('app:registrations:detail'),
+			invalidate('app:registrations:list'),
+			invalidate('app:registrations:stats')
+		]);
 	}
 
-	function resetChanges() {
-		editForm = JSON.parse(JSON.stringify(originalEditForm));
+	async function handleRegistrationUpdated() {
+		showToast(m.registration_updated_successfully(), 'success');
+		await refreshRegistrationResources();
 	}
 
-	async function saveChanges() {
-		if (!editForm) return;
-
-		const payload = buildUpdatePayload(editForm);
-
-		isSaving = true;
-		try {
-			await updateRegistrationForm(editForm.id, payload);
-			originalEditForm = JSON.parse(JSON.stringify(editForm));
-			isEditing = false;
-			showToast(m.registration_updated_successfully(), 'success');
-			await refreshRegistrationDetail();
-		} catch (error) {
-			showToast(error instanceof Error ? error.message : m.failed_update_registration(), 'error');
-		} finally {
-			isSaving = false;
-		}
+	function handleEditingChange(editing: boolean) {
+		isEditing = editing;
 	}
 
-	async function refreshRegistrationDetail() {
-		await invalidate('app:registrations:detail');
+	async function refreshAfterIntakeCreated() {
+		await Promise.all([
+			invalidate('app:registrations:detail'),
+			invalidate('app:intakes:list'),
+			invalidate('app:intakes:stats')
+		]);
 	}
 
 	async function retryRegistrationDetail() {
 		await invalidate('app:registrations:detail');
 	}
 
-	function addGoal() {
-		if (!editForm) return;
-		const goals = editForm.client_goals ?? [];
-		editForm.client_goals = [...goals, ''];
-	}
-
-	function removeGoal(index: number) {
-		if (!editForm?.client_goals) return;
-		editForm.client_goals = editForm.client_goals.filter((_, i) => i !== index);
-	}
-
-	const genderOptions = [
-		{ label: m.male(), value: 'male' },
-		{ label: m.female(), value: 'female' },
-		{ label: m.other(), value: 'other' },
-		{ label: m.unknown(), value: 'unknown' }
-	];
-
-	const educationLevelOptions: Array<{ label: string; value: EducationLevel }> = [
-		{ label: m.education_primary(), value: 'primary' },
-		{ label: m.education_secondary(), value: 'secondary' },
-		{ label: m.education_higher(), value: 'higher' },
-		{ label: m.education_none(), value: 'none' }
-	];
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	const formatDate = (dateString: string | undefined) => {
-		if (!dateString) return 'N/A';
-		return new Date(dateString).toLocaleDateString('nl-NL', {
+		if (!dateString) return m.not_available_short();
+		return new Date(dateString).toLocaleDateString(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric',
@@ -333,10 +135,10 @@
 	};
 
 	const formatOnlyDate = (dateString: string | undefined | null) => {
-		if (!dateString) return 'N/A';
+		if (!dateString) return m.not_available_short();
 		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return 'N/A';
-		return date.toLocaleDateString('nl-NL', {
+		if (isNaN(date.getTime())) return m.not_available_short();
+		return date.toLocaleDateString(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
@@ -344,8 +146,8 @@
 	};
 
 	const formatDateTime = (dateString: string | undefined | null) => {
-		if (!dateString) return 'N/A';
-		return new Date(dateString).toLocaleString('nl-NL', {
+		if (!dateString) return m.not_available_short();
+		return new Date(dateString).toLocaleString(resolveLocale(), {
 			weekday: 'long',
 			day: '2-digit',
 			month: 'short',
@@ -356,21 +158,21 @@
 	};
 
 	const formatTime = (dateString: string | undefined | null) => {
-		if (!dateString) return 'N/A';
-		return new Date(dateString).toLocaleTimeString('nl-NL', {
+		if (!dateString) return m.not_available_short();
+		return new Date(dateString).toLocaleTimeString(resolveLocale(), {
 			hour: '2-digit',
 			minute: '2-digit'
 		});
 	};
 
 	const calculateAge = (dob: string | undefined | null) => {
-		if (!dob) return 'N/A';
+		if (!dob) return m.not_available_short();
 		const birthDate = new Date(dob);
-		if (isNaN(birthDate.getTime())) return 'N/A';
+		if (isNaN(birthDate.getTime())) return m.not_available_short();
 		const today = new Date();
 		let age = today.getFullYear() - birthDate.getFullYear();
-		const m = today.getMonth() - birthDate.getMonth();
-		if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+		const monthDifference = today.getMonth() - birthDate.getMonth();
+		if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
 			age--;
 		}
 		return age;
@@ -380,30 +182,48 @@
 	const riskTone = 'bg-secondary/10 text-secondary border-secondary/20';
 
 	const statusColors: Record<FormStatus, string> = {
-		pending:
-			'bg-secondary/10 text-secondary border border-secondary/20 shadow-sm shadow-secondary/10',
-		processed: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+		pending: 'border border-warning/20 bg-warning/10 text-warning shadow-sm',
+		processed: 'border border-success/20 bg-success/10 text-success'
 	};
 
 	const genderColors: Record<ClientGender, string> = {
-		male: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		female: 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-		other: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20',
-		unknown: 'bg-slate-500/10 text-slate-700 border-slate-500/20'
+		male: 'border-info/20 bg-info/10 text-info',
+		female: 'border-secondary/20 bg-secondary/10 text-secondary',
+		other: 'border-border bg-bg text-text-muted',
+		unknown: 'border-border bg-bg text-text-subtle'
 	};
 
 	const educationColors: Record<EducationLevel, string> = {
-		primary: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20',
-		secondary: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		higher: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
-		none: 'bg-rose-500/10 text-rose-700 border-rose-500/20'
+		primary: 'border-border bg-bg text-text-muted',
+		secondary: 'border-info/20 bg-info/10 text-info',
+		higher: 'border-success/20 bg-success/10 text-success',
+		none: 'border-error/20 bg-error/10 text-error'
 	};
 
 	const careStyles: Record<string, string> = {
-		careProtectedLiving: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
-		careAssistedIndependentLiving: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		careRoomTrainingCenter: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
-		careAmbulatoryGuidance: 'bg-amber-400/15 text-amber-700 border-amber-400/30'
+		careProtectedLiving: 'border border-success/20 bg-success/10 text-success',
+		careAssistedIndependentLiving: 'border-info/20 bg-info/10 text-info',
+		careRoomTrainingCenter: 'border-brand/20 bg-brand/10 text-brand',
+		careAmbulatoryGuidance: 'border-warning/20 bg-warning/10 text-warning'
+	};
+
+	const statusLabels: Record<FormStatus, () => string> = {
+		pending: m.pending,
+		processed: m.processed
+	};
+
+	const genderLabels: Record<ClientGender, () => string> = {
+		male: m.male,
+		female: m.female,
+		other: m.other,
+		unknown: m.unknown
+	};
+
+	const educationLabels: Record<EducationLevel, () => string> = {
+		primary: m.education_primary,
+		secondary: m.education_secondary,
+		higher: m.education_higher,
+		none: m.education_none
 	};
 	const detailSkeletonCards = Array.from({ length: 6 }, (_, index) => index);
 
@@ -660,6 +480,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{m.breadcrumb_registration_detail()} | MaiCare</title>
+</svelte:head>
+
 {#await data.registrationData}
 	<div class="space-y-6">
 		<div class="h-10 rounded-2xl bg-surface ring-1 ring-border"></div>
@@ -692,82 +516,34 @@
 	{:else}
 		{@const registration = registrationResult.registration}
 		<div class="space-y-6">
-			<!-- Breadcrumb / Actions -->
-			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-				<div class="hidden"></div>
-
-				<div class="flex flex-wrap items-center justify-end gap-2 md:ml-auto">
-					{#if !isEditing}
-						<PermissionGuard permission="REGISTRATION_FORM.UPDATE">
-							<button
-								onclick={() => startEditing(registration)}
-								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-surface px-4 text-sm font-semibold text-text shadow-sm ring-1 ring-border transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800"
-							>
-								<Edit3 class="h-4 w-4 text-brand" />
-								{m.edit_registration()}
-							</button>
-						</PermissionGuard>
+			{#if !isEditing}
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					{#if registration.form_status === 'pending'}
+						<button
+							onclick={() => (showProcessForm = true)}
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
+						>
+							{m.process_application()}
+						</button>
+					{:else if registration.intake_form_id}
+						<a
+							href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
+						>
+							<ClipboardCheck class="h-4 w-4" />
+							{m.view_intake()}
+						</a>
 					{:else}
-						{#if hasChanges}
-							<button
-								onclick={resetChanges}
-								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-warning/10 px-4 text-sm font-semibold text-warning transition-all hover:bg-warning/20"
-							>
-								<RotateCcw class="h-4 w-4" />
-								{m.reset_changes()}
-							</button>
-						{/if}
 						<button
-							onclick={cancelEditing}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-surface px-4 text-sm font-semibold text-text shadow-sm ring-1 ring-border transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800"
+							onclick={() => (showIntakeWizard = true)}
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 						>
-							<X class="h-4 w-4" />
-							{m.cancel()}
+							<ClipboardCheck class="h-4 w-4" />
+							{m.start_intake()}
 						</button>
-						<button
-							onclick={saveChanges}
-							disabled={!hasChanges || isSaving}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover disabled:opacity-50"
-						>
-							{#if isSaving}
-								<div
-									class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-								></div>
-							{:else}
-								<Save class="h-4 w-4" />
-							{/if}
-							{m.save_changes()}
-						</button>
-					{/if}
-
-					{#if !isEditing}
-						{#if registration.form_status === 'pending'}
-							<button
-								onclick={() => (showProcessForm = true)}
-								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-							>
-								{m.process_application()}
-							</button>
-						{:else if registration.intake_form_id}
-							<a
-								href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
-								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-							>
-								<ClipboardCheck class="h-4 w-4" />
-								{m.view_intake()}
-							</a>
-						{:else}
-							<button
-								onclick={() => (showIntakeWizard = true)}
-								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-							>
-								<ClipboardCheck class="h-4 w-4" />
-								{m.start_intake()}
-							</button>
-						{/if}
 					{/if}
 				</div>
-			</div>
+			{/if}
 
 			<!-- Header Section -->
 			<header
@@ -803,7 +579,7 @@
 											registration.form_status as FormStatus
 										]}"
 									>
-										{registration.form_status}
+										{statusLabels[registration.form_status as FormStatus]()}
 									</span>
 								</div>
 								<div class="mt-1 flex items-center gap-3">
@@ -815,7 +591,7 @@
 											registration.client_gender as ClientGender
 										]}"
 									>
-										{registration.client_gender}
+										{genderLabels[registration.client_gender as ClientGender]()}
 									</span>
 								</div>
 							</div>
@@ -845,341 +621,24 @@
 			<ProcessRegistrationForm
 				bind:open={showProcessForm}
 				registrationId={registration.id}
-				onProcessed={refreshRegistrationDetail}
+				onProcessed={refreshRegistrationResources}
 			/>
 
 			<CreateIntakeWizard
 				bind:open={showIntakeWizard}
 				{registration}
-				onCreated={refreshRegistrationDetail}
+				onCreated={refreshAfterIntakeCreated}
 			/>
 
-			{#if isEditing && editForm}
-				<div class="space-y-8 pb-20" in:fade={{ duration: 300 }}>
-					<!-- Unsaved Changes Alert -->
-					{#if hasChanges}
-						<div
-							class="flex items-center justify-between rounded-2xl border border-warning/30 bg-warning/10 p-4 text-warning shadow-sm"
-							transition:slide
-						>
-							<div class="flex items-center gap-3">
-								<div class="rounded-full bg-warning/20 p-2">
-									<RotateCcw class="h-5 w-5" />
-								</div>
-								<div>
-									<p class="font-bold">{m.unsaved_changes_title()}</p>
-									<p class="text-sm opacity-90">{m.unsaved_changes_description()}</p>
-								</div>
-							</div>
-							<div class="flex gap-2">
-								<Button
-									variant="ghost"
-									onclick={resetChanges}
-									class="h-9 text-xs text-warning hover:bg-warning/20"
-								>
-									{m.discard_changes()}
-								</Button>
-								<Button
-									variant="primary"
-									onclick={saveChanges}
-									isLoading={isSaving}
-									class="h-9 bg-warning text-xs text-white hover:bg-warning/90"
-								>
-									{m.save_now()}
-								</Button>
-							</div>
-						</div>
-					{/if}
+			{#key registration.id}
+				<RegistrationEditForm
+					{registration}
+					onUpdated={handleRegistrationUpdated}
+					onEditingChange={handleEditingChange}
+				/>
+			{/key}
 
-					<div class="grid gap-8 lg:grid-cols-2">
-						<!-- Client Info Section -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<User class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.client_information()}</h2>
-							</div>
-							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label={m.first_name()} bind:value={editForm.client_first_name} />
-								<Input label={m.last_name()} bind:value={editForm.client_last_name} />
-								<Input label={m.bsn_number()} bind:value={editForm.client_bsn_number} />
-								<DatePicker label={m.date_of_birth()} bind:value={editForm.client_date_of_birth} />
-								<Select
-									label={m.gender()}
-									options={genderOptions}
-									bind:value={editForm.client_gender}
-								/>
-								<Input label={m.nationality()} bind:value={editForm.client_nationality} />
-								<Input label={m.phone_number()} bind:value={editForm.client_phone_number} />
-								<Input
-									label={m.email_address()}
-									type="email"
-									bind:value={editForm.client_email}
-									class="sm:col-span-2"
-								/>
-							</div>
-						</section>
-
-						<!-- Address Section -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<MapPin class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.address_details()}</h2>
-							</div>
-							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label={m.street()} bind:value={editForm.client_street} />
-								<div class="grid grid-cols-2 gap-4">
-									<Input label={m.house_number()} bind:value={editForm.client_house_number} />
-									<Input
-										label={m.addition_optional()}
-										bind:value={editForm.client_house_number_addition}
-									/>
-								</div>
-								<Input label={m.postal_code()} bind:value={editForm.client_postal_code} />
-								<Input label={m.city()} bind:value={editForm.client_city} />
-							</div>
-						</section>
-
-						<!-- Referrer Section -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<Building class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.referrer_details()}</h2>
-							</div>
-							<div class="grid gap-6 sm:grid-cols-2">
-								<Input label={m.first_name()} bind:value={editForm.referrer_first_name} />
-								<Input label={m.last_name()} bind:value={editForm.referrer_last_name} />
-								<Input
-									label={m.organization()}
-									bind:value={editForm.referrer_organization}
-									class="sm:col-span-2"
-								/>
-								<Input label={m.job_title()} bind:value={editForm.referrer_job_title} />
-								<Input label={m.phone()} bind:value={editForm.referrer_phone_number} />
-								<Input
-									label={m.email()}
-									type="email"
-									bind:value={editForm.referrer_email}
-									class="sm:col-span-2"
-								/>
-							</div>
-						</section>
-
-						<!-- Guardians Section -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<ShieldAlert class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.guardian_details()}</h2>
-							</div>
-							<div class="space-y-8">
-								<div class="grid gap-6 sm:grid-cols-2">
-									<Input label={m.first_name()} bind:value={editForm.guardian1_first_name} />
-									<Input label={m.last_name()} bind:value={editForm.guardian1_last_name} />
-									<Input label={m.relationship()} bind:value={editForm.guardian1_relationship} />
-									<Input label={m.phone()} bind:value={editForm.guardian1_phone_number} />
-								</div>
-								<div class="border-t border-border pt-6">
-									<h3 class="mb-4 text-sm font-semibold text-text-muted">
-										{m.secondary_guardian_optional()}
-									</h3>
-									<div class="grid gap-6 sm:grid-cols-2">
-										<Input label={m.first_name()} bind:value={editForm.guardian2_first_name} />
-										<Input label={m.last_name()} bind:value={editForm.guardian2_last_name} />
-										<Input label={m.relationship()} bind:value={editForm.guardian2_relationship} />
-										<Input label={m.phone()} bind:value={editForm.guardian2_phone_number} />
-									</div>
-								</div>
-							</div>
-						</section>
-
-						<!-- Education & Work -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<Briefcase class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.education_work()}</h2>
-							</div>
-							<div class="space-y-6">
-								<div class="grid gap-6 sm:grid-cols-2">
-									<Select
-										label={m.education_level()}
-										options={educationLevelOptions}
-										bind:value={editForm.education.level}
-										placeholder={m.select_option()}
-									/>
-									<div class="flex items-end pb-2">
-										<Checkbox
-											label={m.currently_enrolled()}
-											bind:checked={editForm.education.currently_enrolled}
-										/>
-									</div>
-									<Input
-										label={m.institution_name()}
-										bind:value={editForm.education.institution}
-										class="sm:col-span-2"
-									/>
-								</div>
-								<div class="border-t border-border pt-6">
-									<div class="grid gap-6 sm:grid-cols-2">
-										<Input
-											label={m.current_employer()}
-											bind:value={editForm.work.current_employer}
-										/>
-										<div class="flex items-end pb-2">
-											<Checkbox
-												label={m.currently_employed()}
-												bind:checked={editForm.work.currently_employed}
-											/>
-										</div>
-										<Input label={m.position()} bind:value={editForm.work.current_position} />
-										<DatePicker label={m.start_date()} bind:value={editForm.work.start_date} />
-									</div>
-								</div>
-							</div>
-						</section>
-
-						<!-- Care & Risks -->
-						<section class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm">
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<HeartPulse class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.care_risks()}</h2>
-							</div>
-							<div class="space-y-6">
-								<div>
-									<h3 class="mb-3 text-sm font-semibold tracking-wider text-text-muted uppercase">
-										{m.care_needs()}
-									</h3>
-									<div class="grid grid-cols-2 gap-4">
-										<Checkbox
-											label={m.protected_living()}
-											bind:checked={editForm.care_protected_living}
-										/>
-										<Checkbox
-											label={m.assisted_independent_living()}
-											bind:checked={editForm.care_assisted_independent_living}
-										/>
-										<Checkbox
-											label={m.room_training_center()}
-											bind:checked={editForm.care_room_training_center}
-										/>
-										<Checkbox
-											label={m.ambulatory_guidance()}
-											bind:checked={editForm.care_ambulatory_guidance}
-										/>
-									</div>
-								</div>
-								<div class="border-t border-border pt-6">
-									<h3 class="mb-3 text-sm font-semibold tracking-wider text-text-muted uppercase">
-										{m.risk_factors()}
-									</h3>
-									<div class="grid grid-cols-2 gap-y-3">
-										<Checkbox
-											label={m.aggressive_behavior()}
-											bind:checked={editForm.risk_aggressive_behavior}
-										/>
-										<Checkbox
-											label={m.suicidal_selfharm()}
-											bind:checked={editForm.risk_suicidal_selfharm}
-										/>
-										<Checkbox
-											label={m.substance_abuse()}
-											bind:checked={editForm.risk_substance_abuse}
-										/>
-										<Checkbox
-											label={m.psychiatric_issues()}
-											bind:checked={editForm.risk_psychiatric_issues}
-										/>
-										<Checkbox
-											label={m.criminal_history()}
-											bind:checked={editForm.risk_criminal_history}
-										/>
-										<Checkbox
-											label={m.flight_behavior()}
-											bind:checked={editForm.risk_flight_behavior}
-										/>
-										<Checkbox
-											label={m.weapon_possession()}
-											bind:checked={editForm.risk_weapon_possession}
-										/>
-										<Checkbox
-											label={m.sexual_behavior()}
-											bind:checked={editForm.risk_sexual_behavior}
-										/>
-									</div>
-									<div class="mt-6">
-										<Textarea
-											label={m.additional_risk_notes()}
-											bind:value={editForm.risk_additional_notes}
-											rows={3}
-										/>
-									</div>
-								</div>
-							</div>
-						</section>
-
-						<!-- Goals & Documents -->
-						<section
-							class="space-y-6 rounded-3xl border border-border bg-surface p-8 shadow-sm lg:col-span-2"
-						>
-							<div class="flex items-center gap-3 border-b border-border pb-4">
-								<Target class="h-5 w-5 text-brand" />
-								<h2 class="text-xl font-bold text-text">{m.goals_reason()}</h2>
-							</div>
-							<div class="grid gap-10 lg:grid-cols-2">
-								<div class="space-y-4">
-									<div class="flex items-center justify-between">
-										<h3 class="text-sm font-semibold tracking-wider text-text-muted uppercase">
-											{m.client_goals()}
-										</h3>
-										<Button variant="ghost" onclick={addGoal} class="h-8 gap-1 text-xs text-brand">
-											<Plus class="h-3.5 w-3.5" />
-											{m.add_goal()}
-										</Button>
-									</div>
-									<div class="space-y-3">
-										{#each editForm.client_goals ?? [] as goal, index (`${index}-${goal}`)}
-											<div class="flex gap-2">
-												<Input
-													bind:value={editForm.client_goals![index]}
-													placeholder={m.enter_a_goal()}
-												/>
-												<button
-													onclick={() => removeGoal(index)}
-													class="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-xl border border-border bg-bg text-text-muted hover:bg-error/10 hover:text-error"
-												>
-													<Trash2 class="h-4 w-4" />
-												</button>
-											</div>
-										{/each}
-									</div>
-								</div>
-								<div class="space-y-4">
-									<h3 class="text-sm font-semibold tracking-wider text-text-muted uppercase">
-										{m.reason_for_application()}
-									</h3>
-									<Textarea
-										bind:value={editForm.application_reason}
-										rows={6}
-										placeholder={m.reason_for_application_placeholder()}
-									/>
-								</div>
-							</div>
-						</section>
-					</div>
-
-					<!-- Footer Actions -->
-					<div class="flex items-center justify-end gap-4 border-t border-border pt-8">
-						<Button variant="ghost" onclick={cancelEditing} class="px-8">{m.cancel()}</Button>
-						<Button
-							variant="primary"
-							onclick={saveChanges}
-							isLoading={isSaving}
-							disabled={!hasChanges}
-							class="px-12"
-						>
-							{m.save_changes()}
-						</Button>
-					</div>
-				</div>
-			{:else}
+			{#if !isEditing}
 				<div class="grid gap-6 xl:grid-cols-[1fr_340px]">
 					<!-- Left Column: Details -->
 					<div class="space-y-6">
@@ -1196,8 +655,12 @@
 										<div>
 											<h2 class="text-lg font-bold text-text">{m.intake_process_details()}</h2>
 											<p class="text-xs text-text-subtle">
-												{m.admission_type()}: {registration.admission_type ||
-													m.not_available_short()}
+												{m.admission_type()}:
+												{registration.admission_type === 'crisis_admission'
+													? m.crisis_admission()
+													: registration.admission_type === 'regular_placement'
+														? m.regular_placement()
+														: m.not_available_short()}
 											</p>
 										</div>
 									</div>
@@ -1637,7 +1100,9 @@
 											? educationColors[registration.education.level as EducationLevel]
 											: 'bg-zinc-100 text-zinc-500'}"
 									>
-										{registration.education?.level || m.not_specified()}
+										{registration.education?.level
+											? educationLabels[registration.education.level]()
+											: m.not_specified()}
 									</span>
 								</div>
 								<div class="py-3.5">
@@ -1721,7 +1186,9 @@
 										</div>
 										<div class="flex justify-between">
 											<span class="text-text-muted">{m.gender()}</span>
-											<span class="font-medium text-text">{registration.client_gender}</span>
+											<span class="font-medium text-text"
+												>{genderLabels[registration.client_gender as ClientGender]()}</span
+											>
 										</div>
 										<div class="flex justify-between">
 											<span class="text-text-muted">{m.bsn()}</span>

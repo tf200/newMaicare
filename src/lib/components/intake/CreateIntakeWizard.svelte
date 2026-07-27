@@ -1,4 +1,16 @@
 <script lang="ts">
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import {
+		Activity,
+		ArrowRight,
+		Calendar,
+		Clock,
+		FileText,
+		Loader2,
+		Save,
+		User
+	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
@@ -9,25 +21,19 @@
 	import { listSenders } from '$lib/api/senders';
 	import { listLocations } from '$lib/api/locations';
 	import { intakes } from '$lib/api/intakes';
-	import { m } from '$lib/paraglide/messages';
-	import {
-		ArrowRight,
-		Activity,
-		Calendar,
-		FileText,
-		Loader2,
-		User,
-		ListChecks,
-		Clock,
-		Save
-	} from 'lucide-svelte';
+	import { createIntakeSchema, type IntakeSchemaInput } from '$lib/schemas/intake';
+	import { formatFormError } from '$lib/utils/form-errors';
 	import type {
+		CreateIntakeRequest,
 		GetRegistrationFormResponse,
 		IntakeCareType,
-		IntakeParticipantsEnum,
 		IntakeConclusionEnum,
-		IntakeGoalTopic
+		IntakeGoalTopic,
+		IntakeParticipantsEnum,
+		OrganizationLocation,
+		SenderListItem
 	} from '$lib/types/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
@@ -35,200 +41,232 @@
 		onCreated?: (id: string) => void;
 	}
 
+	type WorkflowPhase = 'details' | 'creating' | 'goals' | 'saving-goals' | 'partial-success';
+	type CreateIntent = 'goals' | 'finish';
+	type GoalFormHandle = { validate: () => boolean };
+
 	let { open = $bindable(false), registration, onCreated }: Props = $props();
 
-	let activeStep = $state(0);
-
-	let isLoading = $state(false);
-	let error = $state('');
-	let fieldErrors = $state<Record<string, string>>({});
-	let createdIntakeId = $state<string | null>(null);
-
-	// Form State
-	let dateOfIntake = $state(new Date().toISOString());
-	let careType = $state<IntakeCareType>('protected_living');
-	let intakeParticipants = $state<IntakeParticipantsEnum[]>([]);
-	let familySituation = $state('');
-	let psychologicalState = $state('');
-	let selfSufficiency = $state(0);
-	let evaluationIntervalWeeks = $state(0);
-	let senderId = $state('');
-	let senderName = $state('');
-	let assignedLocationId = $state('');
-	let riskAssessment = $state('');
-	let intakeConclusion = $state<IntakeConclusionEnum>('suitable');
-	let intakeConclusionNotes = $state('');
-	let signature = $state('');
-
-	let goals = $state<IntakeGoalTopic[]>([]);
-
-	const careTypeOptions = [
-		{ value: 'protected_living', label: 'Protected Living' },
-		{ value: 'training_center', label: 'Training Center' },
-		{ value: 'supported_independent_living', label: 'Supported Independent Living' },
-		{ value: 'ambulatory_support', label: 'Ambulatory Support' },
-		{ value: 'other', label: 'Other' }
-	];
-
-	const participantOptions = [
-		{ value: 'client', label: 'Client' },
-		{ value: 'referrer', label: 'Referrer' },
-		{ value: 'parents/guardians', label: 'Parents/Guardians' },
-		{ value: 'care_coordinator', label: 'Care Coordinator' },
-		{ value: 'other', label: 'Other' }
-	];
-
-	const conclusionOptions = [
-		{ value: 'suitable', label: 'Suitable' },
-		{ value: 'unsuitable', label: 'Unsuitable' },
-		{ value: 'further_investigation', label: 'Further Investigation' },
-		{ value: 'possible_palcement_date', label: 'Possible Placement Date' },
-		{ value: 'other', label: 'Other' }
-	];
-
-	const defaultRiskAssessment = $derived(registration.risk_additional_notes ?? '');
-
-	$effect.pre(() => {
-		if (!open) {
-			activeStep = 0;
-			error = '';
-			isLoading = false;
-			fieldErrors = {};
-			createdIntakeId = null;
-			dateOfIntake = new Date().toISOString();
-			careType = 'protected_living';
-			intakeParticipants = [];
-			familySituation = '';
-			psychologicalState = '';
-			selfSufficiency = 0;
-			evaluationIntervalWeeks = 0;
-			senderId = '';
-			senderName = '';
-			assignedLocationId = '';
-			riskAssessment = defaultRiskAssessment;
-			intakeConclusion = 'suitable';
-			intakeConclusionNotes = '';
-			signature = '';
-			goals = [];
-		}
+	const schema = createIntakeSchema({
+		required: m.intake_validation_required(),
+		participantsRequired: m.intake_validation_participant(),
+		integer: m.intake_validation_integer(),
+		selfSufficiencyRange: m.intake_validation_self_sufficiency(),
+		evaluationIntervalRange: m.intake_validation_evaluation_interval(),
+		levelRange: m.intake_validation_level()
 	});
 
-	const validateStep1 = () => {
-		const errors: Record<string, string> = {};
-		if (!familySituation) errors.familySituation = 'Family situation is required';
-		if (!psychologicalState) errors.psychologicalState = 'Psychological state is required';
-		if (selfSufficiency < 0 || selfSufficiency > 100)
-			errors.selfSufficiency = 'Must be between 0-100';
-		if (evaluationIntervalWeeks <= 0) errors.evaluationIntervalWeeks = 'Must be at least 1 week';
-		if (!dateOfIntake) errors.dateOfIntake = 'Date is required';
-		if (!careType) errors.careType = 'Care type is required';
-		if (intakeParticipants.length === 0)
-			errors.intakeParticipants = 'At least one participant is required';
-		if (!senderId) errors.senderId = 'Sender is required';
-		if (!assignedLocationId) errors.assignedLocationId = 'Location is required';
-		if (!riskAssessment) errors.riskAssessment = 'Risk assessment is required';
-		if (!intakeConclusion) errors.intakeConclusion = 'Conclusion is required';
-		if (!intakeConclusionNotes) errors.intakeConclusionNotes = 'Notes are required';
-		if (!signature) errors.signature = 'Signature is required';
+	const buildInitialData = (): IntakeSchemaInput => ({
+		date_of_intake: new Date().toISOString(),
+		care_type: 'protected_living',
+		intake_participants: [],
+		family_situation: '',
+		psychological_state: '',
+		self_sufficiency: 0,
+		evaluation_interval_weeks: 1,
+		sender_id: '',
+		assigned_location_id: '',
+		risk_assessment: registration.risk_additional_notes ?? '',
+		intake_conclusion: 'suitable',
+		intake_conclusion_notes: '',
+		signature: ''
+	});
 
-		fieldErrors = errors;
-		return Object.keys(errors).length === 0;
-	};
+	let phase = $state<WorkflowPhase>('details');
+	let errorMessage = $state('');
+	let createdIntakeId = $state<string | null>(null);
+	let senderName = $state('');
+	let goals = $state<IntakeGoalTopic[]>([]);
+	let goalForm = $state<GoalFormHandle>();
+	let createIntent = $state<CreateIntent | null>(null);
+	let createRequested = $state(false);
+	let sessionSequence = 0;
+	let operationSequence = 0;
+	let previousOpen = open;
 
-	const createIntake = async () => {
-		if (isLoading) return null;
-		if (!validateStep1()) {
-			error = 'Please fix errors in Step 1.';
-			if (activeStep !== 0) activeStep = 0;
-			return null;
+	const isMutating = $derived(phase === 'creating' || phase === 'saving-goals');
+	const showGoals = $derived(
+		phase === 'goals' || phase === 'saving-goals' || phase === 'partial-success'
+	);
+
+	const { form, errors, enhance, reset } = superForm(
+		defaults(buildInitialData(), valibotClient(schema)),
+		{
+			validators: valibotClient(schema),
+			SPA: true,
+			dataType: 'json',
+			onUpdate: async ({ form: result }) => {
+				if (!createRequested || createdIntakeId) return;
+				if (!result.valid) {
+					createRequested = false;
+					createIntent = null;
+					errorMessage = m.intake_fix_form_errors();
+					return;
+				}
+				await createIntake(result.data);
+			}
 		}
+	);
 
-		isLoading = true;
-		error = '';
+	function resetWorkflow() {
+		sessionSequence += 1;
+		operationSequence += 1;
+		phase = 'details';
+		errorMessage = '';
+		createdIntakeId = null;
+		senderName = '';
+		goals = [];
+		createIntent = null;
+		createRequested = false;
+		reset({ data: buildInitialData() });
+	}
+
+	$effect(() => {
+		if (open && !previousOpen) resetWorkflow();
+		if (!open && previousOpen) {
+			sessionSequence += 1;
+			operationSequence += 1;
+			createRequested = false;
+		}
+		previousOpen = open;
+	});
+
+	function requestCreate(intent: CreateIntent) {
+		if (createRequested || isMutating || createdIntakeId) return;
+		createIntent = intent;
+		createRequested = true;
+		errorMessage = '';
+	}
+
+	async function createIntake(data: IntakeSchemaInput) {
+		if (phase === 'creating' || createdIntakeId || !createIntent) return;
+		const intent = createIntent;
+		const session = sessionSequence;
+		const operation = ++operationSequence;
+		phase = 'creating';
+		errorMessage = '';
+
+		const payload: CreateIntakeRequest = {
+			registration_form_id: registration.id,
+			date_of_intake: data.date_of_intake,
+			care_type: data.care_type,
+			intake_participants: data.intake_participants,
+			family_situation: data.family_situation,
+			psychological_state: data.psychological_state,
+			self_sufficiency: data.self_sufficiency,
+			evaluation_interval_weeks: data.evaluation_interval_weeks,
+			sender_id: data.sender_id,
+			assigned_location_id: data.assigned_location_id,
+			risk_assessment: data.risk_assessment,
+			intake_conclusion: data.intake_conclusion,
+			intake_conclusion_notes: data.intake_conclusion_notes,
+			signature: data.signature
+		};
 
 		try {
-			const res = await intakes.create({
-				registration_form_id: registration.id,
-				date_of_intake: dateOfIntake,
-				care_type: careType,
-				intake_participants: intakeParticipants,
-				family_situation: familySituation,
-				psychological_state: psychologicalState,
-				self_sufficiency: Number(selfSufficiency),
-				evaluation_interval_weeks: Number(evaluationIntervalWeeks),
-				sender_id: senderId,
-				assigned_location_id: assignedLocationId,
-				risk_assessment: riskAssessment,
-				intake_conclusion: intakeConclusion,
-				intake_conclusion_notes: intakeConclusionNotes,
-				signature
-			});
-			createdIntakeId = res.data.id;
-			onCreated?.(res.data.id);
-			return res.data.id;
-		} catch (e) {
-			console.error(e);
-			error = e instanceof Error ? e.message : 'Failed to create intake.';
-			return null;
+			const response = await intakes.create(payload);
+			if (!open || session !== sessionSequence || operation !== operationSequence) return;
+			createdIntakeId = response.data.id;
+			onCreated?.(response.data.id);
+			if (!open || session !== sessionSequence || operation !== operationSequence) return;
+			if (intent === 'finish') {
+				open = false;
+				return;
+			}
+			phase = 'goals';
+		} catch (error) {
+			if (!open || session !== sessionSequence || operation !== operationSequence) return;
+			console.error('Failed to create intake:', error);
+			phase = 'details';
+			errorMessage = m.intake_create_error();
 		} finally {
-			isLoading = false;
+			if (session === sessionSequence && operation === operationSequence) {
+				createRequested = false;
+				createIntent = null;
+			}
 		}
-	};
+	}
 
-	const startAssessments = async () => {
-		const intakeId = createdIntakeId ?? (await createIntake());
-		if (!intakeId) return;
-		activeStep = 1;
-	};
+	async function saveGoals() {
+		if (!createdIntakeId || phase === 'saving-goals' || !goalForm?.validate()) return;
+		const intakeId = createdIntakeId;
+		const session = sessionSequence;
+		const operation = ++operationSequence;
+		phase = 'saving-goals';
+		errorMessage = '';
 
-	const finishIntake = async () => {
-		const intakeId = createdIntakeId ?? (await createIntake());
-		if (!intakeId) return;
-		open = false;
-	};
-
-	const saveGoalsAndFinish = async () => {
-		if (!createdIntakeId) return;
-		isLoading = true;
 		try {
-			const requestData = {
-				assessments: goals.map((g) => ({
-					topic_id: g.topic_id,
-					current_level: g.current_level,
-					proposed_goals: g.proposed_goals,
-					notes: g.notes
+			await intakes.updateGoals(intakeId, {
+				assessments: goals.map((goal) => ({
+					topic_id: goal.topic_id,
+					current_level: goal.current_level,
+					proposed_goals: goal.proposed_goals.map((item) => ({
+						...item,
+						title: item.title.trim(),
+						description: item.description.trim()
+					})),
+					notes: goal.notes?.trim() || null
 				}))
-			};
-			await intakes.updateGoals(createdIntakeId, requestData);
+			});
+			if (!open || session !== sessionSequence || operation !== operationSequence) return;
 			open = false;
-		} catch (e) {
-			console.error(e);
-			error = e instanceof Error ? e.message : 'Failed to save goals.';
-		} finally {
-			isLoading = false;
+		} catch (error) {
+			if (!open || session !== sessionSequence || operation !== operationSequence) return;
+			console.error('Failed to save intake goals:', error);
+			phase = 'partial-success';
+			errorMessage = '';
 		}
-	};
+	}
+
+	function finishLater() {
+		if (isMutating || !createdIntakeId) return;
+		open = false;
+	}
+
+	const careTypeOptions: { value: IntakeCareType; label: string }[] = [
+		{ value: 'protected_living', label: m.protected_living() },
+		{ value: 'training_center', label: m.intake_care_training_center() },
+		{
+			value: 'supported_independent_living',
+			label: m.intake_care_supported_independent_living()
+		},
+		{ value: 'ambulatory_support', label: m.intake_care_ambulatory_support() },
+		{ value: 'other', label: m.other() }
+	];
+
+	const participantOptions: { value: IntakeParticipantsEnum; label: string }[] = [
+		{ value: 'client', label: m.client() },
+		{ value: 'referrer', label: m.referrer() },
+		{ value: 'parents/guardians', label: m.parents_guardians() },
+		{ value: 'care_coordinator', label: m.care_coordinator() },
+		{ value: 'other', label: m.other() }
+	];
+
+	const conclusionOptions: { value: IntakeConclusionEnum; label: string }[] = [
+		{ value: 'suitable', label: m.suitable() },
+		{ value: 'unsuitable', label: m.unsuitable() },
+		{ value: 'further_investigation', label: m.further_investigation() },
+		{ value: 'possible_palcement_date', label: m.possible_placement_date() },
+		{ value: 'other', label: m.other() }
+	];
 </script>
 
-{#snippet senderItem(option: any)}
-	<div class="flex flex-col py-0.5">
-		<span class="font-medium text-text">{option.name}</span>
-		<div class="flex items-center gap-1.5 text-xs text-text-muted">
-			{#if option.city}
-				<span>{option.city}</span>
-				<span>•</span>
-			{/if}
-			<span class="capitalize">{option.types?.replace(/_/g, ' ') || m.sender()}</span>
+{#snippet senderItem(option: SenderListItem)}
+	<div class="flex min-w-0 flex-col py-0.5">
+		<span class="font-medium break-words text-text">{option.name}</span>
+		<div class="flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
+			{#if option.city}<span>{option.city}</span><span aria-hidden="true">&middot;</span>{/if}
+			<span>{option.types?.replace(/_/g, ' ') || m.sender()}</span>
 		</div>
 	</div>
 {/snippet}
 
-{#snippet locationItem(option: any)}
-	<div class="flex flex-col py-0.5">
-		<span class="font-medium text-text">{option.name}</span>
+{#snippet locationItem(option: OrganizationLocation)}
+	<div class="flex min-w-0 flex-col py-0.5">
+		<span class="font-medium break-words text-text">{option.name}</span>
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
-			<span>{option.street} {option.house_number}, {option.city}</span>
-			<span class="{option.available > 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium">
+			<span class="break-words">{option.street} {option.house_number}, {option.city}</span>
+			<span class={option.available > 0 ? 'font-medium text-success' : 'font-medium text-error'}>
 				{m.spots_available({ count: option.available })}
 			</span>
 		</div>
@@ -241,412 +279,330 @@
 	description={m.intake_for_client({
 		name: `${registration.client_first_name} ${registration.client_last_name}`.trim()
 	})}
+	closeLabel={m.close()}
+	dismissible={!isMutating}
 	size="full"
-	class="max-w-[80vw] overflow-hidden"
+	class="max-w-full overflow-hidden sm:max-w-7xl"
 >
-	{#snippet header()}
-		<div>
-			<h2 class="text-lg font-bold text-text">{m.create_intake()}</h2>
-			<p class="text-sm text-text-muted">
-				{m.intake_for_client({
-					name: `${registration.client_first_name} ${registration.client_last_name}`.trim()
-				})}
-			</p>
-		</div>
-	{/snippet}
+	<div class="space-y-6">
+		{#if errorMessage}
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm font-medium text-error"
+				role="alert"
+			>
+				{errorMessage}
+			</div>
+		{/if}
 
-	<div class="flex flex-col gap-6">
-		<section class="w-full space-y-8">
-			{#if error}
-				<div
-					class="animate-in fade-in slide-in-from-top-2 rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-sm font-medium text-rose-700 shadow-sm"
-				>
-					{error}
+		{#if phase === 'partial-success'}
+			<div class="rounded-2xl border border-warning/40 bg-warning/10 p-4" role="status">
+				<h2 class="font-bold text-text">{m.intake_partial_success_title()}</h2>
+				<p class="mt-1 text-sm text-text-muted">{m.intake_partial_success_description()}</p>
+				<div class="mt-4 flex flex-wrap gap-2">
+					<button
+						type="button"
+						onclick={saveGoals}
+						class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+					>
+						{m.retry()}
+					</button>
+					<button
+						type="button"
+						onclick={finishLater}
+						class="rounded-xl border border-border bg-surface px-4 py-2 text-sm font-bold text-text hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+					>
+						{m.intake_finish_later()}
+					</button>
 				</div>
-			{/if}
+			</div>
+		{/if}
 
-			<div class:hidden={activeStep !== 0} class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-				<!-- Client Situation Section -->
-				<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm sm:p-8">
+		{#if !showGoals}
+			<form method="POST" use:enhance class="grid gap-6 lg:grid-cols-2">
+				<section class="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7">
 					<div class="mb-6 flex items-center gap-3 border-b border-border pb-4">
 						<div class="rounded-xl bg-brand/10 p-2.5 text-brand">
-							<User class="h-6 w-6" />
+							<User class="h-6 w-6" aria-hidden="true" />
 						</div>
 						<div>
 							<h2 class="text-xl font-bold text-text">{m.client_situation()}</h2>
 							<p class="text-sm text-text-subtle">{m.client_situation_description()}</p>
 						</div>
 					</div>
-
-					<div class="grid gap-6 lg:grid-cols-2">
-						<div class="lg:col-span-2">
-							<TextArea
-								label={m.family_situation()}
-								bind:value={familySituation}
-								error={fieldErrors.familySituation}
-								placeholder={m.family_situation_placeholder()}
-								rows={4}
-							/>
-						</div>
-						<div class="lg:col-span-2">
-							<TextArea
-								label={m.psychological_state()}
-								bind:value={psychologicalState}
-								error={fieldErrors.psychologicalState}
-								placeholder={m.psychological_state_placeholder()}
-								rows={4}
-							/>
-						</div>
-						<div class="lg:col-span-1">
-							<Input
-								type="number"
-								label={m.self_sufficiency_score_range()}
-								bind:value={selfSufficiency}
-								error={fieldErrors.selfSufficiency}
-								min="0"
-								max="100"
-							/>
-						</div>
+					<div class="space-y-5">
+						<TextArea
+							id="family-situation"
+							label={m.family_situation()}
+							bind:value={$form.family_situation}
+							error={$errors.family_situation?.[0]}
+							placeholder={m.family_situation_placeholder()}
+							rows={4}
+						/>
+						<TextArea
+							id="psychological-state"
+							label={m.psychological_state()}
+							bind:value={$form.psychological_state}
+							error={$errors.psychological_state?.[0]}
+							placeholder={m.psychological_state_placeholder()}
+							rows={4}
+						/>
+						<Input
+							id="self-sufficiency"
+							type="number"
+							label={m.self_sufficiency_score_range()}
+							bind:value={$form.self_sufficiency}
+							error={$errors.self_sufficiency?.[0]}
+							min="0"
+							max="100"
+							step="1"
+						/>
 					</div>
-				</div>
+				</section>
 
-				<!-- Intake Details Section -->
-				<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm sm:p-8">
+				<section class="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7">
 					<div class="mb-6 flex items-center gap-3 border-b border-border pb-4">
-						<div class="rounded-xl bg-blue-500/10 p-2.5 text-blue-600">
-							<FileText class="h-6 w-6" />
+						<div class="rounded-xl bg-info/10 p-2.5 text-info">
+							<FileText class="h-6 w-6" aria-hidden="true" />
 						</div>
 						<div>
 							<h2 class="text-xl font-bold text-text">{m.logistics_placement()}</h2>
 							<p class="text-sm text-text-subtle">{m.logistics_assignment_description()}</p>
 						</div>
 					</div>
-
-					<div class="grid gap-6 lg:grid-cols-2">
-						<div class="space-y-1.5">
-							<label class="flex items-center gap-1.5 text-sm font-semibold text-text-muted">
-								<Calendar class="h-3.5 w-3.5" />
-								{m.intake_date()}
-							</label>
-							<DateTimePicker bind:value={dateOfIntake} error={fieldErrors.dateOfIntake} />
-						</div>
-
-						<div>
-							<Input
-								label={m.signature_full_name()}
-								bind:value={signature}
-								error={fieldErrors.signature}
-								placeholder={m.signature_full_name_placeholder()}
+					<div class="grid gap-5 sm:grid-cols-2">
+						<div class="space-y-2">
+							<label
+								class="flex items-center gap-1.5 text-sm font-semibold text-text-muted"
+								for="intake-date"
+								><Calendar class="h-3.5 w-3.5" aria-hidden="true" />{m.intake_date()}</label
+							>
+							<DateTimePicker
+								id="intake-date"
+								bind:value={$form.date_of_intake}
+								error={$errors.date_of_intake?.[0]}
 							/>
 						</div>
-
-						<div class="space-y-1.5">
-							<label for="care-type" class="text-sm font-semibold text-text-muted">
-								{m.care_type()}
-							</label>
-							<div class="relative">
-								<select
-									id="care-type"
-									bind:value={careType}
-									class="w-full appearance-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-all outline-none hover:bg-surface/80 focus:ring-2 focus:ring-brand/20 {fieldErrors.careType
-										? 'border-error'
-										: ''}"
-								>
-									{#each careTypeOptions as option (option.value)}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</select>
-								<div
-									class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-text-muted"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										width="16"
-										height="16"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-									>
-								</div>
-							</div>
-							{#if fieldErrors.careType}
-								<p class="ml-1 text-xs font-medium text-error">{fieldErrors.careType}</p>
-							{/if}
+						<Input
+							id="intake-signature"
+							label={m.signature_full_name()}
+							bind:value={$form.signature}
+							error={$errors.signature?.[0]}
+							placeholder={m.signature_full_name_placeholder()}
+						/>
+						<div class="space-y-2">
+							<label for="care-type" class="text-sm font-semibold text-text-muted"
+								>{m.care_type()}</label
+							>
+							<select
+								id="care-type"
+								bind:value={$form.care_type}
+								aria-invalid={$errors.care_type ? 'true' : undefined}
+								aria-describedby={$errors.care_type ? 'care-type-error' : undefined}
+								class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+							>
+								{#each careTypeOptions as option (option.value)}<option value={option.value}
+										>{option.label}</option
+									>{/each}
+							</select>
+							{#if $errors.care_type}<p id="care-type-error" class="text-xs font-medium text-error">
+									{$errors.care_type[0]}
+								</p>{/if}
 						</div>
-
-						<div class="lg:col-span-2">
+						<div class="sm:col-span-2">
 							<MultiSelect
+								id="intake-participants"
 								label={m.participants()}
-								bind:value={intakeParticipants}
+								bind:value={$form.intake_participants}
 								options={participantOptions}
-								error={fieldErrors.intakeParticipants}
+								error={formatFormError($errors.intake_participants) || undefined}
 								placeholder={m.select_participants_placeholder()}
 							/>
 						</div>
-
 						<SearchSelect
 							label={m.referrer_sender()}
-							bind:value={senderId}
+							bind:value={$form.sender_id}
 							bind:displayValue={senderName}
-							error={fieldErrors.senderId}
-							loadOptions={async (query) => {
-								const res = await listSenders({ search: query, pageSize: 50 });
-								return res.data.results;
-							}}
-							labelFn={(s) => s.name}
-							valueFn={(s) => s.id}
+							error={$errors.sender_id?.[0]}
+							loadOptions={async (query) =>
+								(await listSenders({ search: query, pageSize: 50 })).data.results}
+							labelFn={(sender: SenderListItem) => sender.name}
+							valueFn={(sender: SenderListItem) => sender.id}
 							item={senderItem}
 							placeholder={m.select_sender_placeholder()}
 						/>
-
 						<SearchSelect
 							label={m.assigned_location()}
-							bind:value={assignedLocationId}
-							error={fieldErrors.assignedLocationId}
-							loadOptions={async (query) => {
-								const res = await listLocations({ search: query, pageSize: 50 });
-								return res.data.results;
-							}}
-							labelFn={(loc) => `${loc.name} (${loc.city})`}
-							valueFn={(loc) => loc.id}
+							bind:value={$form.assigned_location_id}
+							error={$errors.assigned_location_id?.[0]}
+							loadOptions={async (query) =>
+								(await listLocations({ search: query, pageSize: 50 })).data.results}
+							labelFn={(location: OrganizationLocation) => `${location.name} (${location.city})`}
+							valueFn={(location: OrganizationLocation) => location.id}
 							item={locationItem}
 							placeholder={m.select_location_placeholder()}
 						/>
 					</div>
-				</div>
+				</section>
 
-				<!-- Conclusion + Decision Section -->
-				<div class="grid gap-6 lg:col-span-2 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
-					<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm sm:p-8">
-						<div class="mb-6 flex items-center gap-3 border-b border-border pb-4">
-							<div class="rounded-xl bg-purple-500/10 p-2.5 text-purple-600">
-								<Activity class="h-6 w-6" />
-							</div>
-							<div>
-								<h2 class="text-xl font-bold text-text">{m.initial_assessment()}</h2>
-								<p class="text-sm text-text-subtle">{m.initial_assessment_description()}</p>
-							</div>
+				<section
+					class="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7 lg:col-span-2"
+				>
+					<div class="mb-6 flex items-center gap-3 border-b border-border pb-4">
+						<div class="rounded-xl bg-secondary/10 p-2.5 text-secondary">
+							<Activity class="h-6 w-6" aria-hidden="true" />
 						</div>
-
-						<div class="space-y-6">
+						<div>
+							<h2 class="text-xl font-bold text-text">{m.initial_assessment()}</h2>
+							<p class="text-sm text-text-subtle">{m.initial_assessment_description()}</p>
+						</div>
+					</div>
+					<div class="grid gap-5 md:grid-cols-2">
+						<div class="md:col-span-2">
 							<TextArea
+								id="risk-assessment"
 								label={m.risk_assessment()}
-								bind:value={riskAssessment}
-								error={fieldErrors.riskAssessment}
+								bind:value={$form.risk_assessment}
+								error={$errors.risk_assessment?.[0]}
 								placeholder={m.risk_assessment_placeholder()}
 								rows={4}
 							/>
-
-							<div class="grid gap-6 md:grid-cols-2">
-								<div class="space-y-1.5">
-									<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
-										>{m.intake_conclusion()}</label
-									>
-									<div class="relative">
-										<select
-											id="intake-conclusion"
-											bind:value={intakeConclusion}
-											class="w-full appearance-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-all outline-none hover:bg-surface/80 focus:ring-2 focus:ring-brand/20 {fieldErrors.intakeConclusion
-												? 'border-error'
-												: ''}"
-										>
-											{#each conclusionOptions as option (option.value)}
-												<option value={option.value}>{option.label}</option>
-											{/each}
-										</select>
-										<div
-											class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-text-muted"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="16"
-												height="16"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-											>
-										</div>
-									</div>
-									{#if fieldErrors.intakeConclusion}
-										<p class="ml-1 text-xs font-medium text-error">
-											{fieldErrors.intakeConclusion}
-										</p>
-									{/if}
-								</div>
-								<div>
-									<Input
-										type="number"
-										label={m.evaluation_interval_weeks()}
-										bind:value={evaluationIntervalWeeks}
-										error={fieldErrors.evaluationIntervalWeeks}
-										min="1"
-										placeholder={m.placeholder_weeks_example()}
-									/>
-								</div>
-								<div class="md:col-span-2">
-									<TextArea
-										label={m.additional_notes()}
-										bind:value={intakeConclusionNotes}
-										error={fieldErrors.intakeConclusionNotes}
-										placeholder={m.additional_notes_placeholder()}
-										rows={3}
-									/>
-								</div>
-							</div>
 						</div>
-					</div>
-
-					<section class="space-y-5">
-						<div class="space-y-2 px-1">
-							<div class="flex items-center justify-between">
-								<h2 class="text-xl font-bold text-text">{m.goals_assessments()}</h2>
-								<span
-									class="rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary"
-								>
-									{m.optional()}
-								</span>
-							</div>
-							<p class="text-base text-text-subtle">
-								{m.assessments_optional_description()}
-							</p>
-						</div>
-
-						<div class="grid auto-rows-fr gap-4">
-							<!-- Option A: Define Now (Primary) -->
-							<button
-								onclick={() => {
-									startAssessments();
-								}}
-								disabled={isLoading}
-								class="group relative flex min-h-[180px] items-center gap-4 rounded-3xl border-2 border-emerald-500/10 bg-surface p-6 text-left shadow-sm transition-all hover:border-emerald-500 hover:bg-emerald-50/30 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+						<div class="space-y-2">
+							<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
+								>{m.intake_conclusion()}</label
 							>
-								<div
-									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100/50 text-emerald-700 ring-1 ring-emerald-500/20 transition-all group-hover:bg-emerald-600 group-hover:text-white group-hover:ring-emerald-600"
-								>
-									<ListChecks class="h-7 w-7" />
-								</div>
-
-								<div class="flex-1">
-									<div class="flex items-center gap-2">
-										<span class="text-lg font-bold text-text group-hover:text-emerald-900">
-											{m.define_now()}
-										</span>
-										<span
-											class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 opacity-0 transition-opacity group-hover:opacity-100"
-										>
-											{m.recommended()}
-										</span>
-									</div>
-									<p
-										class="mt-1 text-sm font-medium text-text-muted group-hover:text-emerald-700/80"
-									>
-										{m.define_now_description()}
-									</p>
-								</div>
-
-								<div
-									class="opacity-0 transition-all duration-300 group-hover:-translate-x-1 group-hover:opacity-100"
-								>
-									<ArrowRight class="h-5 w-5 text-emerald-600" />
-								</div>
-							</button>
-
-							<!-- Option B: Do Later (Secondary) -->
-							<button
-								onclick={() => {
-									finishIntake();
-								}}
-								disabled={isLoading}
-								class="group relative flex min-h-[180px] items-center gap-4 rounded-3xl border border-border bg-zinc-50/50 p-6 text-left transition-all hover:border-zinc-400 hover:bg-white hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+							<select
+								id="intake-conclusion"
+								bind:value={$form.intake_conclusion}
+								aria-invalid={$errors.intake_conclusion ? 'true' : undefined}
+								aria-describedby={$errors.intake_conclusion ? 'intake-conclusion-error' : undefined}
+								class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 							>
-								<div
-									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-200/50 text-zinc-600 ring-1 ring-zinc-500/10 transition-all group-hover:bg-zinc-800 group-hover:text-white group-hover:ring-zinc-800"
+								{#each conclusionOptions as option (option.value)}<option value={option.value}
+										>{option.label}</option
+									>{/each}
+							</select>
+							{#if $errors.intake_conclusion}<p
+									id="intake-conclusion-error"
+									class="text-xs font-medium text-error"
 								>
-									<Clock class="h-7 w-7" />
-								</div>
-
-								<div class="flex-1">
-									<span class="text-lg font-bold text-text group-hover:text-zinc-900">
-										{m.do_later()}
-									</span>
-									<p class="mt-1 text-sm font-medium text-text-muted group-hover:text-zinc-700">
-										{m.do_later_description()}
-									</p>
-								</div>
-							</button>
+									{$errors.intake_conclusion[0]}
+								</p>{/if}
 						</div>
-					</section>
-				</div>
-			</div>
-
-			<div class:hidden={activeStep === 0} class="grid gap-6 lg:grid-cols-[320px_1fr]">
-				<aside class="space-y-6">
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-						<div class="mb-4 flex items-center justify-between">
-							<h3 class="text-base font-bold text-text">{m.registration_goals_reference()}</h3>
-							<span class="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
-								{m.read_only()}
-							</span>
-						</div>
-						{#if registration.client_goals && registration.client_goals.length > 0}
-							<ul class="space-y-2 text-sm text-text-muted">
-								{#each registration.client_goals as goal (goal)}
-									<li class="rounded-xl border border-border/60 bg-zinc-50/60 px-3 py-2">
-										{goal}
-									</li>
-								{/each}
-							</ul>
-						{:else}
-							<p class="text-sm text-text-subtle">{m.no_goals_specified()}</p>
-						{/if}
-						{#if registration.application_reason}
-							<div class="mt-4 border-t border-border/60 pt-4">
-								<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
-									{m.reason_for_application()}
-								</p>
-								<p class="mt-2 text-sm text-text-muted">
-									{registration.application_reason}
-								</p>
-							</div>
-						{/if}
-					</div>
-				</aside>
-
-				<div class="space-y-6">
-					<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-						<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-							<div>
-								<h2 class="text-xl font-bold text-text">{m.goals_assessments()}</h2>
-								<p class="text-sm text-text-subtle">{m.assessment_goals_description()}</p>
-							</div>
-							<button
-								onclick={saveGoalsAndFinish}
-								disabled={isLoading || goals.length === 0}
-								class="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/20 transition-all hover:bg-brand-strong active:scale-95 disabled:opacity-50"
-							>
-								{#if isLoading}
-									<Loader2 class="h-4 w-4 animate-spin" />
-								{:else}
-									<Save class="h-4 w-4" />
-								{/if}
-								{m.save_finish()}
-							</button>
-						</div>
-
-						<GoalAssessmentForm
-							intakeId={createdIntakeId}
-							bind:goals
-							onGoalsChange={(g) => (goals = g)}
+						<Input
+							id="evaluation-weeks"
+							type="number"
+							label={m.evaluation_interval_weeks()}
+							bind:value={$form.evaluation_interval_weeks}
+							error={$errors.evaluation_interval_weeks?.[0]}
+							min="1"
+							step="1"
+							placeholder={m.placeholder_weeks_example()}
 						/>
+						<div class="md:col-span-2">
+							<TextArea
+								id="conclusion-notes"
+								label={m.additional_notes()}
+								bind:value={$form.intake_conclusion_notes}
+								error={$errors.intake_conclusion_notes?.[0]}
+								placeholder={m.additional_notes_placeholder()}
+								rows={3}
+							/>
+						</div>
 					</div>
-				</div>
+				</section>
+
+				<section class="rounded-3xl border border-border bg-bg p-5 sm:p-7 lg:col-span-2">
+					<div class="mb-4">
+						<h2 class="text-xl font-bold text-text">
+							{m.goals_assessments()}
+							<span class="text-sm font-semibold text-text-subtle">({m.optional()})</span>
+						</h2>
+						<p class="mt-1 text-sm text-text-subtle">{m.assessments_optional_description()}</p>
+					</div>
+					<div class="grid gap-3 md:grid-cols-2">
+						<button
+							type="submit"
+							onclick={() => requestCreate('goals')}
+							disabled={createRequested || isMutating}
+							class="flex min-h-28 items-center gap-4 rounded-2xl border border-brand/30 bg-surface p-5 text-left hover:border-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:opacity-50"
+						>
+							<div class="min-w-0 flex-1">
+								<span class="font-bold text-text">{m.define_now()}</span>
+								<p class="mt-1 text-sm text-text-muted">{m.define_now_description()}</p>
+							</div>
+							{#if phase === 'creating' && createIntent === 'goals'}<Loader2
+									class="h-5 w-5 animate-spin text-brand"
+									aria-hidden="true"
+								/>{:else}<ArrowRight class="h-5 w-5 text-brand" aria-hidden="true" />{/if}
+						</button>
+						<button
+							type="submit"
+							onclick={() => requestCreate('finish')}
+							disabled={createRequested || isMutating}
+							class="flex min-h-28 items-center gap-4 rounded-2xl border border-border bg-surface p-5 text-left hover:border-text-subtle focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:opacity-50"
+						>
+							<Clock class="h-6 w-6 shrink-0 text-text-muted" aria-hidden="true" />
+							<div class="min-w-0">
+								<span class="font-bold text-text">{m.do_later()}</span>
+								<p class="mt-1 text-sm text-text-muted">{m.do_later_description()}</p>
+							</div>
+						</button>
+					</div>
+				</section>
+			</form>
+		{:else if createdIntakeId}
+			<div class="grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+				<aside class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<h2 class="font-bold text-text">{m.registration_goals_reference()}</h2>
+					{#if registration.client_goals?.length}
+						<ul class="mt-4 space-y-2 text-sm text-text-muted">
+							{#each registration.client_goals as goal (goal)}<li
+									class="rounded-xl bg-bg px-3 py-2 break-words"
+								>
+									{goal}
+								</li>{/each}
+						</ul>
+					{:else}<p class="mt-3 text-sm text-text-subtle">{m.no_goals_specified()}</p>{/if}
+					{#if registration.application_reason}<h3
+							class="mt-5 text-xs font-semibold tracking-wide text-text-subtle uppercase"
+						>
+							{m.reason_for_application()}
+						</h3>
+						<p class="mt-2 text-sm break-words text-text-muted">
+							{registration.application_reason}
+						</p>{/if}
+				</aside>
+				<section class="min-w-0 rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7">
+					<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+						<div>
+							<h2 class="text-xl font-bold text-text">{m.goals_assessments()}</h2>
+							<p class="text-sm text-text-subtle">{m.assessment_goals_description()}</p>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<button
+								type="button"
+								onclick={finishLater}
+								disabled={isMutating}
+								class="rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-text hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:opacity-50"
+								>{m.intake_finish_later()}</button
+							>
+							<button
+								type="button"
+								onclick={saveGoals}
+								disabled={isMutating || goals.length === 0}
+								class="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+							>
+								{#if phase === 'saving-goals'}<Loader2
+										class="h-4 w-4 animate-spin"
+										aria-hidden="true"
+									/>{:else}<Save class="h-4 w-4" aria-hidden="true" />{/if}{m.save_finish()}
+							</button>
+						</div>
+					</div>
+					<GoalAssessmentForm bind:this={goalForm} intakeId={createdIntakeId} bind:goals />
+				</section>
 			</div>
-		</section>
+		{/if}
 	</div>
 </Modal>

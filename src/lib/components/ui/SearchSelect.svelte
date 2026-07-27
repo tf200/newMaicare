@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="Option">
 	import { Check, ChevronsUpDown, Loader2, Search, X } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import type { Snippet } from 'svelte';
@@ -7,8 +7,29 @@
 	import { m } from '$lib/paraglide/messages';
 	import { selectSizeClasses, type SelectSize } from './_sizes';
 
-	type Option = any;
+	interface Props {
+		label?: string;
+		value?: string;
+		displayValue?: string;
+		placeholder?: string;
+		searchPlaceholder?: string;
+		disabled?: boolean;
+		error?: string;
+		id?: string;
+		className?: string;
+		size?: SelectSize;
+		/** @deprecated Use size="sm" instead. */
+		compact?: boolean;
+		item?: Snippet<[Option]>;
+		loadOptions: (query: string) => Promise<Option[]>;
+		onchange?: (value: string) => void;
+		labelFn?: (option: Option) => string;
+		valueFn?: (option: Option) => string;
+		loadErrorText?: string;
+		retryLabel?: string;
+	}
 
+	const generatedId = $props.id();
 	let {
 		label,
 		value = $bindable(),
@@ -17,75 +38,65 @@
 		searchPlaceholder = undefined,
 		disabled = false,
 		error = undefined,
-		id = `select-${Math.random().toString(36).substr(2, 9)}`,
+		id = generatedId,
 		className = '',
 		size = 'lg',
 		compact = false,
 		item,
 		loadOptions,
 		onchange,
-		labelFn = (opt: Option) => String(opt?.label ?? ''),
-		valueFn = (opt: Option) => String(opt?.value ?? '')
-	} = $props<{
-		label?: string;
-		value?: string | undefined;
-		displayValue?: string | undefined;
-		placeholder?: string;
-		searchPlaceholder?: string;
-		disabled?: boolean;
-		error?: string;
-		id?: string;
-		className?: string;
-		size?: SelectSize;
-		/** @deprecated Use size="sm" instead */
-		compact?: boolean;
-		item?: Snippet<[Option]>;
-		loadOptions: (query: string) => Promise<Option[]>;
-		onchange?: (value: string) => void;
-		labelFn?: (opt: Option) => string;
-		valueFn?: (opt: Option) => string;
-	}>();
+		labelFn = (option: Option) => String((option as { label?: unknown } | null)?.label ?? ''),
+		valueFn = (option: Option) => String((option as { value?: unknown } | null)?.value ?? ''),
+		loadErrorText = 'Unable to load options.',
+		retryLabel = m.retry()
+	}: Props = $props();
 
 	let isOpen = $state(false);
 	let isLoading = $state(false);
 	let options = $state<Option[]>([]);
 	let searchQuery = $state('');
+	let loadError = $state<string | null>(null);
 	let searchInput = $state<HTMLInputElement>();
-	let triggerEl = $state<HTMLElement>();
-	let dropdownEl = $state<HTMLElement>();
+	let triggerEl = $state<HTMLButtonElement>();
+	let dropdownEl = $state<HTMLDivElement>();
+	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	let requestSequence = 0;
 
+	let listboxId = $derived(`${id}-listbox`);
+	let errorId = $derived(`${id}-error`);
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_placeholder());
 	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
 	let currentValue = $derived(value ?? '');
 	let currentDisplayValue = $derived(displayValue ?? '');
 	let selectedLabel = $derived.by(() => {
-		const found = options.find((opt) => valueFn(opt) === currentValue);
+		const found = options.find((option) => valueFn(option) === currentValue);
 		return found ? labelFn(found) : currentDisplayValue || resolvedPlaceholder;
 	});
-	let hasValue = $derived(!!currentValue && currentValue !== '');
+	let hasValue = $derived(Boolean(currentValue));
 	let resolvedSize = $derived(compact ? 'sm' : size);
-	let sizeClass = $derived(selectSizeClasses[resolvedSize as SelectSize]);
+	let sizeClass = $derived(selectSizeClasses[resolvedSize]);
 
-	let debounceTimer: ReturnType<typeof setTimeout>;
-
-	function handleSearch(e: Event) {
-		const query = (e.target as HTMLInputElement).value;
+	function handleSearch(event: Event) {
+		const query = (event.currentTarget as HTMLInputElement).value;
 		searchQuery = query;
-		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(() => {
-			fetchOptions(query);
-		}, 300);
+		if (debounceTimer) clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => void fetchOptions(query), 300);
 	}
 
 	async function fetchOptions(query: string) {
+		const sequence = ++requestSequence;
 		isLoading = true;
+		loadError = null;
 		try {
-			options = (await loadOptions(query)) || [];
-		} catch (e) {
-			console.error(e);
+			const result = await loadOptions(query);
+			if (sequence !== requestSequence) return;
+			options = result ?? [];
+		} catch {
+			if (sequence !== requestSequence) return;
 			options = [];
+			loadError = loadErrorText;
 		} finally {
-			isLoading = false;
+			if (sequence === requestSequence) isLoading = false;
 		}
 	}
 
@@ -93,100 +104,116 @@
 		if (disabled) return;
 		isOpen = !isOpen;
 		if (isOpen) {
-			setTimeout(() => searchInput?.focus(), 50);
-			fetchOptions('');
+			void fetchOptions('');
+			queueMicrotask(() => searchInput?.focus());
+		} else {
+			requestSequence += 1;
 		}
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (disabled) return;
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			toggle();
-		} else if (e.key === 'Escape' && isOpen) {
-			isOpen = false;
-		}
-	}
-
-	function select(opt: Option) {
-		value = valueFn(opt);
-		displayValue = labelFn(opt);
+	function select(option: Option) {
+		value = valueFn(option);
+		displayValue = labelFn(option);
 		isOpen = false;
 		searchQuery = '';
 		onchange?.(value);
+		triggerEl?.focus();
 	}
 
-	function clear(e: Event) {
-		e.stopPropagation();
+	function clear() {
 		value = '';
 		displayValue = '';
 		searchQuery = '';
-		fetchOptions('');
 		onchange?.('');
+		triggerEl?.focus();
 	}
 
-	function handleOutsideClick(node: HTMLElement) {
-		const handleClick = (e: Event) => {
-			const target = e.target as Node;
-			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
-				isOpen = false;
-			}
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			isOpen = false;
+			triggerEl?.focus();
+		}
+	}
+
+	function manageRoot(node: HTMLDivElement) {
+		const handleClick = (event: Event) => {
+			const target = event.target as Node;
+			if (!node.contains(target) && !dropdownEl?.contains(target)) isOpen = false;
 		};
+		document.addEventListener('pointerdown', handleClick, true);
+		return () => {
+			document.removeEventListener('pointerdown', handleClick, true);
+			if (debounceTimer) clearTimeout(debounceTimer);
+			requestSequence += 1;
+		};
+	}
 
-		document.addEventListener('mousedown', handleClick, true);
-		document.addEventListener('touchstart', handleClick, true);
+	function captureTrigger(node: HTMLButtonElement) {
+		triggerEl = node;
+		return () => {
+			if (triggerEl === node) triggerEl = undefined;
+		};
+	}
 
-		return {
-			destroy() {
-				document.removeEventListener('mousedown', handleClick, true);
-				document.removeEventListener('touchstart', handleClick, true);
-			}
+	function captureDropdown(node: HTMLDivElement) {
+		dropdownEl = node;
+		return () => {
+			if (dropdownEl === node) dropdownEl = undefined;
+		};
+	}
+
+	function captureSearchInput(node: HTMLInputElement) {
+		searchInput = node;
+		return () => {
+			if (searchInput === node) searchInput = undefined;
 		};
 	}
 </script>
 
-<div class="{compact ? '' : 'space-y-2'} {className}" use:handleOutsideClick>
+<div class="{compact ? '' : 'space-y-2'} {className}" {@attach manageRoot}>
 	{#if label}
-		<label for={id} class="ml-1 text-sm font-semibold text-text-muted">
-			{label}
-		</label>
+		<label for={id} class="ml-1 text-sm font-semibold text-text-muted">{label}</label>
 	{/if}
 
-	<div class="relative">
+	<div class="relative flex items-center">
 		<button
 			{id}
-			bind:this={triggerEl}
+			{@attach captureTrigger}
 			type="button"
-			tabindex={disabled ? -1 : 0}
 			onclick={toggle}
-			onkeydown={handleKeydown}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {sizeClass} text-text {disabled
+			{disabled}
+			role="combobox"
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface pr-16 text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {sizeClass} {disabled
 				? 'cursor-not-allowed opacity-60'
 				: 'hover:border-border'} {error ? 'border-error' : ''}"
+			aria-haspopup="listbox"
+			aria-controls={listboxId}
 			aria-expanded={isOpen}
-			aria-disabled={disabled}
+			aria-invalid={error ? true : undefined}
+			aria-describedby={error ? errorId : undefined}
 		>
-			<span class="{hasValue ? 'font-medium' : 'text-text-subtle'} truncate">{selectedLabel}</span>
-			<div class="flex items-center gap-1.5">
-				{#if hasValue && !disabled}
-					<span
-						role="button"
-						tabindex="-1"
-						onclick={clear}
-						onkeydown={(e) => e.key === 'Enter' && clear(e)}
-						class="rounded-full p-0.5 text-text-subtle transition-colors hover:text-text focus-visible:ring-2 focus-visible:ring-brand/30"
-						aria-label={m.clear_selection()}
-					>
-						<X class="h-3.5 w-3.5" />
-					</span>
-				{/if}
-				<ChevronsUpDown class="h-4 w-4 shrink-0 text-text-subtle" />
-			</div>
+			<span class="min-w-0 truncate {hasValue ? 'font-medium' : 'text-text-subtle'}"
+				>{selectedLabel}</span
+			>
 		</button>
+		<div class="pointer-events-none absolute right-3 flex items-center gap-1.5">
+			{#if hasValue && !disabled}
+				<button
+					type="button"
+					onclick={clear}
+					class="pointer-events-auto rounded-full p-0.5 text-text-subtle transition-colors hover:text-text focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:outline-none"
+					aria-label={m.clear_selection()}
+				>
+					<X class="h-3.5 w-3.5" />
+				</button>
+			{/if}
+			<ChevronsUpDown class="h-4 w-4 shrink-0 text-text-subtle" />
+		</div>
 
 		{#if isOpen && triggerEl}
 			<div
-				bind:this={dropdownEl}
+				{@attach captureDropdown}
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
 				class="z-[9999] mt-2 max-h-72 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
@@ -194,48 +221,62 @@
 			>
 				<div class="border-b border-border p-2">
 					<div class="relative">
-						<Search class="absolute top-2.5 left-2.5 h-4 w-4 text-text-subtle" />
+						<Search
+							class="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-text-subtle"
+						/>
 						<input
-							bind:this={searchInput}
+							{@attach captureSearchInput}
 							type="text"
+							role="searchbox"
+							aria-controls={listboxId}
 							value={searchQuery}
 							oninput={handleSearch}
+							onkeydown={handleSearchKeydown}
 							placeholder={resolvedSearchPlaceholder}
 							class="w-full rounded-lg bg-bg py-2 pr-4 pl-9 text-sm text-text outline-hidden placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20"
 						/>
 					</div>
 				</div>
 
-				<div class="max-h-56 overflow-y-auto p-1">
+				<div id={listboxId} role="listbox" class="max-h-56 overflow-y-auto p-1">
 					{#if isLoading}
-						<div class="flex items-center justify-center p-4 text-text-subtle">
+						<div class="flex items-center justify-center p-4 text-text-subtle" role="status">
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							{m.loading()}...
 						</div>
-					{:else if options.length === 0}
-						<div class="p-4 text-center text-sm text-text-muted">
-							{m.no_results_found()}
+					{:else if loadError}
+						<div class="p-4 text-center text-sm" role="alert">
+							<p class="text-error">{loadError}</p>
+							<button
+								type="button"
+								onclick={() => fetchOptions(searchQuery)}
+								class="mt-2 font-semibold text-brand hover:underline"
+							>
+								{retryLabel}
+							</button>
 						</div>
+					{:else if options.length === 0}
+						<div class="p-4 text-center text-sm text-text-muted">{m.no_results_found()}</div>
 					{:else}
 						{#each options as option (valueFn(option))}
 							<button
 								type="button"
+								role="option"
+								aria-selected={currentValue === valueFn(option)}
 								onclick={() => select(option)}
 								class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-100 {currentValue ===
 								valueFn(option)
 									? 'bg-brand/10 font-semibold text-brand'
 									: 'text-text hover:bg-border/50'}"
 							>
-								<div class="flex-1 overflow-hidden">
-									{#if item}
-										{@render item(option)}
-									{:else}
-										<span class="truncate">{labelFn(option)}</span>
-									{/if}
-								</div>
-								{#if currentValue === valueFn(option)}
-									<Check class="ml-2 h-4 w-4 shrink-0 text-brand" />
-								{/if}
+								<span class="min-w-0 flex-1 overflow-hidden">
+									{#if item}{@render item(option)}{:else}<span class="block truncate"
+											>{labelFn(option)}</span
+										>{/if}
+								</span>
+								{#if currentValue === valueFn(option)}<Check
+										class="ml-2 h-4 w-4 shrink-0 text-brand"
+									/>{/if}
 							</button>
 						{/each}
 					{/if}
@@ -243,7 +284,5 @@
 			</div>
 		{/if}
 	</div>
-	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
-	{/if}
+	{#if error}<p id={errorId} class="ml-1 text-xs font-medium text-error">{error}</p>{/if}
 </div>
