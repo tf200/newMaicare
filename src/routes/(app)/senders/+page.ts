@@ -2,6 +2,7 @@ import type { PageLoad } from './$types';
 import { listSenders } from '$lib/api/senders';
 import type { SenderListItem } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import { m } from '$lib/paraglide/messages';
 
 interface SenderRow {
 	id: string;
@@ -47,7 +48,9 @@ const mapSender = (sender: SenderListItem): SenderRow => ({
 	updatedAt: sender.updated_at
 });
 
-export const load: PageLoad = ({ url }) => {
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	depends('app:senders:list');
+
 	const page = Number(url.searchParams.get('page') ?? '1') || 1;
 	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
 	const search = url.searchParams.get('search') ?? '';
@@ -55,12 +58,15 @@ export const load: PageLoad = ({ url }) => {
 	const includeArchived =
 		includeArchivedParam === 'true' ? true : includeArchivedParam === 'false' ? false : undefined;
 
-	const sendersData: Promise<SendersLoadResult> = listSenders({
-		page,
-		pageSize,
-		search: search.trim() || undefined,
-		includeArchived
-	})
+	const sendersData: Promise<SendersLoadResult> = listSenders(
+		{
+			page,
+			pageSize,
+			search: search.trim() || undefined,
+			includeArchived
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 
@@ -81,7 +87,7 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies SendersLoadResult;
 		})
 		.catch((error): SendersLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load senders.';
+			const message = error instanceof Error ? error.message : m.failed_load_senders();
 			return {
 				senders: [],
 				pagination: {

@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateSenderRequest,
@@ -16,7 +16,7 @@ export interface ListSendersParams {
 	search?: string;
 }
 
-export function listSenders(params: ListSendersParams = {}) {
+export function listSenders(params: ListSendersParams = {}, options?: ApiRequestOptions) {
 	const searchParams = new URLSearchParams();
 
 	searchParams.set('page', String(params.page || 1));
@@ -33,7 +33,7 @@ export function listSenders(params: ListSendersParams = {}) {
 	const query = searchParams.toString();
 	const endpoint = query ? `/senders?${query}` : '/senders';
 
-	return api.get<ApiEnvelope<PaginatedResponse<SenderListItem>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<SenderListItem>>>(endpoint, options);
 }
 
 export function getSenderById(id: string) {

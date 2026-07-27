@@ -1,54 +1,45 @@
 <script lang="ts">
-	import { Eye, Pencil, Phone, Plus, Search, Send, UserRound } from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import {
+		BadgeCheck,
+		Link,
+		Pencil,
+		Phone,
+		Plus,
+		Search,
+		Send,
+		UserRound,
+		UsersRound
+	} from 'lucide-svelte';
+	import { afterNavigate, goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
 	import EditSenderForm from '$lib/components/forms/EditSenderForm.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { SendersLoadResult } from './+page';
+	import type { PageProps } from './$types';
 
-	let { data } = $props<{
-		data: {
-			initial: {
-				page: number;
-				pageSize: number;
-				filters: { search: string; includeArchived?: boolean };
-			};
-			sendersData: Promise<SendersLoadResult>;
-		};
-	}>();
+	let { data }: PageProps = $props();
 	type SenderRow = SendersLoadResult['senders'][number];
 
-	const columns: DataTableColumn[] = [
-		{ key: 'name', label: 'Sender', headerClass: 'pl-14' },
-		{ key: 'location', label: 'Location' },
-		{ key: 'phone', label: 'Phone' },
-		{ key: 'registration', label: 'Registration', width: '190px' },
-		{ key: 'clientsCount', label: 'Clients', align: 'right', width: '110px' },
+	const columns = $derived<DataTableColumn[]>([
+		{ key: 'name', label: m.sender(), headerClass: 'pl-14' },
+		{ key: 'location', label: m.location() },
+		{ key: 'phone', label: m.phone() },
+		{ key: 'registration', label: m.registration(), width: '190px' },
+		{ key: 'clientsCount', label: m.clients(), align: 'right', width: '110px' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
-	];
+	]);
 
-	const senderTypeMeta: Record<string, { label: string; className: string }> = {
-		main_provider: {
-			label: 'Main provider',
-			className: 'bg-brand text-white border border-brand/70'
-		},
-		local_authority: {
-			label: 'Local authority',
-			className: 'bg-border text-text-muted border border-border'
-		},
-		particular_party: {
-			label: 'Private individual',
-			className: 'bg-[var(--color-secondary)] text-white border border-[var(--color-secondary)]/70'
-		},
-		healthcare_institution: {
-			label: 'Healthcare institution',
-			className: 'bg-info text-white border border-info/70'
-		}
+	const senderTypeClasses: Record<string, string> = {
+		main_provider: 'border border-brand/70 bg-brand text-white',
+		local_authority: 'border border-border bg-border text-text-muted',
+		particular_party: 'border border-secondary/70 bg-secondary text-white',
+		healthcare_institution: 'border border-info/70 bg-info text-white'
 	};
 
 	const sendersDataPromise = $derived.by(() => data.sendersData);
@@ -60,12 +51,12 @@
 	let showEditSender = $state(false);
 	let selectedSenderId = $state<string | null>(null);
 
-	onMount(() => {
+	afterNavigate(() => {
 		searchTerm = appliedSearch;
 	});
 
 	const buildQuery = (pageValue: number, searchValue: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 		if (searchValue) params.set('search', searchValue);
@@ -75,7 +66,11 @@
 	const updateQuery = (pageValue: number, searchValue: string) => {
 		const nextQuery = buildQuery(pageValue, searchValue);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(resolve(`/(app)/senders?${nextQuery}`), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const applySearch = () => {
@@ -103,8 +98,18 @@
 			.join(' ')
 			.trim();
 
-	const getTypeMeta = (value: string) =>
-		senderTypeMeta[value] ?? { label: value || '—', className: 'bg-border/50 text-text-muted' };
+	const getTypeLabel = (value: string) => {
+		if (value === 'main_provider') return m.main_provider();
+		if (value === 'local_authority') return m.local_authority();
+		if (value === 'particular_party') return m.private_individual();
+		if (value === 'healthcare_institution') return m.healthcare_institution();
+		return value || '—';
+	};
+
+	const getTypeMeta = (value: string) => ({
+		label: getTypeLabel(value),
+		className: senderTypeClasses[value] ?? 'bg-border/50 text-text-muted'
+	});
 
 	const isRegistered = (sender: SenderRow) => Boolean(sender.kvkNumber || sender.btwNumber);
 </script>
@@ -116,10 +121,12 @@
 {#snippet tableFilters()}
 	<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
 		<div class="relative w-full sm:w-auto">
+			<label class="sr-only" for="sender-search">{m.search_senders_placeholder()}</label>
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
+				id="sender-search"
 				type="text"
 				placeholder={m.search_senders_placeholder()}
 				bind:value={searchTerm}
@@ -170,7 +177,7 @@
 	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/70 bg-[var(--color-secondary)] px-2.5 py-1 font-semibold text-white"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 font-semibold text-white"
 			>
 				KVK <span class="font-normal text-white">{row.kvkNumber}</span>
 			</span>
@@ -198,14 +205,10 @@
 {#snippet actionsCell(row: SenderRow)}
 	<div class="flex justify-end gap-1">
 		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title={m.view_sender()}
-		>
-			<Eye class="h-4 w-4" />
-		</button>
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			type="button"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
 			title={m.edit_sender()}
+			aria-label={m.edit_sender()}
 			onclick={() => openEdit(row.id)}
 		>
 			<Pencil class="h-4 w-4" />
@@ -218,7 +221,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-brand/15 to-success/10 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -230,26 +233,26 @@
 				</div>
 				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.senders()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Centralize referral sources, contact points, and active client assignments in one place.
+					{m.senders_description()}
 				</p>
 			</div>
 			<Button class="gap-2" onclick={() => (showCreateSender = true)}>
 				<Plus class="h-4 w-4" />
-				Add sender
+				{m.add_sender()}
 			</Button>
 		</div>
 	</header>
 
-	<CreateSenderForm bind:open={showCreateSender} onCreated={() => invalidateAll()} />
+	<CreateSenderForm bind:open={showCreateSender} onCreated={() => invalidate('app:senders:list')} />
 	<EditSenderForm
 		bind:open={showEditSender}
 		senderId={selectedSenderId}
-		onUpdated={() => invalidateAll()}
+		onUpdated={() => invalidate('app:senders:list')}
 	/>
 
 	{#await sendersDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each [1, 2, 3] as _}
+			{#each [1, 2, 3] as item (item)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
@@ -261,24 +264,28 @@
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+			}}
 			rowKey="id"
 			title={m.sender_directory()}
-			description="Overview of referral sources, contact data, and client volume."
-			filters={tableFilters}
-			emptyTitle="No senders found"
-			emptyDescription="Try a different search or add a new sender."
-			emptyActionLabel="Add sender"
-			emptyAction={() => (showCreateSender = true)}
+			description={m.sender_directory_description()}
+			toolbar={tableFilters}
+			empty={{
+				title: m.no_senders_found(),
+				description: m.no_senders_description(),
+				action: { label: m.add_sender(), onClick: () => (showCreateSender = true) }
+			}}
 			cells={{
 				name: nameCell,
 				location: locationCell,
 				phone: phoneCell,
 				registration: registrationCell,
-				clientCount: clientCountCell,
+				clientsCount: clientCountCell,
 				actions: actionsCell
 			}}
 		/>
@@ -290,61 +297,56 @@
 		)}
 		{@const registeredSenders = senders.filter((sender: SenderRow) => isRegistered(sender)).length}
 
-		{#if sendersData.loadError}
-			<InlineErrorBanner message={sendersData.loadError} onRetry={() => invalidateAll()} />
-		{/if}
-
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Total senders
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{sendersData.pagination.count}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.active_referral_partners()}</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Clients linked
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-					{totalClients}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.in_current_view()}</p>
-			</div>
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-				<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-					Registration
-				</div>
-				<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-					{registeredSenders}
-				</div>
-				<p class="mt-2 text-xs font-medium text-text-muted">{m.kvk_btw_in_view()}</p>
-			</div>
+			<StatCard
+				label={m.total_senders()}
+				value={sendersData.pagination.count}
+				description={m.active_filters_scope()}
+				icon={UsersRound}
+			/>
+			<StatCard
+				label={m.clients_linked()}
+				value={totalClients}
+				description={m.current_page()}
+				icon={Link}
+				color="brand"
+			/>
+			<StatCard
+				label={m.registered_senders()}
+				value={registeredSenders}
+				description={m.current_page()}
+				icon={BadgeCheck}
+				color="secondary"
+			/>
 		</div>
 
 		<DataTable
 			{columns}
 			rows={senders}
-			currentPage={sendersData.pagination.page}
-			pageSize={sendersData.pagination.pageSize}
-			totalCount={sendersData.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			pagination={{
+				mode: 'server',
+				page: sendersData.pagination.page,
+				pageSize: sendersData.pagination.pageSize,
+				totalCount: sendersData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+			}}
 			rowKey="id"
 			title={m.sender_directory()}
-			description="Overview of referral sources, contact data, and client volume."
-			filters={tableFilters}
-			emptyTitle="No senders found"
-			emptyDescription="Try a different search or add a new sender."
-			emptyActionLabel="Add sender"
-			emptyAction={() => (showCreateSender = true)}
+			description={m.sender_directory_description()}
+			toolbar={tableFilters}
+			empty={{
+				title: m.no_senders_found(),
+				description: m.no_senders_description(),
+				action: { label: m.add_sender(), onClick: () => (showCreateSender = true) }
+			}}
+			error={sendersData.loadError ?? undefined}
+			onRetry={() => invalidate('app:senders:list')}
 			cells={{
 				name: nameCell,
 				location: locationCell,
 				phone: phoneCell,
 				registration: registrationCell,
-				clientCount: clientCountCell,
+				clientsCount: clientCountCell,
 				actions: actionsCell
 			}}
 		/>
