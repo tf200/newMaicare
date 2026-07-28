@@ -61,14 +61,6 @@ const documentLabels: Record<string, () => string> = {
 
 export const toDocumentLabel = (value: string) => documentLabels[value]?.() ?? toTitleCase(value);
 
-export const maskBsn = (value: string | number | null) => {
-	if (value === null || value === undefined) return '—';
-	const normalized = String(value).trim();
-	if (!normalized) return '—';
-	const tail = normalized.slice(-3);
-	return `***.***.${tail}`;
-};
-
 export const mergeAlerts = (apiAlerts: GetClientAlert[], recommendedAlerts: GetClientAlert[]) => {
 	const byCode = new Map<string, GetClientAlert>();
 

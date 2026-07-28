@@ -1,4 +1,5 @@
 import { m } from '$lib/paraglide/messages';
+import { maskBsn } from '$lib/utils/privacy';
 import type {
 	ClientStatus,
 	GetClientAlert,
@@ -13,7 +14,6 @@ import {
 	buildQuickLinks,
 	formatAddress,
 	getDisplayName,
-	maskBsn,
 	mapSeverityToTone,
 	mergeAlerts,
 	toTitleCase

@@ -19,7 +19,6 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
-	import { onMount } from 'svelte';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -28,8 +27,11 @@
 	const toast = getToastState();
 
 	let errorMessage = $state('');
-	let rolesCache = $state<RoleListItem[]>([]);
-	let departmentOptions = $state<Array<{ value: string; label: string }>>([]);
+	let rolesCache = $state.raw<RoleListItem[]>([]);
+	let departmentsCache = $state.raw<DepartmentItem[]>([]);
+	let roleDisplayValue = $state('');
+	let locationDisplayValue = $state('');
+	let departmentDisplayValue = $state('');
 	const formId = 'create-employee-form';
 	const toOptionalNumber = (value: string | number | undefined): number | undefined => {
 		if (typeof value === 'number') {
@@ -43,7 +45,7 @@
 		return Number.isFinite(parsed) ? parsed : undefined;
 	};
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, submitting, reset } = superForm(
 		defaults(
 			{
 				gender: 'not_specified',
@@ -58,6 +60,7 @@
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
+					errorMessage = '';
 					try {
 						const payload: CreateEmployeeRequest = {
 							first_name: form.data.first_name.trim(),
@@ -90,11 +93,11 @@
 
 						await createEmployee(payload);
 						toast.success(m.employee_created_success());
-						reset();
-						onCreated?.();
+						clearTransientState();
 						open = false;
-					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : m.failed_create_employee();
+						onCreated?.();
+					} catch {
+						errorMessage = m.failed_create_employee();
 					}
 				}
 			}
@@ -102,20 +105,28 @@
 	);
 
 	// Options
-	const genderOptions = [
+	const genderOptions = $derived([
 		{ value: 'male', label: m.male() },
 		{ value: 'female', label: m.female() },
 		{ value: 'not_specified', label: m.not_specified() }
-	];
+	]);
 
-	const contractTypeOptions = [
+	const contractTypeOptions = $derived([
 		{ value: 'loondienst', label: m.loondienst_full_time() },
 		{ value: 'ZZP', label: m.zzp_freelance() },
 		{ value: 'none', label: m.none() }
-	];
+	]);
+
+	const clearTransientState = () => {
+		errorMessage = '';
+		roleDisplayValue = '';
+		locationDisplayValue = '';
+		departmentDisplayValue = '';
+		reset();
+	};
 
 	const handleCancel = () => {
-		reset();
+		clearTransientState();
 		open = false;
 	};
 
@@ -136,20 +147,19 @@
 		return res.data.results;
 	};
 
-	onMount(async () => {
-		try {
-			const res = await listDepartments({ pageSize: 100 });
-			departmentOptions = res.data.results
-				.map((department: DepartmentItem) => ({
-					value: department.id,
-					label: department.name
-				}))
-				.filter((department) => department.label.trim().length > 0);
-		} catch (error) {
-			console.error(error);
-			departmentOptions = [];
+	const loadDepartments = async (query: string) => {
+		if (departmentsCache.length === 0) {
+			const response = await listDepartments({ pageSize: 100 });
+			departmentsCache = response.data.results.filter(
+				(department) => department.name.trim().length > 0
+			);
 		}
-	});
+		const normalizedQuery = query.trim().toLowerCase();
+		if (!normalizedQuery) return departmentsCache;
+		return departmentsCache.filter((department) =>
+			department.name.toLowerCase().includes(normalizedQuery)
+		);
+	};
 </script>
 
 {#snippet roleItem(option: RoleListItem)}
@@ -166,11 +176,17 @@
 		<span class="font-medium text-text">{option.name}</span>
 		<div class="flex flex-col gap-0.5 text-xs text-text-muted">
 			<span>{option.street} {option.house_number}, {option.city}</span>
-			<span class="{option.available > 0 ? 'text-emerald-600' : 'text-rose-600'} font-medium">
+			<span
+				class="{option.available > 0 ? 'text-success-strong' : 'text-error-strong'} font-medium"
+			>
 				{m.spots_available({ count: option.available })}
 			</span>
 		</div>
 	</div>
+{/snippet}
+
+{#snippet departmentItem(option: DepartmentItem)}
+	<span class="font-medium text-text">{option.name}</span>
 {/snippet}
 
 <Modal
@@ -178,10 +194,16 @@
 	title={m.add_new_employee()}
 	description={m.add_new_employee_description()}
 	size="4xl"
+	closeLabel={m.close()}
+	dismissible={!$submitting}
+	onClose={clearTransientState}
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong"
+				role="alert"
+			>
 				{errorMessage}
 			</div>
 		{/if}
@@ -193,34 +215,47 @@
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
+					id="create-employee-first-name"
 					label={m.first_name()}
 					placeholder={m.example_first_name()}
 					bind:value={$form.first_name}
 					error={formatFormError($errors.first_name)}
 					required
+					autocomplete="given-name"
 				/>
 				<Input
+					id="create-employee-last-name"
 					label={m.last_name()}
 					placeholder={m.example_last_name()}
 					bind:value={$form.last_name}
 					error={formatFormError($errors.last_name)}
 					required
+					autocomplete="family-name"
 				/>
 				<Input
+					id="create-employee-bsn"
 					label={m.bsn()}
 					placeholder={m.example_bsn()}
 					bind:value={$form.bsn}
 					error={formatFormError($errors.bsn)}
 					required
+					inputmode="numeric"
+					autocomplete="off"
 				/>
 				<Select
+					id="create-employee-gender"
 					label={m.gender()}
 					bind:value={$form.gender}
 					options={genderOptions}
 					placeholder={m.select_gender()}
 					error={formatFormError($errors.gender)}
 				/>
-				<DatePicker label={m.date_of_birth()} bind:value={$form.date_of_birth} />
+				<DatePicker
+					id="create-employee-date-of-birth"
+					label={m.date_of_birth()}
+					bind:value={$form.date_of_birth}
+					error={formatFormError($errors.date_of_birth)}
+				/>
 			</div>
 		</section>
 
@@ -231,34 +266,50 @@
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
+					id="create-employee-work-email"
 					label={m.work_email()}
 					type="email"
 					placeholder={m.placeholder_work_email()}
 					bind:value={$form.work_email_address}
 					error={formatFormError($errors.work_email_address)}
 					required
+					autocomplete="email"
 				/>
 				<Input
+					id="create-employee-private-email"
 					label={m.private_email()}
 					type="email"
 					placeholder={m.placeholder_private_email()}
 					bind:value={$form.private_email_address}
 					error={formatFormError($errors.private_email_address)}
+					autocomplete="email"
 				/>
 				<Input
+					id="create-employee-work-phone"
 					label={m.work_phone()}
+					type="tel"
 					placeholder={m.example_phone_nl()}
 					bind:value={$form.work_phone_number}
+					error={formatFormError($errors.work_phone_number)}
+					autocomplete="tel"
 				/>
 				<Input
+					id="create-employee-private-phone"
 					label={m.private_phone()}
+					type="tel"
 					placeholder={m.example_phone_nl()}
 					bind:value={$form.private_phone_number}
+					error={formatFormError($errors.private_phone_number)}
+					autocomplete="tel"
 				/>
 				<Input
+					id="create-employee-home-phone"
 					label={m.home_telephone()}
+					type="tel"
 					placeholder={m.example_phone_nl()}
 					bind:value={$form.home_telephone_number}
+					error={formatFormError($errors.home_telephone_number)}
+					autocomplete="tel"
 				/>
 			</div>
 		</section>
@@ -270,13 +321,16 @@
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Input
+					id="create-employee-postal-code"
 					label={m.postal_code()}
 					placeholder={m.example_postal_code()}
 					bind:value={$form.postal_code}
 					error={formatFormError($errors.postal_code)}
 					required
+					autocomplete="postal-code"
 				/>
 				<Input
+					id="create-employee-house-number"
 					label={m.house_number()}
 					placeholder={m.example_house_number()}
 					bind:value={$form.house_number}
@@ -284,25 +338,31 @@
 					required
 				/>
 				<Input
+					id="create-employee-house-number-addition"
 					label={m.addition_optional()}
 					placeholder={m.example_house_number_addition()}
 					bind:value={$form.house_number_addition}
+					error={formatFormError($errors.house_number_addition)}
 				/>
 			</div>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<Input
+					id="create-employee-street"
 					label={m.street()}
 					placeholder={m.example_street_name()}
 					bind:value={$form.street}
 					error={formatFormError($errors.street)}
 					required
+					autocomplete="street-address"
 				/>
 				<Input
+					id="create-employee-city"
 					label={m.city()}
 					placeholder={m.example_city_name()}
 					bind:value={$form.city}
 					error={formatFormError($errors.city)}
 					required
+					autocomplete="address-level2"
 				/>
 			</div>
 		</section>
@@ -314,45 +374,67 @@
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 				<SearchSelect
+					id="create-employee-role"
 					label={m.role()}
 					loadOptions={loadRoles}
 					bind:value={$form.role_id}
+					bind:displayValue={roleDisplayValue}
 					error={formatFormError($errors.role_id)}
 					item={roleItem}
 					labelFn={(role) => role.role_name}
 					valueFn={(role) => role.id}
 					placeholder={m.search_role_placeholder()}
+					loadErrorText={m.unable_to_load_roles()}
+					retryLabel={m.retry()}
 				/>
 				<SearchSelect
+					id="create-employee-location"
 					label={m.assigned_location()}
 					loadOptions={loadLocations}
 					bind:value={$form.location_id}
+					bind:displayValue={locationDisplayValue}
+					error={formatFormError($errors.location_id)}
 					item={locationItem}
 					labelFn={(location) => `${location.name} (${location.city})`}
 					valueFn={(location) => location.id}
 					placeholder={m.search_location_placeholder()}
+					loadErrorText={m.unable_to_load_locations()}
+					retryLabel={m.retry()}
 				/>
 				<Input
+					id="create-employee-number"
 					label={m.employee_number()}
 					placeholder={m.placeholder_employee_number()}
 					bind:value={$form.employee_number}
+					error={formatFormError($errors.employee_number)}
 				/>
 				<Input
+					id="create-employee-employment-number"
 					label={m.employment_number()}
 					placeholder={m.placeholder_employment_number()}
 					bind:value={$form.employment_number}
+					error={formatFormError($errors.employment_number)}
 				/>
 				<Input
+					id="create-employee-position"
 					label={m.position()}
 					placeholder={m.placeholder_position()}
 					bind:value={$form.position}
+					error={formatFormError($errors.position)}
 				/>
-				<Select
+				<SearchSelect
+					id="create-employee-department"
 					label={m.department()}
 					placeholder={m.placeholder_department()}
-					options={departmentOptions}
+					loadOptions={loadDepartments}
 					bind:value={$form.department_id}
+					bind:displayValue={departmentDisplayValue}
 					error={formatFormError($errors.department_id)}
+					item={departmentItem}
+					labelFn={(department) => department.name}
+					valueFn={(department) => department.id}
+					loadErrorText={m.unable_to_load_departments()}
+					retryLabel={m.retry()}
 				/>
 			</div>
 		</section>
@@ -364,6 +446,7 @@
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-3">
 				<Select
+					id="create-employee-contract-type"
 					label={m.contract_type()}
 					bind:value={$form.contract_type}
 					options={contractTypeOptions}
@@ -371,6 +454,7 @@
 					error={formatFormError($errors.contract_type)}
 				/>
 				<Input
+					id="create-employee-contract-hours"
 					label={m.contract_hours()}
 					type="number"
 					placeholder={m.placeholder_contract_hours()}
@@ -378,6 +462,7 @@
 					error={formatFormError($errors.contract_hours)}
 				/>
 				<Input
+					id="create-employee-contract-rate"
 					label={m.rate_salary()}
 					type="number"
 					placeholder={m.placeholder_amount_zero()}
@@ -386,8 +471,18 @@
 				/>
 			</div>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<DatePicker label={m.start_date()} bind:value={$form.contract_start_date} />
-				<DatePicker label={m.end_date()} bind:value={$form.contract_end_date} />
+				<DatePicker
+					id="create-employee-contract-start"
+					label={m.start_date()}
+					bind:value={$form.contract_start_date}
+					error={formatFormError($errors.contract_start_date)}
+				/>
+				<DatePicker
+					id="create-employee-contract-end"
+					label={m.end_date()}
+					bind:value={$form.contract_end_date}
+					error={formatFormError($errors.contract_end_date)}
+				/>
 			</div>
 		</section>
 
@@ -395,11 +490,17 @@
 	</form>
 
 	{#snippet footer()}
-		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
-				<Plus class="h-4 w-4" />
-				{$delayed ? m.creating_employee() : m.create_employee()}
+		<div class="flex flex-wrap justify-end gap-3">
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button
+				class="gap-2"
+				form={formId}
+				type="submit"
+				isLoading={$submitting}
+				disabled={$submitting}
+			>
+				<Plus class="h-4 w-4" aria-hidden="true" />
+				{$submitting ? m.creating_employee() : m.create_employee()}
 			</Button>
 		</div>
 	{/snippet}

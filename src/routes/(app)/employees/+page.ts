@@ -5,6 +5,9 @@ import {
 	type EmployeeListItem
 } from '$lib/api/employees';
 import type { PaginationState } from '$lib/types/ui';
+import { m } from '$lib/paraglide/messages';
+import { getLocale } from '$lib/paraglide/runtime';
+import { maskBsn } from '$lib/utils/privacy';
 
 export interface EmployeeFilters {
 	search: string;
@@ -16,7 +19,7 @@ export interface EmployeeFilters {
 export interface EmployeeRow {
 	id: string;
 	name: string;
-	bsn: string;
+	maskedBsn: string;
 	department: string;
 	location: string;
 	contractType: 'Loondienst' | 'ZZP' | 'None';
@@ -35,6 +38,12 @@ const parseBoolean = (value: string | null) => {
 	return undefined;
 };
 
+const parsePositiveInteger = (value: string | null, fallback: number, maximum: number) => {
+	if (!value || !/^\d+$/.test(value)) return fallback;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
+};
+
 const parseContractType = (value: string | null): EmployeeFilters['contractType'] => {
 	if (value === 'loondienst' || value === 'ZZP' || value === 'none') return value;
 	return '';
@@ -49,30 +58,33 @@ const normalizeContractType = (value: string): EmployeeRow['contractType'] => {
 const mapEmployee = (employee: EmployeeListItem): EmployeeRow => {
 	const firstName = employee.first_name?.trim() ?? '';
 	const lastName = employee.last_name?.trim() ?? '';
-	const name = `${firstName} ${lastName}`.trim() || 'Unknown employee';
-	const bsn = String(employee.bsn ?? '');
+	const name = `${firstName} ${lastName}`.trim() || m.unknown_employee();
 	const contractEndDate = employee.contract_end_date ? new Date(employee.contract_end_date) : null;
+	const locale = getLocale() === 'nl' ? 'nl-NL' : 'en-GB';
 
 	return {
 		id: employee.id,
 		name,
-		bsn,
+		maskedBsn: maskBsn(employee.bsn),
 		department: employee.department_name?.trim() || employee.department?.trim() || '—',
 		location: employee.location_address?.trim() || '—',
 		contractType: normalizeContractType(employee.contract_type),
-		contractEndDate: contractEndDate
-			? contractEndDate.toLocaleDateString('nl-NL', {
-					day: '2-digit',
-					month: 'short',
-					year: 'numeric'
-				})
-			: '—'
+		contractEndDate:
+			contractEndDate && !Number.isNaN(contractEndDate.getTime())
+				? contractEndDate.toLocaleDateString(locale, {
+						day: '2-digit',
+						month: 'short',
+						year: 'numeric'
+					})
+				: '—'
 	};
 };
 
-export const load: PageLoad = ({ url }) => {
-	const page = Number(url.searchParams.get('page') ?? '1') || 1;
-	const pageSize = Number(url.searchParams.get('page_size') ?? '10') || 10;
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	depends('app:employees:list');
+
+	const page = parsePositiveInteger(url.searchParams.get('page'), 1, 100_000);
+	const pageSize = parsePositiveInteger(url.searchParams.get('page_size'), 10, 100);
 	const search = url.searchParams.get('search') ?? '';
 
 	const filters: EmployeeFilters = {
@@ -82,14 +94,17 @@ export const load: PageLoad = ({ url }) => {
 		outOfService: parseBoolean(url.searchParams.get('out_of_service'))
 	};
 
-	const employeesData: Promise<EmployeesLoadResult> = listEmployees({
-		page,
-		pageSize,
-		search: filters.search.trim() || undefined,
-		contractType: filters.contractType || undefined,
-		isArchived: filters.isArchived,
-		outOfService: filters.outOfService
-	})
+	const employeesData: Promise<EmployeesLoadResult> = listEmployees(
+		{
+			page,
+			pageSize,
+			search: filters.search.trim() || undefined,
+			contractType: filters.contractType || undefined,
+			isArchived: filters.isArchived,
+			outOfService: filters.outOfService
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 
@@ -106,9 +121,7 @@ export const load: PageLoad = ({ url }) => {
 				loadError: null
 			} satisfies EmployeesLoadResult;
 		})
-		.catch((error): EmployeesLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load employees.';
-
+		.catch((): EmployeesLoadResult => {
 			return {
 				employees: [],
 				pagination: {
@@ -119,7 +132,7 @@ export const load: PageLoad = ({ url }) => {
 					previous: null,
 					filters
 				} satisfies PaginationState<EmployeeFilters>,
-				loadError: message
+				loadError: m.failed_load_employees()
 			};
 		});
 

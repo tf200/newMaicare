@@ -144,7 +144,10 @@ export interface UpdateEmployeeRequest {
 	is_archived?: boolean;
 }
 
-export function listEmployees(params: ListEmployeesParams = {}) {
+export function listEmployees(
+	params: ListEmployeesParams = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
 	const query = new URLSearchParams();
 	if (params.page != null) query.set('page', String(params.page));
 	if (params.page_size != null) {
@@ -161,7 +164,7 @@ export function listEmployees(params: ListEmployeesParams = {}) {
 
 	const queryString = query.toString();
 	const endpoint = queryString ? `/employees?${queryString}` : '/employees';
-	return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<EmployeeListItem>>>(endpoint, options);
 }
 
 export function createEmployee(payload: CreateEmployeeRequest) {
@@ -198,4 +201,3 @@ export function getMyScheduleTimeline(params: GetMyScheduleTimelineParams) {
 export function resetEmployeePassword(id: string, payload: { new_password: string }) {
 	return api.put<ApiEnvelope<{ message: string }>>(`/employees/${id}/password`, payload);
 }
-
