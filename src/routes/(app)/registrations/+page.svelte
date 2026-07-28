@@ -8,7 +8,8 @@
 		ClipboardCheck,
 		Clock,
 		CheckCircle2,
-		FileText
+		FileText,
+		Trash2
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
@@ -29,6 +30,12 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { deleteRegistrationForm } from '$lib/api/registration';
+	import { getAuthState } from '$lib/state/auth.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	let { data } = $props<{
 		data: {
@@ -56,6 +63,35 @@
 			searchTerm = appliedSearch;
 		}
 	});
+
+	const auth = getAuthState();
+	const toast = getToastState();
+
+	let showDeleteModal = $state(false);
+	let deletingRow = $state<RegistrationRow | null>(null);
+	let isDeleting = $state(false);
+	let deleteError = $state('');
+
+	const handleDeleteConfirm = async () => {
+		if (!deletingRow) return;
+		isDeleting = true;
+		deleteError = '';
+		try {
+			const res = await deleteRegistrationForm(deletingRow.id);
+			if (!res.success) {
+				throw new Error(res.message || 'Failed to delete registration form.');
+			}
+			toast.success('Registration form deleted successfully.');
+			showDeleteModal = false;
+			deletingRow = null;
+			invalidate('app:registrations:list');
+			invalidate('app:registrations:stats');
+		} catch (err) {
+			deleteError = err instanceof Error ? err.message : 'Failed to delete registration form.';
+		} finally {
+			isDeleting = false;
+		}
+	};
 
 	const defaultFilters: RegistrationFilters = {
 		status: '',
@@ -366,6 +402,15 @@
 {/snippet}
 
 {#snippet actionsCell(row: RegistrationRow)}
+	{@const canDelete = auth.hasPermission(PERMISSIONS.REGISTRATION_FORM.DELETE)}
+	{@const isProcessed = row.formStatus === 'processed'}
+	{@const isDisabled = !canDelete || isProcessed}
+	{@const deleteTooltip = !canDelete
+		? 'You do not have permission to delete registration forms'
+		: isProcessed
+			? 'You cannot delete a processed registration form'
+			: 'Delete registration form'}
+
 	<div class="flex justify-end gap-1">
 		<a
 			href={registrationHref(row.id)}
@@ -374,6 +419,27 @@
 		>
 			<Eye class="h-4 w-4" />
 		</a>
+
+		<Tooltip content={deleteTooltip}>
+			<button
+				type="button"
+				data-table-stop-row-click
+				disabled={isDisabled}
+				onclick={() => {
+					if (!isDisabled) {
+						deletingRow = row;
+						deleteError = '';
+						showDeleteModal = true;
+					}
+				}}
+				class="flex h-8 w-8 items-center justify-center rounded-lg transition {isDisabled
+					? 'cursor-not-allowed opacity-40 text-text-subtle'
+					: 'text-text-subtle hover:bg-error/10 hover:text-error'}"
+				aria-label={deleteTooltip}
+			>
+				<Trash2 class="h-4 w-4" />
+			</button>
+		</Tooltip>
 	</div>
 {/snippet}
 
@@ -512,3 +578,47 @@
 		/>
 	{/await}
 </section>
+
+<!-- Delete Confirmation Modal -->
+<Modal
+	open={showDeleteModal}
+	onClose={() => {
+		if (!isDeleting) {
+			showDeleteModal = false;
+			deletingRow = null;
+		}
+	}}
+	title="Delete Registration Form"
+>
+	<div class="space-y-4">
+		<p class="text-sm font-medium text-text-muted">
+			Are you sure you want to delete the registration form for
+			<strong class="text-text">{deletingRow?.clientFirstName} {deletingRow?.clientLastName}</strong>?
+			This action cannot be undone.
+		</p>
+
+		{#if deleteError}
+			<InlineErrorBanner message={deleteError} />
+		{/if}
+
+		<div class="flex justify-end gap-3 pt-2">
+			<Button
+				variant="ghost"
+				disabled={isDeleting}
+				onclick={() => {
+					showDeleteModal = false;
+					deletingRow = null;
+				}}
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				isLoading={isDeleting}
+				onclick={handleDeleteConfirm}
+			>
+				Delete
+			</Button>
+		</div>
+	</div>
+</Modal>

@@ -169,3 +169,7 @@ export function getRegistrationCounts(options: { fetchFn?: typeof fetch } = {}) 
 export function getRegistrationForm(id: string, options: { fetchFn?: typeof fetch } = {}) {
 	return api.get<ApiEnvelope<GetRegistrationFormResponse>>(`/registration_forms/${id}`, options);
 }
+
+export function deleteRegistrationForm(id: string, options: { fetchFn?: typeof fetch } = {}) {
+	return api.delete<ApiEnvelope<null>>(`/registration_forms/${id}`, options);
+}
