@@ -279,6 +279,7 @@
 			{filters}
 			groups={filterGroups}
 			title={m.filter_registrations()}
+			iconOnly
 			onUpdate={(nextFilters) => setFilters(nextFilters as unknown as RegistrationFilters)}
 			onClear={clearFilters}
 		/>
