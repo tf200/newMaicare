@@ -385,15 +385,15 @@
 			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
-			<div class="space-y-1.5">
-				<div class="flex items-center gap-2.5 text-xs font-semibold text-brand">
-					<span class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10">
-						<ClipboardList class="h-4 w-4" />
+			<div class="space-y-3">
+				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
+						<ClipboardList class="h-5 w-5" />
 					</span>
 					<span>{m.registrations()}</span>
 				</div>
-				<h1 class="text-2xl font-bold tracking-tight text-text">{m.care_registrations()}</h1>
-				<p class="max-w-lg text-xs font-medium text-text-muted">
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.care_registrations()}</h1>
+				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					{m.registrations_description()}
 				</p>
 			</div>
