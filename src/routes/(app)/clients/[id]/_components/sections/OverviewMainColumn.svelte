@@ -5,7 +5,7 @@
 	import OverviewIntakeSection from './OverviewIntakeSection.svelte';
 	import OverviewNextSection from './OverviewNextSection.svelte';
 	import OverviewTimelineSection from './OverviewTimelineSection.svelte';
-	import type { ClientOverviewData, ClientOverviewStatus } from '$lib/mock/client-overview';
+	import type { ClientOverviewData, ClientOverviewStatus } from '../../overview.shared';
 
 	interface Props {
 		client: ClientOverviewData;
@@ -21,7 +21,7 @@
 		<OverviewAlertsSection alerts={client.alerts} />
 	</div>
 
-	<OverviewGoalsSection goals={client.goals} />
+	<OverviewGoalsSection clientId={client.id} goals={client.goals} />
 
 	<div class="grid gap-6 xl:grid-cols-2">
 		<OverviewContractSection contractSummary={client.contractSummary} />

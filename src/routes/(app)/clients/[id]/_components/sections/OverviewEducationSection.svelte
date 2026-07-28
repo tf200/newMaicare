@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { GraduationCap } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { ClientOverviewData } from '$lib/mock/client-overview';
+	import type { ClientOverviewData } from '../../overview.shared';
 
 	interface Props {
 		education: ClientOverviewData['education'];
@@ -10,12 +10,12 @@
 	let { education }: Props = $props();
 </script>
 
-<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-5 flex items-center gap-2">
-		<div class="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400">
-			<GraduationCap class="h-3.5 w-3.5" />
+		<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10 text-info-strong">
+			<GraduationCap class="h-4 w-4" aria-hidden="true" />
 		</div>
-		<h3 class="font-bold text-text">{m.education_section()}</h3>
+		<h2 class="text-lg font-semibold tracking-tight text-text">{m.education_section()}</h2>
 	</div>
 	{#if education}
 		<div class="space-y-3">
@@ -24,8 +24,8 @@
 				<span
 					class={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
 						education.currentlyEnrolled
-							? 'bg-emerald-500/10 text-emerald-700'
-							: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800'
+							? 'bg-success/10 text-success-strong'
+							: 'bg-border/50 text-text-muted'
 					}`}
 				>
 					{education.currentlyEnrolled ? m.yes() : m.no()}
@@ -72,7 +72,7 @@
 			{/if}
 
 			{#if education.additionalNotes}
-				<div class="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/50">
+				<div class="rounded-xl bg-bg p-3">
 					<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						{m.additional_notes()}
 					</p>
@@ -83,4 +83,4 @@
 	{:else}
 		<p class="text-sm text-text-muted">{m.not_available()}</p>
 	{/if}
-</div>
+</section>

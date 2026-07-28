@@ -13,14 +13,15 @@
 	} from 'lucide-svelte';
 	import { invalidate } from '$app/navigation';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import CreateProgressReportModal from '$lib/components/forms/CreateProgressReportModal.svelte';
 	import EditClientForm from '$lib/components/forms/EditClientForm.svelte';
 	import PutClientOutOfCareForm from '$lib/components/forms/PutClientOutOfCareForm.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale } from '$lib/paraglide/runtime';
+	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { resolve } from '$app/paths';
-	import type { ClientOverviewViewModel } from '../../overview.shared';
+	import type { ClientOverviewTarget, ClientOverviewViewModel } from '../../overview.shared';
 	import { formatOverviewDate } from '../overview-date';
 	import OverviewMainColumn from '../sections/OverviewMainColumn.svelte';
 	import OverviewSidebar from '../sections/OverviewSidebar.svelte';
@@ -33,11 +34,17 @@
 	const client = $derived(overview.client);
 	const clientDetail = $derived(overview.clientDetail);
 	const status = $derived(overview.status);
-	const breadcrumbSectionLabel = $derived(overview.breadcrumbSectionLabel);
 	const isWaitlistClient = $derived(status === 'on_waiting_list');
 	const isInCareClient = $derived(status === 'in_care');
 	const clientDisplayName = $derived(
-		`${client.firstName} ${client.lastName}`.trim() || 'Client Detail'
+		`${client.firstName} ${client.lastName}`.trim() || m.breadcrumb_client_detail()
+	);
+	const clientInitials = $derived(
+		[client.firstName, client.lastName]
+			.filter(Boolean)
+			.map((name) => name.charAt(0))
+			.join('')
+			.toUpperCase() || 'CP'
 	);
 	let showPutOutOfCareForm = $state(false);
 	let showCreateIncidentForm = $state(false);
@@ -77,19 +84,45 @@
 		return formatDayCount(days);
 	};
 
-	const getQuickLinkHref = (route: string) => {
-		switch (route) {
+	const getQuickLinkHref = (target: ClientOverviewTarget): string | null => {
+		switch (target) {
 			case 'contracts':
-				return resolve('/(app)/clients/[id]/contracts', { id: client.id });
+				return resolve(
+					localizeHref(
+						resolve('/(app)/clients/[id]/contracts', { id: client.id })
+					) as `/clients/${string}/contracts/`
+				);
 			case 'reports':
-				return resolve('/(app)/clients/[id]/reports', { id: client.id });
+				return resolve(
+					localizeHref(
+						resolve('/(app)/clients/[id]/reports', { id: client.id })
+					) as `/clients/${string}/reports/`
+				);
 			case 'goals':
-				return resolve('/(app)/clients/[id]/goals', { id: client.id });
+				return resolve(
+					localizeHref(
+						resolve('/(app)/clients/[id]/goals', { id: client.id })
+					) as `/clients/${string}/goals/`
+				);
 			case 'documents':
-				return resolve('/(app)/clients/[id]/documents', { id: client.id });
+				return resolve(
+					localizeHref(
+						resolve('/(app)/clients/[id]/documents', { id: client.id })
+					) as `/clients/${string}/documents/`
+				);
 			default:
-				return resolve('/(app)/clients/[id]', { id: client.id });
+				return null;
 		}
+	};
+
+	const quickLinkLabels: Record<ClientOverviewTarget, () => string> = {
+		overview: m.overview,
+		contracts: m.contracts,
+		incidents: m.incidents,
+		reports: m.reports,
+		goals: m.evaluations,
+		documents: m.documents,
+		appointments: m.appointments
 	};
 
 	const statusLabels = {
@@ -101,93 +134,90 @@
 	};
 
 	const statusColors = {
-		on_waiting_list: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
-		scheduled_in_care: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
-		in_care: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
-		scheduled_out_of_care: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
-		out_of_care: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20'
+		on_waiting_list: 'border-warning/30 bg-warning/10 text-warning-strong',
+		scheduled_in_care: 'border-info/30 bg-info/10 text-info-strong',
+		in_care: 'border-success/30 bg-success/10 text-success-strong',
+		scheduled_out_of_care: 'border-brand/30 bg-brand/10 text-brand-strong',
+		out_of_care: 'border-border bg-bg text-text-muted'
 	};
 </script>
 
 <div class="space-y-6">
-	<div class="flex items-center justify-between">
-		<nav class="flex items-center gap-2 text-sm font-medium text-text-subtle">
+	<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+		<nav
+			aria-label={m.client_overview_navigation()}
+			class="flex min-w-0 items-center gap-2 text-sm font-medium text-text-subtle"
+		>
 			<a
-				href={resolve('/(app)/clients')}
-				class="flex items-center gap-1 transition-colors hover:text-text"
+				href={resolve(localizeHref(resolve('/(app)/clients')) as '/clients/')}
+				data-sveltekit-preload-data="hover"
+				class="flex shrink-0 items-center gap-1 rounded-lg transition-colors hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 			>
-				<ArrowLeft class="h-4 w-4" />
+				<ArrowLeft class="h-4 w-4" aria-hidden="true" />
 				{m.clients()}
 			</a>
-			<ChevronRight class="h-4 w-4" />
-			<span class="text-text">{clientDisplayName}</span>
-			{#if breadcrumbSectionLabel}
-				<ChevronRight class="h-4 w-4" />
-				<span class="text-text">{breadcrumbSectionLabel}</span>
-			{/if}
+			<ChevronRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+			<span class="truncate text-text" aria-current="page">{clientDisplayName}</span>
 		</nav>
 
-		<div class="flex flex-wrap items-center justify-end gap-2">
+		<div class="flex flex-wrap items-center gap-2 xl:justify-end">
 			{#if !isWaitlistClient}
 				{#if isInCareClient}
 					<PermissionGuard permission="CLIENT.STATUS.UPDATE">
-						<button
-							type="button"
-							onclick={openPutOutOfCareForm}
-							class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 text-sm font-bold text-rose-700 shadow-sm transition hover:bg-rose-100"
-						>
-							<ShieldAlert class="h-4 w-4" />
+						<Button variant="destructive" onclick={openPutOutOfCareForm}>
+							<ShieldAlert class="h-4 w-4" aria-hidden="true" />
 							{m.put_out_of_care()}
-						</button>
+						</Button>
 					</PermissionGuard>
 				{/if}
-				<button
-					type="button"
+				<Button
+					variant="ghost"
 					onclick={openCreateProgressReportModal}
-					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+					class="border border-border bg-surface shadow-sm"
 				>
-					<MessageSquare class="h-4 w-4" />
+					<MessageSquare class="h-4 w-4" aria-hidden="true" />
 					{m.new_progress_report()}
-				</button>
-				<button
-					type="button"
+				</Button>
+				<Button
+					variant="ghost"
 					onclick={openCreateIncidentForm}
-					class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+					class="border border-border bg-surface shadow-sm"
 				>
-					<ShieldAlert class="h-4 w-4" />
+					<ShieldAlert class="h-4 w-4" aria-hidden="true" />
 					{m.log_incident()}
-				</button>
+				</Button>
 			{/if}
-			<button
-				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+			<a
+				href={resolve(
+					localizeHref(
+						resolve('/(app)/clients/[id]/goals', { id: client.id })
+					) as `/clients/${string}/goals/`
+				)}
+				data-sveltekit-preload-data="hover"
+				class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-text shadow-sm transition-colors hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
 			>
-				<Target class="h-4 w-4" />
+				<Target class="h-4 w-4" aria-hidden="true" />
 				{m.add_goal()}
-			</button>
-			<button
-				onclick={openEditClientForm}
-				class="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong dark:text-zinc-900"
-			>
-				<Plus class="h-4 w-4" />
+			</a>
+			<Button onclick={openEditClientForm}>
+				<Plus class="h-4 w-4" aria-hidden="true" />
 				{m.edit_client()}
-			</button>
+			</Button>
 		</div>
 	</div>
 
 	<header class="relative overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-		<div
-			class="absolute top-0 right-0 h-full w-1/3 bg-gradient-to-l from-brand/5 to-transparent"
-		></div>
-		<div class="relative flex flex-col justify-between gap-8 p-8 lg:flex-row lg:items-center">
-			<div class="flex items-center gap-6">
+		<div class="flex flex-col justify-between gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:p-8">
+			<div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
 				<div
-					class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand/20 to-brand/5 text-3xl font-bold text-brand shadow-inner ring-1 ring-brand/10"
+					class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand/10 text-2xl font-bold text-brand ring-1 ring-brand/20 sm:h-20 sm:w-20 sm:text-3xl"
+					aria-hidden="true"
 				>
-					{client.firstName[0]}{client.lastName[0]}
+					{clientInitials}
 				</div>
-				<div>
+				<div class="min-w-0">
 					<div class="flex flex-wrap items-center gap-3">
-						<h1 class="text-3xl font-bold tracking-tight text-text">
+						<h1 class="text-2xl font-bold tracking-tight break-words text-text">
 							{client.firstName}
 							{client.lastName}
 						</h1>
@@ -199,22 +229,25 @@
 					</div>
 					<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-text-subtle">
 						<span class="flex items-center gap-1.5"
-							><FileText class="h-4 w-4" />{client.fileNumber}</span
+							><FileText class="h-4 w-4" aria-hidden="true" />{client.fileNumber}</span
 						>
 						<span class="flex items-center gap-1.5"
-							><Building2 class="h-4 w-4" />{client.locationName || m.no_location()}</span
+							><Building2 class="h-4 w-4" aria-hidden="true" />{client.locationName ||
+								m.no_location()}</span
 						>
 						<span class="flex items-center gap-1.5"
-							><Heart class="h-4 w-4" />{client.careType || m.general_care()}</span
+							><Heart class="h-4 w-4" aria-hidden="true" />{client.careType ||
+								m.general_care()}</span
 						>
 						<span class="flex items-center gap-1.5 font-medium text-text"
-							><User class="h-4 w-4 text-text-subtle" />{client.coordinator || m.unassigned()}</span
+							><User class="h-4 w-4 text-text-subtle" aria-hidden="true" />{client.coordinator ||
+								m.unassigned()}</span
 						>
 					</div>
 				</div>
 			</div>
 
-			<div class="flex flex-wrap gap-4 border-t border-border/40 pt-6 lg:border-t-0 lg:pt-0">
+			<div class="flex flex-wrap gap-4 border-t border-border pt-6 lg:border-t-0 lg:pt-0">
 				{#if isWaitlistClient}
 					<div class="flex flex-col">
 						<span class="text-[10px] font-bold tracking-widest text-text-subtle uppercase"
@@ -257,19 +290,35 @@
 		</div>
 	</header>
 
-	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-		{#each client.quickLinks as link, index (`${link.href}-${index}`)}
-			<a
-				href={getQuickLinkHref(link.href)}
-				class="group flex flex-col items-center justify-center rounded-2xl border border-border bg-surface p-4 text-center transition hover:border-brand/30 hover:shadow-md"
-			>
-				<span class="text-2xl font-bold text-text group-hover:text-brand">{link.count}</span>
-				<span class="mt-1 text-xs font-medium text-text-subtle group-hover:text-text"
-					>{link.label}</span
+	<section
+		aria-label={m.client_overview_quick_links()}
+		class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+	>
+		{#each client.quickLinks as link (link.target)}
+			{@const href = getQuickLinkHref(link.target)}
+			{@const label = quickLinkLabels[link.target]()}
+			{#if href}
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					{href}
+					data-sveltekit-preload-data="hover"
+					class="group flex min-h-24 flex-col items-center justify-center rounded-3xl border border-border bg-surface p-4 text-center shadow-sm transition-[border-color,box-shadow] hover:border-brand/30 hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
 				>
-			</a>
+					<span class="text-2xl font-bold text-text group-hover:text-brand">{link.count}</span>
+					<span class="mt-1 text-xs font-medium text-text-muted group-hover:text-text">{label}</span
+					>
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{:else}
+				<div
+					class="flex min-h-24 flex-col items-center justify-center rounded-3xl border border-border bg-surface p-4 text-center shadow-sm"
+				>
+					<span class="text-2xl font-bold text-text">{link.count}</span>
+					<span class="mt-1 text-xs font-medium text-text-muted">{label}</span>
+				</div>
+			{/if}
 		{/each}
-	</div>
+	</section>
 
 	<div class="grid gap-6 xl:grid-cols-[1fr_380px]">
 		<OverviewMainColumn {client} {status} />

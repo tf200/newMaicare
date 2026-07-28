@@ -23,10 +23,12 @@
 
 	let {
 		open = $bindable(false),
-		clientId
+		clientId,
+		onUploaded
 	}: {
 		open: boolean;
 		clientId: string;
+		onUploaded?: () => Promise<void> | void;
 	} = $props();
 	const toast = getToastState();
 
@@ -148,6 +150,11 @@
 			}));
 
 			await addClientDocuments(clientId, documents);
+			try {
+				await onUploaded?.();
+			} catch (refreshError) {
+				console.error('Failed to refresh client documents:', refreshError);
+			}
 			toast.success(m.client_documents_uploaded_success({ count: uploadedFiles.length }));
 
 			resetModalState();
@@ -170,20 +177,16 @@
 	const uploadedCount = $derived(files.filter((file) => file.status === 'uploaded').length);
 	const failedCount = $derived(files.filter((file) => file.status === 'error').length);
 	const canConfirm = $derived(uploadedCount > 0 && uploadingCount === 0 && !isConfirming);
-
-	$effect(() => {
-		if (!open && uploadingCount > 0) {
-			open = true;
-			return;
-		}
-
-		if (!open && uploadingCount === 0 && !isConfirming && files.length > 0) {
-			resetModalState();
-		}
-	});
 </script>
 
-<Modal bind:open title="Upload Client Files" description="Add files for this client" size="lg">
+<Modal
+	bind:open
+	title="Upload Client Files"
+	description="Add files for this client"
+	size="lg"
+	dismissible={!isConfirming && uploadingCount === 0}
+	onClose={resetModalState}
+>
 	<div class="space-y-6">
 		{#if uploadError}
 			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3">

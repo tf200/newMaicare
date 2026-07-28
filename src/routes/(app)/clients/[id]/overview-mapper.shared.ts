@@ -1,4 +1,4 @@
-import type { ClientOverviewData } from '$lib/mock/client-overview';
+import { m } from '$lib/paraglide/messages';
 import type {
 	GetClientAlert,
 	GetClientContractSummary,
@@ -7,6 +7,7 @@ import type {
 	GetClientIntake,
 	GetClientResponse
 } from '$lib/types/api';
+import type { ClientOverviewData, ClientOverviewTarget } from './overview.shared';
 
 export const toTitleCase = (value: string) =>
 	value
@@ -29,7 +30,7 @@ export const mapSeverityToTone = (
 export const formatAddress = (payload: GetClientResponse) => {
 	const address = payload.client.address;
 	if (!address) {
-		return { line: 'Unknown address', cityLine: 'Unknown city' };
+		return { line: m.unknown_address(), cityLine: m.unknown_city() };
 	}
 
 	const house = `${address.house_number ?? ''}${address.house_number_addition ?? ''}`.trim();
@@ -37,17 +38,28 @@ export const formatAddress = (payload: GetClientResponse) => {
 	const cityLine = `${address.postal_code ?? ''} ${address.city ?? ''}`.trim();
 
 	return {
-		line: line || 'Unknown address',
-		cityLine: cityLine || 'Unknown city'
+		line: line || m.unknown_address(),
+		cityLine: cityLine || m.unknown_city()
 	};
 };
 
-export const toDocumentLabel = (value: string) =>
-	value
-		.split('_')
-		.filter(Boolean)
-		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-		.join(' ');
+const documentLabels: Record<string, () => string> = {
+	registration_form: m.overview_document_registration_form,
+	intake_form: m.overview_document_intake_form,
+	consent_form: m.overview_document_consent_form,
+	consent_declaration_pdf: m.overview_document_consent_form,
+	risk_assessment: m.risk_assessment,
+	risk_assessment_pdf: m.risk_assessment,
+	self_reliance_matrix: m.overview_document_self_reliance_matrix,
+	force_inventory: m.overview_document_force_inventory,
+	care_plan: m.overview_document_care_plan,
+	signaling_plan: m.overview_document_signaling_plan,
+	cooperation_agreement: m.overview_document_cooperation_agreement,
+	collaboration_agreement_pdf: m.overview_document_cooperation_agreement,
+	appointment_card: m.appointment_card
+};
+
+export const toDocumentLabel = (value: string) => documentLabels[value]?.() ?? toTitleCase(value);
 
 export const maskBsn = (value: string | number | null) => {
 	if (value === null || value === undefined) return '—';
@@ -98,25 +110,28 @@ export const buildContacts = (
 		relation: contact.relationship,
 		phone: contact.phone_number ?? undefined,
 		email: contact.email ?? undefined,
-		primary: index === 0,
-		permissions: undefined
+		primary: index === 0
 	}));
 
 export const buildIntakeSummary = (
 	intake: GetClientIntake | null | undefined,
-	goals: GetClientGoal[],
-	evaluationIntervalWeeks = 0
+	goals: GetClientGoal[]
 ): ClientOverviewData['intakeSummary'] =>
 	intake
 		? {
-				conclusion: intake.conclusion ? toTitleCase(intake.conclusion) : 'Not available',
+				conclusion: intake.conclusion
+					? {
+							suitable: m.suitable(),
+							unsuitable: m.unsuitable(),
+							further_investigation: m.further_investigation(),
+							possible_palcement_date: m.possible_placement_date(),
+							other: m.other()
+						}[intake.conclusion]
+					: m.not_available(),
 				selfReliance: Math.max(
 					0,
 					Math.min(100, Math.round((intake.self_sufficiency_score ?? 0) * 20))
 				),
-				participants: [],
-				evaluationIntervalWeeks,
-				notes: intake.conclusion_notes ?? undefined,
 				lowestTopics: goals
 					.slice(0, 3)
 					.map((goal) => goal.topic_name)
@@ -126,17 +141,16 @@ export const buildIntakeSummary = (
 
 export const buildQuickLinks = (
 	counts: GetClientResponse['counts'],
-	overrides?: Partial<Record<ClientOverviewData['quickLinks'][number]['label'], number>>
+	overrides?: Partial<Record<ClientOverviewTarget, number>>
 ): ClientOverviewData['quickLinks'] => [
-	{ label: 'Contracts', count: overrides?.Contracts ?? counts.contracts, href: 'contracts' },
-	{ label: 'Incidents', count: counts.incidents, href: 'overview' },
-	{ label: 'Reports', count: counts.reports, href: 'reports' },
-	{ label: 'Evaluations', count: counts.evaluations, href: 'goals' },
-	{ label: 'Documents', count: counts.documents, href: 'documents' },
+	{ target: 'contracts', count: overrides?.contracts ?? counts.contracts },
+	{ target: 'incidents', count: counts.incidents },
+	{ target: 'reports', count: counts.reports },
+	{ target: 'goals', count: counts.evaluations },
+	{ target: 'documents', count: counts.documents },
 	{
-		label: 'Appointments',
-		count: overrides?.Appointments ?? counts.appointments,
-		href: 'documents'
+		target: 'appointments',
+		count: overrides?.appointments ?? counts.appointments
 	}
 ];
 
@@ -159,9 +173,10 @@ export const buildContractSummary = (
 		: undefined;
 
 	return {
+		active: contractSummary.has_active_approved_contract,
 		status: contractSummary.has_active_approved_contract
-			? 'Active approved contract'
-			: 'No active approved contract',
+			? m.active_approved_contract()
+			: m.no_active_approved_contract(),
 		startDate: contractSummary.active_contract?.start_date ?? undefined,
 		endDate: contractSummary.active_contract?.end_date ?? undefined,
 		daysUntilContractEnd: contractSummary.days_until_contract_end ?? undefined,

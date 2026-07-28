@@ -20,7 +20,7 @@
 		primary: 'bg-btn-primary-bg text-btn-primary-text hover:opacity-90 shadow-sm',
 		secondary: 'bg-secondary text-white hover:opacity-90 shadow-sm',
 		ghost: 'bg-transparent hover:bg-border/50',
-		destructive: 'bg-error/10 text-error hover:bg-error/20'
+		destructive: 'bg-error/10 text-error-strong hover:bg-error/20'
 	};
 </script>
 

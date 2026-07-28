@@ -1,4 +1,5 @@
 import { getClientById } from '$lib/api/clients';
+import { m } from '$lib/paraglide/messages';
 import type { GetClientResponse } from '$lib/types/api';
 import type { LayoutLoad } from './$types';
 
@@ -29,11 +30,11 @@ export const load: LayoutLoad = ({ params, fetch, depends }) => {
 				loadError: null
 			};
 		})
-		.catch((error) => ({
+		.catch(() => ({
 			client: null,
-			clientName: 'Client Profile',
+			clientName: m.client_profile(),
 			clientInitials: 'CP',
-			loadError: error instanceof Error ? error.message : 'Failed to load client.'
+			loadError: m.failed_load_client()
 		}));
 
 	return { clientId, clientData };

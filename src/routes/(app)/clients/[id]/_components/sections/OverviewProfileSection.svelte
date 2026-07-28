@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { User, MapPin, Phone, Building2, Mail, IdCard } from 'lucide-svelte';
-	import type { ClientOverviewData } from '$lib/mock/client-overview';
+	import type { ClientOverviewData } from '../../overview.shared';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -8,42 +8,39 @@
 	}
 
 	let { client }: Props = $props();
-
-	const age = $derived(
-		client.dateOfBirth
-			? new Date().getFullYear() - new Date(client.dateOfBirth).getFullYear()
-			: null
-	);
 </script>
 
-<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-5">
-		<h3 class="text-[11px] font-bold tracking-[0.15em] text-text-subtle uppercase">
+		<h2 class="text-lg font-semibold tracking-tight text-text">
 			{m.client_profile()}
-		</h3>
+		</h2>
 	</div>
 	<div class="space-y-4">
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-strong"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"
 			>
-				<User class="h-4 w-4" />
+				<User class="h-4 w-4" aria-hidden="true" />
 			</div>
 			<div>
 				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.gender_and_age()}
 				</p>
 				<p class="text-sm font-medium text-text">
-					{client.gender}, {age}
-					{m.years()}
+					{client.gender ?? m.unknown()}, {client.age === null
+						? m.not_available_short()
+						: client.age === 1
+							? m.age_year()
+							: m.age_years({ age: client.age })}
 				</p>
 			</div>
 		</div>
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500 dark:bg-cyan-500/20 dark:text-cyan-400"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info-strong"
 			>
-				<IdCard class="h-4 w-4" />
+				<IdCard class="h-4 w-4" aria-hidden="true" />
 			</div>
 			<div>
 				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -57,7 +54,7 @@
 					</p>
 				{:else}
 					<p
-						class="mt-0.5 inline-flex items-center gap-1 rounded-md bg-red-500/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-red-500 uppercase dark:bg-red-500/20 dark:text-red-400"
+						class="mt-0.5 inline-flex items-center gap-1 rounded-lg bg-error/10 px-1.5 py-0.5 text-[11px] font-bold tracking-wider text-error-strong uppercase"
 					>
 						{m.unverified()}
 					</p>
@@ -66,9 +63,9 @@
 		</div>
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning-strong"
 			>
-				<MapPin class="h-4 w-4" />
+				<MapPin class="h-4 w-4" aria-hidden="true" />
 			</div>
 			<div>
 				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -80,9 +77,9 @@
 		</div>
 		<div class="flex items-start gap-3">
 			<div
-				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pink-500/10 text-pink-500 dark:bg-pink-500/20 dark:text-pink-400"
+				class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary-strong"
 			>
-				<Building2 class="h-4 w-4" />
+				<Building2 class="h-4 w-4" aria-hidden="true" />
 			</div>
 			<div>
 				<p class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
@@ -93,19 +90,25 @@
 				</p>
 				<div class="mt-1 space-y-1">
 					{#if client.phone}
-						<p class="flex items-center gap-1.5 text-xs text-text-muted">
-							<Phone class="h-3 w-3 opacity-70" />
+						<a
+							href="tel:{client.phone}"
+							class="flex min-h-8 items-center gap-1.5 rounded-lg text-xs text-text-muted hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+						>
+							<Phone class="h-3 w-3 opacity-70" aria-hidden="true" />
 							{client.phone}
-						</p>
+						</a>
 					{/if}
 					{#if client.email}
-						<p class="flex items-center gap-1.5 text-xs text-text-muted">
-							<Mail class="h-3 w-3 opacity-70" />
+						<a
+							href="mailto:{client.email}"
+							class="flex min-h-8 items-center gap-1.5 rounded-lg text-xs text-text-muted hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+						>
+							<Mail class="h-3 w-3 opacity-70" aria-hidden="true" />
 							{client.email}
-						</p>
+						</a>
 					{/if}
 				</div>
 			</div>
 		</div>
 	</div>
-</div>
+</section>

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { AlertTriangle, Bell, BellOff, ChevronRight } from 'lucide-svelte';
-	import type { ClientOverviewData } from '$lib/mock/client-overview';
+	import { AlertTriangle, Bell, BellOff } from 'lucide-svelte';
+	import type { ClientOverviewData } from '../../overview.shared';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -10,36 +10,30 @@
 	let { alerts }: Props = $props();
 
 	const toneStyles = {
-		danger: 'bg-rose-500 text-white ring-rose-500/20',
-		warning: 'bg-amber-500 text-white ring-amber-500/20',
-		brand: 'bg-brand text-white ring-brand/20'
+		danger: 'bg-error text-white ring-error/20',
+		warning: 'bg-warning text-text ring-warning/20',
+		brand: 'bg-brand text-btn-primary-text ring-brand/20'
 	};
 
 	const iconStyles = {
-		danger: 'text-rose-600 bg-rose-50',
-		warning: 'text-amber-600 bg-amber-50',
+		danger: 'text-error-strong bg-error/10',
+		warning: 'text-warning-strong bg-warning/10',
 		brand: 'text-brand bg-brand/10'
-	};
-
-	const arrowStyles = {
-		danger: 'text-rose-300 group-hover:text-rose-500',
-		warning: 'text-amber-300 group-hover:text-amber-500',
-		brand: 'text-brand/30 group-hover:text-brand'
 	};
 </script>
 
-<div
-	class="flex flex-col rounded-3xl border border-rose-200 bg-rose-50/30 p-6 shadow-sm ring-1 ring-rose-500/5"
->
+<section class="flex flex-col rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-6 flex items-center justify-between">
 		<div class="flex items-center gap-3">
-			<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-				<Bell class="h-5 w-5" />
+			<div
+				class="flex h-10 w-10 items-center justify-center rounded-xl bg-error/10 text-error-strong"
+			>
+				<Bell class="h-5 w-5" aria-hidden="true" />
 			</div>
-			<h3 class="text-lg font-bold text-text">{m.critical_alerts()}</h3>
+			<h2 class="text-lg font-semibold tracking-tight text-text">{m.client_overview_alerts()}</h2>
 		</div>
 		{#if alerts.length > 0}
-			<span class="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+			<span class="rounded-full bg-error/10 px-2.5 py-0.5 text-xs font-bold text-error-strong">
 				{alerts.length}
 			</span>
 		{/if}
@@ -48,17 +42,15 @@
 	{#if alerts.length > 0}
 		<div class="flex-1 space-y-1">
 			{#each alerts as alert (alert.id)}
-				<div
-					class="group flex items-center gap-4 rounded-2xl p-2 transition-colors hover:bg-white/50"
-				>
+				<div class="flex items-center gap-4 rounded-2xl p-2">
 					<div
 						class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyles[alert.tone]}`}
 					>
-						<AlertTriangle class="h-5 w-5" />
+						<AlertTriangle class="h-5 w-5" aria-hidden="true" />
 					</div>
-					<div class="flex flex-1 flex-col min-w-0">
+					<div class="flex min-w-0 flex-1 flex-col">
 						<span class="truncate text-sm font-bold text-text">{alert.label}</span>
-						<span class="text-xs text-text-subtle">Requires attention</span>
+						<span class="text-xs text-text-muted">{m.requires_attention()}</span>
 					</div>
 					<div class="flex items-center gap-3">
 						{#if alert.count > 1}
@@ -68,9 +60,6 @@
 								{alert.count}
 							</span>
 						{/if}
-						<ChevronRight
-							class={`h-4 w-4 transition-transform group-hover:translate-x-0.5 ${arrowStyles[alert.tone]}`}
-						/>
 					</div>
 				</div>
 			{/each}
@@ -78,13 +67,13 @@
 	{:else}
 		<div class="flex flex-1 flex-col items-center justify-center py-8 text-center">
 			<div
-				class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-500"
+				class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success-strong"
 			>
-				<BellOff class="h-6 w-6" />
+				<BellOff class="h-6 w-6" aria-hidden="true" />
 			</div>
 			<p class="text-sm font-medium text-text-subtle">
 				{m.no_active_alerts()}
 			</p>
 		</div>
 	{/if}
-</div>
+</section>

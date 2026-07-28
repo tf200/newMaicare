@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { LayoutProps } from './$types';
 	import { sidebarState } from '$lib/state/sidebar.svelte';
 	import { resolve } from '$app/paths';
 	import {
@@ -11,7 +12,7 @@
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 
-	let { data, children } = $props();
+	let { data, children }: LayoutProps = $props();
 
 	$effect(() => {
 		const clientId = data.clientId;

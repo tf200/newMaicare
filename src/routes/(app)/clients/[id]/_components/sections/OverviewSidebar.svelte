@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ClientOverviewData } from '$lib/mock/client-overview';
+	import type { ClientOverviewData } from '../../overview.shared';
 	import OverviewContactsSection from './OverviewContactsSection.svelte';
 	import OverviewDocumentsSection from './OverviewDocumentsSection.svelte';
 	import OverviewEducationSection from './OverviewEducationSection.svelte';

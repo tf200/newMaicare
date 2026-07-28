@@ -6,7 +6,10 @@ export const formatOverviewDate = (
 	fallback: string
 ) => {
 	if (!dateString) return fallback;
-	return new Date(dateString).toLocaleDateString(toBrowserLocale(locale), {
+	const date = new Date(dateString);
+	if (Number.isNaN(date.getTime())) return fallback;
+
+	return date.toLocaleDateString(toBrowserLocale(locale), {
 		day: '2-digit',
 		month: 'short',
 		year: 'numeric'

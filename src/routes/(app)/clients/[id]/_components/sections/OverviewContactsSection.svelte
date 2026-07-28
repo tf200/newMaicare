@@ -4,7 +4,8 @@
 	import { invalidate } from '$app/navigation';
 	import CreateEmergencyContactModal from '$lib/components/forms/CreateEmergencyContactModal.svelte';
 	import EmergencyContactsListModal from '$lib/components/modals/EmergencyContactsListModal.svelte';
-	import type { ClientOverviewContact } from '$lib/mock/client-overview';
+	import Button from '$lib/components/ui/Button.svelte';
+	import type { ClientOverviewContact } from '../../overview.shared';
 
 	interface Props {
 		clientId: string;
@@ -18,25 +19,23 @@
 	const visibleContacts = $derived(contacts.slice(0, 2));
 </script>
 
-<div class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 	<div class="mb-5 flex items-center justify-between">
 		<div class="flex items-center gap-2">
-			<Users class="h-4 w-4 text-brand/60" />
-			<h3 class="font-bold text-text">{m.key_contacts()}</h3>
+			<Users class="h-4 w-4 text-brand" aria-hidden="true" />
+			<h2 class="text-lg font-semibold tracking-tight text-text">{m.key_contacts()}</h2>
 		</div>
-		<div class="flex items-center gap-3">
-			<button
+		<div class="flex items-center gap-1">
+			<Button
+				variant="ghost"
 				onclick={() => (showListModal = true)}
-				class="text-xs font-bold text-brand transition hover:underline"
+				class="px-2 text-xs text-brand"
 			>
 				{m.view_all()}
-			</button>
-			<button
-				onclick={() => (showCreateModal = true)}
-				class="rounded-lg bg-brand px-3 py-1 text-xs font-bold text-white transition hover:bg-brand-strong dark:text-zinc-900"
-			>
+			</Button>
+			<Button onclick={() => (showCreateModal = true)} class="px-3 text-xs">
 				{m.add()}
-			</button>
+			</Button>
 		</div>
 	</div>
 	{#if contacts.length === 0}
@@ -44,16 +43,16 @@
 			class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 bg-bg px-6 py-10 text-center"
 		>
 			<div class="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-				<Users class="h-5 w-5 text-brand/60" />
+				<Users class="h-5 w-5 text-brand" aria-hidden="true" />
 			</div>
-			<p class="text-sm font-medium text-text-subtle">{m.empty_general_title()}</p>
-			<p class="mt-0.5 text-xs text-text-muted">{m.empty_general_description()}</p>
+			<p class="text-sm font-medium text-text">{m.no_key_contacts_title()}</p>
+			<p class="mt-0.5 text-xs text-text-muted">{m.no_key_contacts_description()}</p>
 		</div>
 	{:else}
 		<div class="space-y-3">
 			{#each visibleContacts as contact (contact.id)}
 				<div
-					class="overflow-hidden rounded-2xl border border-border/50 {contact.primary
+					class="overflow-hidden rounded-2xl border border-border {contact.primary
 						? 'border-brand/20 ring-1 ring-brand/10'
 						: ''}"
 				>
@@ -70,15 +69,13 @@
 						</div>
 						<p class="text-xs text-text-muted">{contact.relation}</p>
 					</div>
-					<div
-						class="space-y-1.5 border-t border-border/40 bg-brand/[0.02] px-3 py-2.5 dark:bg-brand/[0.03]"
-					>
+					<div class="space-y-1.5 border-t border-border bg-bg px-3 py-2.5">
 						{#if contact.phone}
 							<a
 								href="tel:{contact.phone}"
-								class="flex items-center gap-2 text-xs text-text transition hover:text-brand"
+								class="flex min-h-8 items-center gap-2 rounded-lg text-xs text-text transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 							>
-								<Phone class="h-3.5 w-3.5 text-text-muted" />
+								<Phone class="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
 								<span class="font-medium">{contact.phone}</span>
 							</a>
 						{:else}
@@ -91,9 +88,9 @@
 							<a
 								href="mailto:{contact.email}"
 								title={contact.email}
-								class="flex items-center gap-2 text-xs text-text transition hover:text-brand"
+								class="flex min-h-8 items-center gap-2 rounded-lg text-xs text-text transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 							>
-								<Mail class="h-3.5 w-3.5 text-text-muted" />
+								<Mail class="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
 								<span class="truncate font-medium">{contact.email}</span>
 							</a>
 						{:else}
@@ -107,7 +104,7 @@
 			{/each}
 		</div>
 	{/if}
-</div>
+</section>
 
 <CreateEmergencyContactModal
 	bind:open={showCreateModal}
