@@ -1,13 +1,17 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 	import { setWebSocketState } from '$lib/api/ws.svelte';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { setBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { setToastState } from '$lib/state/toast.svelte';
 
 	const auth = getAuthState();
 	const ws = setWebSocketState();
 	const breadcrumbs = setBreadcrumbsState();
+	const toast = setToastState();
 
 	$effect(() => {
 		if (auth.isAuthenticated) {
@@ -17,7 +21,10 @@
 		}
 	});
 
-	$effect(() => () => ws.destroy());
+	onDestroy(() => {
+		ws.destroy();
+		toast.destroy();
+	});
 
 	let isSidebarCollapsed = $state(false);
 	let isSidebarMobileOpen = $state(false);
@@ -54,3 +61,9 @@
 		</main>
 	</div>
 </div>
+
+<Toast
+	message={toast.current?.message ?? null}
+	type={toast.current?.type ?? 'success'}
+	onClose={toast.close}
+/>

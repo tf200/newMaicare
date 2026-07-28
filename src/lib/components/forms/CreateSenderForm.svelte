@@ -12,6 +12,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { CreateSenderRequest, SenderListItem } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -26,6 +27,7 @@
 	] as const);
 
 	let { open = $bindable(false), onCreated }: Props = $props();
+	const toast = getToastState();
 
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
@@ -76,6 +78,7 @@
 						};
 
 						const response = await createSender(payload);
+						toast.success(m.sender_created_success());
 						clearTransientState();
 						open = false;
 						onCreated?.(response.data);

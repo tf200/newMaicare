@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import { createEvent, listEvents } from '$lib/api/events';
 	import Calendar from '$lib/components/ui/Calendar.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -14,6 +15,7 @@
 
 	let { data }: { data: PageData } = $props();
 	const auth = getAuthState();
+	const toast = getToastState();
 
 	// Appointments state - loaded from API
 	let appointments = $state<Appointment[]>([]);
@@ -225,6 +227,7 @@
 			};
 
 			appointments = [...appointments, newApp];
+			toast.success(m.appointment_created_success());
 			saveError = null;
 			isModalOpen = false;
 		} catch (error) {

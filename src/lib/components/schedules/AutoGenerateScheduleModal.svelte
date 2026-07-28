@@ -7,6 +7,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { autoGenerateSchedules, saveGeneratedSchedule } from '$lib/api/schedules';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		AutoGenerateScheduleResponse,
 		GeneratedScheduleEmployee,
@@ -44,6 +45,7 @@
 		weekStartDate,
 		onSaved
 	}: Props = $props();
+	const toast = getToastState();
 
 	let selectedEmployeeIds = $state<string[]>([]);
 	let generating = $state(false);
@@ -472,6 +474,7 @@
 				slots: buildSaveSlots()
 			});
 
+			toast.success(m.generated_schedule_saved_success());
 			onSaved?.();
 			open = false;
 		} catch (error) {

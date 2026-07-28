@@ -11,7 +11,6 @@
 		Sparkles,
 		X
 	} from 'lucide-svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
@@ -23,6 +22,7 @@
 	import { createSchedules, deleteSchedule } from '$lib/api/schedules';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		CreateScheduleCustomRequest,
 		CreateSchedulePresetRequest,
@@ -61,6 +61,7 @@
 	}
 
 	let { data }: { data: PageData } = $props();
+	const toast = getToastState();
 
 	const TEMPLATE_COLORS = [
 		'bg-emerald-500 text-white dark:bg-emerald-700',
@@ -118,8 +119,6 @@
 	let assignSheetOpen = $state(false);
 	let assignSheetDate = $state('');
 	let assignSheetTemplateId = $state<string | null>(null);
-	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
-	let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 	let deletingScheduleIds = $state<string[]>([]);
 	let autoGenerateModalOpen = $state(false);
 
@@ -162,16 +161,6 @@
 	function parseDatetime(value: string): Date | null {
 		const parsedDate = new Date(value);
 		return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-	}
-
-	function resetToastAfterDelay() {
-		if (toastTimeout) {
-			clearTimeout(toastTimeout);
-		}
-
-		toastTimeout = setTimeout(() => {
-			toast = null;
-		}, 4000);
 	}
 
 	async function handleAssign(
@@ -262,19 +251,14 @@
 			);
 		}
 
-		toast = {
-			message: `Successfully assigned ${normalizedEmployeeIds.length} employee(s).`,
-			type: 'success'
-		};
-		resetToastAfterDelay();
+		toast.success(m.employees_assigned_success({ count: normalizedEmployeeIds.length }));
 		retrySchedulesFetch();
 	}
 
 	async function handleUnassignEmployee(scheduleId: string) {
 		if (!scheduleId || !isUuid(scheduleId)) {
 			const message = 'Unable to unassign this employee because the assignment id is invalid.';
-			toast = { message, type: 'warning' };
-			resetToastAfterDelay();
+			toast.warning(message);
 			schedulesError = message;
 			return;
 		}
@@ -287,8 +271,7 @@
 
 		try {
 			await deleteSchedule(scheduleId);
-			toast = { message: 'Employee unassigned successfully.', type: 'success' };
-			resetToastAfterDelay();
+			toast.success('Employee unassigned successfully.');
 			schedulesError = null;
 			retrySchedulesFetch();
 		} catch (error) {
@@ -296,8 +279,7 @@
 				error instanceof Error && error.message
 					? error.message
 					: 'Unable to unassign employee right now. Please try again.';
-			toast = { message, type: 'error' };
-			resetToastAfterDelay();
+			toast.error(message);
 			schedulesError = message;
 		} finally {
 			deletingScheduleIds = deletingScheduleIds.filter((id) => id !== scheduleId);
@@ -455,8 +437,6 @@
 	}
 
 	function handleGeneratedScheduleSaved() {
-		toast = { message: 'Generated schedule saved successfully.', type: 'success' };
-		resetToastAfterDelay();
 		retrySchedulesFetch();
 	}
 
@@ -1246,10 +1226,4 @@
 	year={getISOWeekYear(weekStart)}
 	weekStartDate={formatDateKey(weekStart)}
 	onSaved={handleGeneratedScheduleSaved}
-/>
-
-<Toast
-	message={toast?.message ?? null}
-	type={toast?.type ?? 'success'}
-	onClose={() => (toast = null)}
 />

@@ -27,6 +27,7 @@
 	import type { WorkApprovalQueueItemResponse, WorkApprovalStatus } from '$lib/types/api';
 	import type { PageData } from './$types';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Employee {
 		id: string;
@@ -34,6 +35,7 @@
 	}
 
 	let { data } = $props<{ data: PageData }>();
+	const toast = getToastState();
 
 	const approvalQueueDataPromise = $derived(data.approvalQueueData);
 	let currentStatusFilter = $state<WorkApprovalStatus | 'all'>('all');
@@ -69,7 +71,12 @@
 				status: 'approved',
 				recurrence_id: appointment.recurrence_id
 			});
-			await invalidateAll();
+			toast.success(m.appointment_approved_success());
+			try {
+				await invalidateAll();
+			} catch (error) {
+				console.error('Failed to refresh after approving appointment:', error);
+			}
 		} catch (error) {
 			console.error('Failed to approve appointment:', error);
 			alert('Failed to approve appointment. Please try again.');
@@ -98,7 +105,12 @@
 				recurrence_id: appointment.recurrence_id,
 				rejection_reason: rejectionReason
 			});
-			await invalidateAll();
+			toast.success(m.appointment_rejected_success());
+			try {
+				await invalidateAll();
+			} catch (error) {
+				console.error('Failed to refresh after rejecting appointment:', error);
+			}
 		} catch (error) {
 			console.error('Failed to reject appointment:', error);
 			alert('Failed to reject appointment. Please try again.');

@@ -40,6 +40,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	let {
 		open = $bindable(false),
@@ -50,6 +51,7 @@
 		preselectedClientId?: string | null;
 		onCreated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let employeeDisplay = $state('');
 	let errorMessage = $state('');
@@ -84,6 +86,7 @@
 						};
 
 						await createClientProgressReport(preselectedClientId, payload);
+						toast.success(m.progress_report_created_success());
 						reset();
 						open = false;
 						onCreated?.();

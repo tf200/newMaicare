@@ -14,6 +14,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -22,6 +23,7 @@
 	}
 
 	let { open = $bindable(false), clientId, onCreated }: Props = $props();
+	const toast = getToastState();
 
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
@@ -61,6 +63,7 @@
 						};
 
 						await createClientEmergencyContact(clientId, payload);
+						toast.success(m.emergency_contact_created_success());
 						reset();
 						open = false;
 						onCreated?.();

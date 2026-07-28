@@ -13,6 +13,7 @@
 	} from '$lib/api/evaluations';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
@@ -41,6 +42,7 @@
 		clientName?: string | null;
 		onSaved?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let bootstrap = $state<EvaluationBootstrapResponse | null>(null);
 	let evaluation = $state<GoalEvaluationResponse | null>(null);
@@ -76,7 +78,6 @@
 						};
 
 						const response = await createEvaluation(clientId, payload);
-
 						evaluation = response.data;
 						mode =
 							response.data.status === 'completed' || response.data.status === 'archived'
@@ -100,6 +101,12 @@
 							formError = normalizeErrorMessage(response.data.submit_error);
 							return;
 						}
+
+						toast.success(
+							response.data.status === 'draft'
+								? m.evaluation_draft_saved_success()
+								: m.evaluation_submitted_success()
+						);
 
 						if (response.data.status === 'completed' || response.data.status === 'archived') {
 							open = false;

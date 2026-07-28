@@ -17,6 +17,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { EditClientSchema, type EditClientSchemaInput } from '$lib/schemas/client';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type { GetClientResponse, UpdateClientRequest } from '$lib/types/api';
 
 	interface Props {
@@ -27,6 +28,7 @@
 	}
 
 	let { open = $bindable(false), clientId = null, clientData = null, onUpdated }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let isLoadingData = $state(false);
@@ -114,6 +116,7 @@
 						};
 
 						await updateClient(clientId, payload);
+						toast.success(m.client_updated_success());
 						open = false;
 						initializedId = null;
 						onUpdated?.();

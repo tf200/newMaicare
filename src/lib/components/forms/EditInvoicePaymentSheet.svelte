@@ -13,6 +13,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	type EditablePayment = {
 		id: string;
@@ -37,6 +38,7 @@
 		currency?: string;
 		onUpdated?: () => Promise<void> | void;
 	} = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	const formId = 'edit-invoice-payment-form';
@@ -66,9 +68,14 @@
 							payment_reference: trimToUndefined(form.data.reference) ?? null,
 							notes: trimToUndefined(form.data.notes) ?? null
 						});
-
-						await onUpdated?.();
+						toast.success(m.invoice_payment_updated_success());
 						open = false;
+
+						try {
+							await onUpdated?.();
+						} catch (error) {
+							console.error('Failed to refresh after updating payment:', error);
+						}
 					} catch (error) {
 						errorMessage = error instanceof Error ? error.message : m.failed_update_payment();
 					}

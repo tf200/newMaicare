@@ -11,6 +11,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { CreateOrganizationRequest } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -18,6 +19,7 @@
 	}
 
 	let { open = $bindable(false), onCreated }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let lookupMessage = $state('');
@@ -55,6 +57,7 @@
 							btw_number: trimToUndefined(form.data.btw_number)
 						};
 						await createOrganization(payload);
+						toast.success(m.organization_created_success());
 						reset();
 						open = false;
 						onCreated?.();

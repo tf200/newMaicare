@@ -11,6 +11,7 @@
 	import { intakes } from '$lib/api/intakes';
 	import { Calendar, FileText, Loader2, User, Activity, Save } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		GetIntakeFormResponse,
 		IntakeCareType,
@@ -27,6 +28,7 @@
 	}
 
 	let { open = $bindable(false), intake, onSave }: Props = $props();
+	const toast = getToastState();
 
 	let isLoading = $state(false);
 	let error = $state('');
@@ -153,6 +155,7 @@
 				intake_conclusion_notes: intakeConclusionNotes,
 				signature
 			});
+			toast.success(m.intake_form_updated());
 			open = false;
 			await onSave?.();
 		} catch (e) {

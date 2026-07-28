@@ -37,6 +37,7 @@
 		SenderListItem
 	} from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -49,6 +50,7 @@
 	type GoalFormHandle = { validate: () => boolean };
 
 	let { open = $bindable(false), registration, onCreated }: Props = $props();
+	const toast = getToastState();
 
 	const schema = createIntakeSchema({
 		required: m.intake_validation_required(),
@@ -181,6 +183,7 @@
 			const response = await intakes.create(payload);
 			if (!open || session !== sessionSequence || operation !== operationSequence) return;
 			createdIntakeId = response.data.id;
+			if (intent === 'finish') toast.success(m.intake_created_success());
 			onCreated?.(response.data.id);
 			if (!open || session !== sessionSequence || operation !== operationSequence) return;
 			if (intent === 'finish') {
@@ -223,6 +226,7 @@
 				}))
 			});
 			if (!open || session !== sessionSequence || operation !== operationSequence) return;
+			toast.success(m.intake_created_with_goals_success());
 			open = false;
 		} catch (error) {
 			if (!open || session !== sessionSequence || operation !== operationSequence) return;
@@ -234,6 +238,7 @@
 
 	function finishLater() {
 		if (isMutating || !createdIntakeId) return;
+		toast.success(m.intake_created_success());
 		open = false;
 	}
 

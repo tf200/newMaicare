@@ -14,6 +14,7 @@
 	import type { PutClientInCareRequest } from '$lib/types/api';
 	import { PutClientInCareSchema, type PutClientInCareSchemaInput } from '$lib/schemas/client-care';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -22,6 +23,7 @@
 	}
 
 	let { open = $bindable(false), clientId = null, onSuccess }: Props = $props();
+	const toast = getToastState();
 
 	let coordinatorName = $state('');
 	let errorMessage = $state('');
@@ -52,6 +54,7 @@
 						};
 
 						await putClientInCare(clientId, payload);
+						toast.success(m.client_put_in_care_success());
 						reset();
 						open = false;
 						onSuccess?.();

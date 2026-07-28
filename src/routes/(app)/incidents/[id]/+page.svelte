@@ -21,6 +21,7 @@
 	} from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import { confirmIncident, getIncidentFile } from '$lib/api/incidents';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
@@ -47,6 +48,7 @@
 	}>();
 
 	const incidentDataPromise = $derived(data.incidentData);
+	const toast = getToastState();
 	let isConfirmModalOpen = $state(false);
 	let isEditModalOpen = $state(false);
 	let isConfirmingIncident = $state(false);
@@ -98,8 +100,13 @@
 
 		try {
 			await confirmIncident(incidentId);
+			toast.success(m.incident_confirmed_success());
 			isConfirmModalOpen = false;
-			await invalidateAll();
+			try {
+				await invalidateAll();
+			} catch (error) {
+				console.error('Failed to refresh after confirming incident:', error);
+			}
 		} catch (error) {
 			confirmIncidentError = error instanceof Error ? error.message : m.failed_confirm_incident();
 		} finally {

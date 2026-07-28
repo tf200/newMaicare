@@ -22,6 +22,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		GetRegistrationFormResponse,
 		ClientGender,
@@ -36,14 +37,13 @@
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
 	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { onDestroy } from 'svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import RegistrationEditForm from './_components/RegistrationEditForm.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const toast = getToastState();
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
 
@@ -60,8 +60,6 @@
 	});
 
 	let isEditing = $state(false);
-	let toast = $state<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
-	let toastTimer: ReturnType<typeof setTimeout> | null = null;
 	let downloadingDocumentId = $state<string | null>(null);
 	let uploadingDocumentKey = $state<string | null>(null);
 	let documentUploadProgress = $state<Record<string, number>>({});
@@ -72,26 +70,6 @@
 	const maxRegistrationDocumentSize = 20 * 1024 * 1024;
 	const registrationDocumentAccept = allowedRegistrationDocumentTypes.join(',');
 
-	function showToast(message: string, type: 'success' | 'warning' | 'error') {
-		toast = { message, type };
-		if (toastTimer) clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => {
-			toast = null;
-		}, 4000);
-	}
-
-	function closeToast() {
-		if (toastTimer) {
-			clearTimeout(toastTimer);
-			toastTimer = null;
-		}
-		toast = null;
-	}
-
-	onDestroy(() => {
-		if (toastTimer) clearTimeout(toastTimer);
-	});
-
 	async function refreshRegistrationResources() {
 		await Promise.all([
 			invalidate('app:registrations:detail'),
@@ -101,8 +79,12 @@
 	}
 
 	async function handleRegistrationUpdated() {
-		showToast(m.registration_updated_successfully(), 'success');
-		await refreshRegistrationResources();
+		toast.success(m.registration_updated_successfully());
+		try {
+			await refreshRegistrationResources();
+		} catch (error) {
+			console.error('Failed to refresh after updating registration:', error);
+		}
 	}
 
 	function handleEditingChange(editing: boolean) {
@@ -422,16 +404,20 @@
 				file_id: initData.file_id
 			});
 
-			showToast(m.document_replaced(), 'success');
+			toast.success(m.document_replaced());
 			documentInputResetKeys = {
 				...documentInputResetKeys,
 				[document.key]: (documentInputResetKeys[document.key] ?? 0) + 1
 			};
-			await invalidate('app:registrations:detail');
+			try {
+				await invalidate('app:registrations:detail');
+			} catch (error) {
+				console.error('Failed to refresh after replacing registration document:', error);
+			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : m.failed_replace_document();
 			documentUploadErrors = { ...documentUploadErrors, [document.key]: message };
-			showToast(message, 'error');
+			toast.error(message);
 		} finally {
 			uploadingDocumentKey = null;
 			documentUploadProgress = { ...documentUploadProgress, [document.key]: 0 };
@@ -473,7 +459,7 @@
 
 			window.open(attachment.file_url, '_blank', 'noopener,noreferrer');
 		} catch (error) {
-			showToast(error instanceof Error ? error.message : m.failed_download_file(), 'error');
+			toast.error(error instanceof Error ? error.message : m.failed_download_file());
 		} finally {
 			downloadingDocumentId = null;
 		}
@@ -1304,12 +1290,6 @@
 					</div>
 				</div>
 			{/if}
-
-			<Toast
-				message={toast?.message ?? null}
-				type={toast?.type ?? 'success'}
-				onClose={closeToast}
-			/>
 		</div>
 	{/if}
 {/await}

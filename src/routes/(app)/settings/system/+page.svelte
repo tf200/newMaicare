@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
@@ -47,6 +48,7 @@
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 
 	let { data }: { data: SystemSettingsPageData } = $props();
+	const toast = getToastState();
 
 	const initial = $derived(data.initial);
 	const systemDataPromise = $derived(data.systemData);
@@ -258,6 +260,7 @@
 			userCount: 0,
 			permissionCount: 0
 		};
+		toast.success(m.role_created_success());
 		return created;
 	}
 
@@ -289,6 +292,7 @@
 			head: response.data.department_head_employee_id ?? null,
 			employeeCount: 0
 		};
+		toast.success(m.department_created_success());
 		return department;
 	}
 
@@ -309,6 +313,7 @@
 			head: response.data.department_head_employee_id ?? null,
 			employeeCount: systemSettings.departments.find((dept) => dept.id === id)?.employeeCount ?? 0
 		};
+		toast.success(m.department_updated_success());
 		return updated;
 	}
 </script>

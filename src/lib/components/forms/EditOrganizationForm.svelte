@@ -11,6 +11,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -27,6 +28,7 @@
 		loadErrorMessage,
 		onUpdated
 	}: Props = $props();
+	const toast = getToastState();
 
 	let submitErrorMessage = $state('');
 	let lookupMessage = $state('');
@@ -64,6 +66,7 @@
 							btw_number: trimToUndefined(form.data.btw_number)
 						};
 						await updateOrganization(organization.id, payload);
+						toast.success(m.organization_updated_success());
 						open = false;
 						onUpdated?.();
 					} catch (error) {

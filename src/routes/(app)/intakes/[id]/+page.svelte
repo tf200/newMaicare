@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import {
 		Calendar,
 		User,
@@ -39,6 +40,7 @@
 	} from '$lib/types/api';
 
 	let { data }: { data: PageData } = $props();
+	const toast = getToastState();
 
 	let intake = $state<GetIntakeFormResponse | null>(null);
 	let isIntakeLoading = $state(true);
@@ -93,9 +95,7 @@
 		if (!intake) return;
 		try {
 			actionError = null;
-			actionSuccess = null;
 			await invalidateIntakeResources('app:intakes:detail', 'app:intakes:list');
-			actionSuccess = m.intake_form_updated();
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : m.failed_refresh_intake();
 		}
@@ -104,7 +104,6 @@
 	const handleSaveGoals = async (requestData: CreateIntakeFormGoalsRequest) => {
 		if (!intake) return;
 		if (!canEditGoals) {
-			actionSuccess = null;
 			actionError = m.goals_locked_error();
 			isGoalModalOpen = false;
 			return;
@@ -112,15 +111,18 @@
 
 		try {
 			actionError = null;
-			actionSuccess = null;
 			await intakes.updateGoals(intake.id, requestData);
-			await invalidateIntakeResources(
-				'app:intakes:detail',
-				'app:intakes:list',
-				'app:intakes:stats'
-			);
-			actionSuccess = m.goals_updated();
+			toast.success(m.goals_updated());
 			isGoalModalOpen = false;
+			try {
+				await invalidateIntakeResources(
+					'app:intakes:detail',
+					'app:intakes:list',
+					'app:intakes:stats'
+				);
+			} catch (err) {
+				actionError = err instanceof Error ? err.message : m.failed_refresh_intake();
+			}
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : m.failed_update_goals();
 		}
@@ -130,14 +132,17 @@
 		if (!intake) return;
 		try {
 			actionError = null;
-			actionSuccess = null;
 			await intakes.updateConclusion(intake.id, payload);
-			await invalidateIntakeResources(
-				'app:intakes:detail',
-				'app:intakes:list',
-				'app:intakes:stats'
-			);
-			actionSuccess = m.intake_conclusion_updated();
+			toast.success(m.intake_conclusion_updated());
+			try {
+				await invalidateIntakeResources(
+					'app:intakes:detail',
+					'app:intakes:list',
+					'app:intakes:stats'
+				);
+			} catch (err) {
+				actionError = err instanceof Error ? err.message : m.failed_refresh_intake();
+			}
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : m.failed_update_conclusion();
 		}

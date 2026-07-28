@@ -6,6 +6,7 @@
 	import type { OrganizationLocation } from '$lib/types/api';
 	import { Plus, Trash2, Clock } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -22,6 +23,7 @@
 		loadErrorMessage,
 		onUpdated
 	}: Props = $props();
+	const toast = getToastState();
 
 	type ShiftModel = {
 		id?: string;
@@ -36,7 +38,6 @@
 		_localId: string;
 		data: ShiftModel;
 		isSaving: boolean;
-		saveSuccess: boolean;
 		error: string | null;
 		isEditing: boolean;
 	};
@@ -60,7 +61,6 @@
 				_localId: s._localId,
 				data: { ...s },
 				isSaving: false,
-				saveSuccess: false,
 				error: null,
 				isEditing: false
 			}));
@@ -88,7 +88,6 @@
 				_localId: crypto.randomUUID(),
 				data: newShift,
 				isSaving: false,
-				saveSuccess: false,
 				error: null,
 				isEditing: true
 			}
@@ -115,7 +114,6 @@
 
 		draft.error = null;
 		draft.isSaving = true;
-		draft.saveSuccess = false;
 
 		const payload = {
 			shift: draft.data.shift.trim(),
@@ -124,9 +122,11 @@
 		};
 
 		try {
-			const response = draft.data.id
-				? await updateLocationShift(location.id, draft.data.id, payload)
+			const shiftId = draft.data.id;
+			const response = shiftId
+				? await updateLocationShift(location.id, shiftId, payload)
 				: await createLocationShift(location.id, payload);
+			toast.success(shiftId ? m.shift_updated_success() : m.shift_created_success());
 
 			const persistedShift = { ...response.data, _localId: localId };
 			const newSavedShifts = [...savedShifts];
@@ -141,12 +141,7 @@
 			savedShifts = newSavedShifts;
 			draft.data = { ...response.data };
 			draft.isEditing = false;
-			draft.saveSuccess = true;
 			onUpdated?.();
-
-			setTimeout(() => {
-				draft.saveSuccess = false;
-			}, 3000);
 		} catch (error) {
 			draft.error = error instanceof Error ? error.message : m.failed_save_shift();
 		} finally {
@@ -257,13 +252,6 @@
 											</button>
 										</div>
 									</div>
-									{#if draft.saveSuccess}
-										<div
-											class="animate-in fade-in slide-in-from-top-2 absolute -top-3 right-6 rounded-full bg-success px-3 py-1 text-xs font-bold text-white shadow-sm"
-										>
-											{m.saved_label()}
-										</div>
-									{/if}
 								{:else}
 									<div class="flex flex-col gap-5">
 										<div class="grid gap-5 sm:grid-cols-2">

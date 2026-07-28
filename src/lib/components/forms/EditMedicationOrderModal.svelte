@@ -24,6 +24,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		clientId: string;
@@ -34,6 +35,7 @@
 	}
 
 	let { clientId, orderId, diagnoses = [], open = $bindable(false), onUpdated }: Props = $props();
+	const toast = getToastState();
 
 	let responsibleEmployeeName = $state('');
 	let uploadedAttachment = $state<{ id: string; name: string } | null>(null);
@@ -183,6 +185,7 @@
 						};
 
 						await updateClientMedicationOrder(clientId, orderId, payload);
+						toast.success(m.medication_order_updated_success());
 						open = false;
 						onUpdated?.();
 					} catch (error) {

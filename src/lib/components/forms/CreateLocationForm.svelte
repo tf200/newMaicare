@@ -11,6 +11,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -19,6 +20,7 @@
 	}
 
 	let { open = $bindable(false), organizationId, onCreated }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let lookupMessage = $state('');
@@ -65,6 +67,7 @@
 							capacity: toOptionalInt(form.data.capacity)
 						};
 						await createOrganizationLocation(organizationId, payload);
+						toast.success(m.location_created_success());
 						reset();
 						open = false;
 						onCreated?.();

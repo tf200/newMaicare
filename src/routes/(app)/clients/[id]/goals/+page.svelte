@@ -19,6 +19,7 @@
 		TrendingUp
 	} from 'lucide-svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import GoalProgressModal from '$lib/components/clients/GoalProgressModal.svelte';
@@ -43,6 +44,7 @@
 			clientName?: string;
 		};
 	}>();
+	const toast = getToastState();
 
 	let progressModalOpen = $state(false);
 	let createGoalModalOpen = $state(false);
@@ -598,10 +600,15 @@
 	clientId={page.params.id ?? ''}
 	onSave={async (goal: CreateGoalRequest) => {
 		await createClientGoal(page.params.id ?? '', goal);
-		await Promise.all([
-			invalidate(`app:client:${page.params.id}:goals`),
-			invalidate(`app:client:${page.params.id}:detail`)
-		]);
+		toast.success(m.goal_created_success());
+		try {
+			await Promise.all([
+				invalidate(`app:client:${page.params.id}:goals`),
+				invalidate(`app:client:${page.params.id}:detail`)
+			]);
+		} catch (error) {
+			console.error('Failed to refresh after creating goal:', error);
+		}
 	}}
 	onGenerate={async (topicId: string) => {
 		const res = await generateClientGoalSuggestion(page.params.id ?? '', topicId);
@@ -616,10 +623,15 @@
 		goal={selectedGoalToEdit}
 		onSave={async (goalId: string, data: UpdateClientGoalRequest) => {
 			await updateClientGoal(page.params.id ?? '', goalId, data);
-			await Promise.all([
-				invalidate(`app:client:${page.params.id}:goals`),
-				invalidate(`app:client:${page.params.id}:detail`)
-			]);
+			toast.success(m.goal_updated_success());
+			try {
+				await Promise.all([
+					invalidate(`app:client:${page.params.id}:goals`),
+					invalidate(`app:client:${page.params.id}:detail`)
+				]);
+			} catch (error) {
+				console.error('Failed to refresh after updating goal:', error);
+			}
 		}}
 		onCancel={() => (updateGoalModalOpen = false)}
 	/>

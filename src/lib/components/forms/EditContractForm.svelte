@@ -24,6 +24,7 @@
 	import { ContractSchema, type ContractSchemaInput } from '$lib/schemas/contract';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface EditableContractData {
 		id: string;
@@ -54,6 +55,7 @@
 		contract?: EditableContractData | null;
 		onUpdated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let uploadedAttachments = $state<Array<{ id: string; name: string }>>([]);
@@ -119,6 +121,7 @@
 						};
 
 						await updateContract(contract.id, payload);
+						toast.success(m.contract_updated_success());
 						open = false;
 						initializedContractId = null;
 						onUpdated?.();

@@ -4,6 +4,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { resetEmployeePassword } from '$lib/api/employees';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -12,18 +13,19 @@
 	}
 
 	let { open = $bindable(false), employeeId, employeeName }: Props = $props();
+	const toast = getToastState();
 
 	let newPassword = $state('');
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
-	let successMessage = $state('');
+	let isComplete = $state(false);
 	let isCopied = $state(false);
 
 	$effect(() => {
 		if (open) {
 			newPassword = '';
 			errorMessage = '';
-			successMessage = '';
+			isComplete = false;
 			isCopied = false;
 		}
 	});
@@ -51,17 +53,19 @@
 
 		isSubmitting = true;
 		errorMessage = '';
-		successMessage = '';
+		isComplete = false;
 
 		try {
 			const res = await resetEmployeePassword(employeeId, { new_password: newPassword });
 			if (res.success) {
-				successMessage = m.password_reset_success();
+				toast.success(m.password_reset_success());
+				isComplete = true;
 			} else {
 				errorMessage = res.message || 'Failed to reset password.';
 			}
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'An error occurred while resetting the password.';
+			errorMessage =
+				error instanceof Error ? error.message : 'An error occurred while resetting the password.';
 		} finally {
 			isSubmitting = false;
 		}
@@ -80,13 +84,14 @@
 	}
 </script>
 
-<Modal bind:open title={m.reset_password()} description={m.reset_password_description({ name: employeeName })} size="md">
-	{#if successMessage}
+<Modal
+	bind:open
+	title={m.reset_password()}
+	description={m.reset_password_description({ name: employeeName })}
+	size="md"
+>
+	{#if isComplete}
 		<div class="space-y-4">
-			<div class="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
-				{successMessage}
-			</div>
-			
 			<p class="text-sm text-text-muted">
 				{m.password_reset_success_desc()}
 			</p>
@@ -97,7 +102,7 @@
 						label={m.new_password()}
 						value={newPassword}
 						readonly
-						class="font-mono bg-bg select-all text-sm font-semibold text-text"
+						class="bg-bg font-mono text-sm font-semibold text-text select-all"
 					/>
 				</div>
 				<Button variant="secondary" onclick={copyPassword}>
@@ -108,8 +113,9 @@
 	{:else}
 		<form onsubmit={handleSubmit} class="space-y-4">
 			{#if errorMessage}
-
-				<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error">
+				<div
+					class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-semibold text-error"
+				>
 					{errorMessage}
 				</div>
 			{/if}
@@ -129,8 +135,13 @@
 				</Button>
 			</div>
 
-			<div class="flex justify-end gap-2 pt-4 border-t border-border mt-6">
-				<Button type="button" variant="secondary" onclick={() => (open = false)} disabled={isSubmitting}>
+			<div class="mt-6 flex justify-end gap-2 border-t border-border pt-4">
+				<Button
+					type="button"
+					variant="secondary"
+					onclick={() => (open = false)}
+					disabled={isSubmitting}
+				>
 					{m.cancel()}
 				</Button>
 				<Button type="submit" variant="primary" disabled={isSubmitting || !newPassword}>

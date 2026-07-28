@@ -4,6 +4,7 @@
 	import { requestEnable2fa, requestSetup2fa } from '$lib/api/auth';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { getThemeState, type ThemePreference } from '$lib/state/theme.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Toggle from '$lib/components/ui/Toggle.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -42,6 +43,7 @@
 
 	const auth = getAuthState();
 	const themeState = getThemeState();
+	const toast = getToastState();
 	let { data }: { data: SettingsProfilePageData } = $props();
 
 	const initial = $derived(data.initial);
@@ -318,7 +320,13 @@
 			confirmPassword = '';
 			otpCode = '';
 			flowError = null;
-			await auth.loadProfile();
+			toast.success(m.two_factor_enabled());
+
+			try {
+				await auth.loadProfile();
+			} catch (error) {
+				console.error('Failed to refresh profile after enabling 2FA:', error);
+			}
 		} catch (error) {
 			otpError = error instanceof Error ? error.message : m.two_factor_enable_failed();
 		} finally {
@@ -1024,19 +1032,17 @@
 						{setupData.secret}
 					</code>
 					<Tooltip content={copyFeedback === 'secret' ? m.copied() : m.copy_secret()}>
-						{#snippet children()}
-							<Button
-								variant="ghost"
-								class="h-11 w-11 shrink-0 rounded-xl border border-border bg-surface hover:bg-surface/80"
-								onclick={() => copyToClipboard(setupData!.secret, 'secret')}
-							>
-								{#if copyFeedback === 'secret'}
-									<Check class="h-4 w-4 text-emerald-500" />
-								{:else}
-									<Copy class="h-4 w-4" />
-								{/if}
-							</Button>
-						{/snippet}
+						<Button
+							variant="ghost"
+							class="h-11 w-11 shrink-0 rounded-xl border border-border bg-surface hover:bg-surface/80"
+							onclick={() => copyToClipboard(setupData!.secret, 'secret')}
+						>
+							{#if copyFeedback === 'secret'}
+								<Check class="h-4 w-4 text-emerald-500" />
+							{:else}
+								<Copy class="h-4 w-4" />
+							{/if}
+						</Button>
 					</Tooltip>
 				</div>
 			</div>

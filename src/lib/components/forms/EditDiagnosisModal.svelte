@@ -18,6 +18,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		clientId: string;
@@ -27,6 +28,7 @@
 	}
 
 	let { clientId, diagnosisId, open = $bindable(false), onUpdated }: Props = $props();
+	const toast = getToastState();
 
 	let isFetching = $state(false);
 	let errorMessage = $state('');
@@ -69,6 +71,7 @@
 						};
 
 						await updateClientDiagnosis(clientId, diagnosisId, payload);
+						toast.success(m.diagnosis_updated_success());
 						open = false;
 						onUpdated?.();
 					} catch (error) {

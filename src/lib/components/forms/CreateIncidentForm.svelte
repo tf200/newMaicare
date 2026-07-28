@@ -17,6 +17,7 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
 		CreateIncidentInformedParty,
 		CreateIncidentRequest,
@@ -52,6 +53,7 @@
 		preselectedClientDisplay?: string;
 		onCreated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let clientDisplay = $state('');
@@ -128,8 +130,10 @@
 
 						if (isEditMode && incidentId) {
 							await updateIncident(incidentId, payload);
+							toast.success(m.incident_updated_success());
 						} else {
 							await createIncident(form.data.client_id, payload);
+							toast.success(m.incident_created_success());
 						}
 						onCreated?.();
 						reset();

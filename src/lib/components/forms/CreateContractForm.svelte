@@ -16,11 +16,13 @@
 	import type { ListClientsResponse, SenderListItem, CreateContractRequest } from '$lib/types/api';
 	import { ContractSchema, type ContractInput } from '$lib/schemas/contract';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
 		onCreated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let uploadedAttachments = $state<Array<{ id: string; name: string }>>([]);
@@ -54,6 +56,7 @@
 						};
 
 						await createContract(payload);
+						toast.success(m.contract_created_success());
 						reset();
 						uploadedAttachments = [];
 						onCreated?.();

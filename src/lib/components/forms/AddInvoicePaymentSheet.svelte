@@ -12,6 +12,7 @@
 	import { InvoicePaymentSchema, type InvoicePaymentInput } from '$lib/schemas/finance';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	let {
 		open = $bindable(false),
@@ -26,6 +27,7 @@
 		defaultAmount?: number;
 		onCreated?: () => Promise<void> | void;
 	} = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	const formId = 'add-invoice-payment-form';
@@ -57,10 +59,15 @@
 							reference: form.data.reference?.trim() || null,
 							notes: form.data.notes?.trim() || null
 						});
-
-						await onCreated?.();
+						toast.success(m.invoice_payment_recorded_success());
 						reset();
 						open = false;
+
+						try {
+							await onCreated?.();
+						} catch (error) {
+							console.error('Failed to refresh after recording payment:', error);
+						}
 					} catch (error) {
 						errorMessage = error instanceof Error ? error.message : m.failed_create_payment();
 					}

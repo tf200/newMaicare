@@ -34,6 +34,7 @@
 		MoreHorizontal
 	} from 'lucide-svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
@@ -56,6 +57,7 @@
 			clientName?: string;
 		};
 	}>();
+	const toast = getToastState();
 
 	let reportsData = $state.raw<ClientReportsLoadResult>({
 		reports: [],
@@ -147,8 +149,13 @@
 		reportActionLoading = true;
 		try {
 			const response = await updateClientProgressReport(data.clientId, selectedReportId, payload);
+			toast.success(m.progress_report_updated_success());
 			viewReport = response.data;
-			await invalidate(`app:client:${data.clientId}:reports`);
+			try {
+				await invalidate(`app:client:${data.clientId}:reports`);
+			} catch (error) {
+				console.error('Failed to refresh after updating progress report:', error);
+			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update progress report';
 			viewReportError = message;
@@ -166,12 +173,17 @@
 		reportActionLoading = true;
 		try {
 			await deleteClientProgressReport(data.clientId, reportId);
+			toast.success(m.progress_report_deleted_success());
 			if (selectedReportId === reportId) {
 				isViewModalOpen = false;
 				selectedReportId = null;
 				viewReport = null;
 			}
-			await invalidate(`app:client:${data.clientId}:reports`);
+			try {
+				await invalidate(`app:client:${data.clientId}:reports`);
+			} catch (error) {
+				console.error('Failed to refresh after deleting progress report:', error);
+			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete progress report';
 			if (selectedReportId === reportId) {

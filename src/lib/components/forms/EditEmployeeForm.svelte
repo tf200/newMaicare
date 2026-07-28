@@ -22,6 +22,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import { onMount } from 'svelte';
 
 	interface Props {
@@ -31,6 +32,7 @@
 	}
 
 	let { open = $bindable(false), employee, onUpdated }: Props = $props();
+	const toast = getToastState();
 	let errorMessage = $state('');
 	let departmentOptions = $state<Array<{ value: string; label: string }>>([]);
 	const formId = 'edit-employee-form';
@@ -85,8 +87,13 @@
 						is_archived: form.data.is_archived
 					};
 					await updateEmployee(employee.id, payload);
+					toast.success(m.employee_updated_success());
 					open = false;
-					await onUpdated?.();
+					try {
+						await onUpdated?.();
+					} catch (error) {
+						console.error('Failed to refresh after updating employee:', error);
+					}
 				} catch (error) {
 					errorMessage = error instanceof Error ? error.message : 'Failed to update employee.';
 				}

@@ -5,6 +5,8 @@
 	import { Upload, X, FileText, Image, AlertCircle, Loader2 } from 'lucide-svelte';
 	import { AttachmentService } from '$lib/api/attachments';
 	import { addClientDocuments } from '$lib/api/clients';
+	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface FileItem {
 		id: string;
@@ -26,6 +28,7 @@
 		open: boolean;
 		clientId: string;
 	} = $props();
+	const toast = getToastState();
 
 	let files = $state<FileItem[]>([]);
 	let dragOver = $state(false);
@@ -145,6 +148,7 @@
 			}));
 
 			await addClientDocuments(clientId, documents);
+			toast.success(m.client_documents_uploaded_success({ count: uploadedFiles.length }));
 
 			resetModalState();
 			open = false;
@@ -247,7 +251,9 @@
 								<div class="space-y-1">
 									<p class="text-xs text-text-muted">{formatFileSize(file.size)}</p>
 									{#if file.status === 'uploading'}
-										<p class="text-xs font-medium text-brand">Uploading to bucket... {file.progress}%</p>
+										<p class="text-xs font-medium text-brand">
+											Uploading to bucket... {file.progress}%
+										</p>
 										<div class="h-1.5 w-full overflow-hidden rounded-full bg-border">
 											<div
 												class="h-full bg-brand transition-all duration-300"
@@ -312,11 +318,7 @@
 				<Button variant="ghost" onclick={handleClose} disabled={isConfirming || uploadingCount > 0}
 					>Cancel</Button
 				>
-				<Button
-					disabled={!canConfirm}
-					isLoading={isConfirming}
-					onclick={handleConfirm}
-				>
+				<Button disabled={!canConfirm} isLoading={isConfirming} onclick={handleConfirm}>
 					{#if isConfirming}
 						<Loader2 class="h-4 w-4 animate-spin" />
 					{:else}

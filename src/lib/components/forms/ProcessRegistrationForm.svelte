@@ -15,6 +15,7 @@
 	} from '$lib/schemas/registration';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -23,6 +24,7 @@
 	}
 
 	let { open = $bindable(false), registrationId, onProcessed }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	const formId = 'process-registration-form';
@@ -50,6 +52,7 @@
 						};
 
 						await processRegistrationForm(registrationId, payload);
+						toast.success(m.registration_processed_success());
 						reset();
 						open = false;
 						onProcessed?.();

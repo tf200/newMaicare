@@ -18,12 +18,14 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 	import { onMount } from 'svelte';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
 		onCreated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	let rolesCache = $state<RoleListItem[]>([]);
@@ -87,6 +89,7 @@
 						};
 
 						await createEmployee(payload);
+						toast.success(m.employee_created_success());
 						reset();
 						onCreated?.();
 						open = false;

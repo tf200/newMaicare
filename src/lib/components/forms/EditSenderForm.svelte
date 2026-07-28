@@ -11,6 +11,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import type { UpdateSenderRequest } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -30,6 +31,7 @@
 		typeOptions.some((option) => option.value === value);
 
 	let { open = $bindable(false), senderId, onUpdated }: Props = $props();
+	const toast = getToastState();
 
 	let isFetching = $state(false);
 	let errorMessage = $state('');
@@ -76,6 +78,7 @@
 							}))
 						};
 						await updateSender(senderId, payload);
+						toast.success(m.sender_updated_success());
 						open = false;
 						onUpdated?.();
 					} catch (error) {

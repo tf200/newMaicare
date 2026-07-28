@@ -18,6 +18,7 @@
 	import { DiagnosisSchema, type DiagnosisSchemaInput } from '$lib/schemas/diagnosis';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		clientId: string;
@@ -26,6 +27,7 @@
 	}
 
 	let { clientId, open = $bindable(false), onCreated }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	const formId = 'create-diagnosis-form';
@@ -67,6 +69,7 @@
 						};
 
 						await createClientDiagnosis(clientId, payload);
+						toast.success(m.diagnosis_created_success());
 						reset();
 						open = false;
 						onCreated?.();

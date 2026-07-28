@@ -5,6 +5,7 @@
 	import { updateContractStatus } from '$lib/api/contracts';
 	import type { ContractStatus } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	let {
 		open = $bindable(false),
@@ -17,6 +18,7 @@
 		currentStatus: ContractStatus;
 		onUpdated?: () => void;
 	}>();
+	const toast = getToastState();
 
 	const statusOptions: Array<{ value: ContractStatus; label: string }> = [
 		{ value: 'approved', label: m.approved() },
@@ -47,6 +49,7 @@
 		isLoading = true;
 		try {
 			await updateContractStatus(contractId, { status: selectedStatus });
+			toast.success(m.contract_status_updated_success());
 			open = false;
 			onUpdated?.();
 		} catch (error) {

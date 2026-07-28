@@ -15,6 +15,7 @@
 		type PutClientOutOfCareSchemaInput
 	} from '$lib/schemas/client-care';
 	import { m } from '$lib/paraglide/messages';
+	import { getToastState } from '$lib/state/toast.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -23,6 +24,7 @@
 	}
 
 	let { open = $bindable(false), clientId = null, onSuccess }: Props = $props();
+	const toast = getToastState();
 
 	let errorMessage = $state('');
 	const formId = 'put-client-out-of-care-form';
@@ -52,6 +54,7 @@
 						};
 
 						await putClientOutOfCare(clientId, payload);
+						toast.success(m.client_put_out_of_care_success());
 						reset();
 						open = false;
 						onSuccess?.();
