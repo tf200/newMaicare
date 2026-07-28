@@ -200,14 +200,14 @@
 				? 'sm:flex-row sm:items-end sm:justify-between'
 				: ''} {headerInline ? 'sm:flex-row sm:items-end sm:justify-between' : ''}"
 		>
-			<div class="max-w-xs shrink-0 sm:max-w-sm">
+			<div class="max-w-[260px] shrink-0">
 				{#if title}
 					<h2 class="text-2xl font-bold tracking-tighter text-text">
 						{title}
 					</h2>
 				{/if}
 				{#if description}
-					<p class="max-w-xs text-sm font-medium text-text-muted sm:max-w-sm">
+					<p class="max-w-[260px] text-sm font-medium text-text-muted">
 						{description}
 					</p>
 				{/if}
