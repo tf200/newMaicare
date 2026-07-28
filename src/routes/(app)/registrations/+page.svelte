@@ -27,6 +27,8 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	let { data } = $props<{
 		data: {
@@ -130,7 +132,8 @@
 	const registrationFilterPills: FilterPill[] = [
 		{ id: '', label: m.all() },
 		{ id: 'pending', label: m.pending(), color: 'amber' },
-		{ id: 'processed', label: m.processed(), color: 'emerald' }
+		{ id: 'processed', label: m.processed(), color: 'emerald' },
+		{ id: 'rejected', label: m.rejected(), color: 'rose' }
 	];
 
 	const statusMeta: Record<RegistrationRow['formStatus'], { label: string; className: string }> = {
@@ -142,8 +145,18 @@
 			label: m.processed(),
 			className:
 				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
+		},
+		rejected: {
+			label: m.rejected(),
+			className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30'
 		}
 	};
+
+	const getStatusMeta = (status: string) =>
+		statusMeta[status as RegistrationRow['formStatus']] ?? {
+			label: status || m.unknown(),
+			className: 'bg-border text-text-muted border border-border'
+		};
 
 	const riskTone = (risk: number) => {
 		if (risk >= 4)
@@ -336,7 +349,7 @@
 {/snippet}
 
 {#snippet statusCell(row: RegistrationRow)}
-	{@const meta = statusMeta[row.formStatus]}
+	{@const meta = getStatusMeta(row.formStatus)}
 	<span
 		class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {meta.className}"
 	>

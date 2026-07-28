@@ -39,6 +39,7 @@
 	import { resolve } from '$app/paths';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import RegistrationEditForm from './_components/RegistrationEditForm.svelte';
 	import type { PageData } from './$types';
 
@@ -165,7 +166,8 @@
 
 	const statusColors: Record<FormStatus, string> = {
 		pending: 'border border-warning/20 bg-warning/10 text-warning shadow-sm',
-		processed: 'border border-success/20 bg-success/10 text-success'
+		processed: 'border border-success/20 bg-success/10 text-success',
+		rejected: 'border border-error/20 bg-error/10 text-error'
 	};
 
 	const genderColors: Record<ClientGender, string> = {
@@ -191,7 +193,8 @@
 
 	const statusLabels: Record<FormStatus, () => string> = {
 		pending: m.pending,
-		processed: m.processed
+		processed: m.processed,
+		rejected: m.rejected
 	};
 
 	const genderLabels: Record<ClientGender, () => string> = {
@@ -505,12 +508,14 @@
 			{#if !isEditing}
 				<div class="flex flex-wrap items-center justify-end gap-2">
 					{#if registration.form_status === 'pending'}
-						<button
-							onclick={() => (showProcessForm = true)}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-						>
-							{m.process_application()}
-						</button>
+						<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
+							<button
+								onclick={() => (showProcessForm = true)}
+								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
+							>
+								{m.process_application()}
+							</button>
+						</PermissionGuard>
 					{:else if registration.intake_form_id}
 						<a
 							href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
@@ -520,13 +525,15 @@
 							{m.view_intake()}
 						</a>
 					{:else}
-						<button
-							onclick={() => (showIntakeWizard = true)}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-						>
-							<ClipboardCheck class="h-4 w-4" />
-							{m.start_intake()}
-						</button>
+						<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
+							<button
+								onclick={() => (showIntakeWizard = true)}
+								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
+							>
+								<ClipboardCheck class="h-4 w-4" />
+								{m.start_intake()}
+							</button>
+						</PermissionGuard>
 					{/if}
 				</div>
 			{/if}
@@ -1004,7 +1011,7 @@
 													{/if}
 												</div>
 												<div class="flex shrink-0 items-center gap-2">
-													<PermissionGuard permission="REGISTRATION_FORM.UPDATE">
+													<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
 														<button
 															type="button"
 															onclick={() => openRegistrationDocumentPicker(document.key)}

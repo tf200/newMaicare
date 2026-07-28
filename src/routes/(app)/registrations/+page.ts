@@ -1,8 +1,13 @@
 import type { PageLoad } from './$types';
 import { getRegistrationCounts, listRegistrationForms } from '$lib/api/registration';
 import type { ListRegistrationFormsResponse } from '$lib/types/api';
+import type { FormStatus } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 import type { RegistrationFilters } from '$lib/types/registrations';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { redirect } from '@sveltejs/kit';
+import { resolve } from '$app/paths';
 
 export interface RegistrationRow {
 	id: string;
@@ -16,7 +21,7 @@ export interface RegistrationRow {
 	careRoomTrainingCenter: boolean | null;
 	careAmbulatoryGuidance: boolean | null;
 	riskCount: number;
-	formStatus: 'pending' | 'processed';
+	formStatus: FormStatus;
 	intakeFormId?: string | null;
 	submittedAt: string;
 }
@@ -61,6 +66,13 @@ const parseBoolean = (value: string | null) => {
 };
 
 export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (
+		!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])
+	) {
+		redirect(307, resolve('/(app)/dashboard'));
+	}
+
 	depends('app:registrations:list');
 	depends('app:registrations:stats');
 

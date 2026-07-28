@@ -21,6 +21,7 @@
 	import { localizeHref, deLocalizeUrl } from '$lib/paraglide/runtime';
 	import { slide } from 'svelte/transition';
 	import { sidebarState } from '$lib/state/sidebar.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	interface NavItem {
 		label: string;
@@ -65,7 +66,7 @@
 				{ label: m.organization(), href: '/organization', permission: 'ORGANISATION.VIEW' },
 				{ label: m.contracts(), href: '/contracts', permission: 'CARE_COORDINATION.VIEW' },
 				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' },
-				{ label: m.registrations(), href: '/registrations', permission: 'CARE_COORDINATION.VIEW' },
+				{ label: m.registrations(), href: '/registrations', permission: PERMISSIONS.REGISTRATION_FORM.VIEW },
 				{
 					label: m.intake(),
 					href: '/intakes',

@@ -1,6 +1,10 @@
 import { getRegistrationForm } from '$lib/api/registration';
 import type { GetRegistrationFormResponse } from '$lib/types/api';
 import type { PageLoad } from './$types';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { redirect } from '@sveltejs/kit';
+import { resolve } from '$app/paths';
 
 export interface RegistrationDetailLoadResult {
 	registration: GetRegistrationFormResponse | null;
@@ -27,6 +31,11 @@ async function loadRegistrationDetail(
 }
 
 export const load: PageLoad = ({ params, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])) {
+		redirect(307, resolve('/(app)/dashboard'));
+	}
+
 	depends('app:registrations:detail');
 
 	return {

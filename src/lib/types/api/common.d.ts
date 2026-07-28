@@ -86,7 +86,7 @@ export interface Enable2faResponse {
 	recovery_codes: string[];
 }
 
-export type FormStatus = 'pending' | 'processed';
+export type FormStatus = 'pending' | 'processed' | 'rejected';
 
 export type ClientGender = 'male' | 'female' | 'other' | 'unknown';
 

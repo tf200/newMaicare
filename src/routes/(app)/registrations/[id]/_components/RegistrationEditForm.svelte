@@ -23,6 +23,7 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -311,7 +312,7 @@
 <div class="space-y-8">
 	<div class="flex flex-wrap items-center justify-end gap-2">
 		{#if !editing}
-			<PermissionGuard permission="REGISTRATION_FORM.UPDATE">
+			<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
 				<Button
 					variant="ghost"
 					onclick={startEditing}

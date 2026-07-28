@@ -141,7 +141,42 @@ Do not use arbitrary hex colors. Add a named token to `layout.css` when an inten
 - Keep component-scoped CSS small and purposeful. Use it only for layout primitives, necessary browser workarounds, or non-utility animations.
 - Do not create page-local visual systems that compete with shared UI components and tokens.
 
-## 11. Completion Checklist
+## 11. Permission Gating & Authorization Standard
+
+All permission checking must use the centralized `PERMISSIONS` object constant defined in `src/lib/config/permissions.ts`. Never use raw string literals (e.g. `'CLIENT.VIEW'`) for permission checks.
+
+### Single Source Of Truth
+- Import `PERMISSIONS` from `$lib/config/permissions`.
+- Use domain-scoped values such as `PERMISSIONS.CLIENT.VIEW`, `PERMISSIONS.INVOICE.CREATE`, `PERMISSIONS.REGISTRATION_FORM.UPDATE`.
+
+### Two-Tier Gating Pattern
+
+#### 1. Page & Route Protection (`+page.ts` Load Function)
+- Page routes must enforce permission validation at the top of their browser `+page.ts` `load()` function before executing API calls.
+- If the user lacks permission, use `redirect(307, resolve('/(app)/dashboard'))` to redirect unauthorized users immediately.
+- Example:
+  ```ts
+  export const load: PageLoad = ({ url, fetch, depends }) => {
+  	const auth = getAuthState();
+  	if (!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])) {
+  		redirect(307, resolve('/(app)/dashboard'));
+  	}
+  	// ... Proceed with API data loading ...
+  };
+  ```
+
+#### 2. Feature & Action Protection (`<PermissionGuard>` Template Wrapper)
+- Inside page components, use `<PermissionGuard permission={PERMISSIONS...}>` to gate action controls, buttons, forms, and tabs.
+- Do not wrap entire page layouts in `<PermissionGuard>` HOCs when route gating is already handled in `+page.ts`.
+- Action buttons hide silently when permission is missing (default `<PermissionGuard>` behavior).
+- Example:
+  ```svelte
+  <PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
+  	<button onclick={processForm}>Process Application</button>
+  </PermissionGuard>
+  ```
+
+## 12. Completion Checklist
 
 - Types are explicit and `bun run check` is clean, or unrelated existing failures are recorded.
 - `bun run lint` passes for the changed scope.

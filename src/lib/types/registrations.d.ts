@@ -1,5 +1,5 @@
 export interface RegistrationFilters {
-	status: '' | 'pending' | 'processed';
+	status: '' | 'pending' | 'processed' | 'rejected';
 	search: string | undefined;
 	riskAggressiveBehavior?: boolean;
 	riskSuicidalSelfharm?: boolean;

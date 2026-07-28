@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import type { AuthTokenData, AuthRequest, EmployeeProfile } from '$lib/types/api';
+import { ApiClientError } from '$lib/api/client';
 import {
 	requestAuthToken,
 	requestEmployeeProfile,
@@ -68,7 +69,7 @@ export interface AuthContext {
 	logout: () => Promise<void>;
 }
 
-export class AuthState {
+export class AuthState implements AuthContext {
 	user = $state<EmployeeProfile | null>(null);
 	accessToken = $state<string | null>(null);
 	refreshToken = $state<string | null>(null);
@@ -179,8 +180,11 @@ export class AuthState {
 			return response.data;
 		} catch (error) {
 			console.error('Failed to load employee profile', error);
-			this.setUser(null);
-			return null;
+			// Only clear user session if explicit 401 Unauthorized from server
+			if (error instanceof ApiClientError && error.status === 401) {
+				this.setUser(null);
+			}
+			return this.user;
 		}
 	};
 
@@ -224,12 +228,21 @@ export class AuthState {
 	}
 }
 
+/**
+ * Module singleton instance of AuthState.
+ * Can be imported directly anywhere in the app (including +page.ts load functions).
+ */
+export const authState = new AuthState();
+
 export function setAuthState(): AuthContext {
-	const auth = new AuthState();
-	setContext(AUTH_KEY, auth);
-	return auth;
+	setContext(AUTH_KEY, authState);
+	return authState;
 }
 
 export function getAuthState(): AuthContext {
-	return getContext<AuthContext>(AUTH_KEY);
+	try {
+		return getContext<AuthContext>(AUTH_KEY) ?? authState;
+	} catch {
+		return authState;
+	}
 }
