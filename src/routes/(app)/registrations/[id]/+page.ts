@@ -3,8 +3,7 @@ import type { GetRegistrationFormResponse } from '$lib/types/api';
 import type { PageLoad } from './$types';
 import { getAuthState } from '$lib/state/auth.svelte';
 import { PERMISSIONS } from '$lib/config/permissions';
-import { redirect } from '@sveltejs/kit';
-import { resolve } from '$app/paths';
+import { error } from '@sveltejs/kit';
 
 export interface RegistrationDetailLoadResult {
 	registration: GetRegistrationFormResponse | null;
@@ -33,7 +32,7 @@ async function loadRegistrationDetail(
 export const load: PageLoad = ({ params, fetch, depends }) => {
 	const auth = getAuthState();
 	if (!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])) {
-		redirect(307, resolve('/(app)/dashboard'));
+		error(403, 'You do not have permission to view registration details.');
 	}
 
 	depends('app:registrations:detail');

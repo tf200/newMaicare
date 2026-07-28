@@ -153,13 +153,13 @@ All permission checking must use the centralized `PERMISSIONS` object constant d
 
 #### 1. Page & Route Protection (`+page.ts` Load Function)
 - Page routes must enforce permission validation at the top of their browser `+page.ts` `load()` function before executing API calls.
-- If the user lacks permission, use `redirect(307, resolve('/(app)/dashboard'))` to redirect unauthorized users immediately.
+- If the user lacks permission, throw `error(403, 'You do not have permission to view this resource.')`. SvelteKit will automatically intercept the 403 error and render the shared `+error.svelte` layout containing the `<AccessDenied />` UI.
 - Example:
   ```ts
   export const load: PageLoad = ({ url, fetch, depends }) => {
   	const auth = getAuthState();
   	if (!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])) {
-  		redirect(307, resolve('/(app)/dashboard'));
+  		error(403, 'You do not have permission to view registrations.');
   	}
   	// ... Proceed with API data loading ...
   };

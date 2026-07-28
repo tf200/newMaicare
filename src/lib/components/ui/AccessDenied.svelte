@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ShieldAlert, ArrowLeft, Home } from 'lucide-svelte';
+	import { ShieldAlert, Home } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -27,9 +27,7 @@
 	};
 </script>
 
-<div
-	class="flex min-h-[400px] w-full flex-col items-center justify-center p-6 text-center"
->
+<div class="flex min-h-[400px] w-full flex-col items-center justify-center p-6 text-center">
 	<div
 		class="relative flex max-w-md flex-col items-center rounded-3xl border border-border bg-surface/90 p-8 shadow-sm backdrop-blur-xl transition-all"
 	>

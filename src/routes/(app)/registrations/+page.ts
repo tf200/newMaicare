@@ -7,6 +7,7 @@ import type { RegistrationFilters } from '$lib/types/registrations';
 import { getAuthState } from '$lib/state/auth.svelte';
 import { PERMISSIONS } from '$lib/config/permissions';
 import { redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { resolve } from '$app/paths';
 
 export interface RegistrationRow {
@@ -70,7 +71,7 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 	if (
 		!auth.hasAnyPermission([PERMISSIONS.REGISTRATION_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])
 	) {
-		redirect(307, resolve('/(app)/dashboard'));
+		error(403, 'You do not have permission to view registrations.');
 	}
 
 	depends('app:registrations:list');
