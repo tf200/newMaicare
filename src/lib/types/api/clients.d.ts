@@ -25,6 +25,7 @@ export interface ListWaitingListClientsParams {
 	pageSize: number;
 	search?: string;
 	placement?: string;
+	admissionType?: 'crisis_admission' | 'regular_placement';
 	sortDays?: 'asc' | 'desc';
 }
 

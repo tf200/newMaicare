@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AlertTriangle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type Props = {
 		title?: string;
@@ -9,7 +10,7 @@
 		onRetry?: () => void;
 	};
 
-	let { title = 'Unable to load data', message, actionLabel = 'Retry', onRetry }: Props = $props();
+	let { title = m.unable_load_data(), message, actionLabel = m.retry(), onRetry }: Props = $props();
 </script>
 
 <div class="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm">

@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { ClipboardList, Search, AlertTriangle, Eye, HeartHandshake, Users, Clock } from 'lucide-svelte';
+	import {
+		ClipboardList,
+		Search,
+		AlertTriangle,
+		Eye,
+		HeartHandshake,
+		Users,
+		Clock
+	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
@@ -7,22 +15,15 @@
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
-	import type { WaitingListFilters, WaitingListLoadResult, WaitingListStatsResult, WaitingListRow } from './+page';
-	import { goto, invalidateAll } from '$app/navigation';
+	import type { PageProps } from './$types';
+	import type { WaitingListRow } from './+page';
+	import { goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { localizeHref } from '$lib/paraglide/runtime';
 
-	let { data } = $props<{
-		data: {
-			initial: {
-				page: number;
-				pageSize: number;
-				filters: WaitingListFilters;
-				sort: { direction: 'asc' | 'desc' };
-			};
-			waitingListData: Promise<WaitingListLoadResult>;
-			waitingListStats: Promise<WaitingListStatsResult>;
-		};
-	}>();
+	let { data }: PageProps = $props();
 
 	const waitingListDataPromise = $derived.by(() => data.waitingListData);
 	const waitingListStatsPromise = $derived.by(() => data.waitingListStats);
@@ -40,10 +41,10 @@
 	const columns: DataTableColumn[] = [
 		{ key: 'client', label: m.client(), headerClass: 'pl-14' },
 		{ key: 'careType', label: m.care_type() },
-		{ key: 'senderName', label: 'Sender' },
+		{ key: 'senderName', label: m.sender() },
 		{
 			key: 'daysInWaitingList',
-			label: 'Days Waiting',
+			label: m.days_waiting(),
 			align: 'center',
 			width: '150px',
 			sortable: true
@@ -62,7 +63,7 @@
 		placementValue: string,
 		sortDir: 'asc' | 'desc'
 	) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 		params.set('sort_days', sortDir);
@@ -89,7 +90,11 @@
 			sortDir
 		);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(resolve(localizeHref(resolve(`/(app)/waiting-list?${nextQuery}`)) as '/waiting-list/'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const applySearch = (searchValue: string) => {
@@ -110,78 +115,94 @@
 		isPutInCareModalOpen = true;
 	};
 
+	const refreshWaitingList = (shouldMoveToPreviousPage: boolean) => {
+		if (shouldMoveToPreviousPage && currentPage > 1) {
+			updateQuery(
+				currentPage - 1,
+				appliedSearch,
+				appliedAdmissionType,
+				appliedPlacement,
+				sort.direction
+			);
+			return invalidate('app:waiting-list:stats');
+		}
+
+		return Promise.all([invalidate('app:waiting-list:list'), invalidate('app:waiting-list:stats')]);
+	};
+
 	const admissionTypeMeta: Record<
 		WaitingListRow['admissionType'],
 		{ label: string; className: string }
 	> = {
 		crisis: {
-			label: 'Crisis',
-			className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30'
+			label: m.crisis(),
+			className: 'border border-error/30 bg-error/10 text-error'
 		},
 		regular: {
-			label: 'Regular',
-			className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30'
+			label: m.regular(),
+			className: 'border border-info/30 bg-info/10 text-info'
 		},
 		unknown: {
-			label: 'Unknown',
+			label: m.unknown(),
 			className: 'bg-border text-text-muted border border-border'
 		}
 	};
 
 	const admissionFilterPills: FilterPill[] = [
-		{ id: '', label: 'All' },
-		{ id: 'regular', label: 'Regular', color: 'blue' },
-		{ id: 'crisis', label: 'Crisis', color: 'rose' }
+		{ id: '', label: m.all() },
+		{ id: 'regular', label: m.regular(), color: 'info' },
+		{ id: 'crisis', label: m.crisis(), color: 'error' }
 	];
 
 	const careTypeMeta: Record<WaitingListRow['careType'], { label: string; className: string }> = {
 		protected_living: {
-			label: 'Protected living',
-			className:
-				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
+			label: m.protected_living(),
+			className: 'border border-success/30 bg-success/10 text-success'
 		},
 		training_center: {
-			label: 'Training center',
-			className:
-				'bg-violet-600 text-white border border-violet-700/60 shadow-sm shadow-violet-700/30'
+			label: m.training_center(),
+			className: 'border border-brand/30 bg-brand/10 text-brand'
 		},
 		supported_independent_living: {
-			label: 'Supported independent living',
-			className: 'bg-sky-600 text-white border border-sky-700/60 shadow-sm shadow-sky-700/30'
+			label: m.supported_independent_living(),
+			className: 'border border-info/30 bg-info/10 text-info'
 		},
 		ambulatory_support: {
-			label: 'Ambulatory support',
-			className: 'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30'
+			label: m.ambulatory_support(),
+			className: 'border border-warning/30 bg-warning/10 text-warning'
 		},
 		other: {
-			label: 'Other',
-			className: 'bg-zinc-600 text-white border border-zinc-700/60 shadow-sm shadow-zinc-700/30'
+			label: m.other(),
+			className: 'border border-border bg-border/40 text-text-muted'
 		},
 		unknown: {
-			label: 'Unknown',
+			label: m.unknown(),
 			className: 'bg-border text-text-muted border border-border'
 		}
 	};
 
 	const waitingDaysClass = (days: number | null) => {
 		if (days == null) return 'text-text-muted';
-		if (days > 14) return 'text-rose-600';
-		if (days >= 7) return 'text-amber-600';
-		return 'text-emerald-600';
+		if (days > 14) return 'text-error';
+		if (days >= 7) return 'text-warning';
+		return 'text-success';
 	};
 </script>
 
 <svelte:head>
-	<title>{m.waiting_for_selection()} | MaiCare</title>
+	<title>{m.waiting_for_selection()} | {m.app_name()}</title>
 </svelte:head>
 
 {#snippet tableFilters()}
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
 		<div class="relative w-full sm:w-auto">
+			<label class="sr-only" for="waiting-list-search">{m.search_waiting_list()}</label>
 			<Search
+				aria-hidden="true"
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
 			/>
 			<input
+				id="waiting-list-search"
 				type="text"
 				placeholder={m.search_waiting_list_placeholder()}
 				value={appliedSearch}
@@ -195,7 +216,11 @@
 			/>
 		</div>
 
-		<FilterPills pills={admissionFilterPills} activeId={appliedAdmissionType} onSelect={applyFilter} />
+		<FilterPills
+			pills={admissionFilterPills}
+			activeId={appliedAdmissionType}
+			onSelect={applyFilter}
+		/>
 	</div>
 {/snippet}
 
@@ -246,19 +271,23 @@
 		<PermissionGuard permission="CLIENT.STATUS.UPDATE">
 			<button
 				type="button"
+				aria-label={m.put_in_care()}
 				onclick={(event) => {
 					event.stopPropagation();
 					openPutInCareModal(row);
 				}}
-				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-emerald-100/80 hover:text-emerald-700"
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 				title={m.put_in_care()}
 			>
 				<HeartHandshake class="h-4 w-4" />
 			</button>
 		</PermissionGuard>
 		<a
-			href="/clients/{row.id}"
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			href={resolve(
+				localizeHref(resolve('/(app)/clients/[id]', { id: row.id })) as `/clients/${string}/`
+			)}
+			aria-label={m.view_details()}
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 			title={m.view_details()}
 		>
 			<Eye class="h-4 w-4" />
@@ -271,7 +300,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-amber-100/70 to-secondary/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-warning/20 to-secondary/20 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -281,9 +310,9 @@
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.waiting_for_selection()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.waiting_for_selection()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Clients approved for intake and currently awaiting placement.
+					{m.waiting_list_header_description()}
 				</p>
 			</div>
 		</div>
@@ -291,7 +320,7 @@
 
 	{#await waitingListStatsPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			{#each Array(4) as _}
+			{#each [1, 2, 3, 4] as item (item)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
@@ -300,39 +329,42 @@
 		</div>
 	{:then waitingListStats}
 		{#if waitingListStats.loadError}
-			<InlineErrorBanner message={waitingListStats.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={waitingListStats.loadError}
+				onRetry={() => invalidate('app:waiting-list:stats')}
+			/>
+		{:else}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<StatCard
+					label={m.total_waiting()}
+					value={waitingListStats.totalClients}
+					description={m.clients_currently_waiting()}
+					icon={Users}
+					color="brand"
+				/>
+				<StatCard
+					label={m.crisis()}
+					value={waitingListStats.totalCrisis}
+					description={m.crisis_admissions()}
+					icon={AlertTriangle}
+					color="rose"
+				/>
+				<StatCard
+					label={m.regular()}
+					value={waitingListStats.totalRegular}
+					description={m.regular_placements()}
+					icon={HeartHandshake}
+					color="emerald"
+				/>
+				<StatCard
+					label={m.average_days_waiting()}
+					value={waitingListStats.avgDaysInWaitlist}
+					description={m.average_days_in_waitlist()}
+					icon={Clock}
+					color="amber"
+				/>
+			</div>
 		{/if}
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<StatCard
-				label="Total Waiting"
-				value={waitingListStats.totalClients}
-				description={m.client()}
-				icon={Users}
-				color="brand"
-			/>
-			<StatCard
-				label="Crisis"
-				value={waitingListStats.totalCrisis}
-				description="Crisis admissions"
-				icon={AlertTriangle}
-				color="rose"
-			/>
-			<StatCard
-				label="Regular"
-				value={waitingListStats.totalRegular}
-				description="Regular placements"
-				icon={HeartHandshake}
-				color="emerald"
-			/>
-			<StatCard
-				label="Avg Days Waiting"
-				value={waitingListStats.avgDaysInWaitlist}
-				description="Average days in waitlist"
-				icon={Clock}
-				color="amber"
-			/>
-		</div>
 	{/await}
 
 	{#await waitingListDataPromise}
@@ -340,24 +372,31 @@
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) =>
+					updateQuery(
+						nextPage,
+						appliedSearch,
+						appliedAdmissionType,
+						appliedPlacement,
+						sort.direction
+					)
+			}}
 			sortColumn="daysInWaitingList"
 			sortDirection={sort.direction}
-			onPageChange={(nextPage) =>
-				updateQuery(
-					nextPage,
-					appliedSearch,
-					appliedAdmissionType,
-					appliedPlacement,
-					sort.direction
-				)}
 			onSort={handleSort}
 			rowKey="id"
 			title={m.waiting_list()}
-			description="Clients currently in waiting list"
-			filters={tableFilters}
+			description={m.clients_currently_waiting()}
+			toolbar={tableFilters}
+			empty={{
+				title: m.no_waiting_list_clients(),
+				description: m.no_waiting_list_clients_description()
+			}}
 			cells={{
 				client: clientCell,
 				careType: careTypeCell,
@@ -367,31 +406,36 @@
 			}}
 		/>
 	{:then waitingListData}
-		{#if waitingListData.loadError}
-			<InlineErrorBanner message={waitingListData.loadError} onRetry={() => invalidateAll()} />
-		{/if}
-
 		<DataTable
 			{columns}
 			rows={waitingListData.rows}
-			currentPage={waitingListData.pagination.page}
-			pageSize={waitingListData.pagination.pageSize}
-			totalCount={waitingListData.pagination.count}
+			pagination={{
+				mode: 'server',
+				page: waitingListData.pagination.page,
+				pageSize: waitingListData.pagination.pageSize,
+				totalCount: waitingListData.pagination.count,
+				onPageChange: (nextPage) =>
+					updateQuery(
+						nextPage,
+						appliedSearch,
+						appliedAdmissionType,
+						appliedPlacement,
+						sort.direction
+					)
+			}}
 			sortColumn="daysInWaitingList"
 			sortDirection={sort.direction}
-			onPageChange={(nextPage) =>
-				updateQuery(
-					nextPage,
-					appliedSearch,
-					appliedAdmissionType,
-					appliedPlacement,
-					sort.direction
-				)}
 			onSort={handleSort}
 			rowKey="id"
 			title={m.waiting_list()}
-			description="Clients currently in waiting list"
-			filters={tableFilters}
+			description={m.clients_currently_waiting()}
+			toolbar={tableFilters}
+			error={waitingListData.loadError ?? undefined}
+			onRetry={() => invalidate('app:waiting-list:list')}
+			empty={{
+				title: m.no_waiting_list_clients(),
+				description: m.no_waiting_list_clients_description()
+			}}
 			cells={{
 				client: clientCell,
 				careType: careTypeCell,
@@ -400,11 +444,13 @@
 				actions: actionsCell
 			}}
 		/>
+		<PutClientInCareForm
+			bind:open={isPutInCareModalOpen}
+			clientId={selectedClientId}
+			onSuccess={() =>
+				refreshWaitingList(
+					waitingListData.rows.length === 1 && waitingListData.pagination.next == null
+				)}
+		/>
 	{/await}
-
-	<PutClientInCareForm
-		bind:open={isPutInCareModalOpen}
-		clientId={selectedClientId}
-		onSuccess={() => invalidateAll()}
-	/>
 </section>

@@ -44,7 +44,10 @@ import type {
 	UpdateClientRequest
 } from '$lib/types/api';
 
-export function listWaitingListClients(params: ListWaitingListClientsParams) {
+export function listWaitingListClients(
+	params: ListWaitingListClientsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 
 	searchParams.set('page', String(params.page));
@@ -58,16 +61,20 @@ export function listWaitingListClients(params: ListWaitingListClientsParams) {
 	if (params.placement) {
 		searchParams.set('placement', params.placement);
 	}
+	if (params.admissionType) {
+		searchParams.set('admission_type', params.admissionType);
+	}
 
 	const query = searchParams.toString();
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListWaitingListClientsResponse>>>(
-		`/clients/waiting-list?${query}`
+		`/clients/waiting-list?${query}`,
+		options
 	);
 }
 
-export function getWaitingListStats() {
-	return api.get<ApiEnvelope<WaitingListStatsResponse>>('/clients/waiting-list/stats');
+export function getWaitingListStats(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<WaitingListStatsResponse>>('/clients/waiting-list/stats', options);
 }
 
 export function getClientById(id: string, options?: ApiRequestOptions) {

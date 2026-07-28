@@ -1,10 +1,4 @@
-<script lang="ts">
-	import type { Snippet } from 'svelte';
-	import Pagination from '$lib/components/ui/Pagination.svelte';
-	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-
-	import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-svelte';
-
+<script module lang="ts">
 	export interface DataTableColumn {
 		key: string;
 		label: string;
@@ -32,12 +26,19 @@
 			onClick: () => void;
 		};
 	}
+</script>
 
-	type RowData = Record<string, unknown>;
+<script lang="ts" generics="Row">
+	import type { Snippet } from 'svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages';
 
-	export interface Props {
+	import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-svelte';
+
+	interface Props {
 		columns?: DataTableColumn[];
-		rows?: Array<any>;
+		rows?: Row[];
 		loading?: boolean;
 		title?: string;
 		description?: string;
@@ -46,11 +47,11 @@
 		emptyActionLabel?: string;
 		emptyAction?: () => void;
 		emptyActionDisabled?: boolean;
-		rowKey?: string | ((row: any, index: number) => string);
+		rowKey?: string | ((row: Row, index: number) => string);
 		actions?: Snippet;
 		filters?: Snippet;
 		toolbar?: Snippet;
-		cells?: Record<string, Snippet<[any]>>;
+		cells?: Record<string, Snippet<[Row]>>;
 		pagination?: DataTablePagination | false;
 		empty?: DataTableEmptyState;
 		error?: string;
@@ -61,7 +62,7 @@
 		sortColumn?: string;
 		sortDirection?: 'asc' | 'desc';
 		onPageChange?: (page: number) => void;
-		onRowClick?: (row: any) => void;
+		onRowClick?: (row: Row) => void;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		surface?: 'card' | 'plain';
 		headerInline?: boolean;
@@ -74,9 +75,9 @@
 		loading = false,
 		title,
 		description,
-		emptyTitle = 'No records found',
-		emptyDescription = 'Try adjusting your filters or add a new record.',
-		emptyActionLabel = 'Add record',
+		emptyTitle = m.no_records_found(),
+		emptyDescription = m.adjust_filters_or_add_record(),
+		emptyActionLabel = m.add_record(),
 		emptyAction,
 		emptyActionDisabled = false,
 		rowKey,
@@ -113,9 +114,9 @@
 		return '';
 	};
 
-	const getRecordValue = (row: any, key: string) => (row as RowData)?.[key];
+	const getRecordValue = (row: Row, key: string) => (row as Record<string, unknown> | null)?.[key];
 
-	const getRowKey = (row: any, index: number) => {
+	const getRowKey = (row: Row, index: number) => {
 		if (typeof rowKey === 'function') return rowKey(row, index);
 		if (typeof rowKey === 'string' && getRecordValue(row, rowKey) != null) {
 			return String(getRecordValue(row, rowKey));
@@ -148,10 +149,14 @@
 	};
 
 	const handleEmptyAction = () => {
-		empty?.action?.onClick() ?? emptyAction?.();
+		if (empty?.action) {
+			empty.action.onClick();
+			return;
+		}
+		emptyAction?.();
 	};
 
-	const handleRowClick = (event: MouseEvent, row: any) => {
+	const handleRowClick = (event: MouseEvent, row: Row) => {
 		// Cell controls own their interaction and must not also activate the row.
 		if (
 			(event.target as Element | null)?.closest(
@@ -168,6 +173,12 @@
 		const direction = sortColumn === columnKey && sortDirection === 'asc' ? 'desc' : 'asc';
 
 		onSort(columnKey, direction);
+	};
+
+	const getAriaSort = (column: DataTableColumn) => {
+		if (!column.sortable || !onSort) return undefined;
+		if (sortColumn !== column.key) return 'none' as const;
+		return sortDirection === 'asc' ? ('ascending' as const) : ('descending' as const);
 	};
 
 	const paginatedRows = $derived.by(() =>
@@ -224,8 +235,10 @@
 		>
 			<span>{error}</span>
 			{#if onRetry}
-				<button class="rounded-lg px-2 py-1 text-xs font-bold hover:bg-error/10" onclick={onRetry}
-					>Retry</button
+				<button
+					type="button"
+					class="rounded-lg px-2 py-1 text-xs font-bold hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-error focus-visible:outline-none"
+					onclick={onRetry}>{m.retry()}</button
 				>
 			{/if}
 		</div>
@@ -239,13 +252,17 @@
 						<th
 							class="group px-6 py-4 {alignClass(column.align)} {column.headerClass ??
 								column.class ??
-								''} {column.sortable && onSort ? 'cursor-pointer select-none hover:text-text' : ''}"
+								''}"
 							style={column.width ? `width:${column.width}` : undefined}
-							onclick={() => column.sortable && handleSort(column.key)}
+							aria-sort={getAriaSort(column)}
 						>
-							<div class="inline-flex items-center gap-1.5">
-								{column.label}
-								{#if column.sortable && onSort}
+							{#if column.sortable && onSort}
+								<button
+									type="button"
+									class="inline-flex items-center gap-1.5 rounded-lg hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+									onclick={() => handleSort(column.key)}
+								>
+									{column.label}
 									{#if sortColumn === column.key}
 										{#if sortDirection === 'asc'}
 											<ChevronUp class="h-3 w-3" />
@@ -255,15 +272,17 @@
 									{:else}
 										<ChevronsUpDown class="h-3 w-3 opacity-30 group-hover:opacity-100" />
 									{/if}
-								{/if}
-							</div>
+								</button>
+							{:else}
+								{column.label}
+							{/if}
 						</th>
 					{/each}
 				</tr>
 			</thead>
 			<tbody>
 				{#if loading}
-					{#each Array.from({ length: loadingRows }) as _, index (`loading-${index}`)}
+					{#each Array.from({ length: loadingRows }, (_, index) => index) as index (index)}
 						<tr class="border-b border-border/50 py-4 last:border-0">
 							{#each columns as column (column.key)}
 								<td
@@ -281,6 +300,10 @@
 							{/each}
 						</tr>
 					{/each}
+				{:else if error && rows.length === 0}
+					<tr>
+						<td colspan={columns.length} class="h-6"></td>
+					</tr>
 				{:else if rows.length === 0}
 					<tr>
 						<td colspan={columns.length} class="px-6 py-12 text-center">
@@ -326,7 +349,7 @@
 		</table>
 	</div>
 
-	{#if paginationEnabled}
+	{#if paginationEnabled && !error}
 		<div class="border-t border-border px-6 py-4">
 			<Pagination
 				currentPage={displayedPage}

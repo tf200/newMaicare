@@ -2,15 +2,7 @@
 	import type { ComponentType } from 'svelte';
 
 	type StatCardColor =
-		| 'neutral'
-		| 'emerald'
-		| 'amber'
-		| 'rose'
-		| 'slate'
-		| 'brand'
-		| 'secondary'
-		| 'blue'
-		| 'cyan';
+		'neutral' | 'emerald' | 'amber' | 'rose' | 'slate' | 'brand' | 'secondary' | 'blue' | 'cyan';
 
 	interface ColorConfig {
 		hoverBorder: string;
@@ -27,27 +19,27 @@
 			iconOpacity: 'opacity-[0.03]'
 		},
 		emerald: {
-			hoverBorder: 'hover:border-emerald-500/30',
-			iconColor: 'text-emerald-500',
-			valueColor: 'text-emerald-600',
+			hoverBorder: 'hover:border-success/30',
+			iconColor: 'text-success',
+			valueColor: 'text-success',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		amber: {
-			hoverBorder: 'hover:border-amber-500/30',
-			iconColor: 'text-amber-500',
-			valueColor: 'text-amber-600',
+			hoverBorder: 'hover:border-warning/30',
+			iconColor: 'text-warning',
+			valueColor: 'text-warning',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		rose: {
-			hoverBorder: 'hover:border-rose-500/30',
-			iconColor: 'text-rose-500',
-			valueColor: 'text-rose-600',
+			hoverBorder: 'hover:border-error/30',
+			iconColor: 'text-error',
+			valueColor: 'text-error',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		slate: {
-			hoverBorder: 'hover:border-slate-500/30',
-			iconColor: 'text-slate-500',
-			valueColor: 'text-slate-600',
+			hoverBorder: 'hover:border-border',
+			iconColor: 'text-text-muted',
+			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		brand: {
@@ -63,14 +55,14 @@
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		blue: {
-			hoverBorder: 'hover:border-blue-500/30',
-			iconColor: 'text-blue-500',
+			hoverBorder: 'hover:border-info/30',
+			iconColor: 'text-info',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		cyan: {
-			hoverBorder: 'hover:border-cyan-500/30',
-			iconColor: 'text-cyan-500',
+			hoverBorder: 'hover:border-info/30',
+			iconColor: 'text-info',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		}
@@ -102,7 +94,9 @@
 </script>
 
 <div
-	class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm {hasHover ? 'group transition-colors ' + colors.hoverBorder : ''}"
+	class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm {hasHover
+		? 'group transition-colors ' + colors.hoverBorder
+		: ''}"
 >
 	{#if Icon}
 		<div
@@ -115,7 +109,11 @@
 		<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 			{label}
 		</div>
-		<div class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl {resolvedValueAccent ? colors.valueColor : 'text-text'}">
+		<div
+			class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl {resolvedValueAccent
+				? colors.valueColor
+				: 'text-text'}"
+		>
 			{value}
 		</div>
 		{#if description}

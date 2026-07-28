@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import type { ComponentType, Snippet } from 'svelte';
 
 	interface Props {
-		icon?: any;
+		icon?: ComponentType;
 		title: string;
 		description?: string;
 		primaryAction?: {
@@ -62,12 +62,12 @@
 	'dashed'
 		? 'rounded-3xl border border-dashed border-border bg-surface'
 		: variant === 'subtle'
-			? 'rounded-3xl bg-zinc-50/50 dark:bg-zinc-900/30'
+			? 'rounded-3xl bg-bg/50'
 			: ''}"
 >
 	{#if Icon}
 		<div
-			class="mb-5 flex items-center justify-center rounded-3xl border border-zinc-100 bg-zinc-50 shadow-sm dark:border-zinc-800 dark:bg-zinc-800/50 {classes.iconBox}"
+			class="mb-5 flex items-center justify-center rounded-3xl border border-border bg-bg shadow-sm {classes.iconBox}"
 		>
 			<Icon class="text-text-muted {classes.icon}" />
 		</div>
@@ -93,17 +93,19 @@
 		<div class="mt-5 flex items-center gap-3">
 			{#if primaryAction}
 				<button
+					type="button"
 					onclick={primaryAction.onclick}
 					disabled={primaryAction.disabled}
-					class="inline-flex h-10 items-center gap-2 rounded-xl bg-btn-primary-bg px-5 text-sm font-semibold text-btn-primary-text shadow-sm transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+					class="inline-flex h-10 items-center gap-2 rounded-xl bg-btn-primary-bg px-5 text-sm font-semibold text-btn-primary-text shadow-sm transition-all hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
 				>
 					{primaryAction.label}
 				</button>
 			{/if}
 			{#if secondaryAction}
 				<button
+					type="button"
 					onclick={secondaryAction.onclick}
-					class="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-5 text-sm font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text active:scale-95"
+					class="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-5 text-sm font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none active:scale-95"
 				>
 					{secondaryAction.label}
 				</button>

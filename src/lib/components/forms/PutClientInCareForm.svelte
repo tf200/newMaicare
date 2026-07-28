@@ -29,7 +29,7 @@
 	let errorMessage = $state('');
 	const formId = 'put-client-in-care-form';
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, delayed, submitting, reset } = superForm(
 		defaults(
 			{
 				care_start_date: '',
@@ -45,6 +45,7 @@
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
 				if (form.valid && clientId) {
+					errorMessage = '';
 					try {
 						const payload: PutClientInCareRequest = {
 							care_start_date: form.data.care_start_date.trim(),
@@ -55,7 +56,7 @@
 
 						await putClientInCare(clientId, payload);
 						toast.success(m.client_put_in_care_success());
-						reset();
+						clearTransientState();
 						open = false;
 						onSuccess?.();
 					} catch (error) {
@@ -66,8 +67,14 @@
 		}
 	);
 
-	const handleCancel = () => {
+	const clearTransientState = () => {
 		reset();
+		coordinatorName = '';
+		errorMessage = '';
+	};
+
+	const handleCancel = () => {
+		clearTransientState();
 		open = false;
 	};
 
@@ -88,6 +95,9 @@
 	bind:open
 	title={m.put_client_in_care()}
 	description={m.put_client_in_care_description()}
+	closeLabel={m.close()}
+	dismissible={!$submitting}
+	onClose={clearTransientState}
 	class="max-w-xl"
 >
 	<form id={formId} use:enhance class="space-y-5">
@@ -128,8 +138,10 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>{m.put_in_care()}</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed} disabled={$submitting}
+				>{m.put_in_care()}</Button
+			>
 		</div>
 	{/snippet}
 </Modal>

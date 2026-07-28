@@ -1,10 +1,11 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLButtonAttributes {
 		variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
 		isLoading?: boolean;
-		children?: any;
+		children?: Snippet;
 	}
 
 	let {
@@ -17,8 +18,8 @@
 
 	const variants = {
 		primary: 'bg-btn-primary-bg text-btn-primary-text hover:opacity-90 shadow-sm',
-		secondary: 'bg-[var(--color-secondary)] text-white hover:opacity-90 shadow-sm',
-		ghost: 'bg-transparent hover:bg-border/50 dark:hover:bg-border/50',
+		secondary: 'bg-secondary text-white hover:opacity-90 shadow-sm',
+		ghost: 'bg-transparent hover:bg-border/50',
 		destructive: 'bg-error/10 text-error hover:bg-error/20'
 	};
 </script>
@@ -26,7 +27,7 @@
 <button
 	{...props}
 	disabled={isLoading || props.disabled}
-	class="relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-[opacity,transform,background-color] duration-200 ease-out active:scale-95 active:duration-75 disabled:opacity-70 {variants[
+	class="relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-[opacity,transform,background-color] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95 active:duration-75 disabled:cursor-not-allowed disabled:opacity-70 {variants[
 		variant
 	]} {className}"
 >

@@ -1,7 +1,8 @@
 import type { PageLoad } from './$types';
-import { listWaitingListClients, getWaitingListStats } from '$lib/api/clients';
+import { listWaitingListClients } from '$lib/api/clients';
 import type { ListWaitingListClientsResponse } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import { m } from '$lib/paraglide/messages';
 
 export interface WaitingListFilters {
 	search: string;
@@ -33,14 +34,6 @@ export interface WaitingListLoadResult {
 	loadError: string | null;
 }
 
-export interface WaitingListStatsResult {
-	totalClients: number;
-	totalCrisis: number;
-	totalRegular: number;
-	avgDaysInWaitlist: number;
-	loadError: string | null;
-}
-
 const mapAdmissionType = (
 	admissionType: ListWaitingListClientsResponse['admission_type']
 ): WaitingListRow['admissionType'] => {
@@ -59,56 +52,72 @@ const mapCareType = (careType: string | null) => {
 	return 'unknown';
 };
 
-const matchesAdmissionType = (row: WaitingListRow, type: string) => {
-	if (!type || type === 'all') return true;
-	return row.admissionType === type;
+const getAdmissionTypeParam = (
+	value: string
+): 'crisis_admission' | 'regular_placement' | undefined => {
+	if (value === 'crisis') return 'crisis_admission';
+	if (value === 'regular') return 'regular_placement';
+	return undefined;
 };
 
-export const load: PageLoad = ({ url }) => {
-	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
-	const requestedPageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
-	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
+const parsePositiveInteger = (value: string | null, fallback: number, maximum?: number) => {
+	if (value == null || value.trim() === '') return fallback;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return fallback;
+	const normalized = Math.max(1, Math.trunc(parsed));
+	return maximum == null ? normalized : Math.min(maximum, normalized);
+};
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	depends('app:waiting-list:list');
+
+	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
+	const pageSize = Math.max(5, parsePositiveInteger(url.searchParams.get('page_size'), 8, 100));
 	const search = (url.searchParams.get('search') ?? '').trim();
 	const placement = (url.searchParams.get('placement') ?? '').trim();
-	const admissionType = (url.searchParams.get('admission_type') ?? '').trim();
+	const requestedAdmissionType = (url.searchParams.get('admission_type') ?? '').trim();
+	const admissionType =
+		requestedAdmissionType === 'crisis' || requestedAdmissionType === 'regular'
+			? requestedAdmissionType
+			: '';
 	const sortParam = (url.searchParams.get('sort_days') ?? 'desc').toLowerCase();
 	const sortDirection: 'asc' | 'desc' = sortParam === 'asc' ? 'asc' : 'desc';
 
-	const waitingListData: Promise<WaitingListLoadResult> = listWaitingListClients({
-		page,
-		pageSize,
-		search: search || undefined,
-		placement: placement || undefined,
-		sortDays: sortDirection
-	})
+	const waitingListData: Promise<WaitingListLoadResult> = listWaitingListClients(
+		{
+			page,
+			pageSize,
+			search: search || undefined,
+			placement: placement || undefined,
+			admissionType: getAdmissionTypeParam(admissionType),
+			sortDays: sortDirection
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, next, previous, page_size, results } = response.data;
-			const mappedRows = results.map(
-				(item): WaitingListRow => ({
-					id: item.id,
-					clientFirstName: item.first_name,
-					clientLastName: item.last_name,
-					clientBsnNumber: item.bsn,
-					careType: mapCareType(item.care_type),
-					senderName: item.sender_name ?? '—',
-					daysInWaitingList: item.days_in_waitlist,
-					admissionType: mapAdmissionType(item.admission_type)
-				})
-			);
-
-			const filteredRows = mappedRows.filter((row) => matchesAdmissionType(row, admissionType));
+			const mappedRows = results.map((item): WaitingListRow => ({
+				id: item.id,
+				clientFirstName: item.first_name,
+				clientLastName: item.last_name,
+				clientBsnNumber: item.bsn,
+				careType: mapCareType(item.care_type),
+				senderName: item.sender_name ?? '—',
+				daysInWaitingList: item.days_in_waitlist,
+				admissionType: mapAdmissionType(item.admission_type)
+			}));
 
 			return {
-				rows: filteredRows,
+				rows: mappedRows,
 				stats: {
-					total: admissionType ? filteredRows.length : count
+					total: count
 				},
 				pagination: {
-					count: admissionType ? filteredRows.length : count,
+					count,
 					page,
 					pageSize: page_size || pageSize,
-					next: admissionType ? null : next,
-					previous: admissionType ? null : previous,
+					next,
+					previous,
 					filters: {
 						search,
 						admissionType,
@@ -119,7 +128,7 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies WaitingListLoadResult;
 		})
 		.catch((error): WaitingListLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load waiting list.';
+			const message = error instanceof Error ? error.message : m.failed_load_waiting_list();
 			return {
 				rows: [],
 				stats: {
@@ -141,26 +150,6 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
-	const waitingListStats: Promise<WaitingListStatsResult> = getWaitingListStats()
-		.then(
-			(response): WaitingListStatsResult => ({
-				totalClients: response.data.total_clients,
-				totalCrisis: response.data.total_crisis,
-				totalRegular: response.data.total_regular,
-				avgDaysInWaitlist: response.data.avg_days_in_waitlist,
-				loadError: null
-			})
-		)
-		.catch(
-			(error): WaitingListStatsResult => ({
-				totalClients: 0,
-				totalCrisis: 0,
-				totalRegular: 0,
-				avgDaysInWaitlist: 0,
-				loadError: error instanceof Error ? error.message : 'Failed to load waiting list stats.'
-			})
-		);
-
 	return {
 		initial: {
 			page,
@@ -174,7 +163,6 @@ export const load: PageLoad = ({ url }) => {
 				direction: sortDirection
 			}
 		},
-		waitingListData,
-		waitingListStats
+		waitingListData
 	};
 };

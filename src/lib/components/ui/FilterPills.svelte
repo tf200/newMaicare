@@ -13,7 +13,18 @@
 		 * - `'blue'`: info/scheduled
 		 * - `'slate'`: neutral/out-of-care
 		 */
-		color?: 'brand' | 'amber' | 'emerald' | 'rose' | 'blue' | 'slate';
+		color?:
+			| 'brand'
+			| 'warning'
+			| 'success'
+			| 'error'
+			| 'info'
+			| 'neutral'
+			| 'amber'
+			| 'emerald'
+			| 'rose'
+			| 'blue'
+			| 'slate';
 	}
 
 	interface Props {
@@ -34,17 +45,17 @@
 	type PillColor = NonNullable<FilterPill['color']>;
 
 	const activeColorMap: Record<PillColor, string> = {
-		brand: 'bg-btn-primary-bg text-btn-primary-text shadow-sm',
-		amber:
-			'bg-amber-500 text-white shadow-sm shadow-amber-700/20 dark:shadow-amber-900/30',
-		emerald:
-			'bg-emerald-600 text-white shadow-sm shadow-emerald-700/20 dark:shadow-emerald-900/30',
-		rose:
-			'bg-rose-600 text-white shadow-sm shadow-rose-700/20 dark:shadow-rose-900/30',
-		blue:
-			'bg-blue-600 text-white shadow-sm shadow-blue-700/20 dark:shadow-blue-900/30',
-		slate:
-			'bg-slate-500 text-white shadow-sm shadow-slate-600/20 dark:shadow-slate-800/30'
+		brand: 'bg-btn-primary-bg text-surface shadow-sm',
+		warning: 'bg-warning text-surface shadow-sm',
+		success: 'bg-success text-surface shadow-sm',
+		error: 'bg-error text-surface shadow-sm',
+		info: 'bg-info text-surface shadow-sm',
+		neutral: 'bg-text-muted text-surface shadow-sm',
+		amber: 'bg-warning text-surface shadow-sm',
+		emerald: 'bg-success text-surface shadow-sm',
+		rose: 'bg-error text-surface shadow-sm',
+		blue: 'bg-info text-surface shadow-sm',
+		slate: 'bg-text-muted text-surface shadow-sm'
 	};
 
 	const inactiveClass =
@@ -65,8 +76,10 @@
 		{@const isActive = activeId === pill.id}
 		{@const color: PillColor = pill.color ?? 'brand'}
 		<button
+			type="button"
+			aria-pressed={isActive}
 			onclick={() => handleClick(pill.id)}
-			class="h-9 rounded-full px-4 text-xs font-semibold transition-all duration-150 {isActive
+			class="h-9 rounded-full px-4 text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none {isActive
 				? activeColorMap[color]
 				: inactiveClass}"
 		>
