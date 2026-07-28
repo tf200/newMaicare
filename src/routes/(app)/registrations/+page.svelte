@@ -259,7 +259,7 @@
 				type="text"
 				placeholder={m.search_registrations()}
 				bind:value={searchTerm}
-				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-xs font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-40 xl:w-48"
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-48 lg:w-56"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') applySearch();
 				}}
