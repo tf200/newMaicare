@@ -10,12 +10,12 @@
 	import { SenderSchema, type SenderSchemaInput } from '$lib/schemas/sender';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
-	import type { CreateSenderRequest } from '$lib/types/api';
+	import type { CreateSenderRequest, SenderListItem } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open?: boolean;
-		onCreated?: () => void;
+		onCreated?: (sender: SenderListItem) => void;
 	}
 
 	const typeOptions = $derived([
@@ -75,10 +75,10 @@
 							contacts
 						};
 
-						await createSender(payload);
+						const response = await createSender(payload);
 						clearTransientState();
 						open = false;
-						onCreated?.();
+						onCreated?.(response.data);
 					} catch (error) {
 						errorMessage = error instanceof Error ? error.message : m.failed_create_sender();
 					}

@@ -8,10 +8,13 @@
 		Clock,
 		FileText,
 		Loader2,
+		Plus,
 		Save,
 		User
 	} from 'lucide-svelte';
+	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
@@ -76,6 +79,7 @@
 	let errorMessage = $state('');
 	let createdIntakeId = $state<string | null>(null);
 	let senderName = $state('');
+	let showCreateSender = $state(false);
 	let goals = $state<IntakeGoalTopic[]>([]);
 	let goalForm = $state<GoalFormHandle>();
 	let createIntent = $state<CreateIntent | null>(null);
@@ -115,6 +119,7 @@
 		errorMessage = '';
 		createdIntakeId = null;
 		senderName = '';
+		showCreateSender = false;
 		goals = [];
 		createIntent = null;
 		createRequested = false;
@@ -221,6 +226,11 @@
 	function finishLater() {
 		if (isMutating || !createdIntakeId) return;
 		open = false;
+	}
+
+	function handleSenderCreated(sender: SenderListItem) {
+		$form.sender_id = sender.id;
+		senderName = sender.name;
 	}
 
 	const careTypeOptions: { value: IntakeCareType; label: string }[] = [
@@ -418,18 +428,31 @@
 								placeholder={m.select_participants_placeholder()}
 							/>
 						</div>
-						<SearchSelect
-							label={m.referrer_sender()}
-							bind:value={$form.sender_id}
-							bind:displayValue={senderName}
-							error={$errors.sender_id?.[0]}
-							loadOptions={async (query) =>
-								(await listSenders({ search: query, pageSize: 50 })).data.results}
-							labelFn={(sender: SenderListItem) => sender.name}
-							valueFn={(sender: SenderListItem) => sender.id}
-							item={senderItem}
-							placeholder={m.select_sender_placeholder()}
-						/>
+						<div class="space-y-2">
+							<SearchSelect
+								label={m.referrer_sender()}
+								bind:value={$form.sender_id}
+								bind:displayValue={senderName}
+								error={$errors.sender_id?.[0]}
+								loadOptions={async (query) =>
+									(await listSenders({ search: query, pageSize: 50 })).data.results}
+								labelFn={(sender: SenderListItem) => sender.name}
+								valueFn={(sender: SenderListItem) => sender.id}
+								item={senderItem}
+								placeholder={m.select_sender_placeholder()}
+							/>
+							<PermissionGuard permission="SENDER.CREATE">
+								<button
+									type="button"
+									onclick={() => (showCreateSender = true)}
+									disabled={createRequested || isMutating}
+									class="inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm font-semibold text-brand transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									<Plus class="h-4 w-4" aria-hidden="true" />
+									{m.add_sender()}
+								</button>
+							</PermissionGuard>
+						</div>
 						<SearchSelect
 							label={m.assigned_location()}
 							bind:value={$form.assigned_location_id}
@@ -606,3 +629,5 @@
 		{/if}
 	</div>
 </Modal>
+
+<CreateSenderForm bind:open={showCreateSender} onCreated={handleSenderCreated} />
