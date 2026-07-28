@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -12,6 +13,7 @@
 	import { listRoles, type RoleListItem } from '$lib/api/roles';
 	import { listLocations } from '$lib/api/locations';
 	import { listDepartments } from '$lib/api/settings';
+	import { lookupAddressByPostcode } from '$lib/api/pdok';
 	import type { OrganizationLocation } from '$lib/types/api';
 	import type { DepartmentItem } from '$lib/types/api';
 	import { EmployeeSchema, type EmployeeSchemaInput } from '$lib/schemas/employee';
@@ -27,6 +29,10 @@
 	const toast = getToastState();
 
 	let errorMessage = $state('');
+	let lookupMessage = $state('');
+	let isLookupLoading = $state(false);
+	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	let lookupSequence = 0;
 	let rolesCache = $state.raw<RoleListItem[]>([]);
 	let departmentsCache = $state.raw<DepartmentItem[]>([]);
 	let roleDisplayValue = $state('');
@@ -68,7 +74,7 @@
 							bsn: form.data.bsn.trim(),
 							street: form.data.street.trim(),
 							house_number: form.data.house_number.trim(),
-							postal_code: form.data.postal_code.trim(),
+							postal_code: formatPostalCode(form.data.postal_code).trim(),
 							city: form.data.city.trim(),
 							work_email_address: form.data.work_email_address.trim(),
 							gender: form.data.gender,
@@ -76,7 +82,6 @@
 							role_id: form.data.role_id.trim(),
 							house_number_addition: trimToUndefined(form.data.house_number_addition),
 							employee_number: trimToUndefined(form.data.employee_number),
-							employment_number: trimToUndefined(form.data.employment_number),
 							location_id: trimToUndefined(form.data.location_id),
 							position: trimToUndefined(form.data.position),
 							department_id: trimToUndefined(form.data.department_id),
@@ -117,7 +122,24 @@
 		{ value: 'none', label: m.none() }
 	]);
 
+	const normalizePostalCode = (value: string) => value.replace(/\s+/g, '').toUpperCase().trim();
+
+	const formatPostalCode = (value: string) => {
+		const normalized = normalizePostalCode(value);
+		if (normalized.length <= 4) return normalized;
+		return `${normalized.slice(0, 4)} ${normalized.slice(4, 6)}`;
+	};
+
+	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
+
 	const clearTransientState = () => {
+		if (lookupTimer) {
+			clearTimeout(lookupTimer);
+			lookupTimer = null;
+		}
+		lookupSequence += 1;
+		lookupMessage = '';
+		isLookupLoading = false;
 		errorMessage = '';
 		roleDisplayValue = '';
 		locationDisplayValue = '';
@@ -125,9 +147,45 @@
 		reset();
 	};
 
+	onDestroy(() => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupSequence += 1;
+	});
+
 	const handleCancel = () => {
 		clearTransientState();
 		open = false;
+	};
+
+	const runLookup = async (postcodeValue: string, numberValue: string) => {
+		if (!isPostalCodeValid(postcodeValue)) return;
+		const sequence = ++lookupSequence;
+		isLookupLoading = true;
+		lookupMessage = '';
+		try {
+			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
+			if (sequence !== lookupSequence || !open) return;
+			if (!result) {
+				lookupMessage = m.address_not_found_manual();
+				return;
+			}
+			$form.street = result.street;
+			$form.city = result.city;
+		} catch (error) {
+			if (sequence !== lookupSequence || !open) return;
+			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
+		} finally {
+			if (sequence === lookupSequence) isLookupLoading = false;
+		}
+	};
+
+	const scheduleLookup = (postcodeValue: string, numberValue: string) => {
+		lookupMessage = '';
+		if (!postcodeValue.trim() || !numberValue.trim()) return;
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = setTimeout(() => {
+			void runLookup(postcodeValue, numberValue);
+		}, 400);
 	};
 
 	const loadRoles = async (query: string) => {
@@ -328,6 +386,19 @@
 					error={formatFormError($errors.postal_code)}
 					required
 					autocomplete="postal-code"
+					oninput={() => {
+						if ($form.postal_code && $form.house_number) {
+							scheduleLookup($form.postal_code, $form.house_number);
+						}
+					}}
+					onblur={() => {
+						if ($form.postal_code) {
+							$form.postal_code = formatPostalCode($form.postal_code);
+							if ($form.house_number) {
+								scheduleLookup($form.postal_code, $form.house_number);
+							}
+						}
+					}}
 				/>
 				<Input
 					id="create-employee-house-number"
@@ -336,6 +407,11 @@
 					bind:value={$form.house_number}
 					error={formatFormError($errors.house_number)}
 					required
+					oninput={() => {
+						if ($form.postal_code && $form.house_number) {
+							scheduleLookup($form.postal_code, $form.house_number);
+						}
+					}}
 				/>
 				<Input
 					id="create-employee-house-number-addition"
@@ -365,6 +441,16 @@
 					autocomplete="address-level2"
 				/>
 			</div>
+			{#if isLookupLoading}
+				<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
+			{/if}
+			{#if lookupMessage}
+				<div
+					class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+				>
+					{lookupMessage}
+				</div>
+			{/if}
 		</section>
 
 		<!-- Section: Employment & Role -->
@@ -407,13 +493,6 @@
 					placeholder={m.placeholder_employee_number()}
 					bind:value={$form.employee_number}
 					error={formatFormError($errors.employee_number)}
-				/>
-				<Input
-					id="create-employee-employment-number"
-					label={m.employment_number()}
-					placeholder={m.placeholder_employment_number()}
-					bind:value={$form.employment_number}
-					error={formatFormError($errors.employment_number)}
 				/>
 				<Input
 					id="create-employee-position"

@@ -46,7 +46,6 @@
 				department_id: '',
 				manager_employee_id: '',
 				employee_number: '',
-				employment_number: '',
 				private_email_address: '',
 				private_phone_number: '',
 				work_phone_number: '',
@@ -74,7 +73,6 @@
 						department_id: trimToUndefined(form.data.department_id),
 						manager_employee_id: trimToUndefined(form.data.manager_employee_id),
 						employee_number: trimToUndefined(form.data.employee_number),
-						employment_number: trimToUndefined(form.data.employment_number),
 						private_email_address: trimToUndefined(form.data.private_email_address),
 						private_phone_number: trimToUndefined(form.data.private_phone_number),
 						work_phone_number: trimToUndefined(form.data.work_phone_number),
@@ -112,7 +110,6 @@
 				department_id: employee.department_id ?? '',
 				manager_employee_id: employee.manager_employee_id ?? '',
 				employee_number: employee.employee_number ?? '',
-				employment_number: employee.employment_number ?? '',
 				private_email_address: employee.private_email_address ?? '',
 				private_phone_number: employee.private_phone_number ?? '',
 				work_phone_number: employee.work_phone_number ?? '',
@@ -213,7 +210,7 @@
 				<Input label={m.position()} bind:value={$form.position} /><Input
 					label={m.employee_number()}
 					bind:value={$form.employee_number}
-				/><Input label={m.employment_number()} bind:value={$form.employment_number} /><Select
+				/><Select
 					label={m.department()}
 					options={departmentOptions}
 					bind:value={$form.department_id}

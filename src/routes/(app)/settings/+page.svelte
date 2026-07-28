@@ -589,11 +589,6 @@
 								>
 							</div>
 							<div class="flex flex-col gap-1">
-								<span class={labelClass}>{m.employment_number()}</span><span class={valueClass}
-									>{profile?.employment_number ?? '—'}</span
-								>
-							</div>
-							<div class="flex flex-col gap-1">
 								<span class={labelClass}>{m.assigned_location()}</span>
 								<div class="flex items-center gap-2">
 									<MapPin class="h-3.5 w-3.5 text-brand" /><span class={valueClass}

@@ -40,7 +40,6 @@ export interface EmployeeDetail {
 	city: string;
 	position: string | null;
 	employee_number: string | null;
-	employment_number: string | null;
 	private_email_address: string | null;
 	work_email_address: string | null;
 	private_phone_number: string | null;
@@ -74,7 +73,6 @@ export type EmployeeGender = 'male' | 'female' | 'not_specified';
 
 export interface CreateEmployeeRequest {
 	employee_number?: string;
-	employment_number?: string;
 	location_id?: string;
 	department_id?: string;
 	first_name: string;
@@ -109,7 +107,6 @@ export interface CreateEmployeeResponse {
 	position: string | null;
 	department: string | null;
 	employee_number: string | null;
-	employment_number: string | null;
 	private_email_address: string | null;
 	email: string;
 	private_phone_number: string | null;
@@ -131,7 +128,6 @@ export interface UpdateEmployeeRequest {
 	department_id?: string;
 	manager_employee_id?: string;
 	employee_number?: string;
-	employment_number?: string;
 	private_email_address?: string;
 	private_phone_number?: string;
 	work_phone_number?: string;

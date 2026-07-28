@@ -69,7 +69,6 @@ export const EmployeeSchema = v.object({
 
 	// Employment
 	employee_number: v.optional(v.string()),
-	employment_number: v.optional(v.string()),
 	role_id: v.pipe(
 		v.string(),
 		v.minLength(1, () => m.required_field())
@@ -114,7 +113,6 @@ export const UpdateEmployeeSchema = v.object({
 	department_id: v.optional(v.string()),
 	manager_employee_id: v.optional(v.string()),
 	employee_number: v.optional(v.string()),
-	employment_number: v.optional(v.string()),
 	private_email_address: v.optional(v.pipe(v.string(), v.email('Invalid private email address'))),
 	private_phone_number: v.optional(v.string()),
 	work_phone_number: v.optional(v.string()),

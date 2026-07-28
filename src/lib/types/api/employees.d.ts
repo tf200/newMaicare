@@ -50,7 +50,6 @@ export interface EmployeeProfileDetailsResponse {
 	position: string | null;
 	department: string | null;
 	employee_number: string | null;
-	employment_number: string | null;
 	private_email_address: string | null;
 	work_email_address: string | null;
 	private_phone_number: string | null;

@@ -144,8 +144,7 @@
 					{ label: 'Position', value: employee.position ?? 'Not set' },
 					{ label: 'Role', value: employee.role?.name ?? 'Not assigned' },
 					{ label: 'Manager', value: managerName || 'Not assigned' },
-					{ label: 'Employee number', value: employee.employee_number ?? 'Not set' },
-					{ label: 'Employment number', value: employee.employment_number ?? 'Not set' }
+					{ label: 'Employee number', value: employee.employee_number ?? 'Not set' }
 				]
 			},
 			{
