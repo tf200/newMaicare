@@ -50,7 +50,7 @@ export const createIntakeSchema = (messages: IntakeValidationMessages) =>
 			'possible_palcement_date',
 			'other'
 		]),
-		intake_conclusion_notes: requiredString(messages.required),
+		intake_conclusion_notes: v.pipe(v.string(), v.trim()),
 		signature: requiredString(messages.required)
 	});
 

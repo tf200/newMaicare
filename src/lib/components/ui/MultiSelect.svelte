@@ -34,7 +34,7 @@
 	}: Props = $props();
 
 	let isOpen = $state(false);
-	let triggerEl = $state<HTMLButtonElement>();
+	let anchorEl = $state<HTMLDivElement>();
 	let dropdownEl = $state<HTMLDivElement>();
 	let listboxId = $derived(`${id}-listbox`);
 	let errorId = $derived(`${id}-error`);
@@ -67,10 +67,10 @@
 		};
 	}
 
-	function captureTrigger(node: HTMLButtonElement) {
-		triggerEl = node;
+	function captureAnchor(node: HTMLDivElement) {
+		anchorEl = node;
 		return () => {
-			if (triggerEl === node) triggerEl = undefined;
+			if (anchorEl === node) anchorEl = undefined;
 		};
 	}
 
@@ -87,14 +87,13 @@
 
 	<div class="relative">
 		<div
+			{@attach captureAnchor}
 			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface text-text transition-[border-color,box-shadow,background-color] duration-150 focus-within:ring-2 focus-within:ring-brand/20 {sizeClass} {error
 				? 'border-error'
 				: ''} {disabled ? 'opacity-60' : ''}"
 		>
-			{#if value.length === 0}
-				<span class="min-w-0 flex-1 truncate text-text-subtle">{resolvedPlaceholder}</span>
-			{:else}
-				<div class="flex min-w-0 flex-1 flex-wrap gap-2" aria-label={label}>
+			{#if value.length > 0}
+				<div class="flex min-w-0 flex-wrap gap-2" aria-label={label}>
 					{#each selectedLabels as item (item.value)}
 						<span
 							class="inline-flex min-w-0 items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-medium text-text shadow-sm ring-1 ring-border"
@@ -116,7 +115,6 @@
 			{/if}
 			<button
 				{id}
-				{@attach captureTrigger}
 				type="button"
 				onclick={toggle}
 				{disabled}
@@ -126,18 +124,23 @@
 				aria-expanded={isOpen}
 				aria-invalid={error ? true : undefined}
 				aria-describedby={error ? errorId : undefined}
-				class="ml-auto shrink-0 rounded-lg p-1 text-text-subtle outline-hidden hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/20"
+				class="inline-flex min-w-8 flex-1 items-center rounded-lg p-1 text-text-subtle outline-hidden hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/20 {value.length ===
+				0
+					? 'justify-between text-left'
+					: 'justify-end self-stretch'}"
 			>
-				<span class="sr-only">{resolvedPlaceholder}</span>
+				<span class={value.length === 0 ? 'min-w-0 truncate' : 'sr-only'}>
+					{resolvedPlaceholder}
+				</span>
 				<ChevronsUpDown class="h-4 w-4" />
 			</button>
 		</div>
 
-		{#if isOpen && triggerEl}
+		{#if isOpen && anchorEl}
 			<div
 				{@attach captureDropdown}
 				use:portal
-				use:floating={{ anchor: triggerEl, matchWidth: true }}
+				use:floating={{ anchor: anchorEl, matchWidth: true }}
 				id={listboxId}
 				role="listbox"
 				aria-multiselectable="true"

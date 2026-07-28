@@ -43,7 +43,9 @@
 			bind:value
 			aria-invalid={error ? true : ariaInvalid}
 			aria-describedby={describedBy}
-			class="min-h-[100px] w-full rounded-xl border border-border bg-surface text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 focus:ring-brand/20 {sizeClass} {className}"
+			class="min-h-[100px] w-full rounded-xl border bg-surface text-text outline-hidden transition-all placeholder:text-text-subtle focus:ring-2 {error
+				? 'border-error focus:border-error focus:ring-error/20'
+				: 'border-border focus:border-brand focus:ring-brand/20'} {sizeClass} {className}"
 		></textarea>
 	</div>
 	{#if error}

@@ -46,7 +46,9 @@
 			bind:value
 			aria-invalid={error ? true : ariaInvalid}
 			aria-describedby={describedBy}
-			class="w-full rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow] duration-200 placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 {sizeClass} {className}"
+			class="w-full rounded-xl border bg-surface text-text outline-hidden transition-[border-color,box-shadow] duration-200 placeholder:text-text-subtle focus:ring-2 {error
+				? 'border-error focus:border-error focus:ring-error/20'
+				: 'border-border focus:border-brand focus:ring-brand/20'} {sizeClass} {className}"
 		/>
 		{#if children}
 			{@render children()}

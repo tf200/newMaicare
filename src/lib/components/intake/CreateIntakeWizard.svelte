@@ -99,14 +99,30 @@
 			validators: valibotClient(schema),
 			SPA: true,
 			dataType: 'json',
+			onSubmit: ({ submitter, cancel }) => {
+				const intent = submitter?.getAttribute('data-create-intent');
+				if (
+					(intent !== 'goals' && intent !== 'finish') ||
+					createRequested ||
+					isMutating ||
+					createdIntakeId
+				) {
+					cancel();
+					return;
+				}
+
+				createIntent = intent;
+				createRequested = true;
+				errorMessage = '';
+			},
 			onUpdate: async ({ form: result }) => {
-				if (!createRequested || createdIntakeId) return;
 				if (!result.valid) {
 					createRequested = false;
 					createIntent = null;
 					errorMessage = m.intake_fix_form_errors();
 					return;
 				}
+				if (!createRequested || createdIntakeId || !createIntent) return;
 				await createIntake(result.data);
 			}
 		}
@@ -135,13 +151,6 @@
 		}
 		previousOpen = open;
 	});
-
-	function requestCreate(intent: CreateIntent) {
-		if (createRequested || isMutating || createdIntakeId) return;
-		createIntent = intent;
-		createRequested = true;
-		errorMessage = '';
-	}
 
 	async function createIntake(data: IntakeSchemaInput) {
 		if (phase === 'creating' || createdIntakeId || !createIntent) return;
@@ -328,7 +337,7 @@
 		{/if}
 
 		{#if !showGoals}
-			<form method="POST" use:enhance class="grid gap-6 lg:grid-cols-2">
+			<form method="POST" novalidate use:enhance class="grid gap-6 lg:grid-cols-2">
 				<section class="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-7">
 					<div class="mb-6 flex items-center gap-3 border-b border-border pb-4">
 						<div class="rounded-xl bg-brand/10 p-2.5 text-brand">
@@ -525,7 +534,7 @@
 						<div class="md:col-span-2">
 							<TextArea
 								id="conclusion-notes"
-								label={m.additional_notes()}
+								label={`${m.additional_notes()} (${m.optional()})`}
 								bind:value={$form.intake_conclusion_notes}
 								error={$errors.intake_conclusion_notes?.[0]}
 								placeholder={m.additional_notes_placeholder()}
@@ -546,7 +555,7 @@
 					<div class="grid gap-3 md:grid-cols-2">
 						<button
 							type="submit"
-							onclick={() => requestCreate('goals')}
+							data-create-intent="goals"
 							disabled={createRequested || isMutating}
 							class="flex min-h-28 items-center gap-4 rounded-2xl border border-brand/30 bg-surface p-5 text-left hover:border-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:opacity-50"
 						>
@@ -561,7 +570,7 @@
 						</button>
 						<button
 							type="submit"
-							onclick={() => requestCreate('finish')}
+							data-create-intent="finish"
 							disabled={createRequested || isMutating}
 							class="flex min-h-28 items-center gap-4 rounded-2xl border border-border bg-surface p-5 text-left hover:border-text-subtle focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:opacity-50"
 						>
