@@ -6,7 +6,8 @@
 		Eye,
 		ClipboardCheck,
 		CheckCircle,
-		Clock
+		Clock,
+		Trash2
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
@@ -24,6 +25,13 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { intakes } from '$lib/api/intakes';
+	import { getAuthState } from '$lib/state/auth.svelte';
+	import { getToastState } from '$lib/state/toast.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	type IntakeRow = IntakeRowData & {
 		hasClient: boolean;
@@ -48,6 +56,36 @@
 	const pageSize = $derived.by(() => initial.pageSize);
 
 	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
+	let searchTerm = $state(initial.filters.search ?? '');
+
+	const auth = getAuthState();
+	const toast = getToastState();
+
+	let showDeleteModal = $state(false);
+	let deletingRow = $state<IntakeRow | null>(null);
+	let isDeleting = $state(false);
+	let deleteError = $state('');
+
+	const handleDeleteConfirm = async () => {
+		if (!deletingRow) return;
+		isDeleting = true;
+		deleteError = '';
+		try {
+			const res = await intakes.delete(deletingRow.id);
+			if (!res.success) {
+				throw new Error(res.message || 'Failed to delete intake form.');
+			}
+			toast.success('Intake form deleted successfully.');
+			showDeleteModal = false;
+			deletingRow = null;
+			invalidate('app:intakes:list');
+			invalidate('app:intakes:stats');
+		} catch (err) {
+			deleteError = err instanceof Error ? err.message : 'Failed to delete intake form.';
+		} finally {
+			isDeleting = false;
+		}
+	};
 
 	const defaultFilters: IntakeFilters = {
 		search: '',
@@ -215,8 +253,9 @@
 			<input
 				type="text"
 				placeholder={m.search_intakes_placeholder()}
-				value={appliedSearch}
+				value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
+				oninput={(e) => (searchTerm = e.currentTarget.value)}
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
 						applySearch((event.currentTarget as HTMLInputElement).value);
@@ -320,6 +359,15 @@
 {/snippet}
 
 {#snippet actionsCell(row: IntakeRow)}
+	{@const canDelete = auth.hasPermission(PERMISSIONS.INTAKE_FORM.DELETE)}
+	{@const hasClient = row.hasClient}
+	{@const isDisabled = !canDelete || hasClient}
+	{@const deleteTooltip = !canDelete
+		? 'You do not have permission to delete intake forms'
+		: hasClient
+			? 'Cannot delete an intake form that has been promoted to a client'
+			: 'Delete intake form'}
+
 	<div class="flex justify-end gap-1">
 		<button
 			type="button"
@@ -330,6 +378,27 @@
 		>
 			<Eye class="h-4 w-4" />
 		</button>
+
+		<Tooltip content={deleteTooltip}>
+			<button
+				type="button"
+				data-table-stop-row-click
+				disabled={isDisabled}
+				onclick={() => {
+					if (!isDisabled) {
+						deletingRow = row;
+						deleteError = '';
+						showDeleteModal = true;
+					}
+				}}
+				class="flex h-8 w-8 items-center justify-center rounded-lg transition {isDisabled
+					? 'cursor-not-allowed opacity-40 text-text-subtle'
+					: 'text-text-subtle hover:bg-error/10 hover:text-error'}"
+				aria-label={deleteTooltip}
+			>
+				<Trash2 class="h-4 w-4" />
+			</button>
+		</Tooltip>
 	</div>
 {/snippet}
 
@@ -476,3 +545,47 @@
 		/>
 	{/await}
 </section>
+
+<!-- Delete Confirmation Modal -->
+<Modal
+	open={showDeleteModal}
+	onClose={() => {
+		if (!isDeleting) {
+			showDeleteModal = false;
+			deletingRow = null;
+		}
+	}}
+	title="Delete Intake Form"
+>
+	<div class="space-y-4">
+		<p class="text-sm font-medium text-text-muted">
+			Are you sure you want to delete the intake form for
+			<strong class="text-text">{deletingRow?.clientFirstName} {deletingRow?.clientLastName}</strong>?
+			This action cannot be undone.
+		</p>
+
+		{#if deleteError}
+			<InlineErrorBanner message={deleteError} />
+		{/if}
+
+		<div class="flex justify-end gap-3 pt-2">
+			<Button
+				variant="ghost"
+				disabled={isDeleting}
+				onclick={() => {
+					showDeleteModal = false;
+					deletingRow = null;
+				}}
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				isLoading={isDeleting}
+				onclick={handleDeleteConfirm}
+			>
+				Delete
+			</Button>
+		</div>
+	</div>
+</Modal>

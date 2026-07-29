@@ -77,5 +77,9 @@ export const intakes = {
 
 	promote: (id: string) => {
 		return api.post<ApiEnvelope<PromoteIntakeResponse>>(`/intake_forms/${id}/promote`, {});
+	},
+
+	delete: (id: string, options: { fetchFn?: typeof fetch } = {}) => {
+		return api.delete<ApiEnvelope<null>>(`/intake_forms/${id}`, options);
 	}
 };
