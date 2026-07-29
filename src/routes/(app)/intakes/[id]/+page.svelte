@@ -29,6 +29,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import { intakes } from '$lib/api/intakes';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { PageData } from './$types';
 	import type {
 		CreateIntakeFormGoalsRequest,
@@ -258,14 +260,16 @@
 			<div></div>
 
 			{#if canEditIntake}
-				<button
-					type="button"
-					onclick={() => (isEditModalOpen = true)}
-					class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-strong hover:shadow-lg hover:shadow-brand/30 focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:outline-none"
-				>
-					<PenLine class="h-4 w-4" />
-					{m.edit_intake_form()}
-				</button>
+				<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.UPDATE}>
+					<button
+						type="button"
+						onclick={() => (isEditModalOpen = true)}
+						class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-strong hover:shadow-lg hover:shadow-brand/30 focus-visible:ring-2 focus-visible:ring-brand/30 focus-visible:outline-none"
+					>
+						<PenLine class="h-4 w-4" />
+						{m.edit_intake_form()}
+					</button>
+				</PermissionGuard>
 			{/if}
 		</div>
 
@@ -380,14 +384,16 @@
 									<span>{m.goals_locked()}</span>
 								</div>
 							{:else}
-								<Button
-									variant="secondary"
-									onclick={() => (isGoalModalOpen = true)}
-									class="h-9 px-3 text-xs"
-								>
-									<span class="h-1.5 w-1.5 rounded-full bg-white/40"></span>
-									{intake.intake_goals_assigned.length > 0 ? m.edit_goals() : m.add_goals()}
-								</Button>
+								<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
+									<Button
+										variant="secondary"
+										onclick={() => (isGoalModalOpen = true)}
+										class="h-9 px-3 text-xs"
+									>
+										<span class="h-1.5 w-1.5 rounded-full bg-white/40"></span>
+										{intake.intake_goals_assigned.length > 0 ? m.edit_goals() : m.add_goals()}
+									</Button>
+								</PermissionGuard>
 							{/if}
 						</div>
 					</div>
@@ -478,14 +484,16 @@
 										{m.goals_locked()}
 									</div>
 								{:else}
-									<Button
-										variant="secondary"
-										onclick={() => (isGoalModalOpen = true)}
-										class="mt-6 px-6 py-3"
-									>
-										<Plus class="h-5 w-5" />
-										{m.start_assessment()}
-									</Button>
+									<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
+										<Button
+											variant="secondary"
+											onclick={() => (isGoalModalOpen = true)}
+											class="mt-6 px-6 py-3"
+										>
+											<Plus class="h-5 w-5" />
+											{m.start_assessment()}
+										</Button>
+									</PermissionGuard>
 								{/if}
 							</div>
 						{/if}
@@ -736,13 +744,15 @@
 {/if}
 
 {#if intake}
-	<GoalAssessmentModal
-		bind:open={isGoalModalOpen}
-		intakeId={intake.id}
-		initialGoals={intake.intake_goals_assigned}
-		onSave={handleSaveGoals}
-		onCancel={() => (isGoalModalOpen = false)}
-	/>
+	<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
+		<GoalAssessmentModal
+			bind:open={isGoalModalOpen}
+			intakeId={intake.id}
+			initialGoals={intake.intake_goals_assigned}
+			onSave={handleSaveGoals}
+			onCancel={() => (isGoalModalOpen = false)}
+		/>
+	</PermissionGuard>
 
 	<IntakeConclusionModal
 		bind:open={isConclusionModalOpen}
@@ -750,5 +760,7 @@
 		onCancel={() => (isConclusionModalOpen = false)}
 	/>
 
-	<EditIntakeModal bind:open={isEditModalOpen} {intake} onSave={handleSaveIntake} />
+	<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.UPDATE}>
+		<EditIntakeModal bind:open={isEditModalOpen} {intake} onSave={handleSaveIntake} />
+	</PermissionGuard>
 {/if}
