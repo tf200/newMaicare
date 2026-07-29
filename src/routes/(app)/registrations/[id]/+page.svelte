@@ -517,15 +517,17 @@
 							</button>
 						</PermissionGuard>
 					{:else if registration.intake_form_id}
-						<a
-							href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
-						>
-							<ClipboardCheck class="h-4 w-4" />
-							{m.view_intake()}
-						</a>
+						<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.VIEW}>
+							<a
+								href={resolve('/(app)/intakes/[id]', { id: registration.intake_form_id })}
+								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
+							>
+								<ClipboardCheck class="h-4 w-4" />
+								{m.view_intake()}
+							</a>
+						</PermissionGuard>
 					{:else}
-						<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
+						<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
 							<button
 								onclick={() => (showIntakeWizard = true)}
 								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
@@ -617,11 +619,13 @@
 				onProcessed={refreshRegistrationResources}
 			/>
 
-			<CreateIntakeWizard
-				bind:open={showIntakeWizard}
-				{registration}
-				onCreated={refreshAfterIntakeCreated}
-			/>
+			<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
+				<CreateIntakeWizard
+					bind:open={showIntakeWizard}
+					{registration}
+					onCreated={refreshAfterIntakeCreated}
+				/>
+			</PermissionGuard>
 
 			{#key registration.id}
 				<RegistrationEditForm

@@ -15,6 +15,7 @@
 	import CreateSenderForm from '$lib/components/forms/CreateSenderForm.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
@@ -455,7 +456,7 @@
 								item={senderItem}
 								placeholder={m.select_sender_placeholder()}
 							/>
-							<PermissionGuard permission="SENDER.CREATE">
+							<PermissionGuard permission={PERMISSIONS.SENDER.CREATE}>
 								<button
 									type="button"
 									onclick={() => (showCreateSender = true)}
