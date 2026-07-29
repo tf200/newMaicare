@@ -7,6 +7,9 @@ import type {
 	ListIntakeFormsResponse
 } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import { error } from '@sveltejs/kit';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
 
 export interface IntakeRow {
 	id: string;
@@ -82,6 +85,13 @@ const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
 };
 
 export const load: PageLoad = ({ depends, url }) => {
+	const auth = getAuthState();
+	if (
+		!auth.hasAnyPermission([PERMISSIONS.INTAKE_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])
+	) {
+		error(403, 'You do not have permission to view intakes.');
+	}
+
 	depends('app:intakes:list');
 	depends('app:intakes:stats');
 

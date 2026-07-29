@@ -70,7 +70,7 @@
 				{
 					label: m.intake(),
 					href: '/intakes',
-					permission: 'CARE_COORDINATION.VIEW'
+					permission: PERMISSIONS.INTAKE_FORM.VIEW
 				},
 				{
 					label: m.waiting_for_selection(),
