@@ -30,9 +30,7 @@ export interface User {
 
 export interface Permission {
 	id: string;
-	method: string;
 	name: string;
-	resource: string;
 }
 
 export interface EmployeeProfile {

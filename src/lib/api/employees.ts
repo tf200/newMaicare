@@ -1,6 +1,10 @@
 import { api } from '$lib/api/client';
 import type { ApiEnvelope, PaginatedResponse } from '$lib/types/api';
-import type { EmployeeProfileDetailsResponse, EmployeeScheduleTimelineDay } from '$lib/types/api';
+import type {
+	EmployeeProfileDetailsResponse,
+	EmployeeScheduleTimelineDay,
+	ListUserRolesAndPermissionsApiResponse
+} from '$lib/types/api';
 
 export type EmployeeContractType = 'loondienst' | 'ZZP' | 'none';
 
@@ -196,4 +200,10 @@ export function getMyScheduleTimeline(params: GetMyScheduleTimelineParams) {
 
 export function resetEmployeePassword(id: string, payload: { new_password: string }) {
 	return api.put<ApiEnvelope<{ message: string }>>(`/employees/${id}/password`, payload);
+}
+
+export function getEmployeeRolesPermissions(id: string) {
+	return api.get<ApiEnvelope<ListUserRolesAndPermissionsApiResponse>>(
+		`/employees/${id}/roles_permissions`
+	);
 }

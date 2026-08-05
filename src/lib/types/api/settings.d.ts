@@ -83,12 +83,13 @@ export interface CreateRoleResponse {
 	role_id: string;
 }
 
-export interface ListAllRolePermissionsApiResponse {
+export interface RolePermission {
 	permission_id: string;
 	permission_name: string;
-	permission_resource: string;
 	role_id: string;
 }
+
+export type ListAllRolePermissionsApiResponse = RolePermission;
 
 export interface AddPermissionsToRoleRequest {
 	permission_ids: string[];
@@ -99,38 +100,33 @@ export interface AddPermissionsToRoleResponse {
 	role_id: string;
 }
 
+export interface SystemPermission {
+	description: string | null;
+	display_name: string;
+	permission_id: string;
+	permission_name: string;
+}
+
+export type ListAllPermissionsApiResponse = SystemPermission;
+
+export interface PermissionSectionResponse {
+	permissions: SystemPermission[];
+	section_key: string;
+	section_label: string;
+}
+
 export interface PermissionGroupResponse {
 	group_key: string;
 	group_label: string;
 	sections: PermissionSectionResponse[];
 }
 
-export interface PermissionSectionResponse {
-	permissions: ListAllPermissionsApiResponse[];
-	section_key: string;
-	section_label: string;
-}
-
-export interface ListAllPermissionsApiResponse {
-	description: string;
-	display_name: string;
-	permission_id: string;
-	permission_name: string;
-	permission_resource: string;
-	sort_order: number;
-}
-
 export interface PermissionInfo {
 	id: string;
 	name: string;
-	resource: string;
 }
 
-export interface PermissionOverrideInfo {
-	id: string;
-	name: string;
-	resource: string;
-}
+export type PermissionOverrideInfo = PermissionInfo;
 
 export interface RoleInfo {
 	id: string;
@@ -140,8 +136,8 @@ export interface RoleInfo {
 export interface ListUserRolesAndPermissionsApiResponse {
 	effective_permissions: PermissionInfo[];
 	inherited_permissions: PermissionInfo[];
-	override_allows: PermissionOverrideInfo[];
-	override_denies: PermissionOverrideInfo[];
+	override_allows: PermissionInfo[];
+	override_denies: PermissionInfo[];
 	role: RoleInfo;
 }
 

@@ -80,12 +80,10 @@ export function _mapPermissionGroups(groups: PermissionGroupResponse[]): Permiss
 	return groups.map((group) => {
 		const permissions = group.sections
 			.flatMap((section) => section.permissions)
-			.sort((a, b) => a.sort_order - b.sort_order)
 			.map((permission) => ({
 				id: permission.permission_id,
 				label: permission.display_name,
-				description: permission.description,
-				resource: permission.permission_resource
+				description: permission.description ?? ''
 			}));
 
 		return {
