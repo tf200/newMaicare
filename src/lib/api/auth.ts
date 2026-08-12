@@ -28,7 +28,7 @@ export function requestEnable2fa(payload: Enable2faRequest) {
 }
 
 export function requestEmployeeProfile() {
-	return api.get<ApiEnvelope<EmployeeProfile>>('/employees/profile/me');
+	return api.get<ApiEnvelope<EmployeeProfile>>('/employees/profile');
 }
 
 export function requestLogout() {
