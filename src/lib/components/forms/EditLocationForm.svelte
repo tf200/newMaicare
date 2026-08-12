@@ -34,6 +34,7 @@
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	let lookupRequestId = 0;
 	const formId = 'edit-location-form';
 	const toOptionalInt = (value: string | number | undefined): number | undefined => {
 		if (typeof value === 'number') {
@@ -76,6 +77,8 @@
 						};
 						await updateLocation(location.id, payload);
 						toast.success(m.location_updated_success());
+						clearTransientState();
+						reset();
 						open = false;
 						onUpdated?.();
 					} catch (error) {
@@ -111,17 +114,33 @@
 	};
 
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
+	const clearTransientState = () => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupRequestId += 1;
+		submitErrorMessage = '';
+		lookupMessage = '';
+		isLookupLoading = false;
+	};
 
 	const handleCancel = () => {
+		clearTransientState();
+		reset();
 		open = false;
+	};
+	const handleClose = () => {
+		clearTransientState();
+		reset();
 	};
 
 	const runLookup = async (postcodeValue: string, numberValue: string) => {
 		if (!isPostalCodeValid(postcodeValue)) return;
+		const requestId = ++lookupRequestId;
 		isLookupLoading = true;
 		lookupMessage = '';
 		try {
 			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
+			if (requestId !== lookupRequestId || !open) return;
 			if (!result || !location) {
 				lookupMessage = m.address_not_found_manual();
 				return;
@@ -129,9 +148,10 @@
 			$form.street = result.street;
 			$form.city = result.city;
 		} catch (error) {
+			if (requestId !== lookupRequestId || !open) return;
 			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
 		} finally {
-			isLookupLoading = false;
+			if (requestId === lookupRequestId) isLookupLoading = false;
 		}
 	};
 
@@ -140,12 +160,18 @@
 		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		if (lookupTimer) clearTimeout(lookupTimer);
 		lookupTimer = setTimeout(() => {
+			lookupTimer = null;
 			void runLookup(postcodeValue, numberValue);
 		}, 400);
 	};
 </script>
 
-<Modal bind:open title={m.edit_location()} description={m.edit_location_description()}>
+<Modal
+	bind:open
+	title={m.edit_location()}
+	description={m.edit_location_description()}
+	onClose={handleClose}
+>
 	<form id={formId} use:enhance class="space-y-5">
 		{#if isFetching}
 			<div class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted">

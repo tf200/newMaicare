@@ -3,7 +3,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { createLocationShift, updateLocationShift } from '$lib/api/organizations';
-	import type { OrganizationLocation } from '$lib/types/api';
+	import type { LocationShift, OrganizationLocation } from '$lib/types/api';
 	import { Plus, Trash2, Clock } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
@@ -25,12 +25,9 @@
 	}: Props = $props();
 	const toast = getToastState();
 
-	type ShiftModel = {
+	type ShiftModel = Omit<LocationShift, 'id' | 'location_id'> & {
 		id?: string;
 		location_id?: string;
-		shift: string;
-		start_time: string;
-		end_time: string;
 	};
 
 	type SavedShift = ShiftModel & { _localId: string };
@@ -109,6 +106,10 @@
 
 		if (!draft.data.shift.trim() || !draft.data.start_time || !draft.data.end_time) {
 			draft.error = m.fill_all_fields();
+			return;
+		}
+		if (draft.data.start_time >= draft.data.end_time) {
+			draft.error = m.shift_end_after_start();
 			return;
 		}
 
@@ -242,14 +243,17 @@
 											>
 												{m.edit()}
 											</button>
-											<button
-												type="button"
-												class="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-error hover:text-white hover:ring-error focus:ring-2 focus:ring-error/50 focus:outline-none"
-												onclick={() => removeShift(draft._localId)}
-												title={m.remove_shift()}
-											>
-												<Trash2 class="h-4 w-4" />
-											</button>
+											{#if !draft.data.id}
+												<button
+													type="button"
+													class="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-error hover:text-white hover:ring-error focus:ring-2 focus:ring-error/50 focus:outline-none"
+													onclick={() => removeShift(draft._localId)}
+													title={m.remove_shift()}
+													aria-label={m.remove_shift()}
+												>
+													<Trash2 class="h-4 w-4" aria-hidden="true" />
+												</button>
+											{/if}
 										</div>
 									</div>
 								{:else}

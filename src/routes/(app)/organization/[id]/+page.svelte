@@ -1,36 +1,26 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { SvelteURL, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { Building2, Pencil, Plus, Search, Users, Warehouse, Clock } from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import CreateLocationForm from '$lib/components/forms/CreateLocationForm.svelte';
 	import EditLocationForm from '$lib/components/forms/EditLocationForm.svelte';
 	import ManageShiftsForm from '$lib/components/forms/ManageShiftsForm.svelte';
 	import { getLocation } from '$lib/api/organizations';
 	import type { GetOrganizationResponse, OrganizationLocation } from '$lib/types/api';
-	import type {
-		OrganizationCountsLoadResult,
-		OrganizationDetailLoadResult,
-		OrganizationLocationsLoadResult
-	} from './+page';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import type { PageProps } from './$types';
 
-	let { data } = $props<{
-		data: {
-			initial: {
-				page: number;
-				pageSize: number;
-				filters: { name: string };
-			};
-			organizationData: Promise<OrganizationDetailLoadResult>;
-			countsData: Promise<OrganizationCountsLoadResult>;
-			locationsData: Promise<OrganizationLocationsLoadResult>;
-		};
-	}>();
+	let { data }: PageProps = $props();
 
 	const organizationDataPromise = $derived.by(() => data.organizationData);
 	const countsDataPromise = $derived.by(() => data.countsData);
@@ -42,8 +32,8 @@
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		breadcrumbs.items = [
-			{ label: m.breadcrumb_home(), href: '/dashboard' },
-			{ label: m.organizations(), href: '/organization' },
+			{ label: m.breadcrumb_home(), href: resolve('/(app)/dashboard') },
+			{ label: m.organizations(), href: resolve('/(app)/organization') },
 			{ label: m.breadcrumb_organization_detail() }
 		];
 		return () => {
@@ -57,28 +47,37 @@
 	let editLocation = $state<OrganizationLocation | null>(null);
 	let isEditLoading = $state(false);
 	let editLoadError = $state('');
+	let locationRequestController: AbortController | null = null;
 
 	const openEdit = async (id: string) => {
+		locationRequestController?.abort();
+		const controller = new AbortController();
+		locationRequestController = controller;
 		editLocation = null;
 		editLoadError = '';
 		showEditLocation = true;
 		isEditLoading = true;
 		try {
-			const response = await getLocation(id);
+			const response = await getLocation(id, { signal: controller.signal });
+			if (controller.signal.aborted) return;
 			editLocation = response.data;
-		} catch (error) {
-			editLoadError = error instanceof Error ? error.message : 'Failed to load location.';
+		} catch {
+			if (controller.signal.aborted) return;
+			editLoadError = m.failed_load_locations();
 		} finally {
-			isEditLoading = false;
+			if (locationRequestController === controller) {
+				isEditLoading = false;
+				locationRequestController = null;
+			}
 		}
 	};
 
-	onMount(() => {
+	afterNavigate(() => {
 		searchTerm = appliedSearch;
 	});
 
 	const buildQuery = (pageValue: number, nameValue: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 		if (nameValue) params.set('name', nameValue);
@@ -88,7 +87,14 @@
 	const updateQuery = (pageValue: number, nameValue: string) => {
 		const nextQuery = buildQuery(pageValue, nameValue);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		const organizationId = page.params.id;
+		if (!organizationId) return;
+		const target = new SvelteURL(page.url);
+		target.pathname = resolve('/(app)/organization/[id]', { id: organizationId });
+		target.search = nextQuery;
+		// The URL retains the active locale while the pathname is resolved from the typed route.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		goto(target, { replaceState: true, keepFocus: true, noScroll: true });
 	};
 
 	const applySearch = () => {
@@ -98,10 +104,30 @@
 
 	let showManageShifts = $state(false);
 	let manageShiftsLocation = $state<OrganizationLocation | null>(null);
+	let isManageShiftsLoading = $state(false);
+	let manageShiftsLoadError = $state('');
 
-	const openManageShifts = (location: OrganizationLocation) => {
-		manageShiftsLocation = location;
+	const openManageShifts = async (location: OrganizationLocation) => {
+		locationRequestController?.abort();
+		const controller = new AbortController();
+		locationRequestController = controller;
+		manageShiftsLocation = null;
+		manageShiftsLoadError = '';
 		showManageShifts = true;
+		isManageShiftsLoading = true;
+		try {
+			const response = await getLocation(location.id, { signal: controller.signal });
+			if (controller.signal.aborted) return;
+			manageShiftsLocation = response.data;
+		} catch {
+			if (controller.signal.aborted) return;
+			manageShiftsLoadError = m.failed_load_locations();
+		} finally {
+			if (locationRequestController === controller) {
+				isManageShiftsLoading = false;
+				locationRequestController = null;
+			}
+		}
 	};
 
 	const columns = $derived<DataTableColumn[]>([
@@ -113,14 +139,23 @@
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	]);
 
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 	const formatDate = (value: string) =>
-		new Date(value).toLocaleDateString('en-GB', {
+		new Date(value).toLocaleDateString(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
 		});
 
-	const formatNumber = (value: number) => new Intl.NumberFormat('en-GB').format(value);
+	const formatNumber = (value: number) => new Intl.NumberFormat(resolveLocale()).format(value);
+
+	const invalidateLocations = () => void invalidate('app:organization:locations');
+	const invalidateCountsAndLocations = () => {
+		void Promise.all([
+			invalidate('app:organization:detail-counts'),
+			invalidate('app:organization:locations')
+		]);
+	};
 
 	const formatOptional = (value: string | null, fallback = '—') =>
 		value && value.trim().length > 0 ? value : fallback;
@@ -137,15 +172,21 @@
 	};
 </script>
 
+<svelte:head>
+	<title>{m.breadcrumb_organization_detail()} | MaiCare</title>
+</svelte:head>
+
 {#snippet tableFilters()}
 	<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
 		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				aria-hidden="true"
 			/>
 			<input
 				type="text"
 				placeholder={m.search_locations_placeholder()}
+				aria-label={m.search_locations_placeholder()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -220,26 +261,32 @@
 
 {#snippet actionsCell(row: OrganizationLocation)}
 	<div class="flex items-center justify-end gap-1">
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			onclick={() => openManageShifts(row)}
-			title={m.manage_shifts()}
-		>
-			<Clock class="h-4 w-4" />
-		</button>
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			onclick={() => openEdit(row.id)}
-			title={m.edit_location()}
-		>
-			<Pencil class="h-4 w-4" />
-		</button>
+		<PermissionGuard anyOf={[PERMISSIONS.SHIFT.CREATE, PERMISSIONS.SHIFT.UPDATE]}>
+			<button
+				type="button"
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				onclick={() => openManageShifts(row)}
+				title={m.manage_shifts()}
+				aria-label={m.manage_shifts()}
+			>
+				<Clock class="h-4 w-4" aria-hidden="true" />
+			</button>
+		</PermissionGuard>
+		<PermissionGuard permission={PERMISSIONS.LOCATION.UPDATE}>
+			<button
+				type="button"
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				onclick={() => openEdit(row.id)}
+				title={m.edit_location()}
+				aria-label={m.edit_location()}
+			>
+				<Pencil class="h-4 w-4" aria-hidden="true" />
+			</button>
+		</PermissionGuard>
 	</div>
 {/snippet}
 
 <section class="space-y-8">
-	<div class="hidden"></div>
-
 	{#await organizationDataPromise}
 		<header
 			class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
@@ -250,7 +297,10 @@
 		</header>
 	{:then organizationData}
 		{#if organizationData.loadError}
-			<InlineErrorBanner message={organizationData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={organizationData.loadError}
+				onRetry={() => invalidate('app:organization:detail')}
+			/>
 		{/if}
 
 		{#if organizationData.organization}
@@ -260,7 +310,7 @@
 				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
 			>
 				<div
-					class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-gradient-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl"
+					class="pointer-events-none absolute -top-16 -right-16 h-52 w-52 rounded-full bg-brand/10 blur-2xl"
 				></div>
 				<div class="relative flex flex-wrap items-start justify-between gap-6">
 					<div class="space-y-3">
@@ -269,24 +319,26 @@
 								<Building2 class="h-6 w-6 text-brand" />
 							</span>
 							<div>
-								<h1 class="text-3xl font-bold tracking-tighter text-text">
+								<h1 class="text-2xl font-bold tracking-tight text-text">
 									{organization.name}
 								</h1>
 								<p class="text-sm font-medium text-text-muted">{organization.id}</p>
 							</div>
 						</div>
 					</div>
-					<Button class="gap-2" onclick={() => (showCreateLocation = true)}>
-						<Plus class="h-4 w-4" />
-						Add location
-					</Button>
+					<PermissionGuard permission={PERMISSIONS.LOCATION.CREATE}>
+						<Button class="gap-2" onclick={() => (showCreateLocation = true)}>
+							<Plus class="h-4 w-4" aria-hidden="true" />
+							{m.add_location()}
+						</Button>
+					</PermissionGuard>
 				</div>
 			</header>
 
 			<CreateLocationForm
 				bind:open={showCreateLocation}
 				organizationId={organization.id}
-				onCreated={() => invalidateAll()}
+				onCreated={invalidateCountsAndLocations}
 			/>
 			{#if showEditLocation}
 				{#key editLocation?.id ?? 'loading'}
@@ -295,7 +347,7 @@
 						location={editLocation}
 						isFetching={isEditLoading}
 						loadErrorMessage={editLoadError}
-						onUpdated={() => invalidateAll()}
+						onUpdated={invalidateCountsAndLocations}
 					/>
 				{/key}
 			{/if}
@@ -305,14 +357,16 @@
 					<ManageShiftsForm
 						bind:open={showManageShifts}
 						location={manageShiftsLocation}
-						onUpdated={() => invalidateAll()}
+						isFetching={isManageShiftsLoading}
+						loadErrorMessage={manageShiftsLoadError}
+						onUpdated={invalidateLocations}
 					/>
 				{/key}
 			{/if}
 
 			{#await countsDataPromise}
 				<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					{#each [1, 2, 3] as _}
+					{#each [1, 2, 3] as item (item)}
 						<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 							<div class="h-3 w-20 animate-pulse rounded bg-border/70"></div>
 							<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
@@ -321,72 +375,39 @@
 				</section>
 			{:then countsData}
 				{#if countsData.loadError}
-					<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
+					<InlineErrorBanner
+						message={countsData.loadError}
+						onRetry={() => invalidate('app:organization:detail-counts')}
+					/>
 				{/if}
 
 				<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					<div
-						class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-					>
-						<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
-							<Warehouse class="h-32 w-32" />
-						</div>
-						<div class="relative">
-							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								{m.locations()}
-							</div>
-							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-								{formatNumber(countsData.counts.location_count)}
-							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">{m.active_care_locations()}</p>
-						</div>
-					</div>
-					<div
-						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-secondary/30"
-					>
-						<div
-							class="absolute -right-4 -bottom-4 text-secondary opacity-[0.03] transition-opacity group-hover:opacity-10"
-						>
-							<Users class="h-32 w-32" />
-						</div>
-						<div class="relative">
-							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								{m.clients()}
-							</div>
-							<div
-								class="mt-2 text-2xl font-bold tracking-tight text-secondary sm:text-3xl dark:text-secondary"
-							>
-								{formatNumber(countsData.counts.client_count)}
-							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">{m.clients_under_care()}</p>
-						</div>
-					</div>
-					<div
-						class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
-					>
-						<div
-							class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-						>
-							<Users class="h-32 w-32" />
-						</div>
-						<div class="relative">
-							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-								{m.employees()}
-							</div>
-							<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-								{formatNumber(countsData.counts.employee_count)}
-							</div>
-							<p class="mt-2 text-xs font-medium text-text-muted">{m.active_caregivers()}</p>
-						</div>
-					</div>
+					<StatCard
+						label={m.locations()}
+						value={formatNumber(countsData.counts.location_count)}
+						description={m.active_care_locations()}
+						icon={Warehouse}
+					/>
+					<StatCard
+						label={m.clients()}
+						value={formatNumber(countsData.counts.client_count)}
+						description={m.clients_under_care()}
+						icon={Users}
+						color="secondary"
+					/>
+					<StatCard
+						label={m.employees()}
+						value={formatNumber(countsData.counts.employee_count)}
+						description={m.active_caregivers()}
+						icon={Users}
+						color="emerald"
+					/>
 				</section>
 			{/await}
 
 			<div class="grid gap-6 lg:grid-cols-[1fr_2.2fr]">
 				<aside class="space-y-6">
-					<div
-						class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg shadow-indigo-900/10"
-					>
+					<div class="rounded-3xl bg-gradient-to-br from-brand to-success p-6 text-white shadow-lg">
 						<h2 class="text-lg font-bold tracking-tight text-white">{m.organization_details()}</h2>
 						<div class="mt-6 space-y-4 text-sm">
 							<div>
@@ -431,12 +452,15 @@
 						{columns}
 						rows={[]}
 						loading
-						{currentPage}
-						{pageSize}
-						totalCount={0}
-						onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+						pagination={{
+							mode: 'server',
+							page: currentPage,
+							pageSize,
+							totalCount: 0,
+							onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+						}}
 						rowKey="id"
-						filters={tableFilters}
+						toolbar={tableFilters}
 						cells={{
 							name: nameCell,
 							address: addressCell,
@@ -447,21 +471,22 @@
 						}}
 					/>
 				{:then locationsData}
-					{#if locationsData.loadError}
-						<InlineErrorBanner message={locationsData.loadError} onRetry={() => invalidateAll()} />
-					{/if}
-
 					<DataTable
 						title={m.locations()}
 						description={m.locations_description()}
 						{columns}
 						rows={locationsData.locations}
-						currentPage={locationsData.pagination.page}
-						pageSize={locationsData.pagination.pageSize}
-						totalCount={locationsData.pagination.count}
-						onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+						pagination={{
+							mode: 'server',
+							page: locationsData.pagination.page,
+							pageSize: locationsData.pagination.pageSize,
+							totalCount: locationsData.pagination.count,
+							onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+						}}
 						rowKey="id"
-						filters={tableFilters}
+						toolbar={tableFilters}
+						error={locationsData.loadError ?? undefined}
+						onRetry={() => invalidate('app:organization:locations')}
 						cells={{
 							name: nameCell,
 							address: addressCell,

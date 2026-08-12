@@ -54,8 +54,8 @@ export function updateOrganization(id: string, payload: UpdateOrganizationReques
 	return api.put<ApiEnvelope<GetOrganizationResponse>>(`/organizations/${id}`, payload);
 }
 
-export function getOrganizationCounts(id: string) {
-	return api.get<ApiEnvelope<OrganizationCounts>>(`/organizations/${id}/counts`);
+export function getOrganizationCounts(id: string, options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<OrganizationCounts>>(`/organizations/${id}/counts`, options);
 }
 
 export function getGlobalOrganizationCounts(options: ApiRequestOptions = {}) {
@@ -70,7 +70,8 @@ export interface ListOrganizationLocationsParams {
 
 export function listOrganizationLocations(
 	id: string,
-	params: ListOrganizationLocationsParams = {}
+	params: ListOrganizationLocationsParams = {},
+	options: ApiRequestOptions = {}
 ) {
 	const searchParams = new URLSearchParams();
 
@@ -89,15 +90,15 @@ export function listOrganizationLocations(
 		? `/organizations/${id}/locations?${query}`
 		: `/organizations/${id}/locations`;
 
-	return api.get<ApiEnvelope<PaginatedResponse<OrganizationLocation>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<OrganizationLocation>>>(endpoint, options);
 }
 
 export function createOrganizationLocation(id: string, payload: CreateLocationRequest) {
 	return api.post<ApiEnvelope<OrganizationLocation>>(`/organizations/${id}/locations`, payload);
 }
 
-export function getLocation(id: string) {
-	return api.get<ApiEnvelope<OrganizationLocation>>(`/locations/${id}`);
+export function getLocation(id: string, options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<OrganizationLocation>>(`/locations/${id}`, options);
 }
 
 export function updateLocation(id: string, payload: UpdateLocationRequest) {
