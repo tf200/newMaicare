@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateOrganizationRequest,
@@ -20,7 +20,10 @@ export interface ListOrganizationsParams {
 	name?: string;
 }
 
-export function listOrganizations(params: ListOrganizationsParams = {}) {
+export function listOrganizations(
+	params: ListOrganizationsParams = {},
+	options: ApiRequestOptions = {}
+) {
 	const searchParams = new URLSearchParams();
 
 	if (params.page) {
@@ -36,15 +39,15 @@ export function listOrganizations(params: ListOrganizationsParams = {}) {
 	const query = searchParams.toString();
 	const endpoint = query ? `/organizations?${query}` : '/organizations';
 
-	return api.get<ApiEnvelope<PaginatedResponse<OrganizationListItem>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<OrganizationListItem>>>(endpoint, options);
 }
 
 export function createOrganization(payload: CreateOrganizationRequest) {
 	return api.post<ApiEnvelope<OrganizationListItem>>('/organizations', payload);
 }
 
-export function getOrganization(id: string) {
-	return api.get<ApiEnvelope<GetOrganizationResponse>>(`/organizations/${id}`);
+export function getOrganization(id: string, options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<GetOrganizationResponse>>(`/organizations/${id}`, options);
 }
 
 export function updateOrganization(id: string, payload: UpdateOrganizationRequest) {
@@ -55,8 +58,8 @@ export function getOrganizationCounts(id: string) {
 	return api.get<ApiEnvelope<OrganizationCounts>>(`/organizations/${id}/counts`);
 }
 
-export function getGlobalOrganizationCounts() {
-	return api.get<ApiEnvelope<GlobalOrganizationCounts>>('/organizations/count');
+export function getGlobalOrganizationCounts(options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<GlobalOrganizationCounts>>('/organizations/count', options);
 }
 
 export interface ListOrganizationLocationsParams {

@@ -12,6 +12,7 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { onDestroy } from 'svelte';
 
 	interface Props {
 		open?: boolean;
@@ -19,6 +20,7 @@
 		isFetching?: boolean;
 		loadErrorMessage?: string;
 		onUpdated?: () => void;
+		onClose?: () => void;
 	}
 
 	let {
@@ -26,7 +28,8 @@
 		organization = $bindable<GetOrganizationResponse | null>(null),
 		isFetching = false,
 		loadErrorMessage,
-		onUpdated
+		onUpdated,
+		onClose
 	}: Props = $props();
 	const toast = getToastState();
 
@@ -34,19 +37,22 @@
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	let lookupController: AbortController | null = null;
 	const formId = 'edit-organization-form';
+	const emptyForm: OrganizationSchemaInput = {
+		name: '',
+		email: '',
+		postal_code: '',
+		house_number: '',
+		house_number_addition: '',
+		street: '',
+		city: '',
+		kvk_number: '',
+		btw_number: ''
+	};
 
-	const { form, errors, enhance, delayed, reset } = superForm(
-		defaults(
-			{
-				name: '',
-				postal_code: '',
-				house_number: '',
-				street: '',
-				city: ''
-			} as unknown as OrganizationSchemaInput,
-			valibotClient(OrganizationSchema)
-		),
+	const { form, errors, enhance, delayed, submitting, reset } = superForm(
+		defaults(emptyForm, valibotClient(OrganizationSchema)),
 		{
 			validators: valibotClient(OrganizationSchema),
 			SPA: true,
@@ -67,11 +73,11 @@
 						};
 						await updateOrganization(organization.id, payload);
 						toast.success(m.organization_updated_success());
+						clearFormState();
 						open = false;
 						onUpdated?.();
-					} catch (error) {
-						submitErrorMessage =
-							error instanceof Error ? error.message : m.failed_update_organization();
+					} catch {
+						submitErrorMessage = m.failed_update_organization();
 					}
 				}
 			}
@@ -106,47 +112,95 @@
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
 
 	const handleCancel = () => {
+		clearFormState();
 		open = false;
+		onClose?.();
+	};
+
+	const clearFormState = () => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupController?.abort();
+		lookupController = null;
+		submitErrorMessage = '';
+		lookupMessage = '';
+		isLookupLoading = false;
+		reset({ data: emptyForm });
+	};
+
+	const handleModalClose = () => {
+		clearFormState();
+		onClose?.();
 	};
 
 	const runLookup = async (postcodeValue: string, numberValue: string) => {
 		if (!isPostalCodeValid(postcodeValue)) return;
+		lookupController?.abort();
+		const controller = new AbortController();
+		lookupController = controller;
 		isLookupLoading = true;
 		lookupMessage = '';
 		try {
-			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
+			const result = await lookupAddressByPostcode(postcodeValue, numberValue, {
+				signal: controller.signal
+			});
+			if (controller.signal.aborted) return;
 			if (!result || !organization) {
 				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
-		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
+		} catch {
+			if (controller.signal.aborted) return;
+			lookupMessage = m.address_lookup_failed();
 		} finally {
-			isLookupLoading = false;
+			if (lookupController === controller) {
+				isLookupLoading = false;
+				lookupController = null;
+			}
 		}
 	};
 
 	const scheduleLookup = (postcodeValue: string, numberValue: string) => {
 		lookupMessage = '';
-		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupController?.abort();
+		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		lookupTimer = setTimeout(() => {
+			lookupTimer = null;
 			void runLookup(postcodeValue, numberValue);
 		}, 400);
 	};
+
+	onDestroy(() => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupController?.abort();
+	});
 </script>
 
-<Modal bind:open title={m.edit_organization()} description={m.edit_organization_description()}>
+<Modal
+	bind:open
+	title={m.edit_organization()}
+	description={m.edit_organization_description()}
+	closeLabel={m.close()}
+	onClose={handleModalClose}
+>
 	<form id={formId} use:enhance class="space-y-5">
 		{#if isFetching}
-			<div class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted">
+			<div
+				class="rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text-muted"
+				role="status"
+			>
 				{m.loading_organization_details()}
 			</div>
 		{/if}
 		{#if loadErrorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{loadErrorMessage}
 			</div>
 		{/if}
@@ -177,9 +231,7 @@
 					bind:value={$form.postal_code}
 					error={formatFormError($errors.postal_code)}
 					oninput={() => {
-						if ($form.postal_code && $form.house_number) {
-							scheduleLookup($form.postal_code, $form.house_number);
-						}
+						scheduleLookup($form.postal_code, $form.house_number);
 					}}
 					onblur={() => {
 						if ($form.postal_code) {
@@ -197,9 +249,7 @@
 					bind:value={$form.house_number}
 					error={formatFormError($errors.house_number)}
 					oninput={() => {
-						if ($form.postal_code && $form.house_number) {
-							scheduleLookup($form.postal_code, $form.house_number);
-						}
+						scheduleLookup($form.postal_code, $form.house_number);
 					}}
 					disabled={isFetching}
 				/>
@@ -229,11 +279,14 @@
 			</div>
 
 			{#if isLookupLoading}
-				<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
+				<div class="text-xs font-medium text-text-muted" role="status">
+					{m.looking_up_address()}
+				</div>
 			{/if}
 			{#if lookupMessage}
 				<div
 					class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+					role="status"
 				>
 					{lookupMessage}
 				</div>
@@ -256,7 +309,10 @@
 		{/if}
 
 		{#if submitErrorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{submitErrorMessage}
 			</div>
 		{/if}
@@ -266,14 +322,14 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={isFetching || $delayed}>
+			<Button variant="ghost" onclick={handleCancel} disabled={isFetching || $submitting}>
 				{m.cancel()}
 			</Button>
 			<Button
 				form={formId}
 				type="submit"
 				isLoading={$delayed}
-				disabled={isFetching || !organization}
+				disabled={isFetching || !organization || $submitting}
 			>
 				{m.save_changes()}
 			</Button>

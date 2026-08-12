@@ -12,6 +12,7 @@
 	import type { CreateOrganizationRequest } from '$lib/types/api';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { onDestroy } from 'svelte';
 
 	interface Props {
 		open?: boolean;
@@ -25,19 +26,22 @@
 	let lookupMessage = $state('');
 	let isLookupLoading = $state(false);
 	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+	let lookupController: AbortController | null = null;
 	const formId = 'create-organization-form';
+	const emptyForm: OrganizationSchemaInput = {
+		name: '',
+		email: '',
+		postal_code: '',
+		house_number: '',
+		house_number_addition: '',
+		street: '',
+		city: '',
+		kvk_number: '',
+		btw_number: ''
+	};
 
-	const { form, errors, enhance, delayed, reset } = superForm(
-		defaults(
-			{
-				name: '',
-				postal_code: '',
-				house_number: '',
-				street: '',
-				city: ''
-			} as unknown as OrganizationSchemaInput,
-			valibotClient(OrganizationSchema)
-		),
+	const { form, errors, enhance, delayed, submitting, reset } = superForm(
+		defaults(emptyForm, valibotClient(OrganizationSchema)),
 		{
 			validators: valibotClient(OrganizationSchema),
 			SPA: true,
@@ -58,11 +62,11 @@
 						};
 						await createOrganization(payload);
 						toast.success(m.organization_created_success());
-						reset();
+						clearFormState();
 						open = false;
 						onCreated?.();
-					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : m.failed_create_organization();
+					} catch {
+						errorMessage = m.failed_create_organization();
 					}
 				}
 			}
@@ -79,41 +83,76 @@
 
 	const isPostalCodeValid = (value: string) => /^\d{4}\s?[A-Za-z]{2}$/.test(value.trim());
 
-	const handleCancel = () => {
+	const clearFormState = () => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupController?.abort();
+		lookupController = null;
+		errorMessage = '';
+		lookupMessage = '';
+		isLookupLoading = false;
 		reset();
+	};
+
+	const handleCancel = () => {
+		clearFormState();
 		open = false;
 	};
 
 	const runLookup = async (postcodeValue: string, numberValue: string) => {
 		if (!isPostalCodeValid(postcodeValue)) return;
+		lookupController?.abort();
+		const controller = new AbortController();
+		lookupController = controller;
 		isLookupLoading = true;
 		lookupMessage = '';
 		try {
-			const result = await lookupAddressByPostcode(postcodeValue, numberValue);
+			const result = await lookupAddressByPostcode(postcodeValue, numberValue, {
+				signal: controller.signal
+			});
+			if (controller.signal.aborted) return;
 			if (!result) {
 				lookupMessage = m.address_not_found_manual();
 				return;
 			}
 			$form.street = result.street;
 			$form.city = result.city;
-		} catch (error) {
-			lookupMessage = error instanceof Error ? error.message : m.address_lookup_failed();
+		} catch {
+			if (controller.signal.aborted) return;
+			lookupMessage = m.address_lookup_failed();
 		} finally {
-			isLookupLoading = false;
+			if (lookupController === controller) {
+				isLookupLoading = false;
+				lookupController = null;
+			}
 		}
 	};
 
 	const scheduleLookup = (postcodeValue: string, numberValue: string) => {
 		lookupMessage = '';
-		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupTimer = null;
+		lookupController?.abort();
+		if (!postcodeValue.trim() || !numberValue.trim()) return;
 		lookupTimer = setTimeout(() => {
+			lookupTimer = null;
 			void runLookup(postcodeValue, numberValue);
 		}, 400);
 	};
+
+	onDestroy(() => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupController?.abort();
+	});
 </script>
 
-<Modal bind:open title={m.create_organization()} description={m.create_organization_description()}>
+<Modal
+	bind:open
+	title={m.create_organization()}
+	description={m.create_organization_description()}
+	closeLabel={m.close()}
+	onClose={clearFormState}
+>
 	<form id={formId} use:enhance class="space-y-5">
 		<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 			<Input
@@ -138,9 +177,7 @@
 				bind:value={$form.postal_code}
 				error={formatFormError($errors.postal_code)}
 				oninput={() => {
-					if ($form.postal_code && $form.house_number) {
-						scheduleLookup($form.postal_code, $form.house_number);
-					}
+					scheduleLookup($form.postal_code, $form.house_number);
 				}}
 				onblur={() => {
 					if ($form.postal_code) {
@@ -157,9 +194,7 @@
 				bind:value={$form.house_number}
 				error={formatFormError($errors.house_number)}
 				oninput={() => {
-					if ($form.postal_code && $form.house_number) {
-						scheduleLookup($form.postal_code, $form.house_number);
-					}
+					scheduleLookup($form.postal_code, $form.house_number);
 				}}
 			/>
 			<Input
@@ -185,10 +220,13 @@
 		</div>
 
 		{#if isLookupLoading}
-			<div class="text-xs font-medium text-text-muted">{m.looking_up_address()}</div>
+			<div class="text-xs font-medium text-text-muted" role="status">{m.looking_up_address()}</div>
 		{/if}
 		{#if lookupMessage}
-			<div class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+			<div
+				class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+				role="status"
+			>
 				{lookupMessage}
 			</div>
 		{/if}
@@ -207,7 +245,10 @@
 		</div>
 
 		{#if errorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{errorMessage}
 			</div>
 		{/if}
@@ -217,8 +258,10 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button form={formId} type="submit" isLoading={$delayed}>{m.create_organization()}</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button form={formId} type="submit" isLoading={$delayed} disabled={$submitting}>
+				{m.create_organization()}
+			</Button>
 		</div>
 	{/snippet}
 </Modal>

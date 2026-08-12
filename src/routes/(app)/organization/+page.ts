@@ -1,7 +1,11 @@
 import type { PageLoad } from './$types';
-import { getGlobalOrganizationCounts, listOrganizations } from '$lib/api/organizations';
+import { error } from '@sveltejs/kit';
+import { listOrganizations } from '$lib/api/organizations';
 import type { OrganizationListItem } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { m } from '$lib/paraglide/messages';
 
 export interface OrganizationRow {
 	id: string;
@@ -23,14 +27,6 @@ export interface OrganizationLoadResult {
 	loadError: string | null;
 }
 
-export interface OrganizationCountsLoadResult {
-	counts: {
-		totalLocations: number;
-		totalCapacity: number;
-	};
-	loadError: string | null;
-}
-
 const mapOrganization = (org: OrganizationListItem): OrganizationRow => ({
 	id: org.id,
 	name: org.name,
@@ -45,16 +41,31 @@ const mapOrganization = (org: OrganizationListItem): OrganizationRow => ({
 	locationCount: org.location_count
 });
 
-export const load: PageLoad = ({ url }) => {
-	const page = Number(url.searchParams.get('page') ?? '1') || 1;
-	const pageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
+const parsePositiveInteger = (value: string | null, fallback: number, maximum: number) => {
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
+};
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasPermission(PERMISSIONS.ORGANISATION.VIEW)) {
+		error(403, 'You do not have permission to view this resource.');
+	}
+
+	depends('app:organization:list');
+
+	const page = parsePositiveInteger(url.searchParams.get('page'), 1, 10_000);
+	const pageSize = parsePositiveInteger(url.searchParams.get('page_size'), 8, 100);
 	const name = url.searchParams.get('name') ?? '';
 
-	const organizationsData: Promise<OrganizationLoadResult> = listOrganizations({
-		page,
-		pageSize,
-		name: name.trim() || undefined
-	})
+	const organizationsData: Promise<OrganizationLoadResult> = listOrganizations(
+		{
+			page,
+			pageSize,
+			name: name.trim() || undefined
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 
@@ -73,8 +84,7 @@ export const load: PageLoad = ({ url }) => {
 				loadError: null
 			} satisfies OrganizationLoadResult;
 		})
-		.catch((error): OrganizationLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load organizations.';
+		.catch((): OrganizationLoadResult => {
 			return {
 				organisations: [],
 				pagination: {
@@ -87,28 +97,9 @@ export const load: PageLoad = ({ url }) => {
 						name
 					}
 				} satisfies PaginationState<{ name: string }>,
-				loadError: message
+				loadError: m.failed_load_organizations()
 			};
 		});
-
-	const countsData: Promise<OrganizationCountsLoadResult> = getGlobalOrganizationCounts()
-		.then((response) => ({
-			counts: {
-				totalLocations: response.data.total_locations,
-				totalCapacity: response.data.total_capacity
-			},
-			loadError: null
-		}))
-		.catch(
-			(error): OrganizationCountsLoadResult => ({
-				counts: {
-					totalLocations: 0,
-					totalCapacity: 0
-				},
-				loadError:
-					error instanceof Error ? error.message : 'Failed to load global organization counts.'
-			})
-		);
 
 	return {
 		initial: {
@@ -118,7 +109,6 @@ export const load: PageLoad = ({ url }) => {
 				name
 			}
 		},
-		organizationsData,
-		countsData
+		organizationsData
 	};
 };

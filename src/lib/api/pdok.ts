@@ -22,7 +22,8 @@ const normalizePostalCode = (value: string) => value.replace(/\s+/g, '').toUpper
 
 export async function lookupAddressByPostcode(
 	postalCode: string,
-	houseNumber: string
+	houseNumber: string,
+	options: Pick<RequestInit, 'signal'> = {}
 ): Promise<PdokAddressLookupResult | null> {
 	const normalizedPostcode = normalizePostalCode(postalCode);
 	const normalizedHouseNumber = houseNumber.trim();
@@ -34,7 +35,7 @@ export async function lookupAddressByPostcode(
 	params.set('fl', 'straatnaam,woonplaatsnaam,weergavenaam');
 	params.set('rows', '1');
 
-	const response = await fetch(`${PDOK_BASE_URL}?${params.toString()}`);
+	const response = await fetch(`${PDOK_BASE_URL}?${params.toString()}`, options);
 	if (!response.ok) {
 		throw new Error('PDOK lookup failed');
 	}

@@ -1,17 +1,21 @@
 <script lang="ts">
 	import { Building2, Eye, Pencil, Plus, Search, MapPin, Users } from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
+	import { SvelteURL, SvelteURLSearchParams } from 'svelte/reactivity';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import CreateOrganizationForm from '$lib/components/forms/CreateOrganizationForm.svelte';
 	import EditOrganizationForm from '$lib/components/forms/EditOrganizationForm.svelte';
 	import { getOrganization } from '$lib/api/organizations';
 	import type { GetOrganizationResponse } from '$lib/types/api';
-	import type { OrganizationCountsLoadResult, OrganizationLoadResult } from './+page';
+	import type { OrganizationLoadResult } from './+page';
+	import type { OrganizationCountsLoadResult } from './+layout';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props<{
@@ -32,6 +36,7 @@
 	let editOrganization = $state<GetOrganizationResponse | null>(null);
 	let isEditLoading = $state(false);
 	let editLoadError = $state('');
+	let editRequestController: AbortController | null = null;
 
 	const columns: DataTableColumn[] = [
 		{ key: 'name', label: m.organization(), headerClass: 'pl-14' },
@@ -50,12 +55,12 @@
 	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
 	let searchTerm = $state('');
 
-	onMount(() => {
+	afterNavigate(() => {
 		searchTerm = appliedSearch;
 	});
 
 	const buildQuery = (pageValue: number, nameValue: string) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 		if (nameValue) params.set('name', nameValue);
@@ -65,7 +70,16 @@
 	const updateQuery = (pageValue: number, nameValue: string) => {
 		const nextQuery = buildQuery(pageValue, nameValue);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		const target = new SvelteURL(page.url);
+		target.pathname = resolve('/(app)/organization');
+		target.search = nextQuery;
+		// The target preserves the localized URL and uses the resolved route pathname above.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		goto(target, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const applySearch = () => {
@@ -74,12 +88,16 @@
 	};
 
 	const openEdit = async (id: string) => {
+		editRequestController?.abort();
+		const controller = new AbortController();
+		editRequestController = controller;
 		editOrganization = null;
 		editLoadError = '';
 		showEditOrg = true;
 		isEditLoading = true;
 		try {
-			const response = await getOrganization(id);
+			const response = await getOrganization(id, { signal: controller.signal });
+			if (controller.signal.aborted) return;
 			editOrganization = {
 				...response.data,
 				house_number_addition: response.data.house_number_addition ?? '',
@@ -87,11 +105,25 @@
 				kvk_number: response.data.kvk_number ?? '',
 				btw_number: response.data.btw_number ?? ''
 			};
-		} catch (error) {
-			editLoadError = error instanceof Error ? error.message : 'Failed to load organization.';
+		} catch {
+			if (controller.signal.aborted) return;
+			editLoadError = m.failed_load_organization();
 		} finally {
-			isEditLoading = false;
+			if (editRequestController === controller) {
+				isEditLoading = false;
+				editRequestController = null;
+			}
 		}
+	};
+
+	const closeEdit = () => {
+		editRequestController?.abort();
+		editRequestController = null;
+		isEditLoading = false;
+	};
+
+	const invalidateOrganizationData = () => {
+		void invalidate('app:organization:list');
 	};
 
 	const formatOptional = (value: string | null, fallback = '—') =>
@@ -115,10 +147,12 @@
 		<div class="relative w-full sm:w-auto">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				aria-hidden="true"
 			/>
 			<input
 				type="text"
 				placeholder={m.search_placeholder_short()}
+				aria-label={m.search_organizations()}
 				bind:value={searchTerm}
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text-muted placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
@@ -127,7 +161,6 @@
 				onblur={applySearch}
 			/>
 		</div>
-
 	</div>
 {/snippet}
 
@@ -162,16 +195,16 @@
 	<div class="flex flex-col gap-1 text-xs text-text-muted">
 		{#if row.kvkNumber}
 			<span
-				class="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/10 px-2.5 py-1 font-semibold text-[var(--color-secondary)]"
+				class="inline-flex w-fit items-center gap-2 rounded-full border border-secondary/20 bg-secondary/10 px-2.5 py-1 font-semibold text-secondary"
 			>
-				KVK <span class="font-normal text-[var(--color-secondary)]">{row.kvkNumber}</span>
+				{m.kvk_label()} <span class="font-normal text-secondary">{row.kvkNumber}</span>
 			</span>
 		{/if}
 		{#if row.btwNumber}
 			<span
 				class="inline-flex w-fit items-center gap-2 rounded-full bg-brand/10 px-2.5 py-1 font-semibold text-brand"
 			>
-				BTW <span class="font-normal text-brand">{row.btwNumber}</span>
+				{m.btw_label()} <span class="font-normal text-brand">{row.btwNumber}</span>
 			</span>
 		{/if}
 		{#if !row.kvkNumber && !row.btwNumber}
@@ -192,19 +225,25 @@
 {#snippet actionsCell(row: OrganizationRow)}
 	<div class="flex justify-end gap-1">
 		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			onclick={() => goto(`/organization/${row.id}`)}
+			type="button"
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+			onclick={() => goto(resolve('/(app)/organization/[id]', { id: row.id }))}
 			title={m.view_organization()}
+			aria-label={m.view_organization()}
 		>
-			<Eye class="h-4 w-4" />
+			<Eye class="h-4 w-4" aria-hidden="true" />
 		</button>
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			onclick={() => openEdit(row.id)}
-			title={m.edit_organization()}
-		>
-			<Pencil class="h-4 w-4" />
-		</button>
+		<PermissionGuard permission={PERMISSIONS.ORGANISATION.UPDATE}>
+			<button
+				type="button"
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				onclick={() => openEdit(row.id)}
+				title={m.edit_organization()}
+				aria-label={m.edit_organization()}
+			>
+				<Pencil class="h-4 w-4" aria-hidden="true" />
+			</button>
+		</PermissionGuard>
 	</div>
 {/snippet}
 
@@ -223,19 +262,21 @@
 					</span>
 					<span>{m.organization()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.organizations()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.organizations()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					{m.organizations_description()}
 				</p>
 			</div>
-			<Button class="gap-2" onclick={() => (showCreateOrg = true)}>
-				<Plus class="h-4 w-4" />
-				{m.add_organization()}
-			</Button>
+			<PermissionGuard permission={PERMISSIONS.ORGANISATION.CREATE}>
+				<Button class="gap-2" onclick={() => (showCreateOrg = true)}>
+					<Plus class="h-4 w-4" aria-hidden="true" />
+					{m.add_organization()}
+				</Button>
+			</PermissionGuard>
 		</div>
 	</header>
 
-	<CreateOrganizationForm bind:open={showCreateOrg} onCreated={() => invalidateAll()} />
+	<CreateOrganizationForm bind:open={showCreateOrg} onCreated={invalidateOrganizationData} />
 	{#if showEditOrg}
 		{#key editOrganization?.id ?? 'loading'}
 			<EditOrganizationForm
@@ -243,33 +284,78 @@
 				organization={editOrganization}
 				isFetching={isEditLoading}
 				loadErrorMessage={editLoadError}
-				onUpdated={() => invalidateAll()}
+				onClose={closeEdit}
+				onUpdated={invalidateOrganizationData}
 			/>
 		{/key}
 	{/if}
 
-	{#await organizationsDataPromise}
+	{#await countsDataPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each [1, 2, 3] as _}
+			{#each [1, 2, 3] as item (item)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
 				</div>
 			{/each}
 		</div>
+	{:then countsData}
+		{#if countsData.loadError}
+			<InlineErrorBanner
+				message={countsData.loadError}
+				onRetry={() => invalidate('app:organization:counts')}
+			/>
+		{/if}
 
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			{#await organizationsDataPromise}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{:then organizationsData}
+				<StatCard
+					label={appliedSearch ? m.matching_organizations() : m.total_organizations()}
+					value={organizationsData.pagination.count}
+					description={appliedSearch
+						? m.matching_organizations_description()
+						: m.active_in_network()}
+					icon={Building2}
+				/>
+			{/await}
+			<StatCard
+				label={m.total_locations()}
+				value={countsData.counts.totalLocations}
+				description={m.total_care_sites()}
+				icon={MapPin}
+				color="brand"
+			/>
+			<StatCard
+				label={m.total_capacity()}
+				value={countsData.counts.totalCapacity}
+				description={m.available_places()}
+				icon={Users}
+				color="emerald"
+			/>
+		</div>
+	{/await}
+
+	{#await organizationsDataPromise}
 		<DataTable
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+			}}
 			rowKey="id"
 			title={m.organization_directory()}
 			description={m.organization_directory_description()}
-			filters={tableFilters}
+			toolbar={tableFilters}
 			cells={{
 				name: nameCell,
 				address: addressCell,
@@ -281,61 +367,22 @@
 			}}
 		/>
 	{:then organizationsData}
-		{@const organisations = organizationsData.organisations}
-
-		{#if organizationsData.loadError}
-			<InlineErrorBanner message={organizationsData.loadError} onRetry={() => invalidateAll()} />
-		{/if}
-
-		{#await countsDataPromise}
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				{#each [1, 2, 3] as _}
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-						<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-					</div>
-				{/each}
-			</div>
-		{:then countsData}
-			{#if countsData.loadError}
-				<InlineErrorBanner message={countsData.loadError} onRetry={() => invalidateAll()} />
-			{/if}
-
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-				<StatCard
-					label={m.total_organizations()}
-					value={organizationsData.pagination.count}
-					description={m.active_in_network()}
-					icon={Building2}
-				/>
-				<StatCard
-					label={m.total_locations()}
-					value={countsData.counts.totalLocations}
-					description={m.total_care_sites()}
-					icon={MapPin}
-					color="brand"
-				/>
-				<StatCard
-					label={m.total_capacity()}
-					value={countsData.counts.totalCapacity}
-					description={m.available_places()}
-					icon={Users}
-					color="emerald"
-				/>
-			</div>
-		{/await}
-
 		<DataTable
 			{columns}
-			rows={organisations}
-			currentPage={organizationsData.pagination.page}
-			pageSize={organizationsData.pagination.pageSize}
-			totalCount={organizationsData.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, appliedSearch)}
+			rows={organizationsData.organisations}
+			pagination={{
+				mode: 'server',
+				page: organizationsData.pagination.page,
+				pageSize: organizationsData.pagination.pageSize,
+				totalCount: organizationsData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+			}}
 			rowKey="id"
 			title={m.organization_directory()}
-			description="Monitor registered partners, coverage, and contact details across regions."
-			filters={tableFilters}
+			description={m.organization_directory_description()}
+			toolbar={tableFilters}
+			error={organizationsData.loadError ?? undefined}
+			onRetry={() => invalidate('app:organization:list')}
 			cells={{
 				name: nameCell,
 				address: addressCell,
