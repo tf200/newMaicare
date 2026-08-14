@@ -12,15 +12,19 @@
 		SquareMinus,
 		Plus
 	} from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FilterDropdown from '$lib/components/ui/FilterDropdown.svelte';
 	import CreateContractForm from '$lib/components/forms/CreateContractForm.svelte';
-	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type {
 		ContractCareType,
 		ContractFinancingAct,
@@ -28,6 +32,23 @@
 		ContractStatus
 	} from '$lib/types/api';
 	import type { ContractsFilters, ContractsLoadResult, ContractsRow } from './+page';
+
+	interface ContractFilterState {
+		status_approved?: boolean;
+		status_draft?: boolean;
+		status_terminated?: boolean;
+		status_stopped?: boolean;
+		status_expired?: boolean;
+		care_ambulante?: boolean;
+		care_accommodation?: boolean;
+		act_WMO?: boolean;
+		act_ZVW?: boolean;
+		act_WLZ?: boolean;
+		act_JW?: boolean;
+		act_WPG?: boolean;
+		endDateFrom?: string;
+		endDateTo?: string;
+	}
 
 	let { data } = $props<{
 		data: {
@@ -74,31 +95,31 @@
 
 	const filterGroups = [
 		{
-			label: 'End Date Range',
+			label: m.end_date_range(),
 			items: [
-				{ key: 'endDateFrom', label: 'From', type: 'date' as const },
-				{ key: 'endDateTo', label: 'To', type: 'date' as const }
+				{ key: 'endDateFrom', label: m.from(), type: 'date' as const },
+				{ key: 'endDateTo', label: m.to(), type: 'date' as const }
 			]
 		},
 		{
-			label: 'Status',
+			label: m.status(),
 			items: [
-				{ key: 'status_approved', label: 'Approved' },
-				{ key: 'status_draft', label: 'Draft' },
-				{ key: 'status_terminated', label: 'Terminated' },
-				{ key: 'status_stopped', label: 'Stopped' },
-				{ key: 'status_expired', label: 'Expired' }
+				{ key: 'status_approved', label: m.approved() },
+				{ key: 'status_draft', label: m.draft() },
+				{ key: 'status_terminated', label: m.terminated() },
+				{ key: 'status_stopped', label: m.stopped() },
+				{ key: 'status_expired', label: m.expired() }
 			]
 		},
 		{
-			label: 'Care Type',
+			label: m.care_type(),
 			items: [
-				{ key: 'care_ambulante', label: 'Ambulante' },
-				{ key: 'care_accommodation', label: 'Accommodation' }
+				{ key: 'care_ambulante', label: m.ambulante() },
+				{ key: 'care_accommodation', label: m.accommodation() }
 			]
 		},
 		{
-			label: 'Financing Act',
+			label: m.financing_act(),
 			items: [
 				{ key: 'act_WMO', label: 'WMO' },
 				{ key: 'act_ZVW', label: 'ZVW' },
@@ -110,10 +131,10 @@
 	];
 
 	const columns: DataTableColumn[] = [
-		{ key: 'client', label: 'Client', headerClass: 'pl-14' },
-		{ key: 'care', label: 'Care', width: '300px' },
-		{ key: 'financing', label: 'Financing', width: '150px' },
-		{ key: 'period', label: 'Period', width: '200px' },
+		{ key: 'client', label: m.client(), headerClass: 'pl-14' },
+		{ key: 'care', label: m.care(), width: '300px' },
+		{ key: 'financing', label: m.financing(), width: '150px' },
+		{ key: 'period', label: m.period(), width: '200px' },
 		{ key: 'status', label: m.status(), width: '140px' },
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
 	];
@@ -123,42 +144,41 @@
 		{ label: string; className: string; icon: typeof CheckCircle2 }
 	> = {
 		approved: {
-			label: 'Approved',
-			className:
-				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30',
+			label: m.approved(),
+			className: 'border border-success-strong/30 bg-success/15 text-success-strong',
 			icon: CheckCircle2
 		},
 		draft: {
-			label: 'Draft',
-			className: 'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30',
+			label: m.draft(),
+			className: 'border border-warning-strong/30 bg-warning/15 text-warning-strong',
 			icon: Timer
 		},
 		terminated: {
-			label: 'Terminated',
-			className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30',
+			label: m.terminated(),
+			className: 'border border-error-strong/30 bg-error/15 text-error-strong',
 			icon: XCircle
 		},
 		stopped: {
-			label: 'Stopped',
-			className: 'bg-slate-600 text-white border border-slate-700/60 shadow-sm shadow-slate-700/30',
+			label: m.stopped(),
+			className: 'border border-info-strong/30 bg-info/15 text-info-strong',
 			icon: SquareMinus
 		},
 		expired: {
-			label: 'Expired',
-			className: 'bg-zinc-500 text-white border border-zinc-700/60 shadow-sm shadow-zinc-700/30',
+			label: m.expired(),
+			className: 'border border-border bg-bg text-text-muted',
 			icon: Clock
 		}
 	};
 
 	const formatDate = (date: string) =>
-		new Intl.DateTimeFormat('nl-NL', {
+		new Intl.DateTimeFormat(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
 		}).format(new Date(date));
 
 	const buildQuery = (pageValue: number, filters: ContractsFilters) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 
@@ -190,7 +210,11 @@
 	const updateQuery = (pageValue: number, filters: ContractsFilters) => {
 		const nextQuery = buildQuery(pageValue, filters);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(resolve(`/(app)/contracts?${nextQuery}`), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
 	const applySearch = (value: string) => {
@@ -211,7 +235,7 @@
 		});
 	};
 
-	const handleFilterUpdate = (af: Record<string, any>) => {
+	const handleFilterUpdate = (af: ContractFilterState) => {
 		const status: ContractStatus[] = [];
 		if (af.status_approved) status.push('approved');
 		if (af.status_draft) status.push('draft');
@@ -254,6 +278,8 @@
 			endDateTo: ''
 		});
 	};
+
+	const refreshContracts = () => invalidate('app:contracts:list');
 </script>
 
 <svelte:head>
@@ -265,6 +291,7 @@
 		<div class="relative w-full sm:w-64">
 			<Search
 				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				aria-hidden="true"
 			/>
 			<input
 				type="search"
@@ -292,29 +319,32 @@
 
 		<div class="flex flex-wrap items-center gap-2">
 			<button
+				type="button"
 				onclick={() => applyFinancingOption('')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedFinancingOption.length ===
+				class="h-9 rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none {appliedFinancingOption.length ===
 				0
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
+					: 'border border-border text-text-muted hover:bg-border/30 hover:text-text'}"
 			>
-				All
+				{m.all()}
 			</button>
 			<button
+				type="button"
 				onclick={() => applyFinancingOption('ZIN')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedFinancingOption[0] ===
+				class="h-9 rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none {appliedFinancingOption[0] ===
 				'ZIN'
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
+					: 'border border-border text-text-muted hover:bg-border/30 hover:text-text'}"
 			>
 				ZIN
 			</button>
 			<button
+				type="button"
 				onclick={() => applyFinancingOption('PGB')}
-				class="h-9 rounded-full px-4 text-xs font-semibold transition-all {appliedFinancingOption[0] ===
+				class="h-9 rounded-full px-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg focus-visible:outline-none {appliedFinancingOption[0] ===
 				'PGB'
 					? 'bg-btn-primary-bg text-btn-primary-text shadow-sm'
-					: 'border border-border text-text-muted hover:text-text'}"
+					: 'border border-border text-text-muted hover:bg-border/30 hover:text-text'}"
 			>
 				PGB
 			</button>
@@ -331,7 +361,9 @@
 		</div>
 		<div>
 			<p class="text-sm font-semibold text-text">{row.clientFirstName} {row.clientLastName}</p>
-			<p class="text-xs font-medium text-text-muted">File: {row.clientFileNumber || '—'}</p>
+			<p class="text-xs font-medium text-text-muted">
+				{m.file_number_label()}: {row.clientFileNumber || '—'}
+			</p>
 		</div>
 	</div>
 {/snippet}
@@ -357,9 +389,13 @@
 			<span>{formatDate(row.endDate)}</span>
 		</div>
 		{#if row.daysLeft >= 0}
-			<p class="text-xs font-semibold text-emerald-600">{row.daysLeft} days left</p>
+			<p class="text-xs font-semibold text-success-strong">
+				{m.days_left({ days: row.daysLeft })}
+			</p>
 		{:else}
-			<p class="text-xs font-semibold text-rose-600">Expired {-row.daysLeft} days ago</p>
+			<p class="text-xs font-semibold text-error-strong">
+				{m.expired_days_ago({ days: -row.daysLeft })}
+			</p>
 		{/if}
 	</div>
 {/snippet}
@@ -367,8 +403,8 @@
 {#snippet actionsCell(row: ContractsRow)}
 	<div class="flex justify-end">
 		<a
-			href="/contracts/{row.id}"
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			href={resolve('/(app)/contracts/[id]', { id: row.id })}
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 			title={m.view_details()}
 			aria-label={m.view_details()}
 		>
@@ -389,10 +425,10 @@
 
 <section class="space-y-6">
 	<header
-		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
+		class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-violet-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-brand/10 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -402,42 +438,51 @@
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.contracts()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.contracts()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Manage all care contracts with financing, timeline, and approval status.
+					{m.contracts_page_description()}
 				</p>
 			</div>
 
-			<Button class="gap-2" onclick={() => (showCreateContract = true)}>
-				<Plus class="h-4 w-4" />
-				Add contract
-			</Button>
+			<PermissionGuard permission={PERMISSIONS.CONTRACT.CREATE}>
+				<Button class="gap-2" onclick={() => (showCreateContract = true)}>
+					<Plus class="h-4 w-4" />
+					{m.create_contract()}
+				</Button>
+			</PermissionGuard>
 		</div>
 	</header>
 
-	<CreateContractForm bind:open={showCreateContract} onCreated={() => invalidateAll()} />
+	<PermissionGuard permission={PERMISSIONS.CONTRACT.CREATE}>
+		<CreateContractForm bind:open={showCreateContract} onCreated={refreshContracts} />
+	</PermissionGuard>
 
 	{#await contractsDataPromise}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-				<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
-				<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
-			</div>
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">
+			{#each Array.from({ length: 4 }, (_, index) => index) as index (index)}
+				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+					<div class="h-3 w-28 animate-pulse rounded bg-border/70"></div>
+					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+				</div>
+			{/each}
 		</div>
 
 		<DataTable
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) =>
-				updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) =>
+					updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })
+			}}
 			rowKey="id"
 			title={m.contracts()}
-			description="Contracts with financing, timeline, and status details."
-			filters={tableFilters}
+			description={m.contracts_table_description()}
+			toolbar={tableFilters}
 			cells={{
 				client: clientCell,
 				care: careCell,
@@ -448,52 +493,55 @@
 			}}
 		/>
 	{:then contractsData}
-		{#if contractsData.loadError}
-			<InlineErrorBanner message={contractsData.loadError} onRetry={() => invalidateAll()} />
+		{#if !contractsData.loadError}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<StatCard
+					label={m.total_contracts()}
+					value={contractsData.stats.total}
+					description={m.all_matching_records()}
+					icon={FileText}
+				/>
+				<StatCard
+					label={m.approved()}
+					value={contractsData.stats.approved}
+					description={m.current_page()}
+					icon={CheckCircle2}
+					color="emerald"
+				/>
+				<StatCard
+					label={m.draft()}
+					value={contractsData.stats.draft}
+					description={m.current_page()}
+					icon={Timer}
+					color="amber"
+				/>
+				<StatCard
+					label={m.expiring_soon()}
+					value={contractsData.stats.expiringSoon}
+					description={m.current_page()}
+					icon={Clock}
+					color="rose"
+				/>
+			</div>
 		{/if}
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<StatCard
-				label="Total Contracts"
-				value={contractsData.stats.total}
-				description={m.all_matching_records()}
-				icon={FileText}
-			/>
-			<StatCard
-				label="Approved"
-				value={contractsData.stats.approved}
-				description={m.current_page()}
-				icon={CheckCircle2}
-				color="emerald"
-			/>
-			<StatCard
-				label={m.draft()}
-				value={contractsData.stats.draft}
-				description={m.pending_completion()}
-				icon={Timer}
-				color="amber"
-			/>
-			<StatCard
-				label="Expiring Soon"
-				value={contractsData.stats.expiringSoon}
-				description={m.within_30_days()}
-				icon={Clock}
-				color="rose"
-			/>
-		</div>
 
 		<DataTable
 			{columns}
 			rows={contractsData.rows}
-			currentPage={contractsData.pagination.page}
-			pageSize={contractsData.pagination.pageSize}
-			totalCount={contractsData.pagination.count}
-			onPageChange={(nextPage) =>
-				updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })}
+			pagination={{
+				mode: 'server',
+				page: contractsData.pagination.page,
+				pageSize: contractsData.pagination.pageSize,
+				totalCount: contractsData.pagination.count,
+				onPageChange: (nextPage) =>
+					updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })
+			}}
 			rowKey="id"
 			title={m.contracts()}
-			description="Contracts with financing, timeline, and status details."
-			filters={tableFilters}
+			description={m.contracts_table_description()}
+			toolbar={tableFilters}
+			error={contractsData.loadError ?? undefined}
+			onRetry={refreshContracts}
 			cells={{
 				client: clientCell,
 				care: careCell,

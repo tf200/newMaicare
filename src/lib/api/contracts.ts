@@ -1,4 +1,5 @@
 import { api } from '$lib/api/client';
+import type { ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateContractRequest,
@@ -13,7 +14,7 @@ import type {
 	UpdateContractStatusResponse
 } from '$lib/types/api';
 
-export function listContracts(params: ListContractsParams = {}) {
+export function listContracts(params: ListContractsParams = {}, options?: ApiRequestOptions) {
 	const searchParams = new URLSearchParams();
 
 	searchParams.set('page', String(params.page ?? 1));
@@ -43,7 +44,10 @@ export function listContracts(params: ListContractsParams = {}) {
 
 	const query = searchParams.toString();
 
-	return api.get<ApiEnvelope<PaginatedResponse<ListContractsResponse>>>(`/contracts?${query}`);
+	return api.get<ApiEnvelope<PaginatedResponse<ListContractsResponse>>>(
+		`/contracts?${query}`,
+		options
+	);
 }
 
 export function getContract(id: string) {

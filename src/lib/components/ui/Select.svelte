@@ -8,15 +8,16 @@
 	import { selectSizeClasses, type SelectSize } from './_sizes';
 
 	type Option = { label: string; value: string };
+	const generatedId = $props.id();
 
 	let {
 		label,
 		options = [],
-		value = $bindable(''),
+		value = $bindable(),
 		onchange,
 		placeholder = undefined,
 		error = undefined,
-		id = `select-${Math.random().toString(36).substr(2, 9)}`,
+		id = generatedId,
 		className = '',
 		size = 'lg',
 		prefix
@@ -38,8 +39,11 @@
 	let dropdownEl = $state<HTMLElement>();
 
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_placeholder());
+	let listboxId = $derived(`${id}-listbox`);
+	let errorId = $derived(`${id}-error`);
+	let currentValue = $derived(value ?? '');
 	let selectedLabel = $derived(
-		options.find((opt: Option) => opt.value === value)?.label || resolvedPlaceholder
+		options.find((opt: Option) => opt.value === currentValue)?.label || resolvedPlaceholder
 	);
 
 	let sizeClass = $derived(selectSizeClasses[size as SelectSize]);
@@ -54,7 +58,7 @@
 		isOpen = false;
 	}
 
-	function handleOutsideClick(node: HTMLElement) {
+	function manageRoot(node: HTMLElement) {
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as Node;
 			if (!node.contains(target) && (!dropdownEl || !dropdownEl.contains(target))) {
@@ -62,15 +66,25 @@
 			}
 		};
 		document.addEventListener('click', handleClick);
-		return {
-			destroy() {
-				document.removeEventListener('click', handleClick);
-			}
+		return () => document.removeEventListener('click', handleClick);
+	}
+
+	function captureTrigger(node: HTMLElement) {
+		triggerEl = node;
+		return () => {
+			if (triggerEl === node) triggerEl = undefined;
+		};
+	}
+
+	function captureDropdown(node: HTMLElement) {
+		dropdownEl = node;
+		return () => {
+			if (dropdownEl === node) dropdownEl = undefined;
 		};
 	}
 </script>
 
-<div class="space-y-2 {className}" use:handleOutsideClick>
+<div class="space-y-2 {className}" {@attach manageRoot}>
 	{#if label}
 		<label for={id} class="ml-1 text-sm font-semibold text-text-muted">
 			{label}
@@ -80,24 +94,31 @@
 	<div class="relative">
 		<button
 			{id}
-			bind:this={triggerEl}
+			{@attach captureTrigger}
 			type="button"
+			role="combobox"
 			onclick={toggle}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {sizeClass} {error
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 hover:border-brand/50 focus-visible:ring-2 focus-visible:ring-brand/20 {sizeClass} {error
 				? 'border-error'
 				: ''}"
+			aria-haspopup="listbox"
+			aria-controls={listboxId}
 			aria-expanded={isOpen}
+			aria-invalid={error ? true : undefined}
+			aria-describedby={error ? errorId : undefined}
 		>
 			{#if prefix}
 				{@render prefix()}
 			{/if}
 			<span class="truncate">{selectedLabel}</span>
-			<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 text-text-subtle" />
+			<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 text-text-subtle" aria-hidden="true" />
 		</button>
 
 		{#if isOpen && triggerEl}
 			<div
-				bind:this={dropdownEl}
+				{@attach captureDropdown}
+				id={listboxId}
+				role="listbox"
 				use:portal
 				use:floating={{ anchor: triggerEl, matchWidth: true }}
 				class="z-[9999] mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-xl"
@@ -106,15 +127,17 @@
 				{#each options as option (option.value)}
 					<button
 						type="button"
+						role="option"
+						aria-selected={currentValue === option.value}
 						onclick={() => select(option.value)}
-						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-border/50 {value ===
+						class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm outline-hidden hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand/30 {currentValue ===
 						option.value
 							? 'bg-brand/10 font-semibold text-brand'
 							: 'text-text'}"
 					>
 						{option.label}
-						{#if value === option.value}
-							<Check class="h-4 w-4 text-brand" />
+						{#if currentValue === option.value}
+							<Check class="h-4 w-4 text-brand" aria-hidden="true" />
 						{/if}
 					</button>
 				{/each}
@@ -127,6 +150,6 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
+		<p id={errorId} class="ml-1 text-xs font-medium text-error">{error}</p>
 	{/if}
 </div>

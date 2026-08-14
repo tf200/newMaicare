@@ -1,10 +1,15 @@
 import type { PageLoad } from './$types';
+import { error } from '@sveltejs/kit';
 import { listContracts } from '$lib/api/contracts';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
+import { getAuthState } from '$lib/state/auth.svelte';
 import type {
 	ContractCareType,
 	ContractFinancingAct,
 	ContractFinancingOption,
-	ContractStatus
+	ContractStatus,
+	ListContractsResponse
 } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 
@@ -78,7 +83,7 @@ const normalizeDate = (value: string | null) => {
 	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
 };
 
-const toRows = (results: Array<any>): ContractsRow[] =>
+const toRows = (results: ListContractsResponse[]): ContractsRow[] =>
 	results.map((item) => ({
 		id: item.id,
 		clientId: item.client_id,
@@ -103,7 +108,14 @@ const toRows = (results: Array<any>): ContractsRow[] =>
 		updatedAt: item.updated_at
 	}));
 
-export const load: PageLoad = ({ url }) => {
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasPermission(PERMISSIONS.CONTRACT.VIEW)) {
+		error(403, m.no_permission_view_contracts());
+	}
+
+	depends('app:contracts:list');
+
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const requestedPageSize = Number(url.searchParams.get('page_size') ?? '10') || 10;
 	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
@@ -126,19 +138,22 @@ export const load: PageLoad = ({ url }) => {
 	const endDateFrom = normalizeDate(url.searchParams.get('end_date_from'));
 	const endDateTo = normalizeDate(url.searchParams.get('end_date_to'));
 
-	const contractsData: Promise<ContractsLoadResult> = listContracts({
-		page,
-		pageSize,
-		search: search || undefined,
-		client_name: clientName || undefined,
-		sender_name: senderName || undefined,
-		status: status.length > 0 ? status : undefined,
-		care_type: careType.length > 0 ? careType : undefined,
-		financing_act: financingAct.length > 0 ? financingAct : undefined,
-		financing_option: financingOption.length > 0 ? financingOption : undefined,
-		end_date_from: endDateFrom || undefined,
-		end_date_to: endDateTo || undefined
-	})
+	const contractsData: Promise<ContractsLoadResult> = listContracts(
+		{
+			page,
+			pageSize,
+			search: search || undefined,
+			client_name: clientName || undefined,
+			sender_name: senderName || undefined,
+			status: status.length > 0 ? status : undefined,
+			care_type: careType.length > 0 ? careType : undefined,
+			financing_act: financingAct.length > 0 ? financingAct : undefined,
+			financing_option: financingOption.length > 0 ? financingOption : undefined,
+			end_date_from: endDateFrom || undefined,
+			end_date_to: endDateTo || undefined
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, next, previous, page_size, results } = response.data;
 			const rows = toRows(results);
@@ -173,7 +188,7 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies ContractsLoadResult;
 		})
 		.catch((error): ContractsLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load contracts.';
+			const message = error instanceof Error ? error.message : m.failed_load_contracts();
 			return {
 				rows: [],
 				stats: {

@@ -14,7 +14,7 @@
 	import { listClients } from '$lib/api/clients';
 	import { listSenders } from '$lib/api/senders';
 	import type { ListClientsResponse, SenderListItem, CreateContractRequest } from '$lib/types/api';
-	import { ContractSchema, type ContractInput } from '$lib/schemas/contract';
+	import { ContractSchema, type ContractCareType, type ContractInput } from '$lib/schemas/contract';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
 
@@ -30,23 +30,37 @@
 	let uploadKey = $state(0);
 	const formId = 'create-contract-form';
 	type TimeUnitOption = { value: CreateContractRequest['price_time_unit']; label: string };
+	const initialContractForm: ContractInput = {
+		client_id: '',
+		sender_id: '',
+		care_name: '',
+		care_type: 'ambulante',
+		start_date: '',
+		end_date: '',
+		price: 0,
+		price_time_unit: 'hourly',
+		hours: undefined,
+		hours_type: 'weekly',
+		financing_act: 'WMO',
+		financing_option: 'ZIN',
+		type_id: '',
+		reminder_period: undefined,
+		VAT: undefined,
+		attachment_ids: []
+	};
 
-	const { form, errors, enhance, delayed, reset } = superForm<ContractInput>(
-		defaults(
-			{
-				attachment_ids: [],
-				care_type: 'ambulante',
-				price_time_unit: 'hourly',
-				hours_type: 'weekly'
-			} as unknown as ContractInput,
-			valibotClient(ContractSchema)
-		),
+	const { form, errors, enhance, delayed, submitting, reset } = superForm<ContractInput>(
+		defaults(initialContractForm, valibotClient(ContractSchema)),
 		{
 			validators: valibotClient(ContractSchema),
 			SPA: true,
 			dataType: 'json',
+			onSubmit: () => {
+				errorMessage = '';
+			},
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
+					errorMessage = '';
 					try {
 						const payload: CreateContractRequest = {
 							...form.data,
@@ -57,8 +71,7 @@
 
 						await createContract(payload);
 						toast.success(m.contract_created_success());
-						reset();
-						uploadedAttachments = [];
+						clearTransientState();
 						onCreated?.();
 						open = false;
 					} catch (error) {
@@ -108,37 +121,35 @@
 		return [];
 	});
 
-	// Reset dependent fields when care_type changes
-	$effect(() => {
-		if ($form.care_type === 'accommodation') {
+	const handleCareTypeChange = (value: string) => {
+		const careType = value as ContractCareType;
+		if (careType === 'accommodation') {
 			$form.hours = undefined;
 			$form.hours_type = undefined;
-		}
-		// Reset price_time_unit if it's no longer valid
-		const validUnits = timeUnitOptions.map((o) => o.value);
-		if ($form.price_time_unit && !validUnits.includes($form.price_time_unit)) {
-			if (validUnits.length > 0) {
-				$form.price_time_unit = validUnits[0];
+			if (!['daily', 'weekly'].includes($form.price_time_unit)) {
+				$form.price_time_unit = 'daily';
+			}
+		} else {
+			$form.hours_type ??= 'weekly';
+			if (!['minute', 'hourly'].includes($form.price_time_unit)) {
+				$form.price_time_unit = 'hourly';
 			}
 		}
-	});
+	};
 
 	const toRFC3339 = (dateStr: string) => {
 		if (!dateStr) return '';
 		return `${dateStr}T00:00:00Z`;
 	};
 
-	const handleAttachmentUploaded = (fileId: string) => {
+	const handleAttachmentUploaded = (fileId: string, fileName: string) => {
 		if (uploadedAttachments.some((file) => file.id === fileId)) {
 			currentUploadFileId = null;
 			uploadKey += 1;
 			return;
 		}
 
-		uploadedAttachments = [
-			...uploadedAttachments,
-			{ id: fileId, name: m.attachment_number({ number: uploadedAttachments.length + 1 }) }
-		];
+		uploadedAttachments = [...uploadedAttachments, { id: fileId, name: fileName }];
 		currentUploadFileId = null;
 		uploadKey += 1;
 	};
@@ -147,9 +158,16 @@
 		uploadedAttachments = uploadedAttachments.filter((_, idx) => idx !== index);
 	};
 
-	const handleCancel = () => {
+	const clearTransientState = () => {
 		reset();
+		errorMessage = '';
 		uploadedAttachments = [];
+		currentUploadFileId = null;
+		uploadKey += 1;
+	};
+
+	const handleCancel = () => {
+		clearTransientState();
 		open = false;
 	};
 
@@ -193,6 +211,9 @@
 	title={m.create_new_contract()}
 	description={m.create_new_contract_description()}
 	size="4xl"
+	closeLabel={m.close()}
+	dismissible={!$submitting}
+	onClose={clearTransientState}
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
@@ -216,6 +237,7 @@
 					labelFn={(client) => `${client.first_name} ${client.last_name}`}
 					valueFn={(client) => client.id}
 					placeholder={m.search_client_placeholder()}
+					loadErrorText={m.unable_to_load_clients()}
 				/>
 				<SearchSelect
 					label={m.sender()}
@@ -226,6 +248,7 @@
 					labelFn={(sender) => sender.name}
 					valueFn={(sender) => sender.id}
 					placeholder={m.search_sender_placeholder()}
+					loadErrorText={m.unable_to_load_senders()}
 				/>
 			</div>
 		</section>
@@ -246,6 +269,7 @@
 				<Select
 					label={m.care_type()}
 					bind:value={$form.care_type}
+					onchange={handleCareTypeChange}
 					options={careTypeOptions}
 					placeholder={m.select_care_type()}
 					error={formatFormError($errors.care_type)}
@@ -359,9 +383,7 @@
 						{/key}
 
 						{#if uploadedAttachments.length > 0}
-							<div
-								class="space-y-2 rounded-xl border border-border/60 bg-zinc-50/70 p-3 dark:bg-zinc-900/30"
-							>
+							<div class="space-y-2 rounded-xl border border-border/60 bg-bg p-3">
 								<p class="text-xs font-bold tracking-wide text-text-subtle uppercase">
 									{m.uploaded_files_count({ count: uploadedAttachments.length })}
 								</p>
@@ -400,8 +422,15 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button
+				variant="secondary"
+				class="gap-2"
+				form={formId}
+				type="submit"
+				isLoading={$delayed}
+				disabled={$submitting}
+			>
 				<Plus class="h-4 w-4" />
 				{$delayed ? m.creating_contract() : m.create_contract()}
 			</Button>
