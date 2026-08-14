@@ -2,11 +2,14 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { createLocationShift, updateLocationShift } from '$lib/api/organizations';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { LocationShift, OrganizationLocation } from '$lib/types/api';
 	import { Plus, Trash2, Clock } from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { getAuthState } from '$lib/state/auth.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -24,6 +27,7 @@
 		onUpdated
 	}: Props = $props();
 	const toast = getToastState();
+	const auth = getAuthState();
 
 	type ShiftModel = Omit<LocationShift, 'id' | 'location_id'> & {
 		id?: string;
@@ -71,6 +75,7 @@
 	const toApiTime = (value: string) => (value.length === 5 ? `${value}:00` : value);
 
 	const addShift = () => {
+		if (!auth.hasPermission(PERMISSIONS.SHIFT.CREATE)) return;
 		if (draftShifts.length >= 4) return;
 
 		const newShift: ShiftModel = {
@@ -92,6 +97,7 @@
 	};
 
 	const removeShift = (localId: string) => {
+		if (!auth.hasPermission(PERMISSIONS.SHIFT.CREATE)) return;
 		draftShifts = draftShifts.filter((d) => d._localId !== localId);
 		savedShifts = savedShifts.filter((s) => s._localId !== localId);
 	};
@@ -99,6 +105,8 @@
 	const saveShift = async (localId: string) => {
 		const draft = draftShifts.find((d) => d._localId === localId);
 		if (!draft) return;
+		const requiredPermission = draft.data.id ? PERMISSIONS.SHIFT.UPDATE : PERMISSIONS.SHIFT.CREATE;
+		if (!auth.hasPermission(requiredPermission)) return;
 		if (!location?.id) {
 			draft.error = m.location_unavailable();
 			return;
@@ -165,6 +173,7 @@
 	};
 
 	const startEdit = (localId: string) => {
+		if (!auth.hasPermission(PERMISSIONS.SHIFT.UPDATE)) return;
 		const draft = draftShifts.find((d) => d._localId === localId);
 		if (draft) draft.isEditing = true;
 	};
@@ -236,23 +245,27 @@
 										</div>
 
 										<div class="flex shrink-0 items-center gap-2">
-											<button
-												type="button"
-												class="hover:ring-border-strong flex h-11 items-center justify-center rounded-2xl bg-surface px-4 text-sm font-bold text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-bg hover:text-text focus:ring-2 focus:ring-brand/50 focus:outline-none"
-												onclick={() => startEdit(draft._localId)}
-											>
-												{m.edit()}
-											</button>
-											{#if !draft.data.id}
+											<PermissionGuard permission={PERMISSIONS.SHIFT.UPDATE}>
 												<button
 													type="button"
-													class="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-error hover:text-white hover:ring-error focus:ring-2 focus:ring-error/50 focus:outline-none"
-													onclick={() => removeShift(draft._localId)}
-													title={m.remove_shift()}
-													aria-label={m.remove_shift()}
+													class="hover:ring-border-strong flex h-11 items-center justify-center rounded-2xl bg-surface px-4 text-sm font-bold text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-bg hover:text-text focus:ring-2 focus:ring-brand/50 focus:outline-none"
+													onclick={() => startEdit(draft._localId)}
 												>
-													<Trash2 class="h-4 w-4" aria-hidden="true" />
+													{m.edit()}
 												</button>
+											</PermissionGuard>
+											{#if !draft.data.id}
+												<PermissionGuard permission={PERMISSIONS.SHIFT.CREATE}>
+													<button
+														type="button"
+														class="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface text-text-subtle shadow-sm ring-1 ring-border transition-all hover:bg-error hover:text-white hover:ring-error focus:ring-2 focus:ring-error/50 focus:outline-none"
+														onclick={() => removeShift(draft._localId)}
+														title={m.remove_shift()}
+														aria-label={m.remove_shift()}
+													>
+														<Trash2 class="h-4 w-4" aria-hidden="true" />
+													</button>
+												</PermissionGuard>
 											{/if}
 										</div>
 									</div>
@@ -317,19 +330,21 @@
 					</div>
 				{/if}
 
-				<Button
-					type="button"
-					variant="ghost"
-					class="w-full gap-3 rounded-3xl border-2 border-dashed border-border py-8 text-text-muted transition-all hover:border-brand hover:bg-brand/5 hover:text-brand"
-					onclick={addShift}
-					disabled={draftShifts.length >= 4}
-				>
-					<Plus class="h-6 w-6" />
-					<span class="text-base font-bold tracking-tight">
-						{m.add_shift()}
-						{draftShifts.length >= 4 ? m.max_shifts_reached() : ''}
-					</span>
-				</Button>
+				<PermissionGuard permission={PERMISSIONS.SHIFT.CREATE}>
+					<Button
+						type="button"
+						variant="ghost"
+						class="w-full gap-3 rounded-3xl border-2 border-dashed border-border py-8 text-text-muted transition-all hover:border-brand hover:bg-brand/5 hover:text-brand"
+						onclick={addShift}
+						disabled={draftShifts.length >= 4}
+					>
+						<Plus class="h-6 w-6" />
+						<span class="text-base font-bold tracking-tight">
+							{m.add_shift()}
+							{draftShifts.length >= 4 ? m.max_shifts_reached() : ''}
+						</span>
+					</Button>
+				</PermissionGuard>
 			</div>
 		{/if}
 	</div>

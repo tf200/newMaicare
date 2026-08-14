@@ -7,6 +7,7 @@
 	import { Building2, Pencil, Plus, Search, Users, Warehouse, Clock } from 'lucide-svelte';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
+	import { getAuthState } from '$lib/state/auth.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -30,6 +31,7 @@
 	const appliedSearch = $derived.by(() => (data.initial.filters.name ?? '').trim());
 
 	const breadcrumbs = getBreadcrumbsState();
+	const auth = getAuthState();
 	$effect(() => {
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: resolve('/(app)/dashboard') },
@@ -48,8 +50,13 @@
 	let isEditLoading = $state(false);
 	let editLoadError = $state('');
 	let locationRequestController: AbortController | null = null;
+	const openCreateLocation = () => {
+		if (!auth.hasPermission(PERMISSIONS.LOCATION.CREATE)) return;
+		showCreateLocation = true;
+	};
 
 	const openEdit = async (id: string) => {
+		if (!auth.hasPermission(PERMISSIONS.LOCATION.UPDATE)) return;
 		locationRequestController?.abort();
 		const controller = new AbortController();
 		locationRequestController = controller;
@@ -108,6 +115,7 @@
 	let manageShiftsLoadError = $state('');
 
 	const openManageShifts = async (location: OrganizationLocation) => {
+		if (!auth.hasPermission(PERMISSIONS.SHIFT.VIEW)) return;
 		locationRequestController?.abort();
 		const controller = new AbortController();
 		locationRequestController = controller;
@@ -261,7 +269,7 @@
 
 {#snippet actionsCell(row: OrganizationLocation)}
 	<div class="flex items-center justify-end gap-1">
-		<PermissionGuard anyOf={[PERMISSIONS.SHIFT.CREATE, PERMISSIONS.SHIFT.UPDATE]}>
+		<PermissionGuard permission={PERMISSIONS.SHIFT.VIEW}>
 			<button
 				type="button"
 				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
@@ -327,7 +335,7 @@
 						</div>
 					</div>
 					<PermissionGuard permission={PERMISSIONS.LOCATION.CREATE}>
-						<Button class="gap-2" onclick={() => (showCreateLocation = true)}>
+						<Button class="gap-2" onclick={openCreateLocation}>
 							<Plus class="h-4 w-4" aria-hidden="true" />
 							{m.add_location()}
 						</Button>
@@ -445,58 +453,60 @@
 					</div>
 				</aside>
 
-				{#await locationsDataPromise}
-					<DataTable
-						title={m.locations()}
-						description={m.locations_description()}
-						{columns}
-						rows={[]}
-						loading
-						pagination={{
-							mode: 'server',
-							page: currentPage,
-							pageSize,
-							totalCount: 0,
-							onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
-						}}
-						rowKey="id"
-						toolbar={tableFilters}
-						cells={{
-							name: nameCell,
-							address: addressCell,
-							occupancy: occupancyCell,
-							available: availableCell,
-							updated_at: updatedAtCell,
-							actions: actionsCell
-						}}
-					/>
-				{:then locationsData}
-					<DataTable
-						title={m.locations()}
-						description={m.locations_description()}
-						{columns}
-						rows={locationsData.locations}
-						pagination={{
-							mode: 'server',
-							page: locationsData.pagination.page,
-							pageSize: locationsData.pagination.pageSize,
-							totalCount: locationsData.pagination.count,
-							onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
-						}}
-						rowKey="id"
-						toolbar={tableFilters}
-						error={locationsData.loadError ?? undefined}
-						onRetry={() => invalidate('app:organization:locations')}
-						cells={{
-							name: nameCell,
-							address: addressCell,
-							occupancy: occupancyCell,
-							available: availableCell,
-							updated_at: updatedAtCell,
-							actions: actionsCell
-						}}
-					/>
-				{/await}
+				<PermissionGuard permission={PERMISSIONS.LOCATION.VIEW}>
+					{#await locationsDataPromise}
+						<DataTable
+							title={m.locations()}
+							description={m.locations_description()}
+							{columns}
+							rows={[]}
+							loading
+							pagination={{
+								mode: 'server',
+								page: currentPage,
+								pageSize,
+								totalCount: 0,
+								onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+							}}
+							rowKey="id"
+							toolbar={tableFilters}
+							cells={{
+								name: nameCell,
+								address: addressCell,
+								occupancy: occupancyCell,
+								available: availableCell,
+								updated_at: updatedAtCell,
+								actions: actionsCell
+							}}
+						/>
+					{:then locationsData}
+						<DataTable
+							title={m.locations()}
+							description={m.locations_description()}
+							{columns}
+							rows={locationsData.locations}
+							pagination={{
+								mode: 'server',
+								page: locationsData.pagination.page,
+								pageSize: locationsData.pagination.pageSize,
+								totalCount: locationsData.pagination.count,
+								onPageChange: (nextPage) => updateQuery(nextPage, appliedSearch)
+							}}
+							rowKey="id"
+							toolbar={tableFilters}
+							error={locationsData.loadError ?? undefined}
+							onRetry={() => invalidate('app:organization:locations')}
+							cells={{
+								name: nameCell,
+								address: addressCell,
+								occupancy: occupancyCell,
+								available: availableCell,
+								updated_at: updatedAtCell,
+								actions: actionsCell
+							}}
+						/>
+					{/await}
+				</PermissionGuard>
 			</div>
 		{:else}
 			<div

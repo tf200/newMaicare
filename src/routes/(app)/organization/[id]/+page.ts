@@ -41,6 +41,7 @@ export const load: PageLoad = ({ params, url, fetch, depends }) => {
 	if (!auth.hasPermission(PERMISSIONS.ORGANISATION.VIEW)) {
 		error(403, 'You do not have permission to view this resource.');
 	}
+	const canViewLocations = auth.hasPermission(PERMISSIONS.LOCATION.VIEW);
 
 	depends('app:organization:detail');
 	depends('app:organization:detail-counts');
@@ -80,46 +81,61 @@ export const load: PageLoad = ({ params, url, fetch, depends }) => {
 			loadError: error instanceof Error ? error.message : m.failed_load_organization_counts()
 		}));
 
-	const locationsData: Promise<OrganizationLocationsLoadResult> = listOrganizationLocations(
-		params.id,
-		{
+	const emptyLocationsResult: OrganizationLocationsLoadResult = {
+		locations: [],
+		pagination: {
+			count: 0,
 			page,
 			pageSize,
-			name: name.trim() || undefined
+			next: null,
+			previous: null,
+			filters: { name }
 		},
-		{ fetchFn: fetch }
-	)
-		.then((locationsResponse) => {
-			const { count, page_size, results, next, previous } = locationsResponse.data;
-			return {
-				locations: results,
-				pagination: {
-					count,
+		loadError: null
+	};
+
+	const locationsData: Promise<OrganizationLocationsLoadResult> = canViewLocations
+		? listOrganizationLocations(
+				params.id,
+				{
 					page,
-					pageSize: page_size || pageSize,
-					next,
-					previous,
-					filters: {
-						name
-					}
-				} satisfies PaginationState<{ name: string }>,
-				loadError: null
-			} satisfies OrganizationLocationsLoadResult;
-		})
-		.catch((error): OrganizationLocationsLoadResult => ({
-			locations: [],
-			pagination: {
-				count: 0,
-				page,
-				pageSize,
-				next: null,
-				previous: null,
-				filters: {
-					name
-				}
-			} satisfies PaginationState<{ name: string }>,
-			loadError: error instanceof Error ? error.message : m.failed_load_locations()
-		}));
+					pageSize,
+					name: name.trim() || undefined
+				},
+				{ fetchFn: fetch }
+			)
+				.then((locationsResponse) => {
+					const { count, page_size, results, next, previous } = locationsResponse.data;
+					return {
+						locations: results,
+						pagination: {
+							count,
+							page,
+							pageSize: page_size || pageSize,
+							next,
+							previous,
+							filters: {
+								name
+							}
+						} satisfies PaginationState<{ name: string }>,
+						loadError: null
+					} satisfies OrganizationLocationsLoadResult;
+				})
+				.catch((error): OrganizationLocationsLoadResult => ({
+					locations: [],
+					pagination: {
+						count: 0,
+						page,
+						pageSize,
+						next: null,
+						previous: null,
+						filters: {
+							name
+						}
+					} satisfies PaginationState<{ name: string }>,
+					loadError: error instanceof Error ? error.message : m.failed_load_locations()
+				}))
+		: Promise.resolve(emptyLocationsResult);
 
 	return {
 		initial: {
