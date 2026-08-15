@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import {
 		AlertCircle,
 		Activity,
@@ -13,82 +15,72 @@
 		ShieldCheck,
 		Plus
 	} from 'lucide-svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
-	import type { PageData } from './$types';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import type { PageProps } from './$types';
 	import type { Incident, IncidentSeverity, IncidentType } from '$lib/types/incidents';
+	import type { IncidentFilters } from './+page';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale } from '$lib/paraglide/runtime';
+	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 
-	let { data } = $props<{ data: PageData }>();
+	let { data }: PageProps = $props();
 
-	const incidentsDataPromise = $derived(data.incidentsData);
-	const countsDataPromise = $derived(data.countsData);
-	let currentPage = $state(1);
-	let pageSize = $state(10);
-	let confirmedFilter = $state<'' | 'true' | 'false'>('');
-	let searchTerm = $state('');
+	const incidentsDataPromise = $derived.by(() => data.incidentsData);
+	const countsDataPromise = $derived.by(() => data.countsData);
+	const initial = $derived.by(() => data.initial);
+	const currentPage = $derived.by(() => initial.page);
+	const pageSize = $derived.by(() => initial.pageSize);
+	const confirmedFilter = $derived.by(() => initial.filters.isConfirmed);
+	const appliedSearch = $derived.by(() => initial.filters.search);
 	let showCreateIncident = $state(false);
-
-	$effect(() => {
-		currentPage = data.initial.page;
-		pageSize = data.initial.pageSize;
-		confirmedFilter = data.initial.filters.isConfirmed;
-		searchTerm = data.initial.filters.search;
-	});
 
 	const normalizeSearch = (value: string) => value.trim().slice(0, 120);
 
 	const typeLabels: Record<IncidentType, string> = {
-		passing_away: 'Passing Away',
-		self_harm: 'Self Harm',
-		violence: 'Violence',
-		fire_water_damage: 'Fire/Water Damage',
-		accident: 'Accident',
-		client_absence: 'Client Absence',
-		medicines: 'Medicines',
-		organization: 'Organization',
-		use_prohibited_substances: 'Prohibited Substances',
-		other: 'Other'
+		passing_away: m.passing_away(),
+		self_harm: m.self_harm(),
+		violence: m.violence(),
+		fire_water_damage: m.fire_water_damage(),
+		accident: m.accident(),
+		client_absence: m.client_absence(),
+		medicines: m.medicines(),
+		organization: m.organization(),
+		use_prohibited_substances: m.use_prohibited_substances(),
+		other: m.other()
 	};
 
 	const severityLabels: Record<IncidentSeverity, string> = {
-		near_incident: 'Near Incident',
-		less_serious: 'Less Serious',
-		serious: 'Serious',
-		fatal: 'Fatal'
+		near_incident: m.near_incident(),
+		less_serious: m.less_serious(),
+		serious: m.serious(),
+		fatal: m.fatal()
 	};
 
 	const severityDotStyles: Record<IncidentSeverity, string> = {
-		near_incident: 'bg-sky-500 ring-4 ring-sky-500/20',
-		less_serious: 'bg-amber-500 ring-4 ring-amber-500/20',
+		near_incident: 'bg-info ring-4 ring-info/20',
+		less_serious: 'bg-warning ring-4 ring-warning/20',
 		serious: 'bg-secondary ring-4 ring-secondary/20',
-		fatal: 'bg-rose-600 ring-4 ring-rose-600/20'
+		fatal: 'bg-error ring-4 ring-error/20'
 	};
 
 	const typeBadgeStyles: Record<IncidentType, string> = {
-		passing_away:
-			'border border-slate-700/60 bg-slate-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-slate-700/30',
-		self_harm:
-			'border border-rose-700/60 bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-rose-700/30',
-		violence:
-			'border border-rose-700/60 bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-rose-700/30',
-		fire_water_damage:
-			'border border-secondary/60 bg-secondary px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-secondary/30',
-		accident:
-			'border border-amber-700/60 bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-amber-700/30',
-		client_absence:
-			'border border-blue-700/60 bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-blue-700/30',
-		medicines:
-			'border border-sky-700/60 bg-sky-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-sky-700/30',
-		organization:
-			'border border-violet-700/60 bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-violet-700/30',
-		use_prohibited_substances:
-			'border border-purple-700/60 bg-purple-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-purple-700/30',
-		other:
-			'border border-zinc-700/60 bg-zinc-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-zinc-700/30'
+		passing_away: 'border-border bg-border/40 text-text-muted',
+		self_harm: 'border-error/30 bg-error/10 text-error',
+		violence: 'border-error/30 bg-error/10 text-error',
+		fire_water_damage: 'border-secondary/30 bg-secondary/10 text-secondary',
+		accident: 'border-warning/30 bg-warning/10 text-warning',
+		client_absence: 'border-info/30 bg-info/10 text-info',
+		medicines: 'border-info/30 bg-info/10 text-info',
+		organization: 'border-brand/30 bg-brand/10 text-brand',
+		use_prohibited_substances: 'border-secondary/30 bg-secondary/10 text-secondary',
+		other: 'border-border bg-border/40 text-text-muted'
 	};
 
 	const confirmedFilterPills: FilterPill[] = [
@@ -98,13 +90,13 @@
 	];
 
 	const columns: DataTableColumn[] = [
-		{ key: 'client', label: 'Client', width: '200px' },
-		{ key: 'type', label: 'Type', width: '220px' },
-		{ key: 'severity', label: 'Severity', width: '140px' },
-		{ key: 'location', label: 'Location', width: '180px' },
-		{ key: 'employee', label: 'Employee', width: '180px' },
-		{ key: 'date', label: 'Occurred At', width: '160px' },
-		{ key: 'status', label: 'Status', width: '140px', align: 'center' },
+		{ key: 'client', label: m.client(), width: '200px' },
+		{ key: 'type', label: m.type(), width: '220px' },
+		{ key: 'severity', label: m.severity(), width: '140px' },
+		{ key: 'location', label: m.location(), width: '180px' },
+		{ key: 'employee', label: m.employee(), width: '180px' },
+		{ key: 'date', label: m.occurred_at(), width: '160px' },
+		{ key: 'status', label: m.status(), width: '140px', align: 'center' },
 		{ key: 'actions', label: '', align: 'right', width: '60px' }
 	];
 
@@ -119,43 +111,49 @@
 		});
 	};
 
-	const getClientBsn = (row: Incident) =>
-		(row as Incident & { clientBsnNumber?: string }).clientBsnNumber ?? '—';
+	const getClientBsn = (row: Incident) => row.clientBsnNumber ?? '—';
 
-	const buildQuery = (pageValue: number, status: '' | 'true' | 'false', search: string) => {
-		const params = new URLSearchParams();
+	const buildQuery = (
+		pageValue: number,
+		status: IncidentFilters['isConfirmed'],
+		search: string
+	) => {
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
-		if (status !== '') {
-			params.set('is_confirmed', status);
-		}
+		if (status) params.set('is_confirmed', status);
 		const normalizedSearch = normalizeSearch(search);
-		if (normalizedSearch) {
-			params.set('search', normalizedSearch);
-		}
+		if (normalizedSearch) params.set('search', normalizedSearch);
 		return params.toString();
 	};
 
-	const updateQuery = (pageValue: number, status: '' | 'true' | 'false', search: string) => {
+	const updateQuery = (
+		pageValue: number,
+		status: IncidentFilters['isConfirmed'],
+		search: string
+	) => {
 		const nextQuery = buildQuery(pageValue, status, search);
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		if (page.url.searchParams.toString() === nextQuery) return;
+		goto(resolve(localizeHref(resolve(`/(app)/incidents?${nextQuery}`)) as '/incidents/'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
-	const setStatusFilter = (status: '' | 'true' | 'false') => {
-		confirmedFilter = status;
-		currentPage = 1;
-		updateQuery(1, status, searchTerm);
+	const setStatusFilter = (status: string) => {
+		const nextStatus: IncidentFilters['isConfirmed'] =
+			status === 'true' || status === 'false' ? status : '';
+		updateQuery(1, nextStatus, appliedSearch);
 	};
 
-	const applySearch = () => {
-		searchTerm = normalizeSearch(searchTerm);
-		currentPage = 1;
-		updateQuery(1, confirmedFilter, searchTerm);
+	const applySearch = (search: string) => {
+		updateQuery(1, confirmedFilter, normalizeSearch(search));
 	};
 
 	const handleIncidentCreated = async () => {
 		showCreateIncident = false;
-		await invalidateAll();
+		await Promise.all([invalidate('app:incidents:list'), invalidate('app:incidents:counts')]);
 	};
 </script>
 
@@ -163,307 +161,271 @@
 	<title>{m.incidents_page_title()}</title>
 </svelte:head>
 
-<section class="space-y-8">
-	<!-- Hero Header -->
+{#snippet typeCell(row: Incident)}
+	<span
+		class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap {typeBadgeStyles[
+			row.incidentType
+		]}"
+	>
+		{typeLabels[row.incidentType]}
+	</span>
+{/snippet}
+
+{#snippet clientCell(row: Incident)}
+	<div class="flex items-center gap-2">
+		<div
+			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/20"
+		>
+			<User aria-hidden="true" class="h-5 w-5" />
+		</div>
+		<div>
+			<p class="text-sm font-semibold text-text">{row.clientFirstName} {row.clientLastName}</p>
+			<p class="text-xs text-text-muted">{m.bsn()} {getClientBsn(row)}</p>
+		</div>
+	</div>
+{/snippet}
+
+{#snippet severityCell(row: Incident)}
+	<div class="flex items-center gap-3">
+		<span aria-hidden="true" class="h-2 w-2 shrink-0 rounded-full {severityDotStyles[row.severity]}"
+		></span>
+		<span class="text-sm font-medium text-text">{severityLabels[row.severity]}</span>
+	</div>
+{/snippet}
+
+{#snippet locationCell(row: Incident)}
+	<div class="flex items-center gap-1.5 text-text-muted">
+		<MapPin aria-hidden="true" class="h-3.5 w-3.5" />
+		<span class="text-xs font-medium">{row.locationName}</span>
+	</div>
+{/snippet}
+
+{#snippet employeeCell(row: Incident)}
+	<span class="text-xs font-medium text-text-muted"
+		>{row.employeeFirstName} {row.employeeLastName}</span
+	>
+{/snippet}
+
+{#snippet dateCell(row: Incident)}
+	<span class="text-xs font-medium text-text-muted">{formatDate(row.occurredAt)}</span>
+{/snippet}
+
+{#snippet statusCell(row: Incident)}
+	<div class="flex justify-center">
+		<span
+			class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap {row.isConfirmed
+				? 'border-success/30 bg-success/10 text-success'
+				: 'border-warning/30 bg-warning/10 text-warning'}"
+		>
+			{#if row.isConfirmed}
+				<ShieldCheck aria-hidden="true" class="h-3.5 w-3.5" />
+				{m.confirmed()}
+			{:else}
+				<Clock aria-hidden="true" class="h-3.5 w-3.5" />
+				{m.pending()}
+			{/if}
+		</span>
+	</div>
+{/snippet}
+
+{#snippet actionCell(row: Incident)}
+	<div class="flex justify-end">
+		<a
+			href={resolve(
+				localizeHref(resolve('/(app)/incidents/[id]', { id: row.id })) as `/incidents/${string}/`
+			)}
+			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+			title={m.view_details()}
+			aria-label={m.view_details()}
+		>
+			<Eye aria-hidden="true" class="h-4 w-4" />
+		</a>
+	</div>
+{/snippet}
+
+{#snippet tableFilters()}
+	<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+		<div class="relative w-full sm:w-auto">
+			<label class="sr-only" for="incident-search">{m.search_incidents()}</label>
+			<Search
+				aria-hidden="true"
+				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+			/>
+			<input
+				id="incident-search"
+				type="search"
+				placeholder={m.search_client_name_placeholder()}
+				value={appliedSearch}
+				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-72"
+				onkeydown={(event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						event.currentTarget.blur();
+					}
+				}}
+				onblur={(event) => applySearch(event.currentTarget.value)}
+			/>
+		</div>
+
+		<FilterPills
+			pills={confirmedFilterPills}
+			activeId={confirmedFilter}
+			onSelect={setStatusFilter}
+		/>
+	</div>
+{/snippet}
+
+<section class="space-y-6">
 	<header
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-rose-100/70 to-secondary/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-error/15 to-secondary/15 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
-				<div class="flex items-center gap-3 text-sm font-semibold text-rose-600">
-					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50">
-						<AlertCircle class="h-5 w-5" />
+				<div class="flex items-center gap-3 text-sm font-semibold text-error">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-error/10">
+						<AlertCircle aria-hidden="true" class="h-5 w-5" />
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.incidents()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.incidents()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
-					Monitor and manage safety incidents, near-misses, and reporting across all locations and
-					clients.
+					{m.incidents_header_description()}
 				</p>
 			</div>
-			<div class="flex items-center gap-3">
+
+			<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CREATE}>
 				<Button variant="secondary" class="gap-2" onclick={() => (showCreateIncident = true)}>
-					<Plus class="h-4 w-4" />
-					Create incident
+					<Plus aria-hidden="true" class="h-4 w-4" />
+					{m.create_incident()}
 				</Button>
-			</div>
+			</PermissionGuard>
 		</div>
 	</header>
 
-	<CreateIncidentForm bind:open={showCreateIncident} onCreated={handleIncidentCreated} />
+	<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CREATE}>
+		<CreateIncidentForm bind:open={showCreateIncident} onCreated={handleIncidentCreated} />
+	</PermissionGuard>
 
-	<!-- KPI Row -->
-	{#await incidentsDataPromise}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			{#each [1, 2, 3, 4] as i (i)}
+	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+		{#await incidentsDataPromise}
+			<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+				<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+				<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
+			</div>
+		{:then incidentsData}
+			{#if !incidentsData.loadError}
+				<StatCard
+					label={m.matching_incidents()}
+					value={incidentsData.pagination.count}
+					description={m.registered_in_system()}
+					icon={Activity}
+					color="brand"
+				/>
+			{/if}
+		{/await}
+
+		{#await countsDataPromise}
+			{#each [1, 2, 3] as item (item)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
 				</div>
 			{/each}
-		</div>
-	{:then incidentsData}
-		{@const totalIncidents = incidentsData.pagination.count}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div
-				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-			>
-				<div class="absolute -right-4 -bottom-4 text-text opacity-[0.03]">
-					<Activity class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						Total Incidents
-					</div>
-					<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-						{totalIncidents}
-					</div>
-					<p class="mt-1 text-xs font-medium text-text-muted">{m.registered_in_system()}</p>
-				</div>
-			</div>
-
-			{#await countsDataPromise}
-				{#each [1, 2, 3] as i (i)}
-					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-						<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
-					</div>
-				{/each}
-			{:then countsData}
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<BadgeAlert class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Serious/Fatal
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.seriousFatal}
-						</div>
-						<p class="mt-1 text-xs font-medium font-semibold text-rose-600">
-							Requires immediate attention
-						</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-secondary/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-secondary opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Clock class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Pending Confirmation
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.pendingConfirmation}
-						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.awaiting_supervisor_review()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-brand/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Calendar class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							Past 24 Hours
-						</div>
-						<div class="mt-2 text-3xl font-bold tracking-tight text-text">
-							{countsData.counts.past24h}
-						</div>
-						<p class="mt-1 text-xs font-medium text-text-muted">{m.incidents_last_day()}</p>
-					</div>
-				</div>
-			{/await}
-		</div>
-		{#await countsDataPromise then countsData}
-			{#if countsData.loadError}
-				<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-					{countsData.loadError}
-				</div>
-			{/if}
-		{/await}
-	{/await}
-
-	<!-- Data Table Section -->
-	<div class="space-y-4">
-		{#snippet typeCell(row: Incident)}
-			<div class="flex items-center gap-3">
-				<span
-					class="inline-flex items-center rounded-full whitespace-nowrap {typeBadgeStyles[
-						row.incidentType
-					]}"
-				>
-					{typeLabels[row.incidentType]}
-				</span>
-			</div>
-		{/snippet}
-
-		{#snippet clientCell(row: Incident)}
-			<div class="flex items-center gap-2">
-				<div
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/20"
-				>
-					<User class="h-5 w-5" />
-				</div>
-				<div>
-					<p class="text-sm font-semibold text-text">{row.clientFirstName} {row.clientLastName}</p>
-					<p class="text-xs text-text-muted">{m.bsn()} {getClientBsn(row)}</p>
-				</div>
-			</div>
-		{/snippet}
-
-		{#snippet severityCell(row: Incident)}
-			<div class="flex items-center gap-3">
-				<span class="h-2 w-2 shrink-0 rounded-full {severityDotStyles[row.severity]}"></span>
-				<span class="text-sm font-medium text-text">{severityLabels[row.severity]}</span>
-			</div>
-		{/snippet}
-
-		{#snippet locationCell(row: Incident)}
-			<div class="flex items-center gap-1.5 text-text-muted">
-				<MapPin class="h-3.5 w-3.5" />
-				<span class="text-xs font-medium">{row.locationName}</span>
-			</div>
-		{/snippet}
-
-		{#snippet employeeCell(row: Incident)}
-			<span class="text-xs font-medium text-text-muted"
-				>{row.employeeFirstName} {row.employeeLastName}</span
-			>
-		{/snippet}
-
-		{#snippet dateCell(row: Incident)}
-			<span class="text-xs font-medium text-text-muted">{formatDate(row.occurredAt)}</span>
-		{/snippet}
-
-		{#snippet statusCell(row: Incident)}
-			{#if row.isConfirmed}
-				<div class="flex justify-center">
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-emerald-700/60 bg-emerald-600 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white shadow-sm shadow-emerald-700/30"
-					>
-						<ShieldCheck class="h-3.5 w-3.5" />
-						Confirmed
-					</span>
-				</div>
-			{:else}
-				<div class="flex justify-center">
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-secondary/70 bg-secondary px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white shadow-sm shadow-secondary/30"
-					>
-						<Clock class="h-3.5 w-3.5" />
-						Pending
-					</span>
-				</div>
-			{/if}
-		{/snippet}
-
-		{#snippet actionCell(row: Incident)}
-			<div class="flex justify-end">
-				<a
-					href={`/incidents/${row.id}`}
-					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-					title={m.view_details()}
-					aria-label={m.view_details()}
-				>
-					<Eye class="h-4 w-4" />
-				</a>
-			</div>
-		{/snippet}
-
-		{#snippet tableFilters()}
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-				<div class="relative w-full sm:w-auto">
-					<Search
-						class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
-					/>
-					<input
-						type="text"
-						placeholder={m.search_client_name_placeholder()}
-						bind:value={searchTerm}
-						class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-72"
-						onkeydown={(event) => {
-							if (event.key === 'Enter') applySearch();
-						}}
-						onblur={applySearch}
-					/>
-				</div>
-
-				<FilterPills
-					pills={confirmedFilterPills}
-					bind:activeId={confirmedFilter}
-					onSelect={(id) => {
-						currentPage = 1;
-						updateQuery(1, id as '' | 'true' | 'false', searchTerm);
-					}}
+		{:then countsData}
+			{#if !countsData.loadError}
+				<StatCard
+					label={m.serious_fatal()}
+					value={countsData.counts.seriousFatal}
+					description={m.requires_immediate_attention()}
+					icon={BadgeAlert}
+					color="rose"
 				/>
-			</div>
-		{/snippet}
-
-		{#await incidentsDataPromise}
-			<DataTable
-				{columns}
-				rows={[]}
-				loading
-				title={m.recent_incidents_title()}
-				description="Displaying all reported incidents and near-misses."
-				{currentPage}
-				{pageSize}
-				totalCount={0}
-				filters={tableFilters}
-				rowKey="id"
-			/>
-		{:then incidentsData}
-			{@const incidents = incidentsData.incidents}
-			{@const pagination = incidentsData.pagination}
-			{#if incidentsData.loadError}
-				<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-					{incidentsData.loadError}
-				</div>
+				<StatCard
+					label={m.pending_confirmation()}
+					value={countsData.counts.pendingConfirmation}
+					description={m.awaiting_supervisor_review()}
+					icon={Clock}
+					color="amber"
+				/>
+				<StatCard
+					label={m.past_24_hours()}
+					value={countsData.counts.past24h}
+					description={m.incidents_last_day()}
+					icon={Calendar}
+					color="secondary"
+				/>
 			{/if}
-			<DataTable
-				{columns}
-				rows={incidents}
-				title={m.recent_incidents_title()}
-				description="Displaying all reported incidents and near-misses."
-				filters={tableFilters}
-				currentPage={pagination.page}
-				pageSize={pagination.pageSize}
-				totalCount={pagination.count}
-				onPageChange={(nextPage) => {
-					currentPage = nextPage;
-					updateQuery(nextPage, confirmedFilter, searchTerm);
-				}}
-				cells={{
-					type: typeCell,
-					client: clientCell,
-					severity: severityCell,
-					location: locationCell,
-					employee: employeeCell,
-					date: dateCell,
-					status: statusCell,
-					actions: actionCell
-				}}
-			/>
 		{/await}
 	</div>
+
+	{#await countsDataPromise then countsData}
+		{#if countsData.loadError}
+			<InlineErrorBanner
+				message={countsData.loadError}
+				onRetry={() => invalidate('app:incidents:counts')}
+			/>
+		{/if}
+	{/await}
+
+	{#await incidentsDataPromise}
+		<DataTable
+			{columns}
+			rows={[]}
+			loading
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, confirmedFilter, appliedSearch)
+			}}
+			title={m.recent_incidents_title()}
+			description={m.incidents_table_description()}
+			toolbar={tableFilters}
+			rowKey="id"
+			empty={{ title: m.no_incidents(), description: m.no_incidents_description() }}
+			cells={{
+				type: typeCell,
+				client: clientCell,
+				severity: severityCell,
+				location: locationCell,
+				employee: employeeCell,
+				date: dateCell,
+				status: statusCell,
+				actions: actionCell
+			}}
+		/>
+	{:then incidentsData}
+		<DataTable
+			{columns}
+			rows={incidentsData.incidents}
+			pagination={{
+				mode: 'server',
+				page: incidentsData.pagination.page,
+				pageSize: incidentsData.pagination.pageSize,
+				totalCount: incidentsData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, confirmedFilter, appliedSearch)
+			}}
+			title={m.recent_incidents_title()}
+			description={m.incidents_table_description()}
+			toolbar={tableFilters}
+			rowKey="id"
+			error={incidentsData.loadError ?? undefined}
+			onRetry={() => invalidate('app:incidents:list')}
+			empty={{ title: m.no_incidents(), description: m.no_incidents_description() }}
+			cells={{
+				type: typeCell,
+				client: clientCell,
+				severity: severityCell,
+				location: locationCell,
+				employee: employeeCell,
+				date: dateCell,
+				status: statusCell,
+				actions: actionCell
+			}}
+		/>
+	{/await}
 </section>

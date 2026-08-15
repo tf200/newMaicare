@@ -98,7 +98,7 @@
 				{
 					label: m.incidents(),
 					href: '/incidents',
-					permission: 'CARE_COORDINATION.VIEW'
+					permission: PERMISSIONS.INCIDENT.VIEW
 				}
 			]
 		},

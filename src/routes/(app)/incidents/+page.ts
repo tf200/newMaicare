@@ -1,7 +1,11 @@
-import { getIncidentCounts, listIncidents } from '$lib/api/incidents';
+import { listIncidents } from '$lib/api/incidents';
 import type { IncidentListItemResponse } from '$lib/types/api';
 import type { Incident } from '$lib/types/incidents';
 import type { PaginationState } from '$lib/types/ui';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
 export interface IncidentFilters {
@@ -12,15 +16,6 @@ export interface IncidentFilters {
 export interface IncidentsLoadResult {
 	incidents: Incident[];
 	pagination: PaginationState<IncidentFilters>;
-	loadError: string | null;
-}
-
-export interface IncidentCountsLoadResult {
-	counts: {
-		seriousFatal: number;
-		pendingConfirmation: number;
-		past24h: number;
-	};
 	loadError: string | null;
 }
 
@@ -39,21 +34,40 @@ const mapIncident = (item: IncidentListItemResponse): Incident => ({
 	locationName: item.location_name
 });
 
-export const load: PageLoad = ({ url }) => {
-	const page = Number(url.searchParams.get('page') ?? '1') || 1;
-	const pageSize = Number(url.searchParams.get('page_size') ?? '10') || 10;
+const parsePositiveInteger = (value: string | null, fallback: number, maximum?: number) => {
+	if (value == null || value.trim() === '') return fallback;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return fallback;
+	const normalized = Math.max(1, Math.trunc(parsed));
+	return maximum == null ? normalized : Math.min(maximum, normalized);
+};
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.INCIDENT.VIEW])) {
+		error(403, 'You do not have permission to view incidents.');
+	}
+
+	depends('app:incidents:list');
+
+	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
+	const pageSize = Math.max(5, parsePositiveInteger(url.searchParams.get('page_size'), 10, 100));
 	const search = url.searchParams.get('search') ?? '';
 	const normalizedSearch = search.trim().slice(0, 120);
 	const isConfirmedParam = url.searchParams.get('is_confirmed');
 	const isConfirmedFilter: IncidentFilters['isConfirmed'] =
 		isConfirmedParam === 'true' || isConfirmedParam === 'false' ? isConfirmedParam : '';
 
-	const incidentsData: Promise<IncidentsLoadResult> = listIncidents({
-		page,
-		pageSize,
-		isConfirmed: isConfirmedFilter === '' ? undefined : isConfirmedFilter === 'true' ? true : false,
-		search: normalizedSearch || undefined
-	})
+	const incidentsData: Promise<IncidentsLoadResult> = listIncidents(
+		{
+			page,
+			pageSize,
+			isConfirmed:
+				isConfirmedFilter === '' ? undefined : isConfirmedFilter === 'true' ? true : false,
+			search: normalizedSearch || undefined
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 			const incidents = results.map(mapIncident);
@@ -75,7 +89,7 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies IncidentsLoadResult;
 		})
 		.catch((error): IncidentsLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load incidents.';
+			const message = error instanceof Error ? error.message : m.failed_load_incidents();
 			return {
 				incidents: [],
 				pagination: {
@@ -93,26 +107,6 @@ export const load: PageLoad = ({ url }) => {
 			};
 		});
 
-	const countsData: Promise<IncidentCountsLoadResult> = getIncidentCounts()
-		.then((response) => ({
-			counts: {
-				seriousFatal: response.data.serious_fatal_count,
-				pendingConfirmation: response.data.pending_confirmation_count,
-				past24h: response.data.past_24h_count
-			},
-			loadError: null
-		}))
-		.catch(
-			(error): IncidentCountsLoadResult => ({
-				counts: {
-					seriousFatal: 0,
-					pendingConfirmation: 0,
-					past24h: 0
-				},
-				loadError: error instanceof Error ? error.message : 'Failed to load incident counts.'
-			})
-		);
-
 	return {
 		initial: {
 			page,
@@ -122,7 +116,6 @@ export const load: PageLoad = ({ url }) => {
 				search: normalizedSearch
 			}
 		},
-		incidentsData,
-		countsData
+		incidentsData
 	};
 };

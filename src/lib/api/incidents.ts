@@ -1,4 +1,4 @@
-import { api, type BlobResponse } from '$lib/api/client';
+import { api, type ApiRequestOptions, type BlobResponse } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateIncidentRequest,
@@ -9,7 +9,7 @@ import type {
 	PaginatedResponse
 } from '$lib/types/api';
 
-export function listIncidents(params: ListIncidentsParams) {
+export function listIncidents(params: ListIncidentsParams, options?: ApiRequestOptions) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.pageSize));
@@ -26,15 +26,15 @@ export function listIncidents(params: ListIncidentsParams) {
 	const query = searchParams.toString();
 	const endpoint = query ? `/incidents?${query}` : '/incidents';
 
-	return api.get<ApiEnvelope<PaginatedResponse<IncidentListItemResponse>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<IncidentListItemResponse>>>(endpoint, options);
 }
 
 export function getIncident(incidentId: string) {
 	return api.get<ApiEnvelope<IncidentDetailResponse>>(`/incidents/${incidentId}`);
 }
 
-export function getIncidentCounts() {
-	return api.get<ApiEnvelope<IncidentCountsResponse>>('/incidents/counts');
+export function getIncidentCounts(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<IncidentCountsResponse>>('/incidents/counts', options);
 }
 
 export function confirmIncident(incidentId: string) {
