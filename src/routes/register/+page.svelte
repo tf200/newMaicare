@@ -744,12 +744,15 @@
 										<div class="space-y-2">
 											{#each form.client_goals, index (index)}
 												<div class="flex gap-2">
-													<Input
-														bind:value={form.client_goals[index]}
-														placeholder={m.enter_a_goal()}
-													/>
+													<div class="min-w-0 flex-1">
+														<Input
+															bind:value={form.client_goals[index]}
+															placeholder={m.enter_a_goal()}
+														/>
+													</div>
 													{#if form.client_goals.length > 1}
 														<button
+															type="button"
 															onclick={() => removeGoal(index)}
 															class="flex h-12.5 w-12.5 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-colors hover:bg-error/10 hover:text-error"
 														>
