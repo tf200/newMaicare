@@ -17,7 +17,10 @@ import type {
 	UpdateIntakeRequest
 } from '$lib/types/api';
 
-export function listIntakeForms(params: ListIntakeFormsParams = {}) {
+export function listIntakeForms(
+	params: ListIntakeFormsParams = {},
+	options: { fetchFn?: typeof fetch } = {}
+) {
 	const searchParams = new URLSearchParams();
 
 	if (params.page) {
@@ -39,11 +42,11 @@ export function listIntakeForms(params: ListIntakeFormsParams = {}) {
 	const query = searchParams.toString();
 	const endpoint = query ? `/intake_forms?${query}` : '/intake_forms';
 
-	return api.get<ApiEnvelope<PaginatedResponse<ListIntakeFormsResponse>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<ListIntakeFormsResponse>>>(endpoint, options);
 }
 
-export function getIntakeFormsTotals() {
-	return api.get<ApiEnvelope<IntakeFormsTotalsResponse>>('/intake_forms/totals');
+export function getIntakeFormsTotals(options: { fetchFn?: typeof fetch } = {}) {
+	return api.get<ApiEnvelope<IntakeFormsTotalsResponse>>('/intake_forms/totals', options);
 }
 
 export const intakes = {

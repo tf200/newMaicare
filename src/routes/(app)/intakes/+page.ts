@@ -84,7 +84,7 @@ const mapIntake = (item: ListIntakeFormsResponse): IntakeRow => {
 	};
 };
 
-export const load: PageLoad = ({ depends, url }) => {
+export const load: PageLoad = ({ depends, fetch, url }) => {
 	const auth = getAuthState();
 	if (
 		!auth.hasAnyPermission([PERMISSIONS.INTAKE_FORM.VIEW, PERMISSIONS.CARE_COORDINATION.VIEW])
@@ -101,7 +101,7 @@ export const load: PageLoad = ({ depends, url }) => {
 	const normalizedSearch = search.trim();
 	const status = (url.searchParams.get('status') ?? '') as IntakeFilters['status'];
 
-	const statsData: Promise<IntakesStatsLoadResult> = getIntakeFormsTotals()
+	const statsData: Promise<IntakesStatsLoadResult> = getIntakeFormsTotals({ fetchFn: fetch })
 		.then((response) => ({
 			stats: {
 				furtherInvestigation: response.data.further_investigation_total,
@@ -117,12 +117,15 @@ export const load: PageLoad = ({ depends, url }) => {
 			loadError: error instanceof Error ? error.message : m.failed_load_intake_statistics()
 		}));
 
-	const intakesData: Promise<IntakesLoadResult> = listIntakeForms({
-		page,
-		pageSize,
-		search: normalizedSearch || undefined,
-		status: status === '' ? undefined : status
-	})
+	const intakesData: Promise<IntakesLoadResult> = listIntakeForms(
+		{
+			page,
+			pageSize,
+			search: normalizedSearch || undefined,
+			status: status === '' ? undefined : status
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, page_size, results, next, previous } = response.data;
 			const mapped = results.map(mapIntake);
