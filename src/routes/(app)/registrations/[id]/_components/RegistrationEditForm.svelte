@@ -5,7 +5,6 @@
 	import {
 		Briefcase,
 		Building,
-		Edit3,
 		HeartPulse,
 		MapPin,
 		Plus,
@@ -22,8 +21,6 @@
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
-	import { PERMISSIONS } from '$lib/config/permissions';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -132,7 +129,7 @@
 			client_nationality: source.client_nationality,
 			client_phone_number: source.client_phone_number,
 			client_email: source.client_email,
-			client_date_of_birth: source.client_date_of_birth,
+			client_date_of_birth: source.client_date_of_birth ?? '',
 			client_street: source.client_street,
 			client_house_number: source.client_house_number,
 			client_house_number_addition: text(source.client_house_number_addition),
@@ -141,15 +138,15 @@
 			referrer_first_name: source.referrer_first_name,
 			referrer_last_name: source.referrer_last_name,
 			referrer_organization: source.referrer_organization,
-			referrer_job_title: source.referrer_job_title,
+			referrer_job_title: text(source.referrer_job_title),
 			referrer_phone_number: source.referrer_phone_number,
 			referrer_email: source.referrer_email,
 			referrer_signature: source.referrer_signature ?? false,
-			guardian1_first_name: source.guardian1_first_name,
-			guardian1_last_name: source.guardian1_last_name,
-			guardian1_relationship: source.guardian1_relationship,
-			guardian1_phone_number: source.guardian1_phone_number,
-			guardian1_email: source.guardian1_email,
+			guardian1_first_name: text(source.guardian1_first_name),
+			guardian1_last_name: text(source.guardian1_last_name),
+			guardian1_relationship: text(source.guardian1_relationship),
+			guardian1_phone_number: text(source.guardian1_phone_number),
+			guardian1_email: text(source.guardian1_email),
 			guardian2_first_name: text(source.guardian2_first_name),
 			guardian2_last_name: text(source.guardian2_last_name),
 			guardian2_relationship: text(source.guardian2_relationship),
@@ -207,7 +204,7 @@
 		return {
 			client_first_name: data.client_first_name,
 			client_last_name: data.client_last_name,
-			client_date_of_birth: data.client_date_of_birth,
+			client_date_of_birth: emptyToNull(data.client_date_of_birth),
 			client_bsn_number: data.client_bsn_number,
 			client_gender: data.client_gender,
 			client_nationality: data.client_nationality,
@@ -215,25 +212,25 @@
 			client_email: data.client_email,
 			client_street: data.client_street,
 			client_house_number: data.client_house_number,
-			client_house_number_addition: data.client_house_number_addition,
+			client_house_number_addition: emptyToNull(data.client_house_number_addition),
 			client_postal_code: data.client_postal_code,
 			client_city: data.client_city,
 			referrer_first_name: data.referrer_first_name,
 			referrer_last_name: data.referrer_last_name,
 			referrer_organization: data.referrer_organization,
-			referrer_job_title: data.referrer_job_title,
+			referrer_job_title: emptyToNull(data.referrer_job_title),
 			referrer_phone_number: data.referrer_phone_number,
 			referrer_email: data.referrer_email,
-			guardian1_first_name: data.guardian1_first_name,
-			guardian1_last_name: data.guardian1_last_name,
-			guardian1_relationship: data.guardian1_relationship,
-			guardian1_phone_number: data.guardian1_phone_number,
-			guardian1_email: data.guardian1_email,
-			guardian2_first_name: data.guardian2_first_name,
-			guardian2_last_name: data.guardian2_last_name,
-			guardian2_relationship: data.guardian2_relationship,
-			guardian2_phone_number: data.guardian2_phone_number,
-			guardian2_email: data.guardian2_email,
+			guardian1_first_name: emptyToNull(data.guardian1_first_name),
+			guardian1_last_name: emptyToNull(data.guardian1_last_name),
+			guardian1_relationship: emptyToNull(data.guardian1_relationship),
+			guardian1_phone_number: emptyToNull(data.guardian1_phone_number),
+			guardian1_email: emptyToNull(data.guardian1_email),
+			guardian2_first_name: emptyToNull(data.guardian2_first_name),
+			guardian2_last_name: emptyToNull(data.guardian2_last_name),
+			guardian2_relationship: emptyToNull(data.guardian2_relationship),
+			guardian2_phone_number: emptyToNull(data.guardian2_phone_number),
+			guardian2_email: emptyToNull(data.guardian2_email),
 			education: {
 				institution: emptyToNull(data.education.institution),
 				mentor_name: emptyToNull(data.education.mentor_name),
@@ -256,7 +253,7 @@
 			care_assisted_independent_living: data.care_assisted_independent_living,
 			care_room_training_center: data.care_room_training_center,
 			care_ambulatory_guidance: data.care_ambulatory_guidance,
-			application_reason: data.application_reason,
+			application_reason: emptyToNull(data.application_reason),
 			client_goals: data.client_goals.map((goal) => goal.value),
 			risk_aggressive_behavior: data.risk_aggressive_behavior,
 			risk_suicidal_selfharm: data.risk_suicidal_selfharm,
@@ -268,8 +265,8 @@
 			risk_sexual_behavior: data.risk_sexual_behavior,
 			risk_day_night_rhythm: data.risk_day_night_rhythm,
 			risk_other: data.risk_other,
-			risk_other_description: data.risk_other_description,
-			risk_additional_notes: data.risk_additional_notes,
+			risk_other_description: emptyToNull(data.risk_other_description),
+			risk_additional_notes: emptyToNull(data.risk_additional_notes),
 			application_date: data.application_date,
 			referrer_signature: data.referrer_signature
 		};
@@ -280,7 +277,7 @@
 		onEditingChange(value);
 	}
 
-	function startEditing() {
+	export function startEditing() {
 		baseline = buildInitialData(registration);
 		reset({ data: structuredClone(baseline) });
 		apiError = '';
@@ -309,20 +306,9 @@
 	}
 </script>
 
-<div class="space-y-8">
-	<div class="flex flex-wrap items-center justify-end gap-2">
-		{#if !editing}
-			<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
-				<Button
-					variant="ghost"
-					onclick={startEditing}
-					class="h-10 bg-surface shadow-sm ring-1 ring-border"
-				>
-					<Edit3 class="h-4 w-4 text-brand" />
-					{m.edit_registration()}
-				</Button>
-			</PermissionGuard>
-		{:else}
+{#if editing}
+	<div class="space-y-8">
+		<div class="flex flex-wrap items-center justify-end gap-2">
 			{#if hasChanges}
 				<Button
 					variant="ghost"
@@ -352,10 +338,8 @@
 			>
 				{m.save_changes()}
 			</Button>
-		{/if}
-	</div>
+		</div>
 
-	{#if editing}
 		<form id="registration-edit-form" use:enhance class="space-y-8 pb-20" novalidate>
 			{#if apiError}
 				<InlineErrorBanner title={m.failed()} message={apiError} />
@@ -526,7 +510,6 @@
 							label={m.job_title()}
 							bind:value={$form.referrer_job_title}
 							error={formatFormError($errors.referrer_job_title)}
-							required
 						/>
 						<Input
 							label={m.phone()}
@@ -558,27 +541,31 @@
 								label={m.first_name()}
 								bind:value={$form.guardian1_first_name}
 								error={formatFormError($errors.guardian1_first_name)}
-								required
 							/>
 							<Input
 								label={m.last_name()}
 								bind:value={$form.guardian1_last_name}
 								error={formatFormError($errors.guardian1_last_name)}
-								required
 							/>
 							<Input
 								label={m.relationship()}
 								bind:value={$form.guardian1_relationship}
 								error={formatFormError($errors.guardian1_relationship)}
-								required
 							/>
 							<Input
 								label={m.phone()}
 								type="tel"
 								bind:value={$form.guardian1_phone_number}
 								error={formatFormError($errors.guardian1_phone_number)}
-								required
 							/>
+							<div class="sm:col-span-2">
+								<Input
+									label={m.email()}
+									type="email"
+									bind:value={$form.guardian1_email}
+									error={formatFormError($errors.guardian1_email)}
+								/>
+							</div>
 						</div>
 						<div class="border-t border-border pt-6">
 							<h3 class="mb-4 text-sm font-semibold text-text-muted">
@@ -606,6 +593,14 @@
 									bind:value={$form.guardian2_phone_number}
 									error={formatFormError($errors.guardian2_phone_number)}
 								/>
+								<div class="sm:col-span-2">
+									<Input
+										label={m.email()}
+										type="email"
+										bind:value={$form.guardian2_email}
+										error={formatFormError($errors.guardian2_email)}
+									/>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -799,12 +794,15 @@
 					variant="ghost"
 					onclick={cancelEditing}
 					disabled={isSaving}
-					class="px-8">{m.cancel()}</Button
+					class="px-8"
 				>
-				<Button type="submit" isLoading={isSaving} disabled={!hasChanges} class="px-12"
-					>{m.save_changes()}</Button
-				>
+					{m.cancel()}
+				</Button>
+				<Button type="submit" isLoading={isSaving} disabled={!hasChanges} class="px-12">
+					{m.save_changes()}
+				</Button>
 			</div>
 		</form>
-	{/if}
-</div>
+	</div>
+{/if}
+

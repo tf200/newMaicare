@@ -62,31 +62,31 @@ export interface RegistrationRequest {
 	client_nationality: string;
 	client_phone_number: string;
 	client_email: string;
-	client_date_of_birth: string;
+	client_date_of_birth?: string | null;
 	client_street: string;
 	client_house_number: string;
-	client_house_number_addition?: string;
+	client_house_number_addition?: string | null;
 	client_postal_code: string;
 	client_city: string;
 	referrer_first_name: string;
 	referrer_last_name: string;
 	referrer_organization: string;
-	referrer_job_title: string;
+	referrer_job_title?: string | null;
 	referrer_phone_number: string;
 	referrer_email: string;
 	referrer_signature?: boolean;
-	guardian1_first_name: string;
-	guardian1_last_name: string;
-	guardian1_relationship: string;
-	guardian1_phone_number: string;
-	guardian1_email: string;
-	guardian2_first_name?: string;
-	guardian2_last_name?: string;
-	guardian2_relationship?: string;
-	guardian2_phone_number?: string;
-	guardian2_email?: string;
-	education?: RegistrationEducationPayload;
-	work?: RegistrationWorkPayload;
+	guardian1_first_name?: string | null;
+	guardian1_last_name?: string | null;
+	guardian1_relationship?: string | null;
+	guardian1_phone_number?: string | null;
+	guardian1_email?: string | null;
+	guardian2_first_name?: string | null;
+	guardian2_last_name?: string | null;
+	guardian2_relationship?: string | null;
+	guardian2_phone_number?: string | null;
+	guardian2_email?: string | null;
+	education?: RegistrationEducationPayload | null;
+	work?: RegistrationWorkPayload | null;
 	care_protected_living?: boolean;
 	care_assisted_independent_living?: boolean;
 	care_room_training_center?: boolean;
@@ -101,8 +101,8 @@ export interface RegistrationRequest {
 	risk_sexual_behavior?: boolean;
 	risk_day_night_rhythm?: boolean;
 	risk_other?: boolean;
-	risk_other_description?: string;
-	risk_additional_notes?: string;
+	risk_other_description?: string | null;
+	risk_additional_notes?: string | null;
 	document_referral?: RegistrationDocument | string | null;
 	document_education_report?: RegistrationDocument | string | null;
 	document_action_plan?: RegistrationDocument | string | null;
@@ -112,12 +112,12 @@ export interface RegistrationRequest {
 	document_id_copy?: RegistrationDocument | string | null;
 	application_date: string;
 	client_goals?: string[];
-	application_reason?: string;
+	application_reason?: string | null;
 }
 
 export interface GetRegistrationFormResponse extends RegistrationRequest {
-	education: RegistrationEducationPayload;
-	work: RegistrationWorkPayload;
+	education?: RegistrationEducationPayload | null;
+	work?: RegistrationWorkPayload | null;
 	id: string;
 	risk_count: number;
 	form_status: FormStatus;
@@ -127,6 +127,7 @@ export interface GetRegistrationFormResponse extends RegistrationRequest {
 	intake_appointment_location?: string | null;
 	intake_appointment_date?: string | null;
 	intake_options?: string[] | null;
+	created_at?: string;
 	submitted_at: string;
 	updated_at: string;
 }
@@ -159,8 +160,26 @@ export interface ListRegistrationFormsResponse {
 	client_first_name: string;
 	client_last_name: string;
 	client_bsn_number: string;
+	client_gender?: ClientGender;
+	client_email?: string;
+	client_phone_number?: string;
+	client_date_of_birth?: string | null;
 	referrer_first_name: string;
 	referrer_last_name: string;
+	referrer_organization?: string;
+	referrer_job_title?: string | null;
+	referrer_phone_number?: string;
+	referrer_email?: string;
+	guardian1_first_name?: string | null;
+	guardian1_last_name?: string | null;
+	guardian1_relationship?: string | null;
+	guardian1_phone_number?: string | null;
+	guardian1_email?: string | null;
+	guardian2_first_name?: string | null;
+	guardian2_last_name?: string | null;
+	guardian2_relationship?: string | null;
+	guardian2_phone_number?: string | null;
+	guardian2_email?: string | null;
 	care_protected_living: boolean | null;
 	care_assisted_independent_living: boolean | null;
 	care_room_training_center: boolean | null;
@@ -168,6 +187,8 @@ export interface ListRegistrationFormsResponse {
 	risk_count: number;
 	form_status: FormStatus;
 	intake_form_id?: string | null;
+	created_at?: string;
+	updated_at?: string;
 	submitted_at: string;
 }
 

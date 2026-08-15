@@ -6,9 +6,7 @@ import type { PaginationState } from '$lib/types/ui';
 import type { RegistrationFilters } from '$lib/types/registrations';
 import { getAuthState } from '$lib/state/auth.svelte';
 import { PERMISSIONS } from '$lib/config/permissions';
-import { redirect } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
-import { resolve } from '$app/paths';
 
 export interface RegistrationRow {
 	id: string;
@@ -45,11 +43,11 @@ export interface RegistrationCountsLoadResult {
 
 const mapRegistration = (item: ListRegistrationFormsResponse): RegistrationRow => ({
 	id: item.id,
-	clientFirstName: item.client_first_name,
-	clientLastName: item.client_last_name,
-	clientBsnNumber: item.client_bsn_number,
-	referrerFirstName: item.referrer_first_name,
-	referrerLastName: item.referrer_last_name,
+	clientFirstName: item.client_first_name ?? '',
+	clientLastName: item.client_last_name ?? '',
+	clientBsnNumber: item.client_bsn_number ?? '',
+	referrerFirstName: item.referrer_first_name ?? '',
+	referrerLastName: item.referrer_last_name ?? '',
 	careProtectedLiving: item.care_protected_living,
 	careAssistedIndependentLiving: item.care_assisted_independent_living,
 	careRoomTrainingCenter: item.care_room_training_center,

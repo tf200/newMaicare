@@ -17,7 +17,8 @@
 		Download,
 		ClipboardCheck,
 		Target,
-		Plus
+		Plus,
+		Edit3
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
@@ -37,6 +38,7 @@
 	import CreateIntakeWizard from '$lib/components/intake/CreateIntakeWizard.svelte';
 	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
@@ -47,6 +49,7 @@
 	const toast = getToastState();
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
+	let editFormRef = $state<ReturnType<typeof RegistrationEditForm>>();
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
@@ -507,6 +510,17 @@
 		<div class="space-y-6">
 			{#if !isEditing}
 				<div class="flex flex-wrap items-center justify-end gap-2">
+					<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
+						<Button
+							variant="ghost"
+							onclick={() => editFormRef?.startEditing()}
+							class="h-10 bg-surface shadow-sm ring-1 ring-border"
+						>
+							<Edit3 class="h-4 w-4 text-brand" />
+							{m.edit_registration()}
+						</Button>
+					</PermissionGuard>
+
 					{#if registration.form_status === 'pending'}
 						<PermissionGuard permission={PERMISSIONS.REGISTRATION_FORM.UPDATE}>
 							<button
@@ -629,6 +643,7 @@
 
 			{#key registration.id}
 				<RegistrationEditForm
+					bind:this={editFormRef}
 					{registration}
 					onUpdated={handleRegistrationUpdated}
 					onEditingChange={handleEditingChange}
@@ -1217,24 +1232,30 @@
 								</div>
 							</div>
 							<div class="space-y-2 border-t border-border/50 pt-3 text-sm">
-								<div class="flex items-center gap-2 text-text-muted">
-									<Briefcase class="h-3.5 w-3.5" />
-									{m.job_title()}: {registration.referrer_job_title}
-								</div>
-								<a
-									href="mailto:{registration.referrer_email}"
-									class="flex items-center gap-2 text-text-muted transition-colors hover:text-brand"
-								>
-									<Mail class="h-3.5 w-3.5" />
-									{registration.referrer_email}
-								</a>
-								<a
-									href="tel:{registration.referrer_phone_number}"
-									class="flex items-center gap-2 text-text-muted transition-colors hover:text-brand"
-								>
-									<Phone class="h-3.5 w-3.5" />
-									{registration.referrer_phone_number}
-								</a>
+								{#if registration.referrer_job_title}
+									<div class="flex items-center gap-2 text-text-muted">
+										<Briefcase class="h-3.5 w-3.5" />
+										{m.job_title()}: {registration.referrer_job_title}
+									</div>
+								{/if}
+								{#if registration.referrer_email}
+									<a
+										href="mailto:{registration.referrer_email}"
+										class="flex items-center gap-2 text-text-muted transition-colors hover:text-brand"
+									>
+										<Mail class="h-3.5 w-3.5" />
+										{registration.referrer_email}
+									</a>
+								{/if}
+								{#if registration.referrer_phone_number}
+									<a
+										href="tel:{registration.referrer_phone_number}"
+										class="flex items-center gap-2 text-text-muted transition-colors hover:text-brand"
+									>
+										<Phone class="h-3.5 w-3.5" />
+										{registration.referrer_phone_number}
+									</a>
+								{/if}
 							</div>
 						</div>
 
@@ -1244,58 +1265,89 @@
 								<User class="h-4 w-4 text-text-subtle" />
 								{m.guardian()}
 							</h3>
-							<div class="space-y-3 text-sm">
-								<div class="flex items-center justify-between">
-									<div class="font-medium text-text">
-										{registration.guardian1_first_name}
-										{registration.guardian1_last_name}
-									</div>
-									<span
-										class="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-zinc-500 uppercase dark:bg-zinc-800"
-									>
-										{registration.guardian1_relationship}
-									</span>
-								</div>
-								<div class="space-y-2 border-t border-border/50 pt-2 text-text-muted">
-									<a
-										href="tel:{registration.guardian1_phone_number}"
-										class="flex items-center gap-2 hover:text-brand"
-										><Phone class="h-3.5 w-3.5" /> {registration.guardian1_phone_number}</a
-									>
-									<a
-										href="mailto:{registration.guardian1_email}"
-										class="flex items-center gap-2 hover:text-brand"
-										><Mail class="h-3.5 w-3.5" /> {registration.guardian1_email}</a
-									>
-								</div>
-							</div>
-
-							{#if registration.guardian2_first_name}
-								<div class="mt-4 space-y-3 border-t border-border/50 pt-4">
-									<div class="flex items-center justify-between">
-										<div class="font-medium text-text">
-											{registration.guardian2_first_name}
-											{registration.guardian2_last_name}
+							{#if registration.guardian1_first_name || registration.guardian1_last_name || registration.guardian1_phone_number || registration.guardian1_email || registration.guardian2_first_name || registration.guardian2_last_name || registration.guardian2_phone_number || registration.guardian2_email}
+								{#if registration.guardian1_first_name || registration.guardian1_last_name || registration.guardian1_phone_number || registration.guardian1_email}
+									<div class="space-y-3 text-sm">
+										<div class="flex items-center justify-between">
+											<div class="font-medium text-text">
+												{[registration.guardian1_first_name, registration.guardian1_last_name]
+													.filter(Boolean)
+													.join(' ') || m.guardian()}
+											</div>
+											{#if registration.guardian1_relationship}
+												<span
+													class="rounded-full border border-border/50 bg-bg px-2 py-0.5 text-[10px] font-bold tracking-wide text-text-muted uppercase"
+												>
+													{registration.guardian1_relationship}
+												</span>
+											{/if}
 										</div>
-										<span
-											class="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-zinc-500 uppercase dark:bg-zinc-800"
-										>
-											{registration.guardian2_relationship}
-										</span>
+										{#if registration.guardian1_phone_number || registration.guardian1_email}
+											<div class="space-y-2 border-t border-border/50 pt-2 text-text-muted">
+												{#if registration.guardian1_phone_number}
+													<a
+														href="tel:{registration.guardian1_phone_number}"
+														class="flex items-center gap-2 transition-colors hover:text-brand"
+														><Phone class="h-3.5 w-3.5" /> {registration.guardian1_phone_number}</a
+													>
+												{/if}
+												{#if registration.guardian1_email}
+													<a
+														href="mailto:{registration.guardian1_email}"
+														class="flex items-center gap-2 transition-colors hover:text-brand"
+														><Mail class="h-3.5 w-3.5" /> {registration.guardian1_email}</a
+													>
+												{/if}
+											</div>
+										{/if}
 									</div>
-									<div class="space-y-2 text-text-muted">
-										<a
-											href="tel:{registration.guardian2_phone_number}"
-											class="flex items-center gap-2 hover:text-brand"
-											><Phone class="h-3.5 w-3.5" /> {registration.guardian2_phone_number}</a
-										>
-										<a
-											href="mailto:{registration.guardian2_email}"
-											class="flex items-center gap-2 hover:text-brand"
-											><Mail class="h-3.5 w-3.5" /> {registration.guardian2_email}</a
-										>
+								{/if}
+
+								{#if registration.guardian2_first_name || registration.guardian2_last_name || registration.guardian2_phone_number || registration.guardian2_email}
+									<div
+										class="{registration.guardian1_first_name ||
+										registration.guardian1_last_name ||
+										registration.guardian1_phone_number ||
+										registration.guardian1_email
+											? 'mt-4 border-t border-border/50 pt-4'
+											: ''} space-y-3 text-sm"
+									>
+										<div class="flex items-center justify-between">
+											<div class="font-medium text-text">
+												{[registration.guardian2_first_name, registration.guardian2_last_name]
+													.filter(Boolean)
+													.join(' ') || m.guardian()}
+											</div>
+											{#if registration.guardian2_relationship}
+												<span
+													class="rounded-full border border-border/50 bg-bg px-2 py-0.5 text-[10px] font-bold tracking-wide text-text-muted uppercase"
+												>
+													{registration.guardian2_relationship}
+												</span>
+											{/if}
+										</div>
+										{#if registration.guardian2_phone_number || registration.guardian2_email}
+											<div class="space-y-2 border-t border-border/50 pt-2 text-text-muted">
+												{#if registration.guardian2_phone_number}
+													<a
+														href="tel:{registration.guardian2_phone_number}"
+														class="flex items-center gap-2 transition-colors hover:text-brand"
+														><Phone class="h-3.5 w-3.5" /> {registration.guardian2_phone_number}</a
+													>
+												{/if}
+												{#if registration.guardian2_email}
+													<a
+														href="mailto:{registration.guardian2_email}"
+														class="flex items-center gap-2 transition-colors hover:text-brand"
+														><Mail class="h-3.5 w-3.5" /> {registration.guardian2_email}</a
+													>
+												{/if}
+											</div>
+										{/if}
 									</div>
-								</div>
+								{/if}
+							{:else}
+								<p class="text-sm text-text-muted">{m.no_info_added()}</p>
 							{/if}
 						</div>
 					</div>

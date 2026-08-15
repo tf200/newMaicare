@@ -221,6 +221,19 @@
 		submitError = '';
 		isSubmitting = true;
 		try {
+			if (
+				form.guardian1_email.trim() &&
+				!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guardian1_email.trim())
+			) {
+				throw new Error(`${m.guardian()}: ${m.invalid_email()}`);
+			}
+			if (
+				form.guardian2_email.trim() &&
+				!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guardian2_email.trim())
+			) {
+				throw new Error(`${m.guardian()}: ${m.invalid_email()}`);
+			}
+
 			if (!registrationToken) {
 				await createUploadSession();
 			}
@@ -285,6 +298,22 @@
 
 		return {
 			...payload,
+			referrer_job_title: emptyToNull(form.referrer_job_title),
+			guardian1_first_name: emptyToNull(form.guardian1_first_name),
+			guardian1_last_name: emptyToNull(form.guardian1_last_name),
+			guardian1_relationship: emptyToNull(form.guardian1_relationship),
+			guardian1_phone_number: emptyToNull(form.guardian1_phone_number),
+			guardian1_email: emptyToNull(form.guardian1_email),
+			guardian2_first_name: emptyToNull(form.guardian2_first_name),
+			guardian2_last_name: emptyToNull(form.guardian2_last_name),
+			guardian2_relationship: emptyToNull(form.guardian2_relationship),
+			guardian2_phone_number: emptyToNull(form.guardian2_phone_number),
+			guardian2_email: emptyToNull(form.guardian2_email),
+			client_house_number_addition: emptyToNull(form.client_house_number_addition),
+			client_date_of_birth: emptyDateToNull(form.client_date_of_birth),
+			application_reason: emptyToNull(form.application_reason),
+			risk_other_description: emptyToNull(form.risk_other_description),
+			risk_additional_notes: emptyToNull(form.risk_additional_notes),
 			education: {
 				institution: emptyToNull(education_institution),
 				mentor_name: emptyToNull(education_mentor_name),

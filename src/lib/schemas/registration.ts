@@ -27,7 +27,9 @@ const optionalEmail = (message: string) =>
 	v.pipe(
 		v.string(),
 		v.check(
-			(value) => value.length === 0 || v.safeParse(v.pipe(v.string(), v.email()), value).success,
+			(value) =>
+				value.trim().length === 0 ||
+				v.safeParse(v.pipe(v.string(), v.email()), value.trim()).success,
 			message
 		)
 	);
@@ -50,14 +52,14 @@ export const createRegistrationEditSchema = (messages: RegistrationEditMessages)
 		referrer_first_name: requiredString(messages.required),
 		referrer_last_name: requiredString(messages.required),
 		referrer_organization: requiredString(messages.required),
-		referrer_job_title: requiredString(messages.required),
+		referrer_job_title: v.string(),
 		referrer_phone_number: requiredString(messages.required),
 		referrer_email: v.pipe(requiredString(messages.required), v.email(messages.invalidEmail)),
 		referrer_signature: v.boolean(),
-		guardian1_first_name: requiredString(messages.required),
-		guardian1_last_name: requiredString(messages.required),
-		guardian1_relationship: requiredString(messages.required),
-		guardian1_phone_number: requiredString(messages.required),
+		guardian1_first_name: v.string(),
+		guardian1_last_name: v.string(),
+		guardian1_relationship: v.string(),
+		guardian1_phone_number: v.string(),
 		guardian1_email: optionalEmail(messages.invalidEmail),
 		guardian2_first_name: v.string(),
 		guardian2_last_name: v.string(),
