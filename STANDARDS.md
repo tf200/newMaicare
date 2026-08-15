@@ -68,6 +68,16 @@ Keep pages and layouts as data-connected containers. Keep UI components pure and
 - Use `$effect` only for external side effects such as WebSockets, browser listeners, timers, analytics, and imperative libraries. Return cleanup for every listener, timer, subscription, or external instance.
 - Shared runtime state belongs in a context-backed class under `src/lib/state/`. Do not add global mutable singleton stores.
 
+### Unsaved Workflow State
+
+- Unsaved form and multi-step workflow state must be owned by a component or route-local rune model whose lifecycle matches the complete user workflow.
+- Do not mount active drafts beneath `{#await}`, `{#key}`, or conditional branches that unrelated server-data refreshes can recreate.
+- Keep workflow hosts outside streamed data boundaries. Pass a stable, explicitly typed snapshot into the workflow when it starts.
+- Server-data invalidation and refetching must not reset an active user draft.
+- Nested forms own and reset only their own state. Return successful results to the parent workflow through typed callback props without resetting the parent draft.
+- Reset a workflow only after explicit cancellation, confirmed discard, or successful completion. Long or complex dirty forms should require confirmation before their state is discarded.
+- Keep route-specific workflows route-local. Use context-backed state under `src/lib/state/` only when the state is genuinely shared across otherwise distant components or routes.
+
 ## 7. Forms And Validation
 
 - First-party persisted domain forms use Valibot schemas in `src/lib/schemas/` and Superforms in SPA mode.
