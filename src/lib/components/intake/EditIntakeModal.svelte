@@ -5,6 +5,7 @@
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { listSenders } from '$lib/api/senders';
 	import { listLocations } from '$lib/api/locations';
@@ -54,7 +55,7 @@
 	const normalizeSelfSufficiency = (value: number) => Math.min(5, Math.max(0, Math.round(value)));
 	const formatLocationLabel = (location: GetIntakeFormResponse['location']) => {
 		if (!location) return '';
-		return location.city ? `${location.name} (${location.city})` : location.name;
+		return location.city ? `${location.name ?? ''} (${location.city})` : location.name ?? '';
 	};
 
 	const syncFormFromIntake = () => {
@@ -83,29 +84,32 @@
 		}
 	});
 
-	const careTypeOptions = [
-		{ value: 'protected_living', label: 'Protected Living' },
-		{ value: 'training_center', label: 'Training Center' },
-		{ value: 'supported_independent_living', label: 'Supported Independent Living' },
-		{ value: 'ambulatory_support', label: 'Ambulatory Support' },
-		{ value: 'other', label: 'Other' }
-	];
+	const careTypeOptions = $derived([
+		{ value: 'protected_living', label: m.protected_living() },
+		{ value: 'training_center', label: m.intake_care_training_center() },
+		{
+			value: 'supported_independent_living',
+			label: m.intake_care_supported_independent_living()
+		},
+		{ value: 'ambulatory_support', label: m.intake_care_ambulatory_support() },
+		{ value: 'other', label: m.other() }
+	]);
 
-	const participantOptions = [
-		{ value: 'client', label: 'Client' },
-		{ value: 'referrer', label: 'Referrer' },
-		{ value: 'parents/guardians', label: 'Parents/Guardians' },
-		{ value: 'care_coordinator', label: 'Care Coordinator' },
-		{ value: 'other', label: 'Other' }
-	];
+	const participantOptions = $derived([
+		{ value: 'client', label: m.client() },
+		{ value: 'referrer', label: m.referrer() },
+		{ value: 'parents/guardians', label: m.parents_guardians() },
+		{ value: 'care_coordinator', label: m.care_coordinator() },
+		{ value: 'other', label: m.other() }
+	]);
 
-	const conclusionOptions = [
-		{ value: 'suitable', label: 'Suitable' },
-		{ value: 'unsuitable', label: 'Unsuitable' },
-		{ value: 'further_investigation', label: 'Further Investigation' },
-		{ value: 'possible_palcement_date', label: 'Possible Placement Date' },
-		{ value: 'other', label: 'Other' }
-	];
+	const conclusionOptions = $derived([
+		{ value: 'suitable', label: m.suitable() },
+		{ value: 'unsuitable', label: m.unsuitable() },
+		{ value: 'further_investigation', label: m.further_investigation() },
+		{ value: 'possible_palcement_date', label: m.possible_placement_date() },
+		{ value: 'other', label: m.other() }
+	]);
 
 	const validate = () => {
 		const errors: Record<string, string> = {};
@@ -287,42 +291,13 @@
 							/>
 						</div>
 
-						<div class="space-y-1.5">
-							<label for="care-type" class="text-sm font-semibold text-text-muted">
-								{m.care_type()}
-							</label>
-							<div class="relative">
-								<select
-									id="care-type"
-									bind:value={careType}
-									class="w-full appearance-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-all outline-none hover:bg-surface/80 focus:ring-2 focus:ring-brand/20 {fieldErrors.careType
-										? 'border-error'
-										: ''}"
-								>
-									{#each careTypeOptions as option (option.value)}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</select>
-								<div
-									class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-text-muted"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										width="16"
-										height="16"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-									>
-								</div>
-							</div>
-							{#if fieldErrors.careType}
-								<p class="ml-1 text-xs font-medium text-error">{fieldErrors.careType}</p>
-							{/if}
-						</div>
+						<Select
+							id="care-type"
+							label={m.care_type()}
+							options={careTypeOptions}
+							bind:value={careType}
+							error={fieldErrors.careType}
+						/>
 
 						<div class="lg:col-span-2">
 							<MultiSelect
@@ -389,44 +364,13 @@
 							/>
 
 							<div class="grid gap-6 md:grid-cols-2">
-								<div class="space-y-1.5">
-									<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
-										>{m.intake_conclusion()}</label
-									>
-									<div class="relative">
-										<select
-											id="intake-conclusion"
-											bind:value={intakeConclusion}
-											class="w-full appearance-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-all outline-none hover:bg-surface/80 focus:ring-2 focus:ring-brand/20 {fieldErrors.intakeConclusion
-												? 'border-error'
-												: ''}"
-										>
-											{#each conclusionOptions as option (option.value)}
-												<option value={option.value}>{option.label}</option>
-											{/each}
-										</select>
-										<div
-											class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-text-muted"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="16"
-												height="16"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-											>
-										</div>
-									</div>
-									{#if fieldErrors.intakeConclusion}
-										<p class="ml-1 text-xs font-medium text-error">
-											{fieldErrors.intakeConclusion}
-										</p>
-									{/if}
-								</div>
+								<Select
+									id="intake-conclusion"
+									label={m.intake_conclusion()}
+									options={conclusionOptions}
+									bind:value={intakeConclusion}
+									error={fieldErrors.intakeConclusion}
+								/>
 								<div>
 									<Input
 										type="number"

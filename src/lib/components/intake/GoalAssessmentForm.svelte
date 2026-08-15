@@ -5,6 +5,7 @@
 	import { Loader2, Sparkles, X, Plus, RotateCcw } from 'lucide-svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import { intakes } from '$lib/api/intakes';
 	import { listMaturityMatrixTopics } from '$lib/api/maturityMatrix';
 	import { createGoalAssessmentSchema } from '$lib/schemas/intake';
@@ -56,6 +57,12 @@
 
 	const leftTopics = $derived(maturityTopics.filter((_, index) => index % 2 === 0));
 	const rightTopics = $derived(maturityTopics.filter((_, index) => index % 2 === 1));
+
+	const priorityOptions = $derived([
+		{ value: 'high', label: m.high() },
+		{ value: 'medium', label: m.medium() },
+		{ value: 'low', label: m.low() }
+	]);
 
 	function buildGoals(): IntakeGoalTopic[] {
 		return selectedTopics.map((topicId) => {
@@ -436,19 +443,15 @@
 												placeholder={m.goal_title_placeholder()}
 											/>
 										</div>
-										<select
+										<Select
 											value={goal.priority}
-											onchange={(event) =>
+											options={priorityOptions}
+											onchange={(val) =>
 												updateGoal(topic.id, index, {
-													priority: event.currentTarget.value as MaturityGoal['priority']
+													priority: val as MaturityGoal['priority']
 												})}
-											aria-label={m.intake_goal_priority()}
-											class="h-10 w-24 shrink-0 rounded-xl border border-border bg-surface px-2 text-xs text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-										>
-											<option value="high">{m.high()}</option>
-											<option value="medium">{m.medium()}</option>
-											<option value="low">{m.low()}</option>
-										</select>
+											className="w-32 shrink-0"
+										/>
 										<button
 											type="button"
 											onclick={() => removeGoal(topic.id, index)}
@@ -456,7 +459,7 @@
 												number: index + 1,
 												topic: topic.topic_name
 											})}
-											class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-error/30 bg-error/10 text-error hover:bg-error hover:text-white focus-visible:ring-2 focus-visible:ring-error focus-visible:outline-none"
+											class="flex h-[50px] w-12 shrink-0 items-center justify-center rounded-xl border border-error/30 bg-error/10 text-error hover:bg-error hover:text-white focus-visible:ring-2 focus-visible:ring-error focus-visible:outline-none"
 										>
 											<X class="h-4 w-4" aria-hidden="true" />
 										</button>

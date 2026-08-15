@@ -19,6 +19,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import TextArea from '$lib/components/ui/Textarea.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
 	import GoalAssessmentForm from './GoalAssessmentForm.svelte';
@@ -414,25 +415,13 @@
 							error={$errors.signature?.[0]}
 							placeholder={m.signature_full_name_placeholder()}
 						/>
-						<div class="space-y-2">
-							<label for="care-type" class="text-sm font-semibold text-text-muted"
-								>{m.care_type()}</label
-							>
-							<select
-								id="care-type"
-								bind:value={$form.care_type}
-								aria-invalid={$errors.care_type ? 'true' : undefined}
-								aria-describedby={$errors.care_type ? 'care-type-error' : undefined}
-								class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-							>
-								{#each careTypeOptions as option (option.value)}<option value={option.value}
-										>{option.label}</option
-									>{/each}
-							</select>
-							{#if $errors.care_type}<p id="care-type-error" class="text-xs font-medium text-error">
-									{$errors.care_type[0]}
-								</p>{/if}
-						</div>
+						<Select
+							id="care-type"
+							label={m.care_type()}
+							options={careTypeOptions}
+							bind:value={$form.care_type}
+							error={$errors.care_type?.[0]}
+						/>
 						<div class="sm:col-span-2">
 							<MultiSelect
 								id="intake-participants"
@@ -505,28 +494,13 @@
 								rows={4}
 							/>
 						</div>
-						<div class="space-y-2">
-							<label for="intake-conclusion" class="text-sm font-semibold text-text-muted"
-								>{m.intake_conclusion()}</label
-							>
-							<select
-								id="intake-conclusion"
-								bind:value={$form.intake_conclusion}
-								aria-invalid={$errors.intake_conclusion ? 'true' : undefined}
-								aria-describedby={$errors.intake_conclusion ? 'intake-conclusion-error' : undefined}
-								class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-							>
-								{#each conclusionOptions as option (option.value)}<option value={option.value}
-										>{option.label}</option
-									>{/each}
-							</select>
-							{#if $errors.intake_conclusion}<p
-									id="intake-conclusion-error"
-									class="text-xs font-medium text-error"
-								>
-									{$errors.intake_conclusion[0]}
-								</p>{/if}
-						</div>
+						<Select
+							id="intake-conclusion"
+							label={m.intake_conclusion()}
+							options={conclusionOptions}
+							bind:value={$form.intake_conclusion}
+							error={$errors.intake_conclusion?.[0]}
+						/>
 						<Input
 							id="evaluation-weeks"
 							type="number"
