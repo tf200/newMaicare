@@ -22,6 +22,7 @@
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	let { data }: PageProps = $props();
 
@@ -209,7 +210,8 @@
 				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
 				onkeydown={(event) => {
 					if (event.key === 'Enter') {
-						applySearch((event.currentTarget as HTMLInputElement).value);
+						event.preventDefault();
+						event.currentTarget.blur();
 					}
 				}}
 				onblur={(event) => applySearch((event.currentTarget as HTMLInputElement).value)}
@@ -229,7 +231,7 @@
 		<div
 			class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/10 text-brand ring-1 ring-brand/20"
 		>
-			<ClipboardList class="h-5 w-5" />
+			<ClipboardList aria-hidden="true" class="h-5 w-5" />
 		</div>
 		<div>
 			<p class="text-sm font-semibold text-text">{formatClientName(row)}</p>
@@ -242,7 +244,7 @@
 	{@const days = row.daysInWaitingList}
 	<span class="inline-flex items-center gap-1 text-sm font-semibold {waitingDaysClass(days)}">
 		{#if days != null && days > 14}
-			<AlertTriangle class="h-3.5 w-3.5" />
+			<AlertTriangle aria-hidden="true" class="h-3.5 w-3.5" />
 		{/if}
 		{days ?? '—'}
 	</span>
@@ -268,7 +270,7 @@
 
 {#snippet actionsCell(row: WaitingListRow)}
 	<div class="flex justify-end gap-1">
-		<PermissionGuard permission="CLIENT.STATUS.UPDATE">
+		<PermissionGuard permission={PERMISSIONS.CLIENT.STATUS_UPDATE}>
 			<button
 				type="button"
 				aria-label={m.put_in_care()}
@@ -279,7 +281,7 @@
 				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 				title={m.put_in_care()}
 			>
-				<HeartHandshake class="h-4 w-4" />
+				<HeartHandshake aria-hidden="true" class="h-4 w-4" />
 			</button>
 		</PermissionGuard>
 		<a
@@ -290,7 +292,7 @@
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 			title={m.view_details()}
 		>
-			<Eye class="h-4 w-4" />
+			<Eye aria-hidden="true" class="h-4 w-4" />
 		</a>
 	</div>
 {/snippet}
@@ -306,7 +308,7 @@
 			<div class="space-y-3">
 				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
-						<ClipboardList class="h-5 w-5" />
+						<ClipboardList aria-hidden="true" class="h-5 w-5" />
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>

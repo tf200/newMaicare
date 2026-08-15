@@ -3,6 +3,9 @@ import { listWaitingListClients } from '$lib/api/clients';
 import type { ListWaitingListClientsResponse } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
 import { m } from '$lib/paraglide/messages';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { error } from '@sveltejs/kit';
 
 export interface WaitingListFilters {
 	search: string;
@@ -29,7 +32,6 @@ export interface WaitingListRow {
 
 export interface WaitingListLoadResult {
 	rows: WaitingListRow[];
-	stats: { total: number };
 	pagination: PaginationState<WaitingListFilters>;
 	loadError: string | null;
 }
@@ -69,6 +71,11 @@ const parsePositiveInteger = (value: string | null, fallback: number, maximum?: 
 };
 
 export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.CLIENT.VIEW])) {
+		error(403, 'You do not have permission to view the waiting list.');
+	}
+
 	depends('app:waiting-list:list');
 
 	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
@@ -109,9 +116,6 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 
 			return {
 				rows: mappedRows,
-				stats: {
-					total: count
-				},
 				pagination: {
 					count,
 					page,
@@ -131,9 +135,6 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 			const message = error instanceof Error ? error.message : m.failed_load_waiting_list();
 			return {
 				rows: [],
-				stats: {
-					total: 0
-				},
 				pagination: {
 					count: 0,
 					page,

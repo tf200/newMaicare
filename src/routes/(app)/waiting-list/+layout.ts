@@ -1,6 +1,9 @@
 import type { LayoutLoad } from './$types';
 import { getWaitingListStats } from '$lib/api/clients';
 import { m } from '$lib/paraglide/messages';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { error } from '@sveltejs/kit';
 
 export interface WaitingListStatsResult {
 	totalClients: number;
@@ -11,6 +14,11 @@ export interface WaitingListStatsResult {
 }
 
 export const load: LayoutLoad = ({ fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.CLIENT.VIEW])) {
+		error(403, 'You do not have permission to view waiting-list statistics.');
+	}
+
 	depends('app:waiting-list:stats');
 
 	const waitingListStats: Promise<WaitingListStatsResult> = getWaitingListStats({ fetchFn: fetch })

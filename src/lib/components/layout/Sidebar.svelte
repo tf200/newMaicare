@@ -61,7 +61,7 @@
 		{
 			label: m.care_coordination(),
 			icon: HeartHandshake,
-			permission: 'CARE_COORDINATION.VIEW',
+			permission: PERMISSIONS.CARE_COORDINATION.VIEW,
 			children: [
 				{
 					label: m.organization(),
@@ -83,7 +83,7 @@
 				{
 					label: m.waiting_for_selection(),
 					href: '/waiting-list',
-					permission: 'CARE_COORDINATION.VIEW'
+					permission: PERMISSIONS.CLIENT.VIEW
 				},
 				{
 					label: m.in_care(),
