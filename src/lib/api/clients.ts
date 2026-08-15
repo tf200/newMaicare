@@ -96,7 +96,7 @@ export function updateClient(id: string, payload: UpdateClientRequest) {
 	return api.put<ApiEnvelope<GetClientResponse>>(`/clients/${id}`, payload);
 }
 
-export function listInCareClients(params: ListInCareClientsParams) {
+export function listInCareClients(params: ListInCareClientsParams, options?: ApiRequestOptions) {
 	const searchParams = new URLSearchParams();
 
 	searchParams.set('page', String(params.page));
@@ -114,12 +114,13 @@ export function listInCareClients(params: ListInCareClientsParams) {
 	const query = searchParams.toString();
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListInCareClientsResponse>>>(
-		`/clients/in-care?${query}`
+		`/clients/in-care?${query}`,
+		options
 	);
 }
 
-export function getInCareStats() {
-	return api.get<ApiEnvelope<InCareStatsResponse>>('/clients/incare/stats');
+export function getInCareStats(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<InCareStatsResponse>>('/clients/incare/stats', options);
 }
 
 export function listClients(params: ListClientsParams) {

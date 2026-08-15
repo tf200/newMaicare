@@ -1,7 +1,11 @@
 import type { PageLoad } from './$types';
-import { listInCareClients, getInCareStats } from '$lib/api/clients';
+import { listInCareClients } from '$lib/api/clients';
 import type { InCareClientStatus } from '$lib/types/api';
 import type { PaginationState } from '$lib/types/ui';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
+import { error } from '@sveltejs/kit';
 
 export interface InCareFilters {
 	search: string;
@@ -23,16 +27,7 @@ export interface InCareRow {
 
 export interface InCareLoadResult {
 	rows: InCareRow[];
-	stats: { total: number };
 	pagination: PaginationState<InCareFilters>;
-	loadError: string | null;
-}
-
-export interface InCareStatsResult {
-	clientsInCare: number;
-	clientsScheduledInCare: number;
-	contractsEndingSoon: number;
-	total: number;
 	loadError: string | null;
 }
 
@@ -43,22 +38,39 @@ const normalizeStatus = (values: string[]) =>
 		allowedStatus.has(value as InCareClientStatus)
 	);
 
-export const load: PageLoad = ({ url }) => {
-	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
-	const requestedPageSize = Number(url.searchParams.get('page_size') ?? '8') || 8;
-	const pageSize = Math.min(100, Math.max(5, requestedPageSize));
+const parsePositiveInteger = (value: string | null, fallback: number, maximum?: number) => {
+	if (value == null || value.trim() === '') return fallback;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return fallback;
+	const normalized = Math.max(1, Math.trunc(parsed));
+	return maximum == null ? normalized : Math.min(maximum, normalized);
+};
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.CLIENT.VIEW])) {
+		error(403, 'You do not have permission to view clients in care.');
+	}
+
+	depends('app:in-care:list');
+
+	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
+	const pageSize = Math.max(5, parsePositiveInteger(url.searchParams.get('page_size'), 8, 100));
 	const search = (url.searchParams.get('search') ?? '').trim();
 	const status = normalizeStatus(url.searchParams.getAll('status'));
 	const sortParam = (url.searchParams.get('sort_days_in_care') ?? 'desc').toLowerCase();
 	const sortDirection: 'asc' | 'desc' = sortParam === 'asc' ? 'asc' : 'desc';
 
-	const inCareData: Promise<InCareLoadResult> = listInCareClients({
-		page,
-		pageSize,
-		search: search || undefined,
-		status: status.length > 0 ? status : undefined,
-		sortDaysInCare: sortDirection
-	})
+	const inCareData: Promise<InCareLoadResult> = listInCareClients(
+		{
+			page,
+			pageSize,
+			search: search || undefined,
+			status: status.length > 0 ? status : undefined,
+			sortDaysInCare: sortDirection
+		},
+		{ fetchFn: fetch }
+	)
 		.then((response) => {
 			const { count, next, previous, page_size, results } = response.data;
 			const rows: InCareRow[] = results.map((item) => ({
@@ -76,9 +88,6 @@ export const load: PageLoad = ({ url }) => {
 
 			return {
 				rows,
-				stats: {
-					total: count
-				},
 				pagination: {
 					count,
 					page,
@@ -94,12 +103,9 @@ export const load: PageLoad = ({ url }) => {
 			} satisfies InCareLoadResult;
 		})
 		.catch((error): InCareLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load in-care clients.';
+			const message = error instanceof Error ? error.message : m.failed_load_in_care_clients();
 			return {
 				rows: [],
-				stats: {
-					total: 0
-				},
 				pagination: {
 					count: 0,
 					page,
@@ -111,25 +117,6 @@ export const load: PageLoad = ({ url }) => {
 						status
 					}
 				} satisfies PaginationState<InCareFilters>,
-				loadError: message
-			};
-		});
-
-	const inCareStats: Promise<InCareStatsResult> = getInCareStats()
-		.then((response) => ({
-			clientsInCare: response.data.clients_in_care,
-			clientsScheduledInCare: response.data.clients_scheduled_in_care,
-			contractsEndingSoon: response.data.contracts_ending_soon,
-			total: response.data.total,
-			loadError: null
-		}))
-		.catch((error): InCareStatsResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load in-care stats.';
-			return {
-				clientsInCare: 0,
-				clientsScheduledInCare: 0,
-				contractsEndingSoon: 0,
-				total: 0,
 				loadError: message
 			};
 		});
@@ -146,7 +133,6 @@ export const load: PageLoad = ({ url }) => {
 				direction: sortDirection
 			}
 		},
-		inCareData,
-		inCareStats
+		inCareData
 	};
 };
