@@ -49,6 +49,7 @@
 	const toast = getToastState();
 	let showProcessForm = $state(false);
 	let showIntakeWizard = $state(false);
+	let intakeRegistration = $state.raw<GetRegistrationFormResponse | null>(null);
 	let editFormRef = $state<ReturnType<typeof RegistrationEditForm>>();
 
 	const breadcrumbs = getBreadcrumbsState();
@@ -93,6 +94,11 @@
 
 	function handleEditingChange(editing: boolean) {
 		isEditing = editing;
+	}
+
+	function startIntake(registration: GetRegistrationFormResponse) {
+		intakeRegistration = registration;
+		showIntakeWizard = true;
 	}
 
 	async function refreshAfterIntakeCreated() {
@@ -543,7 +549,7 @@
 					{:else}
 						<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
 							<button
-								onclick={() => (showIntakeWizard = true)}
+								onclick={() => startIntake(registration)}
 								class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-md shadow-brand/20 transition-all hover:bg-brand-hover hover:shadow-lg hover:shadow-brand/30"
 							>
 								<ClipboardCheck class="h-4 w-4" />
@@ -632,14 +638,6 @@
 				registrationId={registration.id}
 				onProcessed={refreshRegistrationResources}
 			/>
-
-			<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
-				<CreateIntakeWizard
-					bind:open={showIntakeWizard}
-					{registration}
-					onCreated={refreshAfterIntakeCreated}
-				/>
-			</PermissionGuard>
 
 			{#key registration.id}
 				<RegistrationEditForm
@@ -1356,3 +1354,13 @@
 		</div>
 	{/if}
 {/await}
+
+{#if intakeRegistration}
+	<PermissionGuard permission={PERMISSIONS.INTAKE_FORM.CREATE}>
+		<CreateIntakeWizard
+			bind:open={showIntakeWizard}
+			registration={intakeRegistration}
+			onCreated={refreshAfterIntakeCreated}
+		/>
+	</PermissionGuard>
+{/if}
