@@ -44,7 +44,9 @@
 				id: 'roles' as const,
 				label: text('system_settings_tab_roles', 'Roles & permissions'),
 				icon: ShieldCheck,
-				allowed: auth.hasPermission(PERMISSIONS.ROLES.VIEW)
+				allowed:
+					auth.hasPermission(PERMISSIONS.ROLES.VIEW) &&
+					auth.hasPermission(PERMISSIONS.PERMISSION.VIEW)
 			},
 			{
 				id: 'departments' as const,

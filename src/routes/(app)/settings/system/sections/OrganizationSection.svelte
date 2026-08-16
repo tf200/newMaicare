@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as v from 'valibot';
 	import { untrack } from 'svelte';
 	import { Building2, CheckCircle2, Edit2, Mail, MapPin, Phone, Save, X } from 'lucide-svelte';
 	import { defaults, superForm } from 'sveltekit-superforms';
@@ -12,6 +11,7 @@
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { m } from '$lib/paraglide/messages';
 	import { formatFormError } from '$lib/utils/form-errors';
+	import { createOrganizationSettingsSchema } from '$lib/schemas/system-settings';
 	import type { OrganizationProfile } from '../types';
 
 	type MessageKey =
@@ -60,30 +60,10 @@
 	let saveError = $state('');
 	let saveSuccess = $state(false);
 
-	const required = () => messages.system_settings_organization_required_error();
-	const schema = v.object({
-		name: v.pipe(v.string(), v.trim(), v.minLength(1, required)),
-		timezone: v.pipe(v.string(), v.minLength(1, required)),
-		address: v.object({
-			street: v.pipe(v.string(), v.trim(), v.minLength(1, required)),
-			houseNumber: v.pipe(v.string(), v.trim(), v.minLength(1, required)),
-			houseNumberAddition: v.pipe(v.string(), v.trim()),
-			postalCode: v.pipe(v.string(), v.trim(), v.minLength(1, required)),
-			city: v.pipe(v.string(), v.trim(), v.minLength(1, required))
-		}),
-		contact: v.object({
-			email: v.pipe(
-				v.string(),
-				v.trim(),
-				v.email(() => messages.system_settings_organization_email_error())
-			),
-			phone: v.pipe(v.string(), v.trim(), v.minLength(1, required)),
-			website: v.pipe(
-				v.string(),
-				v.trim(),
-				v.url(() => messages.system_settings_organization_website_error())
-			)
-		})
+	const schema = createOrganizationSettingsSchema({
+		required: messages.system_settings_organization_required_error(),
+		invalidEmail: messages.system_settings_organization_email_error(),
+		invalidWebsite: messages.system_settings_organization_website_error()
 	});
 
 	const { form, errors, enhance, submitting, delayed, reset } = superForm(

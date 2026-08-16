@@ -4,7 +4,6 @@
 	import { fromAction } from 'svelte/attachments';
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
-	import * as v from 'valibot';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
@@ -16,6 +15,10 @@
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { m } from '$lib/paraglide/messages';
 	import type { Department, EmployeeOption } from '../types';
+	import {
+		createDepartmentSchema,
+		type DepartmentSettingsInput
+	} from '$lib/schemas/system-settings';
 
 	type DepartmentPayload = {
 		name: string;
@@ -39,12 +42,7 @@
 	const instanceId = $props.id();
 	const formId = `${instanceId}-department-form`;
 	const nameInputId = `${instanceId}-department-name`;
-	const departmentSchema = v.object({
-		name: v.pipe(v.string(), v.trim(), v.minLength(1, m.required_field())),
-		description: v.pipe(v.string(), v.trim()),
-		departmentHeadId: v.string()
-	});
-	type DepartmentForm = v.InferInput<typeof departmentSchema>;
+	const departmentSchema = createDepartmentSchema(m.required_field());
 
 	const columns: DataTableColumn[] = [
 		{ key: 'name', label: m.department() },
@@ -63,7 +61,7 @@
 
 	const { form, errors, enhance, submitting, reset } = superForm(
 		defaults(
-			{ name: '', description: '', departmentHeadId: '' } satisfies DepartmentForm,
+			{ name: '', description: '', departmentHeadId: '' } satisfies DepartmentSettingsInput,
 			valibotClient(departmentSchema)
 		),
 		{

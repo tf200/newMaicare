@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { defaults, superForm } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
-	import * as v from 'valibot';
+	import { untrack } from 'svelte';
 	import { CheckCircle2, Info, Plus, Save, Search, ShieldCheck, Users } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
@@ -10,6 +10,7 @@
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { m } from '$lib/paraglide/messages';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { createRoleSchema } from '$lib/schemas/system-settings';
 	import type { PermissionGroup, PermissionItem, Role } from '../types';
 
 	type MessageFunction = (inputs?: Record<string, string | number>) => string;
@@ -41,27 +42,30 @@
 	const text = (key: string, fallback: string, inputs?: Record<string, string | number>) =>
 		messages[key]?.(inputs) ?? fallback;
 	const uid = $props.id();
-	const createSchema = v.object({
-		name: v.pipe(
-			v.string(),
-			v.trim(),
-			v.minLength(1, text('system_settings_role_name_required', 'Role name is required.')),
-			v.maxLength(100, text('system_settings_role_name_too_long', 'Role name is too long.'))
-		),
-		description: v.pipe(
-			v.string(),
-			v.trim(),
-			v.maxLength(
-				500,
-				text('system_settings_role_description_too_long', 'Description is too long.')
-			)
+	const createSchema = createRoleSchema({
+		nameRequired: text('system_settings_role_name_required', 'Role name is required.'),
+		nameTooLong: text('system_settings_role_name_too_long', 'Role name is too long.'),
+		descriptionTooLong: text(
+			'system_settings_role_description_too_long',
+			'Description is too long.'
 		)
 	});
 
-	let selectedRoleId = $state<string | undefined>();
+	let selectedRoleId = $state<string | undefined>(untrack(() => roles[0]?.id));
 	let permissionSearch = $state('');
-	let persistedPermissions = $state.raw<Record<string, readonly string[]>>({});
-	let draftPermissions = $state.raw<Record<string, readonly string[]>>({});
+	let persistedPermissions = $state.raw<Record<string, readonly string[]>>(
+		untrack(() => ({ ...initialRolePermissions }))
+	);
+	let draftPermissions = $state.raw<Record<string, readonly string[]>>(
+		untrack(() =>
+			Object.fromEntries(
+				Object.entries(initialRolePermissions).map(([roleId, permissions]) => [
+					roleId,
+					[...permissions]
+				])
+			)
+		)
+	);
 	let loadingRoleId = $state<string | null>(null);
 	let permissionLoadError = $state('');
 	let saveError = $state('');
@@ -148,29 +152,6 @@
 			.filter((group) => group.permissions.length > 0);
 	});
 
-	$effect(() => {
-		const availableIds = new Set(roles.map((role) => role.id));
-		if (!selectedRoleId || !availableIds.has(selectedRoleId)) selectedRoleId = roles[0]?.id;
-	});
-
-	$effect(() => {
-		const nextPersisted = { ...persistedPermissions };
-		const nextDrafts = { ...draftPermissions };
-		for (const [roleId, permissions] of Object.entries(initialRolePermissions)) {
-			if (Object.hasOwn(nextPersisted, roleId)) continue;
-			nextPersisted[roleId] = [...permissions];
-			nextDrafts[roleId] = [...permissions];
-		}
-		persistedPermissions = nextPersisted;
-		draftPermissions = nextDrafts;
-	});
-
-	$effect(() => {
-		const roleId = selectedRoleId;
-		if (!roleId || Object.hasOwn(persistedPermissions, roleId)) return;
-		void loadRolePermissions(roleId);
-	});
-
 	async function loadRolePermissions(roleId: string) {
 		const token = ++requestToken;
 		permissionLoadError = '';
@@ -192,6 +173,12 @@
 			if (token === requestToken) loadingRoleId = null;
 		}
 	}
+
+	untrack(() => {
+		if (selectedRoleId && !Object.hasOwn(persistedPermissions, selectedRoleId)) {
+			void loadRolePermissions(selectedRoleId);
+		}
+	});
 
 	function selectRole(roleId: string) {
 		requestToken += 1;

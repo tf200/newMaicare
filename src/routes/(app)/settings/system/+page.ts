@@ -63,68 +63,87 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 		error(403, 'You do not have permission to view system settings.');
 	}
 
-	depends('app:settings-system:organization');
-	depends('app:settings-system:roles');
-	depends('app:settings-system:permissions');
-	depends('app:settings-system:departments');
-	depends('app:settings-system:employees');
-
 	const requestedTab = url.searchParams.get('tab') as SystemSettingsTab | null;
-	const tab = requestedTab && tabs.has(requestedTab) ? requestedTab : 'organization';
+	const permittedTabs: SystemSettingsTab[] = [];
+	if (auth.hasPermission(PERMISSIONS.SETTINGS.ORGANIZATION_PROFILE.VIEW)) {
+		permittedTabs.push('organization');
+	}
+	if (
+		auth.hasPermission(PERMISSIONS.ROLES.VIEW) &&
+		auth.hasPermission(PERMISSIONS.PERMISSION.VIEW)
+	) {
+		permittedTabs.push('roles');
+	}
+	if (auth.hasPermission(PERMISSIONS.SETTINGS.DEPARTMENT.VIEW)) {
+		permittedTabs.push('departments');
+	}
+	const tab =
+		requestedTab && tabs.has(requestedTab) && permittedTabs.includes(requestedTab)
+			? requestedTab
+			: (permittedTabs[0] ?? 'organization');
 	const options = { fetchFn: fetch };
+	const loadSection = <T>(dependency: `${string}:${string}`, request: () => Promise<T>) => {
+		depends(dependency);
+		return request();
+	};
 
-	const organizationData = auth.hasPermission(PERMISSIONS.SETTINGS.ORGANIZATION_PROFILE.VIEW)
-		? getOrganizationProfile(options)
-				.then((response): OrganizationLoadResult => ({
-					organization: mapOrganizationProfile(response.data),
-					loadError: null
-				}))
-				.catch((reason): OrganizationLoadResult => ({
-					organization: null,
-					loadError: message(reason, 'Failed to load the organization profile.')
-				}))
-		: null;
+	const organizationData =
+		tab === 'organization'
+			? loadSection('app:settings-system:organization', () => getOrganizationProfile(options))
+					.then((response): OrganizationLoadResult => ({
+						organization: mapOrganizationProfile(response.data),
+						loadError: null
+					}))
+					.catch((reason): OrganizationLoadResult => ({
+						organization: null,
+						loadError: message(reason, 'Failed to load the organization profile.')
+					}))
+			: null;
 
-	const rolesData = auth.hasPermission(PERMISSIONS.ROLES.VIEW)
-		? listRoles(options)
-				.then((response): RolesLoadResult => ({
-					roles: response.data.map((role) => mapRole(role)),
-					loadError: null
-				}))
-				.catch((reason): RolesLoadResult => ({
-					roles: [],
-					loadError: message(reason, 'Failed to load roles.')
-				}))
-		: null;
+	const rolesData =
+		tab === 'roles'
+			? loadSection('app:settings-system:roles', () => listRoles(options))
+					.then((response): RolesLoadResult => ({
+						roles: response.data.map((role) => mapRole(role)),
+						loadError: null
+					}))
+					.catch((reason): RolesLoadResult => ({
+						roles: [],
+						loadError: message(reason, 'Failed to load roles.')
+					}))
+			: null;
 
-	const permissionGroupsData = auth.hasPermission(PERMISSIONS.PERMISSION.VIEW)
-		? listPermissionGroups(options)
-				.then((response): PermissionGroupsLoadResult => ({
-					permissionGroups: mapPermissionGroups(response.data),
-					loadError: null
-				}))
-				.catch((reason): PermissionGroupsLoadResult => ({
-					permissionGroups: [],
-					loadError: message(reason, 'Failed to load permissions.')
-				}))
-		: null;
+	const permissionGroupsData =
+		tab === 'roles' && auth.hasPermission(PERMISSIONS.PERMISSION.VIEW)
+			? loadSection('app:settings-system:permissions', () => listPermissionGroups(options))
+					.then((response): PermissionGroupsLoadResult => ({
+						permissionGroups: mapPermissionGroups(response.data),
+						loadError: null
+					}))
+					.catch((reason): PermissionGroupsLoadResult => ({
+						permissionGroups: [],
+						loadError: message(reason, 'Failed to load permissions.')
+					}))
+			: null;
 
-	const departmentsData = auth.hasPermission(PERMISSIONS.SETTINGS.DEPARTMENT.VIEW)
-		? listDepartments({}, options)
-				.then((response): DepartmentsLoadResult => ({
-					departments: response.data.results.map(mapDepartment),
-					loadError: null
-				}))
-				.catch((reason): DepartmentsLoadResult => ({
-					departments: [],
-					loadError: message(reason, 'Failed to load departments.')
-				}))
-		: null;
+	const departmentsData =
+		tab === 'departments'
+			? loadSection('app:settings-system:departments', () => listDepartments({}, options))
+					.then((response): DepartmentsLoadResult => ({
+						departments: response.data.results.map(mapDepartment),
+						loadError: null
+					}))
+					.catch((reason): DepartmentsLoadResult => ({
+						departments: [],
+						loadError: message(reason, 'Failed to load departments.')
+					}))
+			: null;
 
 	const employeesData =
-		auth.hasPermission(PERMISSIONS.SETTINGS.DEPARTMENT.VIEW) &&
-		auth.hasPermission(PERMISSIONS.EMPLOYEE.VIEW)
-			? listEmployees({ page: 1, page_size: 100 }, { fetchFn: fetch })
+		tab === 'departments' && auth.hasPermission(PERMISSIONS.EMPLOYEE.VIEW)
+			? loadSection('app:settings-system:employees', () =>
+					listEmployees({ page: 1, page_size: 100 }, { fetchFn: fetch })
+				)
 					.then((response): EmployeesLoadResult => ({
 						employees: response.data.results.map((employee: EmployeeListItem) => ({
 							id: employee.id,
