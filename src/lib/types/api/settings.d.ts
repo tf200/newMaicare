@@ -29,13 +29,13 @@ export interface UpdateOrganizationProfileRequest {
 }
 
 export interface CreateDepartmentRequest {
-	department_head_employee_id?: string;
+	department_head_employee_id?: string | null;
 	description?: string;
 	name: string;
 }
 
 export interface UpdateDepartmentRequest {
-	department_head_employee_id?: string;
+	department_head_employee_id?: string | null;
 	description?: string;
 	name?: string;
 }

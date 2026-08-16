@@ -1,178 +1,149 @@
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import {
+	getOrganizationProfile,
+	listDepartments,
+	listPermissionGroups,
+	listRoles
+} from '$lib/api/settings';
+import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
+import { mapDepartment, mapOrganizationProfile, mapPermissionGroups, mapRole } from './mappers';
 import type {
 	Department,
 	EmployeeOption,
 	OrganizationProfile,
 	PermissionGroup,
 	Role,
-	SystemSettings
+	SystemSettingsTab
 } from './types';
-import type {
-	DepartmentItem,
-	GetOrganizationProfileResponse,
-	ListRolesApiResponse,
-	PermissionGroupResponse
-} from '$lib/types/api';
-import { getOrganizationProfile } from '$lib/api/settings';
 
-const emptyOrganization: OrganizationProfile = {
-	name: '',
-	timezone: 'Europe/Amsterdam',
-	address: {
-		street: '',
-		number: '',
-		postalCode: '',
-		city: '',
-		country: ''
-	},
-	contact: {
-		email: '',
-		phone: '',
-		website: ''
-	}
-};
-
-export function _mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
-	const houseNumber = [data.hq_house_number, data.hq_house_number_addition]
-		.filter(Boolean)
-		.join(' ');
-
-	return {
-		name: data.name,
-		timezone: data.default_timezone,
-		address: {
-			street: data.hq_street,
-			number: houseNumber,
-			postalCode: data.hq_postal_code,
-			city: data.hq_city,
-			country: 'Netherlands'
-		},
-		contact: {
-			email: data.email,
-			phone: data.phone_number,
-			website: data.website
-		}
-	};
+export interface OrganizationLoadResult {
+	organization: OrganizationProfile | null;
+	loadError: string | null;
 }
 
-export function _mapRole(role: ListRolesApiResponse, permissions: string[]): Role {
-	return {
-		id: role.id,
-		name: role.role_name,
-		description: role.description,
-		permissions,
-		userCount: role.employee_count,
-		permissionCount: role.permission_count
-	};
+export interface RolesLoadResult {
+	roles: Role[];
+	loadError: string | null;
 }
 
-export function _mapDepartment(item: DepartmentItem): Department {
-	return {
-		id: item.id,
-		name: item.name,
-		description: item.description ?? '',
-		head: item.department_head_employee_id ?? null,
-		employeeCount: 0
-	};
-}
-
-export function _mapPermissionGroups(groups: PermissionGroupResponse[]): PermissionGroup[] {
-	return groups.map((group) => {
-		const permissions = group.sections
-			.flatMap((section) => section.permissions)
-			.map((permission) => ({
-				id: permission.permission_id,
-				label: permission.display_name,
-				description: permission.description ?? ''
-			}));
-
-		return {
-			id: group.group_key,
-			label: group.group_label,
-			permissions
-		};
-	});
-}
-
-export interface SystemSettingsLoadResult {
-	systemSettings: SystemSettings;
+export interface PermissionGroupsLoadResult {
 	permissionGroups: PermissionGroup[];
-	rolePermissionsByRoleId: Record<string, string[]>;
+	loadError: string | null;
+}
+
+export interface DepartmentsLoadResult {
+	departments: Department[];
+	loadError: string | null;
+}
+
+export interface EmployeesLoadResult {
 	employees: EmployeeOption[];
 	loadError: string | null;
 }
 
 export interface SystemSettingsPageData {
-	initial: SystemSettingsLoadResult;
-	systemData: Promise<SystemSettingsLoadResult>;
+	initial: { tab: SystemSettingsTab };
+	organizationData: Promise<OrganizationLoadResult> | null;
+	rolesData: Promise<RolesLoadResult> | null;
+	permissionGroupsData: Promise<PermissionGroupsLoadResult> | null;
+	departmentsData: Promise<DepartmentsLoadResult> | null;
+	employeesData: Promise<EmployeesLoadResult> | null;
 }
 
-const defaultSecuritySettings: SystemSettings['security'] = {
-	auditLogRetentionDays: 90,
-	sessionTimeoutMinutes: 30,
-	requireTwoFactor: true,
-	passwordComplexity: {
-		minLength: 12,
-		requireNumbers: true,
-		requireSymbols: true,
-		requireUppercase: true
+const tabs = new Set<SystemSettingsTab>(['organization', 'roles', 'departments']);
+const message = (reason: unknown, fallback: string) =>
+	reason instanceof Error ? reason.message : fallback;
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasPermission(PERMISSIONS.SETTINGS.VIEW)) {
+		error(403, 'You do not have permission to view system settings.');
 	}
-};
 
-const defaultIntegrations: SystemSettings['integrations'] = [
-	{
-		id: '1',
-		name: 'SendGrid',
-		status: 'connected',
-		lastSync: '2024-03-05T10:00:00Z',
-		description: 'Email delivery service for notifications and reports.'
-	},
-	{
-		id: '2',
-		name: 'Twilio',
-		status: 'disconnected',
-		description: 'SMS gateway for two-factor authentication and alerts.'
-	},
-	{
-		id: '3',
-		name: 'AFAS Sync',
-		status: 'pending',
-		description: 'External HR and payroll synchronization.'
-	}
-];
+	depends('app:settings-system:organization');
+	depends('app:settings-system:roles');
+	depends('app:settings-system:permissions');
+	depends('app:settings-system:departments');
+	depends('app:settings-system:employees');
 
-export const _createInitialSystemSettings = (): SystemSettingsLoadResult => ({
-	systemSettings: {
-		organization: emptyOrganization,
-		roles: [],
-		departments: [],
-		security: defaultSecuritySettings,
-		integrations: defaultIntegrations
-	},
-	permissionGroups: [],
-	rolePermissionsByRoleId: {},
-	employees: [],
-	loadError: null
-});
+	const requestedTab = url.searchParams.get('tab') as SystemSettingsTab | null;
+	const tab = requestedTab && tabs.has(requestedTab) ? requestedTab : 'organization';
+	const options = { fetchFn: fetch };
 
-export const load: PageLoad = () => {
-	const systemData: Promise<SystemSettingsLoadResult> = getOrganizationProfile()
-		.then((response) => ({
-			..._createInitialSystemSettings(),
-			systemSettings: {
-				..._createInitialSystemSettings().systemSettings,
-				organization: _mapOrganizationProfile(response.data)
-			}
-		}))
-		.catch(
-			(error): SystemSettingsLoadResult => ({
-				..._createInitialSystemSettings(),
-				loadError: error instanceof Error ? error.message : 'Failed to load system settings.'
-			})
-		);
+	const organizationData = auth.hasPermission(PERMISSIONS.SETTINGS.ORGANIZATION_PROFILE.VIEW)
+		? getOrganizationProfile(options)
+				.then((response): OrganizationLoadResult => ({
+					organization: mapOrganizationProfile(response.data),
+					loadError: null
+				}))
+				.catch((reason): OrganizationLoadResult => ({
+					organization: null,
+					loadError: message(reason, 'Failed to load the organization profile.')
+				}))
+		: null;
+
+	const rolesData = auth.hasPermission(PERMISSIONS.ROLES.VIEW)
+		? listRoles(options)
+				.then((response): RolesLoadResult => ({
+					roles: response.data.map((role) => mapRole(role)),
+					loadError: null
+				}))
+				.catch((reason): RolesLoadResult => ({
+					roles: [],
+					loadError: message(reason, 'Failed to load roles.')
+				}))
+		: null;
+
+	const permissionGroupsData = auth.hasPermission(PERMISSIONS.PERMISSION.VIEW)
+		? listPermissionGroups(options)
+				.then((response): PermissionGroupsLoadResult => ({
+					permissionGroups: mapPermissionGroups(response.data),
+					loadError: null
+				}))
+				.catch((reason): PermissionGroupsLoadResult => ({
+					permissionGroups: [],
+					loadError: message(reason, 'Failed to load permissions.')
+				}))
+		: null;
+
+	const departmentsData = auth.hasPermission(PERMISSIONS.SETTINGS.DEPARTMENT.VIEW)
+		? listDepartments({}, options)
+				.then((response): DepartmentsLoadResult => ({
+					departments: response.data.results.map(mapDepartment),
+					loadError: null
+				}))
+				.catch((reason): DepartmentsLoadResult => ({
+					departments: [],
+					loadError: message(reason, 'Failed to load departments.')
+				}))
+		: null;
+
+	const employeesData =
+		auth.hasPermission(PERMISSIONS.SETTINGS.DEPARTMENT.VIEW) &&
+		auth.hasPermission(PERMISSIONS.EMPLOYEE.VIEW)
+			? listEmployees({ page: 1, page_size: 100 }, { fetchFn: fetch })
+					.then((response): EmployeesLoadResult => ({
+						employees: response.data.results.map((employee: EmployeeListItem) => ({
+							id: employee.id,
+							name: `${employee.first_name} ${employee.last_name}`.trim()
+						})),
+						loadError: null
+					}))
+					.catch((reason): EmployeesLoadResult => ({
+						employees: [],
+						loadError: message(reason, 'Failed to load employees.')
+					}))
+			: null;
 
 	return {
-		initial: _createInitialSystemSettings(),
-		systemData
+		initial: { tab },
+		organizationData,
+		rolesData,
+		permissionGroupsData,
+		departmentsData,
+		employeesData
 	} satisfies SystemSettingsPageData;
 };

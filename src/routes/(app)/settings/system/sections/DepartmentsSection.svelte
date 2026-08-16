@@ -1,170 +1,167 @@
 <script lang="ts">
-	import type { Department, EmployeeOption } from '../types';
-	import { Building2, Plus, Pencil, Trash2, Users, UserCircle } from 'lucide-svelte';
-	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
-	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
+	import { invalidate } from '$app/navigation';
+	import { Building2, Pencil, Plus, UserCircle, Users } from 'lucide-svelte';
+	import { fromAction } from 'svelte/attachments';
+	import { defaults, superForm } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import * as v from 'valibot';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
+	import Button from '$lib/components/ui/Button.svelte';
+	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import { m } from '$lib/paraglide/messages';
+	import type { Department, EmployeeOption } from '../types';
 
-	let {
-		departments = $bindable(),
-		employees = [],
-		onCreateDepartment,
-		onUpdateDepartment
-	}: {
-		departments: Department[];
-		employees?: EmployeeOption[];
-		onCreateDepartment?: (payload: {
-			name: string;
-			description?: string;
-			departmentHeadId?: string | null;
-		}) => Promise<Department>;
-		onUpdateDepartment?: (
-			id: string,
-			payload: {
-				name?: string;
-				description?: string;
-				departmentHeadId?: string | null;
-			}
-		) => Promise<Department>;
-	} = $props();
+	type DepartmentPayload = {
+		name: string;
+		description?: string;
+		departmentHeadId?: string | null;
+	};
 
-	const columns: DataTableColumn[] = [
-		{ key: 'name', label: 'Department Name' },
-		{ key: 'description', label: 'Description' },
-		{ key: 'head', label: 'Department Head' },
-		{ key: 'employeeCount', label: 'Employees', align: 'right', width: '120px' },
-		{ key: 'actions', label: '', align: 'right', width: '100px' }
-	];
-
-	let isModalOpen = $state(false);
-	let isSaving = $state(false);
-	let formError = $state('');
-	let editingDepartmentId = $state<string | null>(null);
-	let formName = $state('');
-	let formDescription = $state('');
-	let formHeadId = $state('');
-	let formHeadDisplayValue = $state('');
-	let loadedEmployeeNameById = $state<Record<string, string>>({});
+	interface Props {
+		departments: readonly Department[];
+		employees?: readonly EmployeeOption[];
+		onCreateDepartment?: (payload: DepartmentPayload) => Promise<void>;
+		onUpdateDepartment?: (id: string, payload: DepartmentPayload) => Promise<void>;
+	}
 
 	interface DepartmentHeadOption {
 		id: string;
 		name: string;
 	}
 
-	const EMPLOYEE_PAGE_SIZE = 50;
-	const MAX_EMPLOYEE_OPTION_PAGES = 10;
+	const { departments, employees = [], onCreateDepartment, onUpdateDepartment }: Props = $props();
+	const instanceId = $props.id();
+	const formId = `${instanceId}-department-form`;
+	const nameInputId = `${instanceId}-department-name`;
+	const departmentSchema = v.object({
+		name: v.pipe(v.string(), v.trim(), v.minLength(1, m.required_field())),
+		description: v.pipe(v.string(), v.trim()),
+		departmentHeadId: v.string()
+	});
+	type DepartmentForm = v.InferInput<typeof departmentSchema>;
+
+	const columns: DataTableColumn[] = [
+		{ key: 'name', label: m.department() },
+		{ key: 'description', label: m.description() },
+		{ key: 'head', label: m.employee() },
+		{ key: 'employeeCount', label: m.employees(), align: 'right', width: '120px' },
+		{ key: 'actions', label: m.edit(), align: 'right', width: '72px' }
+	];
+
+	let isModalOpen = $state(false);
+	let editingDepartmentId = $state<string | null>(null);
+	let formError = $state('');
+	let formHeadDisplayValue = $state('');
+	let loadedEmployeeNameById = $state<Record<string, string>>({});
+	let employeeRequestId = 0;
+
+	const { form, errors, enhance, submitting, reset } = superForm(
+		defaults(
+			{ name: '', description: '', departmentHeadId: '' } satisfies DepartmentForm,
+			valibotClient(departmentSchema)
+		),
+		{
+			SPA: true,
+			validators: valibotClient(departmentSchema),
+			onUpdate: async ({ form: result }) => {
+				if (!result.valid) return;
+				formError = '';
+				const payload: DepartmentPayload = {
+					name: result.data.name,
+					description: result.data.description || undefined,
+					departmentHeadId: result.data.departmentHeadId || null
+				};
+
+				try {
+					if (editingDepartmentId) {
+						await onUpdateDepartment?.(editingDepartmentId, payload);
+					} else {
+						await onCreateDepartment?.(payload);
+					}
+					await invalidate('app:settings-system:departments');
+					closeModal();
+				} catch (error) {
+					formError = error instanceof Error ? error.message : m.failed_update_progress_report();
+				}
+			}
+		}
+	);
 
 	const employeeNameById = $derived.by(() => {
 		const names: Record<string, string> = { ...loadedEmployeeNameById };
-		for (const employee of employees) {
-			names[employee.id] = employee.name;
-		}
+		for (const employee of employees) names[employee.id] = employee.name;
 		return names;
 	});
 
 	function getEmployeeLabel(employeeId: string | null) {
-		if (!employeeId) return 'Unassigned';
+		if (!employeeId) return m.unassigned();
 		return employeeNameById[employeeId] ?? employeeId;
 	}
 
-	function mapEmployeeToHeadOption(employee: EmployeeListItem): DepartmentHeadOption {
-		return {
-			id: employee.id,
-			name: `${employee.first_name} ${employee.last_name}`.trim()
-		};
+	function mapEmployee(employee: EmployeeListItem): DepartmentHeadOption {
+		return { id: employee.id, name: `${employee.first_name} ${employee.last_name}`.trim() };
 	}
 
 	async function loadDepartmentHeadOptions(query: string): Promise<DepartmentHeadOption[]> {
-		const options: DepartmentHeadOption[] = [];
-		let page = 1;
-		let hasNextPage = true;
+		const requestId = ++employeeRequestId;
+		const response = await listEmployees({
+			page: 1,
+			page_size: 50,
+			search: query.trim() || undefined
+		});
+		if (requestId !== employeeRequestId) return [];
 
-		while (hasNextPage && page <= MAX_EMPLOYEE_OPTION_PAGES) {
-			const response = await listEmployees({
-				page,
-				page_size: EMPLOYEE_PAGE_SIZE,
-				search: query.trim() || undefined
-			});
-
-			const mappedOptions = response.data.results.map(mapEmployeeToHeadOption);
-			options.push(...mappedOptions);
-
-			const pageEmployeeNames: Record<string, string> = {};
-			for (const option of mappedOptions) {
-				pageEmployeeNames[option.id] = option.name;
-			}
-			loadedEmployeeNameById = { ...loadedEmployeeNameById, ...pageEmployeeNames };
-
-			hasNextPage = Boolean(response.data.next);
-			page += 1;
-		}
-
+		const options = response.data.results.map(mapEmployee);
+		loadedEmployeeNameById = {
+			...loadedEmployeeNameById,
+			...Object.fromEntries(options.map((option) => [option.id, option.name]))
+		};
 		return options;
 	}
 
-	function openCreateModal() {
+	function resetModal() {
+		employeeRequestId += 1;
 		editingDepartmentId = null;
-		formName = '';
-		formDescription = '';
-		formHeadId = '';
 		formHeadDisplayValue = '';
 		formError = '';
+		reset();
+	}
+
+	function closeModal() {
+		isModalOpen = false;
+		resetModal();
+	}
+
+	function openCreateModal() {
+		resetModal();
 		isModalOpen = true;
 	}
 
 	function openEditModal(department: Department) {
+		resetModal();
 		editingDepartmentId = department.id;
-		formName = department.name;
-		formDescription = department.description;
-		formHeadId = department.head ?? '';
+		$form = {
+			name: department.name,
+			description: department.description,
+			departmentHeadId: department.head ?? ''
+		};
 		formHeadDisplayValue = getEmployeeLabel(department.head);
-		formError = '';
 		isModalOpen = true;
-	}
-
-	async function handleSubmit() {
-		if (!formName.trim()) {
-			formError = 'Department name is required.';
-			return;
-		}
-		isSaving = true;
-		formError = '';
-		try {
-			if (editingDepartmentId) {
-				if (!onUpdateDepartment) return;
-				const updated = await onUpdateDepartment(editingDepartmentId, {
-					name: formName.trim(),
-					description: formDescription.trim() || undefined,
-					departmentHeadId: formHeadId.trim() || null
-				});
-				departments = departments.map((dept) => (dept.id === updated.id ? updated : dept));
-			} else {
-				if (!onCreateDepartment) return;
-				const created = await onCreateDepartment({
-					name: formName.trim(),
-					description: formDescription.trim() || undefined,
-					departmentHeadId: formHeadId.trim() || null
-				});
-				departments = [...departments, created];
-			}
-			isModalOpen = false;
-		} catch (error) {
-			formError = error instanceof Error ? error.message : 'Unable to save department.';
-		} finally {
-			isSaving = false;
-		}
 	}
 </script>
 
 {#snippet nameCell(row: Department)}
 	<div class="flex items-center gap-3">
 		<div
-			class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/5 text-indigo-600 ring-1 ring-indigo-500/10"
+			class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/5 text-brand ring-1 ring-brand/10"
 		>
-			<Building2 class="h-4 w-4" />
+			<Building2 class="h-4 w-4" aria-hidden="true" />
 		</div>
 		<span class="font-semibold text-text">{row.name}</span>
 	</div>
@@ -172,86 +169,104 @@
 
 {#snippet headCell(row: Department)}
 	<div class="flex items-center gap-2 text-text-muted">
-		<UserCircle class="h-3.5 w-3.5" />
+		<UserCircle class="h-3.5 w-3.5" aria-hidden="true" />
 		<span class="text-sm font-medium">{getEmployeeLabel(row.head)}</span>
 	</div>
 {/snippet}
 
 {#snippet employeeCountCell(row: Department)}
 	<div class="flex items-center justify-end gap-2 text-text-muted">
-		<Users class="h-3.5 w-3.5" />
+		<Users class="h-3.5 w-3.5" aria-hidden="true" />
 		<span class="text-sm font-medium">{row.employeeCount}</span>
 	</div>
 {/snippet}
 
 {#snippet actionsCell(row: Department)}
-	<div class="flex justify-end gap-1">
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
-			title="Edit Department"
-			onclick={() => openEditModal(row)}
-		>
-			<Pencil class="h-4 w-4" />
-		</button>
-		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-rose-600"
-			title="Delete Department"
-		>
-			<Trash2 class="h-4 w-4" />
-		</button>
-	</div>
+	<PermissionGuard permission={PERMISSIONS.SETTINGS.DEPARTMENT.UPDATE}>
+		<div class="flex justify-end">
+			<button
+				type="button"
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+				aria-label={`${m.edit()} ${row.name}`}
+				title={m.edit()}
+				onclick={() => openEditModal(row)}
+			>
+				<Pencil class="h-4 w-4" aria-hidden="true" />
+			</button>
+		</div>
+	</PermissionGuard>
 {/snippet}
 
-<div class="space-y-6">
-	<DataTable
-		title="Departments"
-		description="Manage organizational structure and units."
-		{columns}
-		rows={departments}
-		pagination={false}
-		rowKey="id"
-		cells={{
-			name: nameCell,
-			head: headCell,
-			employeeCount: employeeCountCell,
-			actions: actionsCell
-		}}
-	>
-		{#snippet actions()}
+<DataTable
+	title={m.department()}
+	description={m.system_settings_departments_description()}
+	{columns}
+	rows={departments.slice()}
+	pagination={false}
+	rowKey="id"
+	cells={{ name: nameCell, head: headCell, employeeCount: employeeCountCell, actions: actionsCell }}
+>
+	{#snippet actions()}
+		<PermissionGuard permission={PERMISSIONS.SETTINGS.DEPARTMENT.CREATE}>
 			<Button class="gap-2 rounded-xl" onclick={openCreateModal}>
-				<Plus class="h-4 w-4" />
-				Add Department
+				<Plus class="h-4 w-4" aria-hidden="true" />
+				{m.create()}
+				{m.department()}
 			</Button>
-		{/snippet}
-	</DataTable>
-</div>
+		</PermissionGuard>
+	{/snippet}
+</DataTable>
 
 <Modal
 	bind:open={isModalOpen}
-	title={editingDepartmentId ? 'Edit Department' : 'Add Department'}
-	description="Set the team details and head employee ID"
+	title={editingDepartmentId ? `${m.edit()} ${m.department()}` : `${m.create()} ${m.department()}`}
+	description={m.system_settings_department_form_description()}
+	closeLabel={m.cancel()}
+	onClose={resetModal}
+	initialFocus={() => document.getElementById(nameInputId)}
 >
-	<div class="space-y-4">
-		<Input label="Department name" bind:value={formName} />
-		<Input label="Description" bind:value={formDescription} />
+	<form id={formId} method="POST" {@attach fromAction(enhance)} class="space-y-4">
+		<Input
+			id={nameInputId}
+			name="name"
+			label={m.department()}
+			bind:value={$form.name}
+			error={$errors.name?.[0]}
+			required
+			autocomplete="organization-title"
+		/>
+		<Input
+			name="description"
+			label={m.description()}
+			bind:value={$form.description}
+			error={$errors.description?.[0]}
+			autocomplete="off"
+		/>
 		<SearchSelect
-			label="Department head"
-			bind:value={formHeadId}
+			id={`${instanceId}-department-head`}
+			label={m.employee()}
+			bind:value={$form.departmentHeadId}
 			bind:displayValue={formHeadDisplayValue}
 			loadOptions={loadDepartmentHeadOptions}
 			labelFn={(employee) => employee.name}
 			valueFn={(employee) => employee.id}
-			placeholder="Select employee"
+			placeholder={m.select_employee_placeholder()}
+			searchPlaceholder={m.search_employees()}
+			loadErrorText={m.failed_load_employees()}
 		/>
 		{#if formError}
-			<p class="text-xs font-medium text-rose-600">{formError}</p>
+			<InlineErrorBanner
+				title={m.system_settings_department_save_error_title()}
+				message={formError}
+			/>
 		{/if}
-	</div>
+	</form>
+
 	{#snippet footer()}
 		<div class="flex items-center justify-end gap-2">
-			<Button variant="ghost" onclick={() => (isModalOpen = false)}>Cancel</Button>
-			<Button onclick={handleSubmit} isLoading={isSaving} class="px-4">
-				{editingDepartmentId ? 'Save Changes' : 'Create Department'}
+			<Button type="button" variant="ghost" onclick={closeModal}>{m.cancel()}</Button>
+			<Button type="submit" form={formId} isLoading={$submitting} class="px-4">
+				{editingDepartmentId ? m.save_changes() : `${m.create()} ${m.department()}`}
 			</Button>
 		</div>
 	{/snippet}

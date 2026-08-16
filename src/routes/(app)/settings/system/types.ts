@@ -3,10 +3,10 @@ export interface OrganizationProfile {
 	timezone: string;
 	address: {
 		street: string;
-		number: string;
+		houseNumber: string;
+		houseNumberAddition: string;
 		postalCode: string;
 		city: string;
-		country: string;
 	};
 	contact: {
 		email: string;
@@ -21,7 +21,7 @@ export interface Role {
 	description: string;
 	permissions: string[];
 	userCount: number;
-	permissionCount?: number;
+	permissionCount: number;
 }
 
 export interface Department {
@@ -50,30 +50,4 @@ export interface EmployeeOption {
 	name: string;
 }
 
-export interface SecurityPolicy {
-	auditLogRetentionDays: number;
-	sessionTimeoutMinutes: number;
-	requireTwoFactor: boolean;
-	passwordComplexity: {
-		minLength: number;
-		requireNumbers: boolean;
-		requireSymbols: boolean;
-		requireUppercase: boolean;
-	};
-}
-
-export interface Integration {
-	id: string;
-	name: string;
-	status: 'connected' | 'disconnected' | 'pending';
-	lastSync?: string;
-	description: string;
-}
-
-export interface SystemSettings {
-	organization: OrganizationProfile;
-	roles: Role[];
-	departments: Department[];
-	security: SecurityPolicy;
-	integrations: Integration[];
-}
+export type SystemSettingsTab = 'organization' | 'roles' | 'departments';

@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type { ApiEnvelope } from '$lib/types/api';
 import type {
 	AddPermissionsToRoleRequest,
@@ -17,8 +17,11 @@ import type {
 	UpdateOrganizationProfileRequest
 } from '$lib/types/api';
 
-export function getOrganizationProfile() {
-	return api.get<ApiEnvelope<GetOrganizationProfileResponse>>('/settings/organization-profile');
+export function getOrganizationProfile(options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<GetOrganizationProfileResponse>>(
+		'/settings/organization-profile',
+		options
+	);
 }
 
 export function updateOrganizationProfile(payload: UpdateOrganizationProfileRequest) {
@@ -28,20 +31,23 @@ export function updateOrganizationProfile(payload: UpdateOrganizationProfileRequ
 	);
 }
 
-export function listRoles() {
-	return api.get<ApiEnvelope<ListRolesApiResponse[]>>('/roles');
+export function listRoles(options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<ListRolesApiResponse[]>>('/roles', options);
 }
 
 export function createRole(payload: CreateRoleRequest) {
 	return api.post<ApiEnvelope<CreateRoleResponse>>('/roles', payload);
 }
 
-export function listPermissionGroups() {
-	return api.get<ApiEnvelope<PermissionGroupResponse[]>>('/permissions');
+export function listPermissionGroups(options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<PermissionGroupResponse[]>>('/permissions', options);
 }
 
-export function listRolePermissions(roleId: string) {
-	return api.get<ApiEnvelope<ListAllRolePermissionsApiResponse[]>>(`/roles/${roleId}/permissions`);
+export function listRolePermissions(roleId: string, options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<ListAllRolePermissionsApiResponse[]>>(
+		`/roles/${roleId}/permissions`,
+		options
+	);
 }
 
 export function addPermissionsToRole(roleId: string, payload: AddPermissionsToRoleRequest) {
@@ -53,7 +59,7 @@ export function addPermissionsToRole(roleId: string, payload: AddPermissionsToRo
 
 export function listDepartments(
 	params: { page?: number; pageSize?: number } = {},
-	options: { fetchFn?: typeof fetch } = {}
+	options: ApiRequestOptions = {}
 ) {
 	const search = new URLSearchParams();
 	search.set('page', String(params.page ?? 1));

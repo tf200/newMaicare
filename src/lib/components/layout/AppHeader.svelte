@@ -22,6 +22,8 @@
 	import Breadcrumbs from '$lib/components/ui/Breadcrumbs.svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { page } from '$app/state';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	interface Props {
 		title?: string;
@@ -190,11 +192,13 @@
 							<p class="truncate text-[10px] text-text-muted">{displaySubtitle}</p>
 						</div>
 						<DropdownItem label="User Preferences" icon={User} href={localizeHref('/settings')} />
-						<DropdownItem
-							label={m.settings()}
-							icon={Settings}
-							href={localizeHref('/settings/system')}
-						/>
+						<PermissionGuard permission={PERMISSIONS.SETTINGS.VIEW}>
+							<DropdownItem
+								label={m.settings()}
+								icon={Settings}
+								href={localizeHref('/settings/system')}
+							/>
+						</PermissionGuard>
 						<div class="my-1 h-px bg-border/50"></div>
 						<DropdownItem
 							label={m.logout()}

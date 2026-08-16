@@ -1,440 +1,492 @@
 <script lang="ts">
-	import type { PermissionGroup, PermissionItem, Role } from '../types';
-	import {
-		ShieldCheck,
-		Plus,
-		Pencil,
-		Trash2,
-		Users,
-		Search,
-		Check,
-		X,
-		ChevronRight,
-		Info,
-		CheckCircle2,
-		Circle,
-		Filter,
-		LayoutGrid,
-		List,
-		ArrowRight,
-		Save
-	} from 'lucide-svelte';
+	import { defaults, superForm } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import * as v from 'valibot';
+	import { CheckCircle2, Info, Plus, Save, Search, ShieldCheck, Users } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { fade, slide } from 'svelte/transition';
-	import { onMount } from 'svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import { m } from '$lib/paraglide/messages';
+	import { getAuthState } from '$lib/state/auth.svelte';
+	import type { PermissionGroup, PermissionItem, Role } from '../types';
+
+	type MessageFunction = (inputs?: Record<string, string | number>) => string;
+	type CreateRoleInput = { name: string; description: string };
+
+	interface Props {
+		roles: readonly Role[];
+		permissionGroups?: readonly PermissionGroup[];
+		initialRolePermissions?: Readonly<Record<string, readonly string[]>>;
+		onCreateRole?: (payload: { name: string; description?: string }) => Promise<Role>;
+		onFetchRolePermissions?: (roleId: string) => Promise<string[]>;
+		onSaveRolePermissions?: (roleId: string, permissionIds: string[]) => Promise<void>;
+		onRefresh?: () => void | Promise<void>;
+	}
 
 	let {
-		roles = $bindable(),
+		roles,
 		permissionGroups = [],
 		initialRolePermissions = {},
 		onCreateRole,
 		onFetchRolePermissions,
-		onSaveRolePermissions
-	}: {
-		roles: Role[];
-		permissionGroups?: PermissionGroup[];
-		initialRolePermissions?: Record<string, string[]>;
-		onCreateRole?: (payload: { name: string; description?: string }) => Promise<Role>;
-		onFetchRolePermissions?: (roleId: string) => Promise<string[]>;
-		onSaveRolePermissions?: (roleId: string, permissionIds: string[]) => Promise<void>;
-	} = $props();
+		onSaveRolePermissions,
+		onRefresh
+	}: Props = $props();
 
-	let selectedRoleId = $state(roles[0]?.id);
-	let searchQuery = $state('');
-	let permissionSearch = $state('');
-
-	let permissionsByRoleId = $state<Record<string, string[]>>({});
-	let isLoadingPermissions = $state(false);
-	let permissionLoadError = $state('');
-
-	const groupIcons: Record<string, typeof Users> = {
-		client: Users,
-		employee: ShieldCheck,
-		finance: LayoutGrid,
-		schedule: List,
-		settings: ShieldCheck
-	};
-
-	const selectedRole = $derived(roles.find((r) => r.id === selectedRoleId));
-	const selectedRolePermissions: string[] = $derived(
-		selectedRoleId
-			? (permissionsByRoleId[selectedRoleId] ?? selectedRole?.permissions ?? [])
-			: (selectedRole?.permissions ?? [])
-	);
-
-	async function loadRolePermissions(roleId: string) {
-		if (!onFetchRolePermissions) return;
-		isLoadingPermissions = true;
-		permissionLoadError = '';
-		try {
-			const permissions = await onFetchRolePermissions(roleId);
-			permissionsByRoleId = {
-				...permissionsByRoleId,
-				[roleId]: permissions
-			};
-		} catch (error) {
-			permissionLoadError =
-				error instanceof Error ? error.message : 'Failed to load role permissions';
-		} finally {
-			isLoadingPermissions = false;
-		}
-	}
-
-	function selectRole(roleId: string) {
-		selectedRoleId = roleId;
-		if (!permissionsByRoleId[roleId] && onFetchRolePermissions) {
-			void loadRolePermissions(roleId);
-		}
-	}
-
-	onMount(() => {
-		permissionsByRoleId = { ...initialRolePermissions };
-		if (roles[0]?.id) {
-			selectRole(roles[0].id);
-		}
+	const messages = m as unknown as Record<string, MessageFunction | undefined>;
+	const auth = getAuthState();
+	const canGrantPermissions = $derived(auth.hasPermission(PERMISSIONS.PERMISSION.GRANT));
+	const text = (key: string, fallback: string, inputs?: Record<string, string | number>) =>
+		messages[key]?.(inputs) ?? fallback;
+	const uid = $props.id();
+	const createSchema = v.object({
+		name: v.pipe(
+			v.string(),
+			v.trim(),
+			v.minLength(1, text('system_settings_role_name_required', 'Role name is required.')),
+			v.maxLength(100, text('system_settings_role_name_too_long', 'Role name is too long.'))
+		),
+		description: v.pipe(
+			v.string(),
+			v.trim(),
+			v.maxLength(
+				500,
+				text('system_settings_role_description_too_long', 'Description is too long.')
+			)
+		)
 	});
 
-	const filteredGroups = $derived.by((): PermissionGroup[] => {
-		if (!permissionSearch) return permissionGroups;
+	let selectedRoleId = $state<string | undefined>();
+	let permissionSearch = $state('');
+	let persistedPermissions = $state.raw<Record<string, readonly string[]>>({});
+	let draftPermissions = $state.raw<Record<string, readonly string[]>>({});
+	let loadingRoleId = $state<string | null>(null);
+	let permissionLoadError = $state('');
+	let saveError = $state('');
+	let isSaving = $state(false);
+	let saveSuccess = $state(false);
+	let requestToken = 0;
+	let successTimer: ReturnType<typeof setTimeout> | undefined;
+
+	let isCreateOpen = $state(false);
+	let createError = $state('');
+	let isCreating = $state(false);
+	let createRequested = $state(false);
+
+	const {
+		form: createForm,
+		errors: createErrors,
+		enhance: enhanceCreate,
+		reset: resetCreate
+	} = superForm(
+		defaults<CreateRoleInput>({ name: '', description: '' }, valibotClient(createSchema)),
+		{
+			validators: valibotClient(createSchema),
+			SPA: true,
+			dataType: 'json',
+			onSubmit: ({ cancel }) => {
+				if (createRequested || isCreating || !onCreateRole) cancel();
+				else createRequested = true;
+			},
+			onUpdate: async ({ form: result }) => {
+				if (!createRequested) return;
+				if (!result.valid || !onCreateRole) {
+					createRequested = false;
+					return;
+				}
+
+				isCreating = true;
+				createError = '';
+				try {
+					const created = await onCreateRole({
+						name: result.data.name,
+						description: result.data.description || undefined
+					});
+					selectedRoleId = created.id;
+					isCreateOpen = false;
+					resetCreate();
+					await onRefresh?.();
+				} catch (error) {
+					createError =
+						error instanceof Error
+							? error.message
+							: text('system_settings_role_create_error', 'Failed to create role.');
+				} finally {
+					isCreating = false;
+					createRequested = false;
+				}
+			}
+		}
+	);
+
+	const selectedRole = $derived(roles.find((role) => role.id === selectedRoleId));
+	const selectedPermissions = $derived(
+		selectedRoleId ? (draftPermissions[selectedRoleId] ?? []) : []
+	);
+	const isDirty = $derived.by(() => {
+		if (!selectedRoleId) return false;
+		const persisted = persistedPermissions[selectedRoleId] ?? [];
+		return (
+			persisted.length !== selectedPermissions.length ||
+			persisted.some((permission) => !selectedPermissions.includes(permission))
+		);
+	});
+	const filteredGroups = $derived.by(() => {
+		const query = permissionSearch.trim().toLocaleLowerCase();
+		if (!query) return permissionGroups;
 		return permissionGroups
 			.map((group) => ({
 				...group,
 				permissions: group.permissions.filter(
-					(p: PermissionItem) =>
-						p.label.toLowerCase().includes(permissionSearch.toLowerCase()) ||
-						p.description.toLowerCase().includes(permissionSearch.toLowerCase())
+					(permission) =>
+						permission.label.toLocaleLowerCase().includes(query) ||
+						permission.description.toLocaleLowerCase().includes(query)
 				)
 			}))
 			.filter((group) => group.permissions.length > 0);
 	});
 
-	function setRolePermissions(roleId: string, permissions: string[]) {
-		permissionsByRoleId = { ...permissionsByRoleId, [roleId]: permissions };
-		roles = roles.map((role) =>
-			role.id === roleId
-				? {
-						...role,
-						permissions,
-						permissionCount: permissions.length
-					}
-				: role
+	$effect(() => {
+		const availableIds = new Set(roles.map((role) => role.id));
+		if (!selectedRoleId || !availableIds.has(selectedRoleId)) selectedRoleId = roles[0]?.id;
+	});
+
+	$effect(() => {
+		const nextPersisted = { ...persistedPermissions };
+		const nextDrafts = { ...draftPermissions };
+		for (const [roleId, permissions] of Object.entries(initialRolePermissions)) {
+			if (Object.hasOwn(nextPersisted, roleId)) continue;
+			nextPersisted[roleId] = [...permissions];
+			nextDrafts[roleId] = [...permissions];
+		}
+		persistedPermissions = nextPersisted;
+		draftPermissions = nextDrafts;
+	});
+
+	$effect(() => {
+		const roleId = selectedRoleId;
+		if (!roleId || Object.hasOwn(persistedPermissions, roleId)) return;
+		void loadRolePermissions(roleId);
+	});
+
+	async function loadRolePermissions(roleId: string) {
+		const token = ++requestToken;
+		permissionLoadError = '';
+		loadingRoleId = roleId;
+		try {
+			const permissions = onFetchRolePermissions
+				? await onFetchRolePermissions(roleId)
+				: [...(roles.find((role) => role.id === roleId)?.permissions ?? [])];
+			if (token !== requestToken) return;
+			persistedPermissions = { ...persistedPermissions, [roleId]: [...permissions] };
+			draftPermissions = { ...draftPermissions, [roleId]: [...permissions] };
+		} catch (error) {
+			if (token !== requestToken) return;
+			permissionLoadError =
+				error instanceof Error
+					? error.message
+					: text('system_settings_permissions_load_error', 'Failed to load role permissions.');
+		} finally {
+			if (token === requestToken) loadingRoleId = null;
+		}
+	}
+
+	function selectRole(roleId: string) {
+		requestToken += 1;
+		selectedRoleId = roleId;
+		permissionSearch = '';
+		permissionLoadError = '';
+		saveError = '';
+		saveSuccess = false;
+		if (!Object.hasOwn(persistedPermissions, roleId)) void loadRolePermissions(roleId);
+	}
+
+	function updateDraft(permissionIds: readonly string[]) {
+		if (!selectedRoleId) return;
+		draftPermissions = { ...draftPermissions, [selectedRoleId]: [...permissionIds] };
+		saveSuccess = false;
+		saveError = '';
+	}
+
+	function togglePermission(permissionId: string, checked: boolean) {
+		updateDraft(
+			checked
+				? [...new Set([...selectedPermissions, permissionId])]
+				: selectedPermissions.filter((id) => id !== permissionId)
 		);
 	}
 
-	function togglePermission(permissionId: string) {
-		if (!selectedRoleId) return;
-		const current = permissionsByRoleId[selectedRoleId] ?? selectedRolePermissions;
-		const index = current.indexOf(permissionId);
-		if (index === -1) {
-			setRolePermissions(selectedRoleId, [...current, permissionId]);
-		} else {
-			setRolePermissions(
-				selectedRoleId,
-				current.filter((id) => id !== permissionId)
-			);
-		}
+	function toggleGroup(group: PermissionGroup, checked: boolean) {
+		const ids = group.permissions.map((permission: PermissionItem) => permission.id);
+		updateDraft(
+			checked
+				? [...new Set([...selectedPermissions, ...ids])]
+				: selectedPermissions.filter((id) => !ids.includes(id))
+		);
 	}
-
-	function toggleGroup(groupId: string, select: boolean) {
-		if (!selectedRoleId) return;
-
-		const group = permissionGroups.find((g) => g.id === groupId);
-		if (!group) return;
-
-		const groupPermissionIds = group.permissions.map((p: PermissionItem) => p.id);
-		const current = permissionsByRoleId[selectedRoleId] ?? selectedRolePermissions;
-
-		if (select) {
-			const newPermissions = [...new Set([...current, ...groupPermissionIds])];
-			setRolePermissions(selectedRoleId, newPermissions);
-		} else {
-			setRolePermissions(
-				selectedRoleId,
-				current.filter((id) => !groupPermissionIds.includes(id))
-			);
-		}
-	}
-
-	function getGroupSelectedCount(groupId: string) {
-		const group = permissionGroups.find((g) => g.id === groupId);
-		if (!group) return 0;
-		return group.permissions.filter((p: PermissionItem) => selectedRolePermissions.includes(p.id))
-			.length;
-	}
-
-	const totalSelectedCount = $derived(selectedRolePermissions.length ?? 0);
 
 	function getRolePermissionCount(role: Role) {
-		return permissionsByRoleId[role.id]?.length ?? role.permissionCount ?? role.permissions.length;
+		return persistedPermissions[role.id]?.length ?? role.permissionCount ?? role.permissions.length;
 	}
 
-	let isSaving = $state(false);
-	let saveSuccess = $state(false);
-
-	async function handleSave() {
-		if (!selectedRoleId) return;
+	async function savePermissions() {
+		if (!selectedRoleId || !onSaveRolePermissions || isSaving) return;
+		const roleId = selectedRoleId;
+		const permissions = [...selectedPermissions];
 		isSaving = true;
+		saveError = '';
 		try {
-			if (onSaveRolePermissions) {
-				await onSaveRolePermissions(selectedRoleId, selectedRolePermissions);
-			}
+			await onSaveRolePermissions(roleId, permissions);
+			persistedPermissions = { ...persistedPermissions, [roleId]: permissions };
 			saveSuccess = true;
-			setTimeout(() => (saveSuccess = false), 3000);
+			clearTimeout(successTimer);
+			successTimer = setTimeout(() => (saveSuccess = false), 3000);
+			await onRefresh?.();
+		} catch (error) {
+			saveError =
+				error instanceof Error
+					? error.message
+					: text('system_settings_permissions_save_error', 'Failed to save permissions.');
 		} finally {
 			isSaving = false;
 		}
 	}
 
-	let isCreateOpen = $state(false);
-	let createName = $state('');
-	let createDescription = $state('');
-	let isCreating = $state(false);
-	let createError = $state('');
-
 	function openCreateRole() {
-		createName = '';
-		createDescription = '';
+		resetCreate();
 		createError = '';
 		isCreateOpen = true;
 	}
-
-	async function handleCreateRole() {
-		if (!onCreateRole) return;
-		if (!createName.trim()) {
-			createError = 'Role name is required.';
-			return;
-		}
-		isCreating = true;
-		createError = '';
-		try {
-			const created = await onCreateRole({
-				name: createName.trim(),
-				description: createDescription.trim() || undefined
-			});
-			roles = [...roles, created];
-			permissionsByRoleId = { ...permissionsByRoleId, [created.id]: [] };
-			selectRole(created.id);
-			isCreateOpen = false;
-		} catch (error) {
-			createError = error instanceof Error ? error.message : 'Failed to create role.';
-		} finally {
-			isCreating = false;
-		}
-	}
 </script>
 
-<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-	<!-- Roles List Sidebar -->
-	<aside class="space-y-6 lg:col-span-4">
-		<div class="flex items-center justify-between">
-			<h3 class="text-lg font-bold text-text">Access Roles</h3>
-			<Button variant="ghost" class="h-8 rounded-xl px-2 text-brand" onclick={openCreateRole}>
-				<Plus class="mr-1 h-3.5 w-3.5" />
-				New Role
-			</Button>
+<div class="grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+	<aside class="space-y-4" aria-label={text('system_settings_roles_title', 'Access roles')}>
+		<div class="flex items-center justify-between gap-3">
+			<h3 class="text-lg font-bold tracking-tight text-text">
+				{text('system_settings_roles_title', 'Access roles')}
+			</h3>
+			<PermissionGuard permission={PERMISSIONS.ROLES.CREATE}>
+				<Button variant="ghost" class="h-9 px-3 text-brand" onclick={openCreateRole}>
+					<Plus class="h-4 w-4" aria-hidden="true" />
+					{text('system_settings_new_role', 'New role')}
+				</Button>
+			</PermissionGuard>
 		</div>
 
-		<div class="space-y-2">
+		<div
+			class="space-y-2"
+			role="listbox"
+			aria-label={text('system_settings_roles_title', 'Access roles')}
+		>
 			{#each roles as role (role.id)}
 				<button
+					type="button"
+					role="option"
+					aria-selected={selectedRoleId === role.id}
 					onclick={() => selectRole(role.id)}
-					class="group relative flex w-full flex-col gap-1 rounded-2xl border p-4 text-left transition-all duration-200
-					{selectedRoleId === role.id
-						? 'border-brand bg-brand/5 ring-1 ring-brand/20'
-						: 'border-border/50 bg-surface/50 hover:border-brand/50 hover:bg-surface'}"
+					class="w-full rounded-2xl border p-4 text-left transition-colors {selectedRoleId ===
+					role.id
+						? 'border-brand bg-brand/10'
+						: 'border-border bg-surface hover:border-brand/50'}"
 				>
-					<div class="flex items-center justify-between">
-						<span
-							class="font-bold transition-colors {selectedRoleId === role.id
-								? 'text-brand'
-								: 'text-text'}"
+					<span class="block font-semibold text-text">{role.name}</span>
+					{#if role.description}<span class="mt-1 line-clamp-2 text-xs text-text-muted"
+							>{role.description}</span
+						>{/if}
+					<span class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
+						<span class="inline-flex items-center gap-1"
+							><Users class="h-3.5 w-3.5" aria-hidden="true" />
+							{text('system_settings_user_count', `${role.userCount} users`, {
+								count: role.userCount
+							})}</span
 						>
-							{role.name}
-						</span>
-						{#if selectedRoleId === role.id}
-							<ArrowRight class="h-4 w-4 text-brand" />
-						{/if}
-					</div>
-					<p class="line-clamp-1 text-xs text-text-muted">{role.description}</p>
-					<div class="mt-2 flex items-center gap-3">
-						<div
-							class="flex items-center gap-1 text-[10px] font-bold tracking-wider text-text-subtle uppercase"
+						<span class="inline-flex items-center gap-1"
+							><ShieldCheck class="h-3.5 w-3.5" aria-hidden="true" />
+							{text(
+								'system_settings_permission_count',
+								`${getRolePermissionCount(role)} permissions`,
+								{ count: getRolePermissionCount(role) }
+							)}</span
 						>
-							<Users class="h-3 w-3" />
-							{role.userCount} users
-						</div>
-						<div
-							class="flex items-center gap-1 text-[10px] font-bold tracking-wider text-text-subtle uppercase"
-						>
-							<ShieldCheck class="h-3 w-3" />
-							{getRolePermissionCount(role)} permissions
-						</div>
-					</div>
+					</span>
 				</button>
 			{/each}
 		</div>
 
-		<div class="rounded-2xl border border-dashed border-border p-4">
-			<div class="flex items-start gap-3">
-				<div class="rounded-lg bg-brand/10 p-2 text-brand">
-					<Info class="h-4 w-4" />
-				</div>
-				<div class="space-y-1">
-					<p class="text-xs font-bold text-text">About Roles</p>
-					<p class="text-[11px] leading-relaxed text-text-muted">
-						Roles define what actions users can take within the system. Changes to permissions are
-						applied immediately to all users with the assigned role.
-					</p>
-				</div>
+		<div class="flex gap-3 rounded-2xl border border-border bg-surface p-4">
+			<Info class="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+			<div>
+				<p class="text-sm font-semibold text-text">
+					{text('system_settings_about_roles', 'About roles')}
+				</p>
+				<p class="mt-1 text-xs leading-5 text-text-muted">
+					{text(
+						'system_settings_about_roles_description',
+						'Roles define which actions users can take. Saved changes apply to every user assigned to the role.'
+					)}
+				</p>
 			</div>
 		</div>
 	</aside>
 
-	<!-- Permission Editor -->
-	<div class="lg:col-span-8">
+	<section class="min-w-0" aria-live="polite">
 		{#if selectedRole}
-			<div class="space-y-6" in:fade={{ duration: 200 }}>
-				<header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div class="space-y-5">
+				<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h3 class="text-xl font-bold text-text">
-							Permissions for <span class="text-brand">{selectedRole.name}</span>
+						<h3 class="text-xl font-bold tracking-tight text-text">
+							{text(
+								'system_settings_permissions_for_role',
+								`Permissions for ${selectedRole.name}`,
+								{ role: selectedRole.name }
+							)}
 						</h3>
-						<p class="text-sm text-text-muted">Configure granular access controls for this role.</p>
+						<p class="mt-1 text-sm text-text-muted">
+							{text(
+								'system_settings_permissions_description',
+								'Configure access controls for this role.'
+							)}
+						</p>
 					</div>
-					<div class="flex items-center gap-3">
-						{#if saveSuccess}
-							<div
-								in:fade
-								out:fade
-								class="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600"
+					<PermissionGuard permission={PERMISSIONS.PERMISSION.GRANT}>
+						<div class="flex items-center gap-3">
+							{#if saveSuccess}<span
+									class="inline-flex items-center gap-1.5 text-sm font-medium text-success"
+									><CheckCircle2 class="h-4 w-4" aria-hidden="true" />
+									{text('system_settings_permissions_saved', 'Saved')}</span
+								>{/if}
+							<Button
+								onclick={savePermissions}
+								isLoading={isSaving}
+								disabled={!isDirty || loadingRoleId === selectedRole.id}
 							>
-								<CheckCircle2 class="h-3.5 w-3.5" />
-								Saved
-							</div>
-						{/if}
-						<Button onclick={handleSave} isLoading={isSaving} class="gap-2 rounded-xl px-4 py-2">
-							<Save class="h-4 w-4" />
-							Save Permissions
-						</Button>
-					</div>
+								<Save class="h-4 w-4" aria-hidden="true" />
+								{text('system_settings_save_permissions', 'Save permissions')}
+							</Button>
+						</div>
+					</PermissionGuard>
 				</header>
 
-				<div class="relative">
-					<Search class="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-					<input
-						type="text"
-						bind:value={permissionSearch}
-						placeholder="Search permissions..."
-						class="w-full rounded-2xl border border-border bg-surface py-3.5 pr-4 pl-11 text-sm text-text outline-hidden transition-all focus:border-brand/50 focus:ring-4 focus:ring-brand/5"
-					/>
+				{#if saveError}<InlineErrorBanner
+						title={text(
+							'system_settings_permissions_save_error_title',
+							'Could not save permissions'
+						)}
+						message={saveError}
+					/>{/if}
+
+				<div>
+					<label for={`${uid}-permission-search`} class="mb-2 block text-sm font-medium text-text"
+						>{text('system_settings_search_permissions_label', 'Search permissions')}</label
+					>
+					<div class="relative">
+						<Search
+							class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-text-muted"
+							aria-hidden="true"
+						/>
+						<input
+							id={`${uid}-permission-search`}
+							type="search"
+							bind:value={permissionSearch}
+							placeholder={text(
+								'system_settings_search_permissions_placeholder',
+								'Search by name or description'
+							)}
+							class="w-full rounded-xl border border-border bg-surface py-3 pr-4 pl-10 text-sm text-text transition-colors outline-none placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20"
+						/>
+					</div>
 				</div>
 
-				{#if isLoadingPermissions}
-					<div
-						class="rounded-2xl border border-border/50 bg-surface/40 p-6 text-sm text-text-muted"
-					>
-						Loading permissions for {selectedRole.name}...
-					</div>
+				{#if loadingRoleId === selectedRole.id}
+					<p class="rounded-2xl border border-border bg-surface p-5 text-sm text-text-muted">
+						{text(
+							'system_settings_permissions_loading',
+							`Loading permissions for ${selectedRole.name}...`,
+							{ role: selectedRole.name }
+						)}
+					</p>
 				{:else if permissionLoadError}
-					<div
-						class="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 text-sm text-rose-600"
-					>
-						{permissionLoadError}
-					</div>
+					<InlineErrorBanner
+						title={text(
+							'system_settings_permissions_load_error_title',
+							'Could not load permissions'
+						)}
+						message={permissionLoadError}
+						onRetry={() => void loadRolePermissions(selectedRole.id)}
+					/>
 				{:else}
 					<div class="space-y-4">
 						{#each filteredGroups as group (group.id)}
-							{@const GroupIcon = groupIcons[group.id] ?? ShieldCheck}
-							<div class="overflow-hidden rounded-2xl border border-border/50 bg-surface/30">
+							{@const selectedCount = group.permissions.filter((permission) =>
+								selectedPermissions.includes(permission.id)
+							).length}
+							<fieldset class="overflow-hidden rounded-2xl border border-border bg-surface">
 								<div
-									class="flex items-center justify-between border-b border-border/50 bg-surface/50 px-5 py-4"
+									class="flex flex-col gap-3 border-b border-border bg-bg/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
 								>
-									<div class="flex items-center gap-3">
-										<div class="rounded-lg bg-text/5 p-2 text-text">
-											<GroupIcon class="h-4 w-4" />
-										</div>
-										<div>
-											<h4 class="text-sm font-bold text-text">{group.label}</h4>
-											<p class="text-[10px] font-medium text-text-muted">
-												{getGroupSelectedCount(group.id)} of {group.permissions.length} active
-											</p>
-										</div>
-									</div>
-									<div class="flex gap-2">
-										<button
-											onclick={() => toggleGroup(group.id, true)}
-											class="text-[10px] font-bold tracking-wider text-brand uppercase hover:underline"
+									<legend class="font-semibold text-text">{group.label}</legend>
+									<div class="flex items-center gap-3 text-xs">
+										<span class="text-text-muted"
+											>{text(
+												'system_settings_group_active_count',
+												`${selectedCount} of ${group.permissions.length} active`,
+												{ selected: selectedCount, total: group.permissions.length }
+											)}</span
 										>
-											Select All
-										</button>
-										<span class="text-border">|</span>
 										<button
-											onclick={() => toggleGroup(group.id, false)}
-											class="text-[10px] font-bold tracking-wider text-text-subtle uppercase hover:text-rose-500"
+											type="button"
+											class="font-semibold text-brand hover:underline"
+											onclick={() => toggleGroup(group, true)}
+											disabled={!canGrantPermissions}
+											>{text('system_settings_select_all', 'Select all')}</button
 										>
-											Clear
-										</button>
+										<button
+											type="button"
+											class="font-semibold text-text-muted hover:text-text"
+											onclick={() => toggleGroup(group, false)}
+											disabled={!canGrantPermissions}
+											>{text('system_settings_clear', 'Clear')}</button
+										>
 									</div>
 								</div>
-
-								<div class="grid grid-cols-1 gap-px bg-border/50 sm:grid-cols-2">
-									{#each group.permissions as perm (perm.id)}
-										{@const isSelected = selectedRolePermissions.includes(perm.id)}
-										<button
-											onclick={() => togglePermission(perm.id)}
-											class="group relative flex items-start gap-4 bg-surface p-5 text-left transition-colors hover:bg-brand/[0.02]"
+								<div class="grid sm:grid-cols-2">
+									{#each group.permissions as permission (permission.id)}
+										<label
+											class="flex cursor-pointer gap-3 border-b border-border p-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0"
 										>
-											<div class="mt-0.5">
-												{#if isSelected}
-													<div
-														class="flex h-5 w-5 items-center justify-center rounded-md bg-brand text-white shadow-sm shadow-brand/20"
-													>
-														<Check class="h-3.5 w-3.5" strokeWidth={3} />
-													</div>
-												{:else}
-													<div
-														class="h-5 w-5 rounded-md border-2 border-border transition-colors group-hover:border-brand/50"
-													></div>
-												{/if}
-											</div>
-											<div class="space-y-1">
-												<p
-													class="text-sm font-bold transition-colors {isSelected
-														? 'text-brand'
-														: 'text-text'}"
-												>
-													{perm.label}
-												</p>
-												<p class="text-xs leading-relaxed text-text-muted">
-													{perm.description}
-												</p>
-											</div>
-										</button>
+											<input
+												type="checkbox"
+												checked={selectedPermissions.includes(permission.id)}
+												disabled={!canGrantPermissions}
+												onchange={(event) =>
+													togglePermission(permission.id, event.currentTarget.checked)}
+												class="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-brand focus:ring-brand/30"
+											/>
+											<span
+												><span class="block text-sm font-semibold text-text"
+													>{permission.label}</span
+												><span class="mt-1 block text-xs leading-5 text-text-muted"
+													>{permission.description}</span
+												></span
+											>
+										</label>
 									{/each}
 								</div>
-							</div>
+							</fieldset>
 						{/each}
-
 						{#if filteredGroups.length === 0}
-							<div
-								class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center"
-							>
-								<div class="mb-4 rounded-full bg-surface p-4 shadow-sm">
-									<Search class="h-8 w-8 text-text-subtle" />
-								</div>
-								<p class="text-lg font-bold text-text">No permissions found</p>
-								<p class="text-sm text-text-muted">
-									Try adjusting your search query to find what you're looking for.
+							<div class="rounded-2xl border border-dashed border-border py-12 text-center">
+								<p class="font-semibold text-text">
+									{text('system_settings_no_permissions_found', 'No permissions found')}
 								</p>
-								<Button
-									variant="ghost"
-									class="mt-4 text-brand"
+								<button
+									type="button"
+									class="mt-2 text-sm font-medium text-brand hover:underline"
 									onclick={() => (permissionSearch = '')}
+									>{text('system_settings_clear_search', 'Clear search')}</button
 								>
-									Clear Search
-								</Button>
 							</div>
 						{/if}
 					</div>
@@ -442,33 +494,78 @@
 			</div>
 		{:else}
 			<div
-				class="flex h-full min-h-[400px] items-center justify-center rounded-3xl border border-dashed border-border bg-surface/30"
+				class="flex min-h-72 items-center justify-center rounded-2xl border border-dashed border-border bg-surface p-6 text-center"
 			>
-				<div class="text-center">
-					<ShieldCheck class="mx-auto h-12 w-12 text-text-subtle opacity-20" />
-					<p class="mt-4 font-medium text-text-muted">Select a role to manage its permissions</p>
-				</div>
+				<p class="text-sm text-text-muted">
+					{text('system_settings_select_role', 'Select a role to manage its permissions.')}
+				</p>
 			</div>
 		{/if}
-	</div>
+	</section>
 </div>
 
-<Modal bind:open={isCreateOpen} title="Create Role" description="Add a new access role">
-	<div class="space-y-4">
-		<Input label="Role name" bind:value={createName} placeholder="e.g. Care Coordinator" />
-		<Input
-			label="Description"
-			bind:value={createDescription}
-			placeholder="What can this role do?"
-		/>
-		{#if createError}
-			<p class="text-xs font-medium text-rose-600">{createError}</p>
-		{/if}
-	</div>
+<Modal
+	bind:open={isCreateOpen}
+	title={text('system_settings_create_role', 'Create role')}
+	description={text('system_settings_create_role_description', 'Add a new access role')}
+>
+	<form id={`${uid}-create-role-form`} method="POST" use:enhanceCreate class="space-y-4">
+		<div>
+			<label for={`${uid}-role-name`} class="mb-1.5 block text-sm font-medium text-text"
+				>{text('system_settings_role_name', 'Role name')}</label
+			>
+			<input
+				id={`${uid}-role-name`}
+				name="name"
+				bind:value={$createForm.name}
+				required
+				maxlength="100"
+				autocomplete="off"
+				aria-invalid={$createErrors.name ? 'true' : undefined}
+				aria-describedby={$createErrors.name ? `${uid}-role-name-error` : undefined}
+				class="w-full rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+			/>
+			{#if $createErrors.name}<p
+					id={`${uid}-role-name-error`}
+					class="mt-1.5 text-xs font-medium text-error"
+				>
+					{$createErrors.name[0]}
+				</p>{/if}
+		</div>
+		<div>
+			<label for={`${uid}-role-description`} class="mb-1.5 block text-sm font-medium text-text"
+				>{text('system_settings_role_description', 'Description')}</label
+			>
+			<textarea
+				id={`${uid}-role-description`}
+				name="description"
+				bind:value={$createForm.description}
+				rows="3"
+				maxlength="500"
+				aria-invalid={$createErrors.description ? 'true' : undefined}
+				aria-describedby={$createErrors.description ? `${uid}-role-description-error` : undefined}
+				class="w-full resize-y rounded-xl border border-border bg-bg px-3.5 py-2.5 text-sm text-text outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+			></textarea>
+			{#if $createErrors.description}<p
+					id={`${uid}-role-description-error`}
+					class="mt-1.5 text-xs font-medium text-error"
+				>
+					{$createErrors.description[0]}
+				</p>{/if}
+		</div>
+		{#if createError}<InlineErrorBanner
+				title={text('system_settings_role_create_error_title', 'Could not create role')}
+				message={createError}
+			/>{/if}
+	</form>
 	{#snippet footer()}
-		<div class="flex items-center justify-end gap-2">
-			<Button variant="ghost" onclick={() => (isCreateOpen = false)}>Cancel</Button>
-			<Button onclick={handleCreateRole} isLoading={isCreating} class="px-4">Create Role</Button>
+		<div class="flex justify-end gap-2">
+			<Button variant="ghost" onclick={() => (isCreateOpen = false)}
+				>{text('system_settings_cancel', 'Cancel')}</Button
+			>
+			<Button type="submit" form={`${uid}-create-role-form`} isLoading={isCreating}
+				>{text('system_settings_create_role_action', 'Create role')}</Button
+			>
 		</div>
 	{/snippet}
 </Modal>
