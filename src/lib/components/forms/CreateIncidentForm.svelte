@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beforeNavigate } from '$app/navigation';
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import { Plus } from 'lucide-svelte';
@@ -63,7 +64,7 @@
 
 	const isEditMode = $derived(Boolean(incidentId));
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, delayed, tainted, reset } = superForm(
 		defaults(
 			{
 				client_id: '',
@@ -219,6 +220,7 @@
 		{ value: 'internal_review', label: m.internal_review() },
 		{ value: 'official_report', label: m.official_report() },
 		{ value: 'notify_inspectorate', label: m.notify_inspectorate() },
+		{ value: 'notify_referrer', label: m.notify_referrer() },
 		{ value: 'other', label: m.other() }
 	];
 
@@ -227,6 +229,11 @@
 		if (value === 'parents_guardians') return 'family';
 		return null;
 	};
+
+	const toEditableCauseCategory = (
+		value: IncidentCauseCategory
+	): IncidentInput['cause_categories'][number] =>
+		value === 'external' ? 'external_environmental' : value;
 
 	const toFormFromIncident = (incident: IncidentDetail): IncidentInput => ({
 		client_id: incident.clientId,
@@ -243,7 +250,7 @@
 		recurrence_risk: incident.recurrenceRisk,
 		incident_prevent_steps: incident.incidentPreventSteps ?? '',
 		incident_taken_measures: incident.incidentTakenMeasures ?? '',
-		cause_categories: incident.causeCategories,
+		cause_categories: incident.causeCategories.map(toEditableCauseCategory),
 		cause_explanation: incident.causeExplanation ?? '',
 		physical_injury: incident.physicalInjury,
 		physical_injury_desc: incident.physicalInjuryDesc ?? '',
@@ -263,10 +270,36 @@
 			.map((email) => email.trim())
 			.filter((email) => email.length > 0);
 
-	const handleCancel = () => {
+	const hasUnsavedChanges = $derived(Boolean($tainted));
+
+	const resetDraft = () => {
 		reset();
+		clientDisplay = '';
+		employeeDisplay = '';
+		locationDisplay = '';
+		errorMessage = '';
+	};
+
+	const confirmDiscard = () =>
+		!hasUnsavedChanges || window.confirm(m.discard_incident_changes_confirmation());
+
+	const handleCancel = () => {
+		if (!confirmDiscard()) return;
+		resetDraft();
 		open = false;
 	};
+
+	const handleModalClose = () => {
+		if (!confirmDiscard()) {
+			open = true;
+			return;
+		}
+		resetDraft();
+	};
+
+	beforeNavigate((navigation) => {
+		if (open && hasUnsavedChanges && !confirmDiscard()) navigation.cancel();
+	});
 
 	let wasOpen = $state(false);
 
@@ -274,7 +307,7 @@
 		if (open && !wasOpen) {
 			if (!isEditMode || !initialIncident) {
 				if (!incidentId) {
-					reset();
+					resetDraft();
 					if (preselectedClientId) {
 						$form.client_id = preselectedClientId;
 						clientDisplay = preselectedClientDisplay;
@@ -336,6 +369,8 @@
 	title={isEditMode ? m.edit_incident() : m.create_incident()}
 	description={isEditMode ? m.update_incident_description() : m.create_incident_description()}
 	size="4xl"
+	closeLabel={m.close()}
+	onClose={handleModalClose}
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}

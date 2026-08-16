@@ -63,6 +63,7 @@ export const FollowUpActionSchema = v.picklist([
 	'internal_review',
 	'official_report',
 	'notify_inspectorate',
+	'notify_referrer',
 	'other'
 ]);
 

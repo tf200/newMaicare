@@ -15,7 +15,7 @@
 		ShieldCheck,
 		Plus
 	} from 'lucide-svelte';
-	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { SvelteURL, SvelteURLSearchParams } from 'svelte/reactivity';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -101,8 +101,10 @@
 	];
 
 	const formatDate = (dateStr: string) => {
-		if (!dateStr) return '—';
-		return new Date(dateStr).toLocaleDateString(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
+		if (!dateStr) return m.not_available_short();
+		const date = new Date(dateStr);
+		if (Number.isNaN(date.getTime())) return m.not_available_short();
+		return date.toLocaleDateString(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
 			day: 'numeric',
 			month: 'short',
 			year: 'numeric',
@@ -111,7 +113,7 @@
 		});
 	};
 
-	const getClientBsn = (row: Incident) => row.clientBsnNumber ?? '—';
+	const getClientBsn = (row: Incident) => row.clientBsnNumber ?? m.not_available_short();
 
 	const buildQuery = (
 		pageValue: number,
@@ -134,7 +136,9 @@
 	) => {
 		const nextQuery = buildQuery(pageValue, status, search);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(resolve(localizeHref(resolve(`/(app)/incidents?${nextQuery}`)) as '/incidents/'), {
+		const target = new SvelteURL(localizeHref(resolve('/(app)/incidents')), page.url);
+		target.search = nextQuery;
+		goto(resolve(`${target.pathname}${target.search}` as '/incidents/'), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
@@ -237,6 +241,7 @@
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 			title={m.view_details()}
 			aria-label={m.view_details()}
+			data-sveltekit-preload-data="hover"
 		>
 			<Eye aria-hidden="true" class="h-4 w-4" />
 		</a>

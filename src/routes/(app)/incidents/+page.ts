@@ -45,7 +45,7 @@ const parsePositiveInteger = (value: string | null, fallback: number, maximum?: 
 export const load: PageLoad = ({ url, fetch, depends }) => {
 	const auth = getAuthState();
 	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.INCIDENT.VIEW])) {
-		error(403, 'You do not have permission to view incidents.');
+		error(403, m.incidents_access_denied());
 	}
 
 	depends('app:incidents:list');
