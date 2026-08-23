@@ -7,11 +7,18 @@
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { m } from '$lib/paraglide/messages';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { createRoleSchema } from '$lib/schemas/system-settings';
-	import type { PermissionGroup, PermissionItem, Role } from '../types';
+	import type {
+		PermissionGrant,
+		PermissionGroup,
+		PermissionItem,
+		PermissionScope,
+		Role
+	} from '../types';
 
 	type MessageFunction = (inputs?: Record<string, string | number>) => string;
 	type CreateRoleInput = { name: string; description: string };
@@ -19,10 +26,10 @@
 	interface Props {
 		roles: readonly Role[];
 		permissionGroups?: readonly PermissionGroup[];
-		initialRolePermissions?: Readonly<Record<string, readonly string[]>>;
+		initialRolePermissions?: Readonly<Record<string, readonly PermissionGrant[]>>;
 		onCreateRole?: (payload: { name: string; description?: string }) => Promise<Role>;
-		onFetchRolePermissions?: (roleId: string) => Promise<string[]>;
-		onSaveRolePermissions?: (roleId: string, permissionIds: string[]) => Promise<void>;
+		onFetchRolePermissions?: (roleId: string) => Promise<PermissionGrant[]>;
+		onSaveRolePermissions?: (roleId: string, grants: PermissionGrant[]) => Promise<void>;
 		onRefresh?: () => void | Promise<void>;
 	}
 
@@ -38,7 +45,7 @@
 
 	const messages = m as unknown as Record<string, MessageFunction | undefined>;
 	const auth = getAuthState();
-	const canGrantPermissions = $derived(auth.hasPermission(PERMISSIONS.PERMISSION.GRANT));
+	const canGrantPermissions = $derived(auth.hasPermission(PERMISSIONS.PERMISSION.CREATE));
 	const text = (key: string, fallback: string, inputs?: Record<string, string | number>) =>
 		messages[key]?.(inputs) ?? fallback;
 	const uid = $props.id();
@@ -53,10 +60,10 @@
 
 	let selectedRoleId = $state<string | undefined>(untrack(() => roles[0]?.id));
 	let permissionSearch = $state('');
-	let persistedPermissions = $state.raw<Record<string, readonly string[]>>(
+	let persistedPermissions = $state.raw<Record<string, readonly PermissionGrant[]>>(
 		untrack(() => ({ ...initialRolePermissions }))
 	);
-	let draftPermissions = $state.raw<Record<string, readonly string[]>>(
+	let draftPermissions = $state.raw<Record<string, readonly PermissionGrant[]>>(
 		untrack(() =>
 			Object.fromEntries(
 				Object.entries(initialRolePermissions).map(([roleId, permissions]) => [
@@ -134,7 +141,10 @@
 		const persisted = persistedPermissions[selectedRoleId] ?? [];
 		return (
 			persisted.length !== selectedPermissions.length ||
-			persisted.some((permission) => !selectedPermissions.includes(permission))
+			persisted.some((grant) => {
+				const draft = selectedPermissions.find((item) => item.permissionId === grant.permissionId);
+				return !draft || draft.scope !== grant.scope;
+			})
 		);
 	});
 	const filteredGroups = $derived.by(() => {
@@ -151,6 +161,16 @@
 			}))
 			.filter((group) => group.permissions.length > 0);
 	});
+	const scopeOptions = $derived([
+		{
+			value: 'assigned',
+			label: text('system_settings_scope_assigned', 'Assigned clients')
+		},
+		{
+			value: 'all',
+			label: text('system_settings_scope_all', 'All clients')
+		}
+	]);
 
 	async function loadRolePermissions(roleId: string) {
 		const token = ++requestToken;
@@ -190,27 +210,51 @@
 		if (!Object.hasOwn(persistedPermissions, roleId)) void loadRolePermissions(roleId);
 	}
 
-	function updateDraft(permissionIds: readonly string[]) {
+	function updateDraft(grants: readonly PermissionGrant[]) {
 		if (!selectedRoleId) return;
-		draftPermissions = { ...draftPermissions, [selectedRoleId]: [...permissionIds] };
+		draftPermissions = { ...draftPermissions, [selectedRoleId]: [...grants] };
 		saveSuccess = false;
 		saveError = '';
 	}
 
-	function togglePermission(permissionId: string, checked: boolean) {
+	function togglePermission(permission: PermissionItem, checked: boolean) {
+		if (!checked) {
+			updateDraft(selectedPermissions.filter((grant) => grant.permissionId !== permission.id));
+			return;
+		}
+		if (permissionGrant(permission.id)) return;
+		updateDraft([
+			...selectedPermissions,
+			{ permissionId: permission.id, scope: permission.isScoped ? 'assigned' : null }
+		]);
+	}
+
+	function updatePermissionScope(permissionId: string, scope: PermissionScope) {
 		updateDraft(
-			checked
-				? [...new Set([...selectedPermissions, permissionId])]
-				: selectedPermissions.filter((id) => id !== permissionId)
+			selectedPermissions.map((grant) =>
+				grant.permissionId === permissionId ? { ...grant, scope } : grant
+			)
 		);
+	}
+
+	function permissionGrant(permissionId: string) {
+		return selectedPermissions.find((grant) => grant.permissionId === permissionId);
 	}
 
 	function toggleGroup(group: PermissionGroup, checked: boolean) {
 		const ids = group.permissions.map((permission: PermissionItem) => permission.id);
 		updateDraft(
 			checked
-				? [...new Set([...selectedPermissions, ...ids])]
-				: selectedPermissions.filter((id) => !ids.includes(id))
+				? [
+						...selectedPermissions,
+						...group.permissions
+							.filter((permission) => !permissionGrant(permission.id))
+							.map((permission) => ({
+								permissionId: permission.id,
+								scope: permission.isScoped ? ('assigned' as const) : null
+							}))
+					]
+				: selectedPermissions.filter((grant) => !ids.includes(grant.permissionId))
 		);
 	}
 
@@ -337,7 +381,7 @@
 							)}
 						</p>
 					</div>
-					<PermissionGuard permission={PERMISSIONS.PERMISSION.GRANT}>
+					<PermissionGuard permission={PERMISSIONS.PERMISSION.CREATE}>
 						<div class="flex items-center gap-3">
 							{#if saveSuccess}<span
 									class="inline-flex items-center gap-1.5 text-sm font-medium text-success"
@@ -407,7 +451,7 @@
 					<div class="space-y-4">
 						{#each filteredGroups as group (group.id)}
 							{@const selectedCount = group.permissions.filter((permission) =>
-								selectedPermissions.includes(permission.id)
+								selectedPermissions.some((grant) => grant.permissionId === permission.id)
 							).length}
 							<fieldset class="overflow-hidden rounded-2xl border border-border bg-surface">
 								<div
@@ -440,25 +484,49 @@
 								</div>
 								<div class="grid sm:grid-cols-2">
 									{#each group.permissions as permission (permission.id)}
-										<label
-											class="flex cursor-pointer gap-3 border-b border-border p-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0"
+										{@const grant = permissionGrant(permission.id)}
+										<div
+											class="border-b border-border p-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0"
 										>
-											<input
-												type="checkbox"
-												checked={selectedPermissions.includes(permission.id)}
-												disabled={!canGrantPermissions}
-												onchange={(event) =>
-													togglePermission(permission.id, event.currentTarget.checked)}
-												class="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-brand focus:ring-brand/30"
-											/>
-											<span
-												><span class="block text-sm font-semibold text-text"
-													>{permission.label}</span
-												><span class="mt-1 block text-xs leading-5 text-text-muted"
-													>{permission.description}</span
-												></span
-											>
-										</label>
+											<label class="flex cursor-pointer gap-3">
+												<input
+													type="checkbox"
+													checked={Boolean(grant)}
+													disabled={!canGrantPermissions}
+													onchange={(event) =>
+														togglePermission(permission, event.currentTarget.checked)}
+													class="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-brand focus:ring-brand/30"
+												/>
+												<span>
+													<span class="block text-sm font-semibold text-text"
+														>{permission.label}</span
+													>
+													<span class="mt-1 block text-xs leading-5 text-text-muted"
+														>{permission.description}</span
+													>
+												</span>
+											</label>
+											{#if permission.isScoped && grant}
+												<div class="mt-3 ml-8 flex items-center gap-2">
+													<label
+														for={`${uid}-${permission.id}-scope`}
+														class="shrink-0 text-xs font-semibold text-text-muted"
+													>
+														{text('system_settings_permission_scope', 'Access scope')}
+													</label>
+													<Select
+														id={`${uid}-${permission.id}-scope`}
+														size="sm"
+														disabled={!canGrantPermissions}
+														options={scopeOptions}
+														value={grant.scope ?? 'assigned'}
+														onchange={(val) =>
+															updatePermissionScope(permission.id, val as PermissionScope)}
+														className="w-44"
+													/>
+												</div>
+											{/if}
+										</div>
 									{/each}
 								</div>
 							</fieldset>

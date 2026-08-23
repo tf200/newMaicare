@@ -19,9 +19,16 @@ export interface Role {
 	id: string;
 	name: string;
 	description: string;
-	permissions: string[];
+	permissions: PermissionGrant[];
 	userCount: number;
 	permissionCount: number;
+}
+
+export type PermissionScope = 'assigned' | 'all';
+
+export interface PermissionGrant {
+	permissionId: string;
+	scope: PermissionScope | null;
 }
 
 export interface Department {
@@ -36,6 +43,8 @@ export interface PermissionItem {
 	id: string;
 	label: string;
 	description: string;
+	isScoped: boolean;
+	name: string;
 	resource?: string;
 }
 

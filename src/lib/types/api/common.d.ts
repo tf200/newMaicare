@@ -30,7 +30,9 @@ export interface User {
 
 export interface Permission {
 	id: string;
+	is_scoped: boolean;
 	name: string;
+	scope: 'assigned' | 'all' | null;
 }
 
 export interface EmployeeProfile {

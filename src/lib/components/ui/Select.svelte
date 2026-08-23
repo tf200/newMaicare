@@ -16,6 +16,7 @@
 		value = $bindable(),
 		onchange,
 		placeholder = undefined,
+		disabled = false,
 		error = undefined,
 		id = generatedId,
 		className = '',
@@ -27,6 +28,7 @@
 		value?: string;
 		onchange?: (value: string) => void;
 		placeholder?: string;
+		disabled?: boolean;
 		error?: string;
 		id?: string;
 		className?: string;
@@ -49,7 +51,9 @@
 	let sizeClass = $derived(selectSizeClasses[size as SelectSize]);
 
 	function toggle() {
-		isOpen = !isOpen;
+		if (!disabled) {
+			isOpen = !isOpen;
+		}
 	}
 
 	function select(val: string) {
@@ -98,9 +102,10 @@
 			type="button"
 			role="combobox"
 			onclick={toggle}
-			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 hover:border-brand/50 focus-visible:ring-2 focus-visible:ring-brand/20 {sizeClass} {error
-				? 'border-error'
-				: ''}"
+			{disabled}
+			class="flex w-full items-center justify-between rounded-xl border border-border bg-surface text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-brand/20 {sizeClass} {disabled
+				? 'cursor-not-allowed opacity-60'
+				: 'hover:border-brand/50'} {error ? 'border-error' : ''}"
 			aria-haspopup="listbox"
 			aria-controls={listboxId}
 			aria-expanded={isOpen}

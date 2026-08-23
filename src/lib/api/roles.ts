@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type { ApiEnvelope } from '$lib/types/api';
 
 export interface RoleListItem {
@@ -7,6 +7,6 @@ export interface RoleListItem {
 	permission_count: number;
 }
 
-export function listRoles() {
-	return api.get<ApiEnvelope<RoleListItem[]>>('/roles');
+export function listRoles(options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<RoleListItem[]>>('/roles', options);
 }

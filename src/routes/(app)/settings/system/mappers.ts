@@ -4,7 +4,13 @@ import type {
 	ListRolesApiResponse,
 	PermissionGroupResponse
 } from '$lib/types/api';
-import type { Department, OrganizationProfile, PermissionGroup, Role } from './types';
+import type {
+	Department,
+	OrganizationProfile,
+	PermissionGrant,
+	PermissionGroup,
+	Role
+} from './types';
 
 export function mapOrganizationProfile(data: GetOrganizationProfileResponse): OrganizationProfile {
 	return {
@@ -25,7 +31,7 @@ export function mapOrganizationProfile(data: GetOrganizationProfileResponse): Or
 	};
 }
 
-export function mapRole(role: ListRolesApiResponse, permissions: string[] = []): Role {
+export function mapRole(role: ListRolesApiResponse, permissions: PermissionGrant[] = []): Role {
 	return {
 		id: role.id,
 		name: role.role_name,
@@ -53,8 +59,10 @@ export function mapPermissionGroups(groups: PermissionGroupResponse[]): Permissi
 		permissions: group.sections.flatMap((section) =>
 			section.permissions.map((permission) => ({
 				id: permission.permission_id,
+				name: permission.permission_name,
 				label: permission.display_name,
-				description: permission.description ?? ''
+				description: permission.description ?? '',
+				isScoped: permission.is_scoped
 			}))
 		)
 	}));

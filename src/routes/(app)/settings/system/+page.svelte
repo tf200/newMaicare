@@ -12,7 +12,7 @@
 	import OrganizationSection from './sections/OrganizationSection.svelte';
 	import RolesSection from './sections/RolesSection.svelte';
 	import DepartmentsSection from './sections/DepartmentsSection.svelte';
-	import type { OrganizationProfile, Role, SystemSettingsTab } from './types';
+	import type { OrganizationProfile, PermissionGrant, Role, SystemSettingsTab } from './types';
 	import type { SystemSettingsPageData } from './+page';
 	import {
 		addPermissionsToRole,
@@ -130,13 +130,21 @@
 		};
 	}
 
-	async function fetchRolePermissions(roleId: string): Promise<string[]> {
+	async function fetchRolePermissions(roleId: string): Promise<PermissionGrant[]> {
 		const response = await listRolePermissions(roleId);
-		return response.data.map((permission) => permission.permission_id);
+		return response.data.map((permission) => ({
+			permissionId: permission.permission_id,
+			scope: permission.scope
+		}));
 	}
 
-	async function saveRolePermissions(roleId: string, permissionIds: string[]): Promise<void> {
-		await addPermissionsToRole(roleId, { permission_ids: permissionIds });
+	async function saveRolePermissions(roleId: string, grants: PermissionGrant[]): Promise<void> {
+		await addPermissionsToRole(roleId, {
+			permissions: grants.map((grant) => ({
+				permission_id: grant.permissionId,
+				scope: grant.scope
+			}))
+		});
 	}
 
 	async function createNewDepartment(payload: {

@@ -63,7 +63,7 @@ export interface AuthContext {
 	authenticate: (payload: AuthRequest) => Promise<AuthTokenData>;
 	verify2fa: (validationCode: string, tempTokenOverride?: string) => Promise<AuthTokenData>;
 	loadProfile: () => Promise<EmployeeProfile | null>;
-	hasPermission: (permission: string) => boolean;
+	hasPermission: (permission: string, options?: { scope?: 'assigned' | 'all' }) => boolean;
 	hasAnyPermission: (permissions: string[]) => boolean;
 	hasAllPermissions: (permissions: string[]) => boolean;
 	logout: () => Promise<void>;
@@ -188,8 +188,15 @@ export class AuthState implements AuthContext {
 		}
 	};
 
-	hasPermission = (permission: string) => {
-		return this.user?.permissions?.some((item) => item.name === permission) ?? false;
+	hasPermission = (permission: string, options: { scope?: 'assigned' | 'all' } = {}) => {
+		return (
+			this.user?.permissions?.some((item) => {
+				if (item.name !== permission) return false;
+				if (!options.scope) return true;
+				if (!item.is_scoped) return false;
+				return item.scope === 'all' || item.scope === options.scope;
+			}) ?? false
+		);
 	};
 
 	hasAnyPermission = (permissions: string[]) => {

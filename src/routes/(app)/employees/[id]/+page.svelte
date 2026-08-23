@@ -19,10 +19,13 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import EditEmployeeForm from '$lib/components/forms/EditEmployeeForm.svelte';
 	import ResetPasswordModal from '$lib/components/forms/ResetPasswordModal.svelte';
-	import type { EmployeeDetail } from '$lib/api/employees';
+	import { assignEmployeeRole, type EmployeeDetail } from '$lib/api/employees';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { EmployeeDetailLoadResult } from './+page';
+	import type { EmployeeRolesLoadResult } from './+page';
 	import { m } from '$lib/paraglide/messages';
 
 	type DetailItem = {
@@ -41,12 +44,31 @@
 	let { data } = $props<{
 		data: {
 			employeeData: Promise<EmployeeDetailLoadResult>;
+			rolesData: Promise<EmployeeRolesLoadResult> | null;
 		};
 	}>();
 
 	const employeeDataPromise = $derived.by(() => data.employeeData);
 	let editEmployeeOpen = $state(false);
 	let resetPasswordOpen = $state(false);
+	let roleAssignmentId = $state('');
+	let roleAssignmentError = $state('');
+	let assigningRole = $state(false);
+
+	async function saveRoleAssignment(employee: EmployeeDetail) {
+		const roleId = roleAssignmentId || employee.role?.id;
+		if (!roleId || assigningRole) return;
+		assigningRole = true;
+		roleAssignmentError = '';
+		try {
+			await assignEmployeeRole(employee.id, roleId);
+			await invalidate('app:employees:detail');
+		} catch (error) {
+			roleAssignmentError = error instanceof Error ? error.message : m.failed_assign_role();
+		} finally {
+			assigningRole = false;
+		}
+	}
 
 	const getFullName = (employee: EmployeeDetail) =>
 		`${employee.first_name} ${employee.last_name}`.trim() || 'Unknown employee';
@@ -179,7 +201,11 @@
 		</a>
 
 		<div class="flex items-center gap-2">
-			<Button variant="ghost" class="text-text-muted hover:text-text" onclick={() => (resetPasswordOpen = true)}>
+			<Button
+				variant="ghost"
+				class="text-text-muted hover:text-text"
+				onclick={() => (resetPasswordOpen = true)}
+			>
 				{m.reset_password()}
 			</Button>
 			<Button variant="secondary" onclick={() => (editEmployeeOpen = true)}>Edit employee</Button>
@@ -329,6 +355,53 @@
 				</div>
 
 				<aside class="space-y-6">
+					{#if data.rolesData}
+						<PermissionGuard permission={PERMISSIONS.ROLES.ASSIGN}>
+							<article class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+								<div class="flex items-center gap-3">
+									<span
+										class="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand"
+									>
+										<ShieldCheck class="h-5 w-5" />
+									</span>
+									<div>
+										<h2 class="text-lg font-black tracking-tight text-text">{m.access_role()}</h2>
+										<p class="text-sm font-medium text-text-muted">{m.access_role_description()}</p>
+									</div>
+								</div>
+								{#await data.rolesData}
+									<div class="mt-5 h-10 animate-pulse rounded-xl bg-border/60"></div>
+								{:then rolesResult}
+									{#if rolesResult.loadError}
+										<div class="mt-5"><InlineErrorBanner message={rolesResult.loadError} /></div>
+									{:else}
+										<div class="mt-5 flex flex-col gap-3 sm:flex-row">
+											<select
+												aria-label={m.access_role()}
+												value={roleAssignmentId || employee.role?.id || ''}
+												onchange={(event) => (roleAssignmentId = event.currentTarget.value)}
+												class="min-w-0 flex-1 rounded-xl border border-border bg-bg px-3 py-2 text-sm font-semibold text-text outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+											>
+												<option value="" disabled>{m.select_role()}</option>
+												{#each rolesResult.roles as role (role.id)}
+													<option value={role.id}>{role.role_name}</option>
+												{/each}
+											</select>
+											<Button
+												onclick={() => saveRoleAssignment(employee)}
+												isLoading={assigningRole}
+												disabled={!roleAssignmentId || roleAssignmentId === employee.role?.id}
+												>{m.save()}</Button
+											>
+										</div>
+										{#if roleAssignmentError}<div class="mt-3">
+												<InlineErrorBanner message={roleAssignmentError} />
+											</div>{/if}
+									{/if}
+								{/await}
+							</article>
+						</PermissionGuard>
+					{/if}
 					<article class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
 						<div class="flex items-center gap-3">
 							<span

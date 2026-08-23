@@ -84,25 +84,35 @@ export interface CreateRoleResponse {
 }
 
 export interface RolePermission {
+	is_scoped: boolean;
 	permission_id: string;
 	permission_name: string;
 	role_id: string;
+	scope: PermissionScope | null;
 }
 
 export type ListAllRolePermissionsApiResponse = RolePermission;
 
+export type PermissionScope = 'assigned' | 'all';
+
+export interface PermissionGrantRequest {
+	permission_id: string;
+	scope: PermissionScope | null;
+}
+
 export interface AddPermissionsToRoleRequest {
-	permission_ids: string[];
+	permissions: PermissionGrantRequest[];
 }
 
 export interface AddPermissionsToRoleResponse {
-	permission_ids: string[];
+	permissions: PermissionGrantRequest[];
 	role_id: string;
 }
 
 export interface SystemPermission {
 	description: string | null;
 	display_name: string;
+	is_scoped: boolean;
 	permission_id: string;
 	permission_name: string;
 }

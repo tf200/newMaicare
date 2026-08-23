@@ -1,4 +1,4 @@
-import { api } from '$lib/api/client';
+import { api, type ApiRequestOptions } from '$lib/api/client';
 import type { ApiEnvelope, PaginatedResponse } from '$lib/types/api';
 import type {
 	EmployeeProfileDetailsResponse,
@@ -71,6 +71,17 @@ export interface EmployeeDetail {
 		id: string;
 		name: string;
 	} | null;
+}
+
+export interface AssignEmployeeRoleResponse {
+	employee_id: string;
+	role_id: string;
+}
+
+export function assignEmployeeRole(employeeId: string, roleId: string) {
+	return api.post<ApiEnvelope<AssignEmployeeRoleResponse>>(`/employees/${employeeId}/roles`, {
+		role_id: roleId
+	});
 }
 
 export type EmployeeGender = 'male' | 'female' | 'not_specified';
@@ -171,8 +182,8 @@ export function createEmployee(payload: CreateEmployeeRequest) {
 	return api.post<ApiEnvelope<CreateEmployeeResponse>>('/employees', payload);
 }
 
-export function getEmployee(id: string) {
-	return api.get<ApiEnvelope<EmployeeDetail>>(`/employees/${id}`);
+export function getEmployee(id: string, options: ApiRequestOptions = {}) {
+	return api.get<ApiEnvelope<EmployeeDetail>>(`/employees/${id}`, options);
 }
 
 export function updateEmployee(id: string, payload: UpdateEmployeeRequest) {
