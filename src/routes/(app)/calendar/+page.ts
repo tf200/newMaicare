@@ -1,17 +1,17 @@
-import { listInCareClients } from '$lib/api/clients';
-import { listEmployees } from '$lib/api/employees';
+import { error } from '@sveltejs/kit';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { getAuthState } from '$lib/state/auth.svelte';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async () => {
-	const clientsPromise = listInCareClients({ page: 1, pageSize: 100 }).then(
-		(res) => res.data.results
-	);
-	const employeesPromise = listEmployees({ page: 1, pageSize: 100 }).then(
-		(res) => res.data.results
-	);
+export const load: PageLoad = () => {
+	const auth = getAuthState();
+	if (!auth.hasPermission(PERMISSIONS.APPOINTMENT.VIEW)) {
+		error(403, 'You do not have permission to view this resource.');
+	}
 
 	return {
-		clientsPromise,
-		employeesPromise
+		initial: {
+			employeeId: ''
+		}
 	};
 };

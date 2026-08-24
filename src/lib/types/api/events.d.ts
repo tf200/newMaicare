@@ -51,6 +51,26 @@ export interface CreateEventResponse {
 	reminders: EventReminderResponse[];
 	created_at: string;
 	updated_at: string;
+	work_approval_status?: WorkApprovalStatus;
+}
+
+export type EventResponse = CreateEventResponse;
+
+export type EventMutationScope = 'single' | 'series' | 'future';
+
+export interface UpdateEventRequest {
+	scope: EventMutationScope;
+	recurrence_id?: string;
+	title?: string;
+	description?: string;
+	location?: string;
+	color?: string;
+	start_at?: string;
+	end_at?: string;
+	rrule?: string;
+	attendee_employee_ids?: string[];
+	attendee_client_ids?: string[];
+	reminders?: CreateEventReminderInput[];
 }
 
 export interface ListEventsRequest {
@@ -73,6 +93,7 @@ export interface EventOccurrenceResponse {
 	is_recurring_instance: boolean;
 	attendee_employee_ids: string[];
 	attendee_client_ids: string[];
+	work_approval_status?: WorkApprovalStatus;
 }
 
 export type WorkApprovalStatus = 'pending' | 'approved' | 'rejected';

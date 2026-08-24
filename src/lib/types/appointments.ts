@@ -1,4 +1,5 @@
 import type { BaseModel } from './models';
+import type { EventMutationScope } from './api/events';
 
 export interface AppointmentReminder {
 	id?: string;
@@ -16,6 +17,14 @@ export interface Appointment extends BaseModel {
 	start: string; // ISO date string
 	end: string; // ISO date string
 	rrule?: string; // RFC5545 RRULE
+	masterEventId?: string;
+	masterStart?: string;
+	masterEnd?: string;
+	occurrenceStart?: string;
+	occurrenceEnd?: string;
+	recurrenceId?: string;
+	isRecurringInstance?: boolean;
+	mutationScope?: EventMutationScope;
 
 	// Attendees
 	attendeeEmployeeIds: string[];

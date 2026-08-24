@@ -13,19 +13,31 @@
 	import type { Appointment } from '$lib/types/appointments';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import { listClients } from '$lib/api/clients';
-	import { AppointmentSchema, type AppointmentInput } from '$lib/schemas/appointment';
+	import { createAppointmentSchema, type AppointmentInput } from '$lib/schemas/appointment';
 	import type { ListClientsResponse } from '$lib/types/api/clients';
+	import type { EventMutationScope } from '$lib/types/api';
 
 	interface Props {
 		appointment?: Partial<Appointment>;
-		onSave: (appointment: Partial<Appointment>) => void;
+		onSave: (appointment: Partial<Appointment>) => Promise<void>;
 		onCancel: () => void;
+		onDirtyChange?: (dirty: boolean) => void;
 		loading?: boolean;
 	}
 
-	let { appointment = {}, onSave, onCancel, loading = false }: Props = $props();
+	let { appointment = {}, onSave, onCancel, onDirtyChange, loading = false }: Props = $props();
 
-	let selectedReminder = $state('0');
+	function getInitialReminderValue() {
+		const initialReminder = appointment.reminders?.[0];
+		if (!appointment.reminders?.length) return '0';
+		if (typeof initialReminder?.minutes_before === 'number') {
+			return String(initialReminder.minutes_before);
+		}
+		return 'existing';
+	}
+
+	let selectedReminder = $state(getInitialReminderValue());
+	let mutationScope = $derived<EventMutationScope>(appointment.mutationScope ?? 'series');
 	let colorInput = $state<HTMLInputElement>();
 	const formId = 'appointment-form';
 
@@ -47,25 +59,27 @@
 			})) ?? []
 	});
 
-	const { form, errors, enhance, delayed, reset } = superForm(
-		defaults(buildInitialData(), valibotClient(AppointmentSchema)),
+	const appointmentSchema = createAppointmentSchema();
+	const { form, errors, enhance, delayed, tainted } = superForm(
+		defaults(buildInitialData(), valibotClient(appointmentSchema)),
 		{
-			validators: valibotClient(AppointmentSchema),
+			validators: valibotClient(appointmentSchema),
 			SPA: true,
 			dataType: 'json',
-			onUpdate: ({ form }) => {
+			onUpdate: async ({ form }) => {
 				if (form.valid) {
 					// Build reminders array if local quick-select is used
 					const finalReminders: Appointment['reminders'] | undefined =
-						selectedReminder !== '0'
-							? [{ minutes_before: parseInt(selectedReminder, 10) }]
-							: form.data.reminders && form.data.reminders.length > 0
-								? form.data.reminders
-								: undefined;
+						selectedReminder === 'existing'
+							? form.data.reminders
+							: selectedReminder !== '0'
+								? [{ minutes_before: parseInt(selectedReminder, 10) }]
+								: [];
 
-					onSave({
+					await onSave({
 						...appointment,
 						...form.data,
+						mutationScope,
 						description: form.data.description || null,
 						location: form.data.location || null,
 						color: form.data.color || null,
@@ -75,6 +89,10 @@
 			}
 		}
 	);
+
+	$effect(() => {
+		onDirtyChange?.(Boolean($tainted));
+	});
 
 	const kindOptions = [
 		{ label: m.appointment_label(), value: 'appointment' },
@@ -87,18 +105,39 @@
 		{ value: '#DC2626', label: m.color_red() }
 	];
 
-	const reminderOptions = [
+	const reminderOptions = $derived([
+		...(selectedReminder === 'existing'
+			? [{ label: m.calendar_keep_current_reminders(), value: 'existing' }]
+			: []),
 		{ label: m.none(), value: '0' },
 		{ label: m.reminder_minutes_before({ minutes: 5 }), value: '5' },
 		{ label: m.reminder_minutes_before({ minutes: 15 }), value: '15' },
 		{ label: m.reminder_minutes_before({ minutes: 30 }), value: '30' },
 		{ label: m.reminder_hour_before(), value: '60' },
 		{ label: m.reminder_day_before(), value: '1440' }
+	]);
+
+	const mutationScopeOptions = [
+		{ label: m.calendar_this_occurrence(), value: 'single' },
+		{ label: m.calendar_this_and_future(), value: 'future' },
+		{ label: m.calendar_entire_series(), value: 'series' }
 	];
 
 	const kindLabel = $derived.by(() =>
 		$form.kind === 'appointment' ? m.appointment_label() : m.reminder_label()
 	);
+	const canEditReminders = $derived(!appointment.isRecurringInstance || mutationScope !== 'single');
+
+	function handleMutationScopeChange(value: string) {
+		mutationScope = value as EventMutationScope;
+		if (mutationScope === 'series' && appointment.masterStart && appointment.masterEnd) {
+			$form.start = appointment.masterStart;
+			$form.end = appointment.masterEnd;
+		} else if (appointment.occurrenceStart && appointment.occurrenceEnd) {
+			$form.start = appointment.occurrenceStart;
+			$form.end = appointment.occurrenceEnd;
+		}
+	}
 
 	// Load employees with search
 	async function loadEmployees(query: string) {
@@ -135,6 +174,17 @@
 
 <form id={formId} use:enhance class="flex flex-col gap-6">
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+		{#if appointment.isRecurringInstance}
+			<div class="md:col-span-2">
+				<Select
+					label={m.calendar_update_scope()}
+					options={mutationScopeOptions}
+					bind:value={mutationScope}
+					onchange={handleMutationScopeChange}
+				/>
+				<p class="mt-2 text-xs text-text-muted">{m.calendar_update_scope_help()}</p>
+			</div>
+		{/if}
 		<!-- Kind -->
 		<Select
 			label={m.type()}
@@ -149,12 +199,12 @@
 				{m.color()}
 			</label>
 			<div class="flex flex-wrap items-center gap-2">
-				{#each colorOptions as colorOpt}
+				{#each colorOptions as colorOpt (colorOpt.value)}
 					<button
 						type="button"
 						onclick={() => ($form.color = colorOpt.value)}
 						class="h-10 w-10 rounded-xl transition-all {$form.color === colorOpt.value
-							? 'scale-110 ring-2 ring-brand ring-offset-2'
+							? 'scale-110 ring-2 ring-brand ring-offset-2 ring-offset-surface'
 							: 'hover:scale-105'}"
 						style="background-color: {colorOpt.value}"
 						aria-label={colorOpt.label}
@@ -170,6 +220,7 @@
 					class:ring-2={!colorOptions.some((opt) => opt.value === $form.color)}
 					class:ring-brand={!colorOptions.some((opt) => opt.value === $form.color)}
 					class:ring-offset-2={!colorOptions.some((opt) => opt.value === $form.color)}
+					class:ring-offset-surface={!colorOptions.some((opt) => opt.value === $form.color)}
 					style={!colorOptions.some((opt) => opt.value === $form.color)
 						? `background-color: ${$form.color}; border-style: solid; border-color: ${$form.color}`
 						: ''}
@@ -265,9 +316,15 @@
 		</div>
 
 		<!-- Reminder -->
-		<div class="md:col-span-2">
-			<Select label={m.reminder()} options={reminderOptions} bind:value={selectedReminder} />
-		</div>
+		{#if canEditReminders}
+			<div class="md:col-span-2">
+				<Select label={m.reminder()} options={reminderOptions} bind:value={selectedReminder} />
+			</div>
+		{:else}
+			<p class="text-xs text-text-muted md:col-span-2">
+				{m.calendar_single_reminder_unavailable()}
+			</p>
+		{/if}
 	</div>
 
 	<div class="mt-4 flex justify-end gap-3">

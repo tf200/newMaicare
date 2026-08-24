@@ -1,4 +1,5 @@
 import { api } from '$lib/api/client';
+import type { ApiRequestOptions } from '$lib/api/client';
 import type {
 	ApiEnvelope,
 	CreateEventRequest,
@@ -7,15 +8,24 @@ import type {
 	EventOccurrenceResponse,
 	ListWorkApprovalQueueRequest,
 	ListWorkApprovalQueueResponse,
-	SetEventWorkApprovalRequest
+	SetEventWorkApprovalRequest,
+	UpdateEventRequest
 } from '$lib/types/api';
 
-export function createEvent(payload: CreateEventRequest) {
-	return api.post<ApiEnvelope<CreateEventResponse>>('/events', payload);
+export function createEvent(payload: CreateEventRequest, options?: ApiRequestOptions) {
+	return api.post<ApiEnvelope<CreateEventResponse>>('/events', payload, options);
 }
 
-export function listEvents(payload: ListEventsRequest) {
-	return api.post<ApiEnvelope<EventOccurrenceResponse[]>>('/events/list', payload);
+export function listEvents(payload: ListEventsRequest, options?: ApiRequestOptions) {
+	return api.post<ApiEnvelope<EventOccurrenceResponse[]>>('/events/list', payload, options);
+}
+
+export function getEvent(id: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<CreateEventResponse>>(`/events/${id}`, options);
+}
+
+export function updateEvent(id: string, payload: UpdateEventRequest, options?: ApiRequestOptions) {
+	return api.patch<ApiEnvelope<CreateEventResponse>>(`/events/${id}`, payload, options);
 }
 
 export function listWorkApprovalQueue(payload: ListWorkApprovalQueueRequest) {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte';
+	import { SvelteDate, SvelteMap } from 'svelte/reactivity';
 	import Button from './Button.svelte';
 	import type { Appointment } from '$lib/types/appointments';
 	import { m } from '$lib/paraglide/messages';
@@ -27,21 +28,13 @@
 		loading = false
 	}: Props = $props();
 
-	let view = $state<CalendarView>('month');
-	let viewDate = $state(new Date());
+	let view = $derived<CalendarView>(initialView);
+	let viewDate = $derived<Date>(new SvelteDate(selectedDate));
 	let weekScrollEl = $state<HTMLDivElement>();
 	let dayScrollEl = $state<HTMLDivElement>();
 	let lastAutoScrollKey = $state('');
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
-
-	$effect(() => {
-		view = initialView;
-	});
-
-	$effect(() => {
-		viewDate = new Date(selectedDate);
-	});
 
 	$effect(() => {
 		if (view !== 'week' && view !== 'day') return;
@@ -71,13 +64,13 @@
 	});
 
 	const startOfDay = (date: Date) => {
-		const d = new Date(date);
+		const d = new SvelteDate(date);
 		d.setHours(0, 0, 0, 0);
 		return d;
 	};
 
 	const addDays = (date: Date, amount: number) => {
-		const d = new Date(date);
+		const d = new SvelteDate(date);
 		d.setDate(d.getDate() + amount);
 		return d;
 	};
@@ -124,7 +117,7 @@
 
 	const weekDays = $derived.by(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)));
 
-	const agendaRangeStart = $derived.by(() => (view === 'agenda' ? weekStart : weekStart));
+	const agendaRangeStart = $derived(weekStart);
 	const agendaRangeEnd = $derived.by(() => addDays(agendaRangeStart, 7));
 
 	// Compute current view date range for API calls
@@ -134,8 +127,8 @@
 
 		if (view === 'month') {
 			// Get all days shown in month view (42 cells)
-			start = monthCells[0]?.date || new Date();
-			end = monthCells[monthCells.length - 1]?.date || new Date();
+			start = monthCells[0]?.date || new SvelteDate();
+			end = monthCells[monthCells.length - 1]?.date || new SvelteDate();
 			end.setHours(23, 59, 59, 999);
 		} else if (view === 'week') {
 			start = weekStart;
@@ -143,7 +136,7 @@
 			end.setHours(23, 59, 59, 999);
 		} else if (view === 'day') {
 			start = startOfDay(viewDate);
-			end = new Date(start);
+			end = new SvelteDate(start);
 			end.setHours(23, 59, 59, 999);
 		} else {
 			// agenda
@@ -327,7 +320,7 @@
 	};
 
 	const weekDayLayouts = $derived.by(() => {
-		const map = new Map<string, DayLayoutItem[]>();
+		const map = new SvelteMap<string, DayLayoutItem[]>();
 		for (const day of weekDays) {
 			map.set(day.toISOString(), buildDayLayout(day, weekAppointments));
 		}
@@ -383,43 +376,49 @@
 		viewDate = new Date();
 	};
 
-	const getTypeColor = (type: Appointment['type']) => {
-		switch (type) {
-			case 'consultation':
-				return 'bg-blue-500/10 text-blue-700 border-blue-200';
-			case 'intake':
-				return 'bg-indigo-500/10 text-indigo-700 border-indigo-200';
-			case 'evaluation':
-				return 'bg-secondary/10 text-secondary border-secondary';
-			case 'treatment':
-				return 'bg-purple-500/10 text-purple-700 border-purple-200';
-			default:
-				return 'bg-gray-500/10 text-gray-700 border-gray-200';
-		}
-	};
+	const getTypeColor = (kind: Appointment['kind']) =>
+		kind === 'reminder'
+			? 'border-warning/40 bg-warning/10 text-text'
+			: 'border-brand/30 bg-brand/10 text-text';
 
 	const formatTime = (value: string | Date) => {
 		const d = typeof value === 'string' ? new Date(value) : value;
 		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 	};
+
+	const eventAriaLabel = (appointment: Appointment) =>
+		`${appointment.title}, ${formatTime(appointment.start)}–${formatTime(appointment.end)}`;
 </script>
 
-<div class="flex flex-col gap-6">
+<div class="relative flex flex-col gap-6" aria-busy={loading}>
 	<!-- Calendar Header -->
-	<div class="flex items-center justify-between">
-		<div class="flex items-center gap-4">
-			<h2 class="text-3xl font-bold tracking-tighter text-text">{headerTitle}</h2>
+	<div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+		<div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+			<h2 class="min-w-0 text-xl font-semibold tracking-tight text-text sm:text-2xl">
+				{headerTitle}
+			</h2>
 			<div class="flex items-center rounded-xl border border-border bg-surface p-1 shadow-sm">
-				<button onclick={prev} class="rounded-lg p-2 transition-colors hover:bg-border/20">
+				<button
+					type="button"
+					onclick={prev}
+					aria-label={m.previous()}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				>
 					<ChevronLeft class="h-5 w-5" />
 				</button>
 				<button
+					type="button"
 					onclick={goToday}
-					class="rounded-lg px-3 py-1 text-sm font-semibold transition-colors hover:bg-border/20"
+					class="h-11 rounded-lg px-3 text-sm font-semibold transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 				>
 					{m.today()}
 				</button>
-				<button onclick={next} class="rounded-lg p-2 transition-colors hover:bg-border/20">
+				<button
+					type="button"
+					onclick={next}
+					aria-label={m.next()}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				>
 					<ChevronRight class="h-5 w-5" />
 				</button>
 			</div>
@@ -442,8 +441,10 @@
 				class="hidden items-center rounded-xl border border-border bg-surface p-1 shadow-sm sm:flex"
 			>
 				<button
+					type="button"
 					onclick={() => (view = 'month')}
-					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 {view ===
+					aria-pressed={view === 'month'}
+					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none {view ===
 					'month'
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
@@ -451,8 +452,10 @@
 					{m.month()}
 				</button>
 				<button
+					type="button"
 					onclick={() => (view = 'week')}
-					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 {view ===
+					aria-pressed={view === 'week'}
+					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none {view ===
 					'week'
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
@@ -460,8 +463,10 @@
 					{m.week()}
 				</button>
 				<button
+					type="button"
 					onclick={() => (view = 'day')}
-					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 {view ===
+					aria-pressed={view === 'day'}
+					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none {view ===
 					'day'
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
@@ -469,8 +474,10 @@
 					{m.day()}
 				</button>
 				<button
+					type="button"
 					onclick={() => (view = 'agenda')}
-					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 {view ===
+					aria-pressed={view === 'agenda'}
+					class="rounded-lg px-3 py-1.5 text-sm font-bold transition-colors hover:bg-border/20 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none {view ===
 					'agenda'
 						? 'bg-border/30 text-text'
 						: 'text-text-muted'}"
@@ -480,16 +487,27 @@
 			</div>
 		</div>
 
-		<Button variant="primary" onclick={() => onAddAppointment?.(new Date())}>
-			<Plus class="mr-2 h-4 w-4" />
-			{m.add_appointment()}
-		</Button>
+		{#if onAddAppointment}
+			<Button variant="primary" onclick={() => onAddAppointment?.(new Date())}>
+				<Plus class="mr-2 h-4 w-4" />
+				{m.add_appointment()}
+			</Button>
+		{/if}
 	</div>
+
+	{#if loading}
+		<div
+			class="pointer-events-none absolute top-16 right-0 z-20 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text-muted shadow-sm"
+			role="status"
+		>
+			{m.calendar_loading()}
+		</div>
+	{/if}
 
 	{#if view === 'month'}
 		<!-- Month View -->
-		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-			<div class="grid grid-cols-7 border-b border-border bg-zinc-50/50">
+		<div class="overflow-x-auto rounded-3xl border border-border bg-surface shadow-sm">
+			<div class="grid min-w-[720px] grid-cols-7 border-b border-border bg-bg/60">
 				{#each daysOfWeek as day, i (i)}
 					<div
 						class="px-4 py-3 text-center text-[10px] font-bold tracking-widest text-text-subtle uppercase"
@@ -499,12 +517,12 @@
 				{/each}
 			</div>
 
-			<div class="grid h-[700px] grid-cols-7 grid-rows-6">
+			<div class="grid min-h-[600px] min-w-[720px] grid-cols-7 grid-rows-6 lg:min-h-[700px]">
 				{#each monthCells as { date, isCurrentMonth } (date.toISOString())}
 					{@const dayApps = getAppointmentsForDate(date)}
 					<div
-						class="group relative border-r border-b border-border/50 p-2 transition-colors last:border-r-0 hover:bg-zinc-50/30
-							{!isCurrentMonth ? 'bg-zinc-50/50 text-text-subtle/50' : 'text-text'}"
+						class="group relative border-r border-b border-border/50 p-2 transition-colors last:border-r-0 hover:bg-bg/70
+							{!isCurrentMonth ? 'bg-bg/50 text-text-subtle/50' : 'text-text'}"
 					>
 						<div class="mb-1 flex items-start justify-between">
 							<button
@@ -512,30 +530,35 @@
 								onclick={() => {
 									viewDate = new Date(date);
 								}}
-								class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors hover:bg-border/30
-									{isToday(date) ? 'bg-indigo-500 text-white hover:opacity-90' : ''}"
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none
+					{isToday(date) ? 'bg-brand text-white hover:bg-brand-hover dark:text-black' : ''}"
 							>
 								{date.getDate()}
 							</button>
 
-							<button
-								onclick={() => onAddAppointment?.(new Date(date))}
-								class="rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 hover:bg-border/40"
-								aria-label={m.add_appointment_on_date({
-									date: formatDate(date, { year: 'numeric', month: 'short', day: 'numeric' })
-								})}
-							>
-								<Plus class="h-4 w-4 text-text-muted" />
-							</button>
+							{#if onAddAppointment}<button
+									type="button"
+									onclick={() => onAddAppointment?.(new Date(date))}
+									class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition-all hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+									aria-label={m.add_appointment_on_date({
+										date: formatDate(date, { year: 'numeric', month: 'short', day: 'numeric' })
+									})}
+								>
+									<Plus class="h-4 w-4 text-text-muted" />
+								</button>
+							{/if}
 						</div>
 
 						<div class="flex flex-col gap-1">
 							{#if dayApps.length > 0}
 								{@const first = dayApps[0]}
 								<button
+									type="button"
 									onclick={() => onEditAppointment?.(first)}
-									class="flex flex-col items-start rounded-lg border px-2 py-1.5 text-left text-[10px] leading-tight transition-all hover:shadow-sm {getTypeColor(
-										first.type
+									disabled={!onEditAppointment}
+									aria-label={eventAriaLabel(first)}
+									class="flex flex-col items-start rounded-lg border px-2 py-1.5 text-left text-[10px] leading-tight transition-all hover:shadow-sm focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-default {getTypeColor(
+										first.kind
 									)}"
 								>
 									<span class="w-full truncate font-bold">{first.title}</span>
@@ -563,8 +586,10 @@
 		</div>
 	{:else if view === 'week'}
 		<!-- Week View -->
-		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-			<div class="grid grid-cols-[96px_repeat(7,1fr)] border-b border-border bg-zinc-50/50">
+		<div class="overflow-x-auto rounded-3xl border border-border bg-surface shadow-sm">
+			<div
+				class="grid min-w-[960px] grid-cols-[80px_repeat(7,1fr)] border-b border-border bg-bg/60"
+			>
 				<div class="px-4 py-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.time()}
 				</div>
@@ -574,7 +599,7 @@
 							<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 								{formatDate(d, { weekday: 'short' })}
 							</div>
-							<div class="text-sm font-bold text-text {isToday(d) ? 'text-indigo-700' : ''}">
+							<div class="text-sm font-bold {isToday(d) ? 'text-brand-strong' : 'text-text'}">
 								{d.getDate()}
 							</div>
 						</div>
@@ -582,10 +607,10 @@
 				{/each}
 			</div>
 
-			<div class="max-h-[720px] overflow-y-auto" bind:this={weekScrollEl}>
-				<div class="grid grid-cols-[96px_repeat(7,1fr)]">
+			<div class="max-h-[70vh] min-w-[960px] overflow-y-auto" bind:this={weekScrollEl}>
+				<div class="grid grid-cols-[80px_repeat(7,1fr)]">
 					<!-- Time labels -->
-					<div class="border-r border-border/50 bg-zinc-50/30">
+					<div class="border-r border-border/50 bg-bg/40">
 						{#each slots as s (s.index)}
 							<div
 								class="h-10 border-b border-border/50 px-4 py-2 text-xs font-semibold text-text-muted"
@@ -600,18 +625,20 @@
 						{@const items = weekDayLayouts.get(day.toISOString()) ?? []}
 						<div class="relative border-r border-border/50 last:border-r-0">
 							<!-- Clickable slots -->
-							{#each slots as s (s.index)}
-								<button
-									type="button"
-									onclick={() => onAddAppointment?.(slotDateTime(day, s.minutesFromStart))}
-									class="group block h-10 w-full border-b border-border/50 text-left transition-colors hover:bg-zinc-50/30"
-									aria-label={m.add_appointment_on_date({
-										date: `${formatDate(day, { weekday: 'short', month: 'short', day: 'numeric' })} ${
-											s.time
-										}`
-									})}
-								></button>
-							{/each}
+							{#if onAddAppointment}
+								{#each slots as s (s.index)}
+									<button
+										type="button"
+										onclick={() => onAddAppointment?.(slotDateTime(day, s.minutesFromStart))}
+										class="group block h-10 w-full border-b border-border/50 text-left transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none focus-visible:ring-inset"
+										aria-label={m.add_appointment_on_date({
+											date: `${formatDate(day, { weekday: 'short', month: 'short', day: 'numeric' })} ${
+												s.time
+											}`
+										})}
+									></button>
+								{/each}
+							{/if}
 
 							<!-- Appointment blocks (overlap-aware) -->
 							<div class="pointer-events-none absolute inset-0">
@@ -622,8 +649,10 @@
 									<button
 										type="button"
 										onclick={() => onEditAppointment?.(item.app)}
-										class="pointer-events-auto absolute rounded-xl border px-2 py-1 text-left text-[11px] leading-tight shadow-sm backdrop-blur-sm transition hover:shadow-md {getTypeColor(
-											item.app.type
+										disabled={!onEditAppointment}
+										aria-label={eventAriaLabel(item.app)}
+										class="pointer-events-auto absolute rounded-xl border px-2 py-1 text-left text-[11px] leading-tight shadow-sm backdrop-blur-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-default {getTypeColor(
+											item.app.kind
 										)}"
 										style={`top:${pos.top + 2}px;height:${pos.height - 4}px;left:calc(${left}% + 4px);width:calc(${width}% - 8px);`}
 									>
@@ -646,7 +675,9 @@
 	{:else if view === 'day'}
 		<!-- Day View -->
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-			<div class="grid grid-cols-[96px_1fr] border-b border-border bg-zinc-50/50">
+			<div
+				class="grid grid-cols-[72px_1fr] border-b border-border bg-bg/60 sm:grid-cols-[96px_1fr]"
+			>
 				<div class="px-4 py-3 text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 					{m.time()}
 				</div>
@@ -654,9 +685,9 @@
 					{formatDate(viewDate, { weekday: 'long', month: 'short', day: 'numeric' })}
 				</div>
 			</div>
-			<div class="max-h-[720px] overflow-y-auto" bind:this={dayScrollEl}>
-				<div class="grid grid-cols-[96px_1fr]">
-					<div class="border-r border-border/50 bg-zinc-50/30">
+			<div class="max-h-[70vh] overflow-y-auto" bind:this={dayScrollEl}>
+				<div class="grid grid-cols-[72px_1fr] sm:grid-cols-[96px_1fr]">
+					<div class="border-r border-border/50 bg-bg/40">
 						{#each slots as s (s.index)}
 							<div
 								class="h-12 border-b border-border/50 px-4 py-3 text-xs font-semibold text-text-muted"
@@ -666,18 +697,20 @@
 						{/each}
 					</div>
 					<div class="relative">
-						{#each slots as s (s.index)}
-							<button
-								type="button"
-								onclick={() => onAddAppointment?.(slotDateTime(viewDate, s.minutesFromStart))}
-								class="block h-12 w-full border-b border-border/50 text-left transition-colors hover:bg-zinc-50/30"
-								aria-label={m.add_appointment_on_date({
-									date: `${formatDate(viewDate, { weekday: 'short', month: 'short', day: 'numeric' })} ${
-										s.time
-									}`
-								})}
-							></button>
-						{/each}
+						{#if onAddAppointment}
+							{#each slots as s (s.index)}
+								<button
+									type="button"
+									onclick={() => onAddAppointment?.(slotDateTime(viewDate, s.minutesFromStart))}
+									class="block h-12 w-full border-b border-border/50 text-left transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none focus-visible:ring-inset"
+									aria-label={m.add_appointment_on_date({
+										date: `${formatDate(viewDate, { weekday: 'short', month: 'short', day: 'numeric' })} ${
+											s.time
+										}`
+									})}
+								></button>
+							{/each}
+						{/if}
 
 						<div class="pointer-events-none absolute inset-0">
 							{#each dayLayout as item (item.app.id + '-' + item.start.toISOString())}
@@ -687,8 +720,10 @@
 								<button
 									type="button"
 									onclick={() => onEditAppointment?.(item.app)}
-									class="pointer-events-auto absolute rounded-2xl border px-3 py-2 text-left text-sm leading-tight shadow-sm transition hover:shadow-md {getTypeColor(
-										item.app.type
+									disabled={!onEditAppointment}
+									aria-label={eventAriaLabel(item.app)}
+									class="pointer-events-auto absolute rounded-2xl border px-3 py-2 text-left text-sm leading-tight shadow-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-default {getTypeColor(
+										item.app.kind
 									)}"
 									style={`top:${pos.top + 6}px;height:${pos.height - 12}px;left:calc(${left}% + 8px);width:calc(${width}% - 16px);`}
 								>
@@ -700,9 +735,9 @@
 											</div>
 										</div>
 										<div
-											class="shrink-0 rounded-full bg-white/60 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
+											class="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
 										>
-											{item.app.type}
+											{item.app.kind}
 										</div>
 									</div>
 								</button>
@@ -715,7 +750,7 @@
 	{:else}
 		<!-- Agenda View -->
 		<div class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-			<div class="border-b border-border bg-zinc-50/50 px-5 py-4">
+			<div class="border-b border-border bg-bg/60 px-5 py-4">
 				<div class="flex flex-col gap-1">
 					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 						{m.next_7_days()}
@@ -738,19 +773,20 @@
 								{formatDate(d, { weekday: 'long', month: 'short', day: 'numeric' })}
 								{#if isToday(d)}
 									<span
-										class="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-indigo-700 uppercase"
+										class="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold tracking-widest text-brand-strong uppercase"
 									>
 										{m.today()}
 									</span>
 								{/if}
 							</div>
-							<button
-								type="button"
-								onclick={() => onAddAppointment?.(new Date(d))}
-								class="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-bold text-text-muted transition hover:bg-border/30"
-							>
-								{m.add()}
-							</button>
+							{#if onAddAppointment}<button
+									type="button"
+									onclick={() => onAddAppointment?.(new Date(d))}
+									class="min-h-11 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-bold text-text-muted transition hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+								>
+									{m.add()}
+								</button>
+							{/if}
 						</div>
 
 						{#if dayApps.length === 0}
@@ -761,8 +797,10 @@
 									<button
 										type="button"
 										onclick={() => onEditAppointment?.(app)}
-										class="flex items-start justify-between gap-3 rounded-2xl border p-3 text-left transition hover:shadow-sm {getTypeColor(
-											app.type
+										disabled={!onEditAppointment}
+										aria-label={eventAriaLabel(app)}
+										class="flex items-start justify-between gap-3 rounded-2xl border p-3 text-left transition hover:shadow-sm focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-default {getTypeColor(
+											app.kind
 										)}"
 									>
 										<div class="min-w-0">
@@ -774,9 +812,9 @@
 											</div>
 										</div>
 										<div
-											class="shrink-0 rounded-full bg-white/60 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
+											class="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
 										>
-											{app.type}
+											{app.kind}
 										</div>
 									</button>
 								{/each}
@@ -788,19 +826,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.custom-scrollbar::-webkit-scrollbar {
-		width: 4px;
-	}
-	.custom-scrollbar::-webkit-scrollbar-track {
-		background: transparent;
-	}
-	.custom-scrollbar::-webkit-scrollbar-thumb {
-		background: rgba(0, 0, 0, 0.05);
-		border-radius: 10px;
-	}
-	.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-		background: rgba(0, 0, 0, 0.1);
-	}
-</style>
