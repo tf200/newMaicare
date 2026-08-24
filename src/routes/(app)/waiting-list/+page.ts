@@ -28,6 +28,7 @@ export interface WaitingListRow {
 	senderName: string;
 	daysInWaitingList: number;
 	admissionType: 'crisis' | 'regular' | 'unknown';
+	shouldMoveToPreviousPageAfterCare: boolean;
 }
 
 export interface WaitingListLoadResult {
@@ -109,9 +110,11 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 				clientLastName: item.last_name,
 				clientBsnNumber: item.bsn,
 				careType: mapCareType(item.care_type),
-				senderName: item.sender_name ?? '—',
+				senderName: item.sender_name ?? m.not_available_short(),
 				daysInWaitingList: item.days_in_waitlist,
-				admissionType: mapAdmissionType(item.admission_type)
+				admissionType: mapAdmissionType(item.admission_type),
+				shouldMoveToPreviousPageAfterCare:
+					results.length === 1 && page > 1 && page * (page_size || pageSize) >= count
 			}));
 
 			return {

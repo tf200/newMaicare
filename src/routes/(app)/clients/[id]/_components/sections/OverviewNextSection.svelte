@@ -2,6 +2,9 @@
 	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Activity, ChevronRight } from 'lucide-svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import type { GetClientCoordinator } from '$lib/types/api';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { ClientOverviewData, ClientOverviewStatus } from '../../overview.shared';
 	import PutClientInCareForm from '$lib/components/forms/PutClientInCareForm.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -11,9 +14,10 @@
 	interface Props {
 		client: ClientOverviewData;
 		status: ClientOverviewStatus;
+		coordinator: GetClientCoordinator | null;
 	}
 
-	let { client, status }: Props = $props();
+	let { client, status, coordinator }: Props = $props();
 	let showPutInCareForm = $state(false);
 
 	const formatDate = (dateString?: string) =>
@@ -98,14 +102,18 @@
 			<p class="mt-1 text-sm text-text-muted">{whatsNext.description}</p>
 		</div>
 		{#if status === 'on_waiting_list'}
-			<button
-				type="button"
-				onclick={handleActionClick}
-				class="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-sm font-bold text-brand shadow-sm ring-1 ring-brand/20 transition-colors hover:bg-brand hover:text-btn-primary-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+			<PermissionGuard
+				allOf={[PERMISSIONS.CLIENT.STATUS_UPDATE, PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_VIEW]}
 			>
-				{whatsNext.action}
-				<ChevronRight class="h-4 w-4" aria-hidden="true" />
-			</button>
+				<button
+					type="button"
+					onclick={handleActionClick}
+					class="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-surface px-4 py-2.5 text-sm font-bold text-brand shadow-sm ring-1 ring-brand/20 transition-colors hover:bg-brand hover:text-btn-primary-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+				>
+					{whatsNext.action}
+					<ChevronRight class="h-4 w-4" aria-hidden="true" />
+				</button>
+			</PermissionGuard>
 		{:else if actionHref}
 			<!-- actionHref is built exclusively with resolve() and localizeHref(). -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -125,7 +133,12 @@
 		<PutClientInCareForm
 			bind:open={showPutInCareForm}
 			clientId={client.id}
-			onSuccess={() => invalidate(`app:client:${client.id}:detail`)}
+			coordinatorSnapshot={coordinator}
+			onSuccess={() =>
+				Promise.all([
+					invalidate(`app:client:${client.id}:detail`),
+					invalidate(`app:client:${client.id}:involved-employees`)
+				])}
 		/>
 	{/if}
 {/if}

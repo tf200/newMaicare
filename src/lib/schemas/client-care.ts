@@ -1,15 +1,16 @@
 import * as v from 'valibot';
+import { m } from '$lib/paraglide/messages';
 
 export const PutClientInCareSchema = v.object({
 	care_start_date: v.pipe(
 		v.string(),
-		v.regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format.'),
-		v.minLength(1, 'Care start date is required.')
+		v.minLength(1, () => m.required_field()),
+		v.regex(/^\d{4}-\d{2}-\d{2}$/, () => m.date_format_yyyy_mm_dd())
 	),
 	coordinator_employee_id: v.pipe(
 		v.string(),
-		v.uuid('Coordinator ID must be a valid UUID.'),
-		v.minLength(1, 'Coordinator is required.')
+		v.minLength(1, () => m.required_field()),
+		v.uuid(() => m.invalid_coordinator())
 	),
 	placed_in_care_at: v.optional(v.string()),
 	reason: v.optional(v.string())

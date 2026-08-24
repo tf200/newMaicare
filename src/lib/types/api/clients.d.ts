@@ -104,6 +104,35 @@ export interface PutClientInCareRequest {
 	reason?: string;
 }
 
+export interface PutClientInCareResponse {
+	id: string;
+	status: 'scheduled_in_care' | 'in_care';
+	care_start_date: string;
+	placed_in_care_at: string | null;
+}
+
+export interface ClientInvolvedEmployee {
+	id: string;
+	client_id: string;
+	employee_id: string;
+	start_date: string;
+	role: string;
+	employee_name: string;
+	created_at: string;
+}
+
+export interface CreateClientInvolvedEmployeeRequest {
+	employee_id: string;
+	start_date: string;
+	role: string;
+}
+
+export interface UpdateClientInvolvedEmployeeRequest {
+	employee_id?: string;
+	start_date?: string;
+	role?: string;
+}
+
 export type ClientDischargeReason =
 	| 'treatment_completed'
 	| 'terminated_by_mutual_agreement'

@@ -10,8 +10,10 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
-	import { putClientInCare } from '$lib/api/clients';
-	import type { PutClientInCareRequest } from '$lib/types/api';
+	import { getClientById, putClientInCare } from '$lib/api/clients';
+	import type { GetClientCoordinator, PutClientInCareRequest } from '$lib/types/api';
+	import { getAuthState } from '$lib/state/auth.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import { PutClientInCareSchema, type PutClientInCareSchemaInput } from '$lib/schemas/client-care';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
@@ -19,14 +21,29 @@
 	interface Props {
 		open?: boolean;
 		clientId?: string | null;
+		/** Pass null when the caller already knows the client has no coordinator. */
+		coordinatorSnapshot?: GetClientCoordinator | null;
 		onSuccess?: () => void;
 	}
 
-	let { open = $bindable(false), clientId = null, onSuccess }: Props = $props();
+	let {
+		open = $bindable(false),
+		clientId = null,
+		coordinatorSnapshot = undefined,
+		onSuccess
+	}: Props = $props();
 	const toast = getToastState();
+	const auth = getAuthState();
 
 	let coordinatorName = $state('');
 	let errorMessage = $state('');
+	let initializationError = $state(false);
+	let initializing = $state(false);
+	let initialCoordinatorEmployeeId = $state<string | null>(null);
+	let initializedKey = $state<string | null>(null);
+	let lastOpen = false;
+	let requestSequence = 0;
+	let requestController: AbortController | undefined;
 	const formId = 'put-client-in-care-form';
 
 	const { form, errors, enhance, delayed, submitting, reset } = superForm(
@@ -44,7 +61,7 @@
 			SPA: true,
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
-				if (form.valid && clientId) {
+				if (form.valid && clientId && canSubmit) {
 					errorMessage = '';
 					try {
 						const payload: PutClientInCareRequest = {
@@ -68,14 +85,16 @@
 	);
 
 	const clearTransientState = () => {
+		requestSequence += 1;
+		requestController?.abort();
+		requestController = undefined;
 		reset();
 		coordinatorName = '';
 		errorMessage = '';
-	};
-
-	const handleCancel = () => {
-		clearTransientState();
-		open = false;
+		initializationError = false;
+		initializing = false;
+		initialCoordinatorEmployeeId = null;
+		initializedKey = null;
 	};
 
 	const loadCoordinatorOptions = async (query: string): Promise<EmployeeListItem[]> => {
@@ -89,6 +108,113 @@
 
 		return response.data.results;
 	};
+
+	const hasExistingCoordinator = $derived(Boolean(initialCoordinatorEmployeeId));
+	const hasUnsavedChanges = $derived(
+		$form.care_start_date.trim() !== '' ||
+			$form.coordinator_employee_id !== (initialCoordinatorEmployeeId ?? '') ||
+			($form.placed_in_care_at ?? '').trim() !== '' ||
+			($form.reason ?? '').trim() !== ''
+	);
+	const canReplaceCoordinator = $derived(
+		auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE)
+	);
+	const canViewCoordinator = $derived(
+		auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_VIEW)
+	);
+	const canCreateCoordinator = $derived(
+		auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE)
+	);
+	const canSubmit = $derived(
+		auth.hasPermission(PERMISSIONS.CLIENT.STATUS_UPDATE) &&
+			canViewCoordinator &&
+			(hasExistingCoordinator || canCreateCoordinator)
+	);
+
+	const canDiscard = () =>
+		!hasUnsavedChanges || window.confirm(m.discard_put_client_in_care_changes_confirmation());
+
+	const handleCancel = () => {
+		if (!canDiscard()) return;
+		clearTransientState();
+		open = false;
+	};
+
+	const handleClose = () => {
+		if (!canDiscard()) {
+			open = true;
+			return;
+		}
+		clearTransientState();
+	};
+
+	const resetFormFields = () => {
+		reset({
+			data: {
+				care_start_date: '',
+				coordinator_employee_id: '',
+				placed_in_care_at: '',
+				reason: ''
+			}
+		});
+		coordinatorName = '';
+	};
+
+	const initializeCoordinator = async (
+		id: string,
+		snapshot: GetClientCoordinator | null | undefined
+	) => {
+		const sequence = ++requestSequence;
+		requestController?.abort();
+		requestController = new AbortController();
+		initializing = true;
+		initializationError = false;
+		errorMessage = '';
+		resetFormFields();
+
+		try {
+			const coordinator =
+				snapshot === undefined
+					? (await getClientById(id, { signal: requestController.signal })).data.coordinator
+					: snapshot;
+			if (sequence !== requestSequence) return;
+			initialCoordinatorEmployeeId = coordinator?.employee_id ?? null;
+			reset({
+				data: {
+					care_start_date: '',
+					coordinator_employee_id: coordinator?.employee_id ?? '',
+					placed_in_care_at: '',
+					reason: ''
+				}
+			});
+			coordinatorName =
+				coordinator?.first_name && coordinator.last_name
+					? `${coordinator.first_name} ${coordinator.last_name}`.trim()
+					: '';
+		} catch (error) {
+			if (
+				sequence !== requestSequence ||
+				(error instanceof DOMException && error.name === 'AbortError')
+			)
+				return;
+			initializationError = true;
+		} finally {
+			if (sequence === requestSequence) initializing = false;
+		}
+	};
+
+	$effect(() => {
+		const key = `${clientId ?? ''}:${coordinatorSnapshot?.employee_id ?? 'unassigned'}`;
+		if (!open) {
+			if (lastOpen) clearTransientState();
+			lastOpen = false;
+			return;
+		}
+		if (!clientId || (lastOpen && initializedKey === key)) return;
+		lastOpen = true;
+		initializedKey = key;
+		void initializeCoordinator(clientId, coordinatorSnapshot);
+	});
 </script>
 
 <Modal
@@ -97,7 +223,7 @@
 	description={m.put_client_in_care_description()}
 	closeLabel={m.close()}
 	dismissible={!$submitting}
-	onClose={clearTransientState}
+	onClose={handleClose}
 	class="max-w-xl"
 >
 	<form id={formId} use:enhance class="space-y-5">
@@ -117,7 +243,30 @@
 			valueFn={(employee) => employee.id}
 			placeholder={m.select_coordinator()}
 			searchPlaceholder={m.search_employees()}
+			disabled={initializing ||
+				(hasExistingCoordinator ? !canReplaceCoordinator : !canCreateCoordinator)}
 		/>
+		{#if initializing}
+			<p class="text-xs text-text-muted" role="status">{m.loading_client_details()}</p>
+		{:else if initializationError}
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
+				{m.failed_load_client_details()}
+				<button
+					type="button"
+					class="ml-2 font-semibold underline"
+					onclick={() => void initializeCoordinator(clientId ?? '', coordinatorSnapshot)}
+				>
+					{m.retry()}
+				</button>
+			</div>
+		{:else if !hasExistingCoordinator && !canCreateCoordinator}
+			<p class="text-xs text-text-muted">{m.coordinator_assignment_permission_required()}</p>
+		{:else if hasExistingCoordinator && !canReplaceCoordinator}
+			<p class="text-xs text-text-muted">{m.coordinator_replacement_permission_required()}</p>
+		{/if}
 
 		<DateTimePicker label={m.placed_in_care_at_optional()} bind:value={$form.placed_in_care_at} />
 
@@ -139,7 +288,11 @@
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
 			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
-			<Button form={formId} type="submit" isLoading={$delayed} disabled={$submitting}
+			<Button
+				form={formId}
+				type="submit"
+				isLoading={$delayed}
+				disabled={$submitting || initializing || initializationError || !canSubmit}
 				>{m.put_in_care()}</Button
 			>
 		</div>

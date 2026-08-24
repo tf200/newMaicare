@@ -34,6 +34,7 @@
 	const sort = $derived.by(() => initial.sort);
 	let isPutInCareModalOpen = $state(false);
 	let selectedClientId = $state<string | null>(null);
+	let shouldMoveToPreviousPageAfterCare = $state(false);
 
 	const appliedSearch = $derived.by(() => (initial.filters.search ?? '').trim());
 	const appliedAdmissionType = $derived.by(() => (initial.filters.admissionType ?? '').trim());
@@ -113,6 +114,7 @@
 
 	const openPutInCareModal = (row: WaitingListRow) => {
 		selectedClientId = row.id;
+		shouldMoveToPreviousPageAfterCare = row.shouldMoveToPreviousPageAfterCare;
 		isPutInCareModalOpen = true;
 	};
 
@@ -235,7 +237,10 @@
 		</div>
 		<div>
 			<p class="text-sm font-semibold text-text">{formatClientName(row)}</p>
-			<p class="text-xs text-text-muted">{m.bsn()} {row.clientBsnNumber ?? '—'}</p>
+			<p class="text-xs text-text-muted">
+				{m.bsn()}
+				{row.clientBsnNumber ?? m.not_available_short()}
+			</p>
 		</div>
 	</div>
 {/snippet}
@@ -246,7 +251,7 @@
 		{#if days != null && days > 14}
 			<AlertTriangle aria-hidden="true" class="h-3.5 w-3.5" />
 		{/if}
-		{days ?? '—'}
+		{days ?? m.not_available_short()}
 	</span>
 {/snippet}
 
@@ -270,7 +275,9 @@
 
 {#snippet actionsCell(row: WaitingListRow)}
 	<div class="flex justify-end gap-1">
-		<PermissionGuard permission={PERMISSIONS.CLIENT.STATUS_UPDATE}>
+		<PermissionGuard
+			allOf={[PERMISSIONS.CLIENT.STATUS_UPDATE, PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_VIEW]}
+		>
 			<button
 				type="button"
 				aria-label={m.put_in_care()}
@@ -278,7 +285,7 @@
 					event.stopPropagation();
 					openPutInCareModal(row);
 				}}
-				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+				class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-success/10 hover:text-success focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 				title={m.put_in_care()}
 			>
 				<HeartHandshake aria-hidden="true" class="h-4 w-4" />
@@ -289,7 +296,7 @@
 				localizeHref(resolve('/(app)/clients/[id]', { id: row.id })) as `/clients/${string}/`
 			)}
 			aria-label={m.view_details()}
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+			class="flex h-11 w-11 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
 			title={m.view_details()}
 		>
 			<Eye aria-hidden="true" class="h-4 w-4" />
@@ -446,13 +453,16 @@
 				actions: actionsCell
 			}}
 		/>
-		<PutClientInCareForm
-			bind:open={isPutInCareModalOpen}
-			clientId={selectedClientId}
-			onSuccess={() =>
-				refreshWaitingList(
-					waitingListData.rows.length === 1 && waitingListData.pagination.next == null
-				)}
-		/>
 	{/await}
+
+	<PutClientInCareForm
+		bind:open={isPutInCareModalOpen}
+		clientId={selectedClientId}
+		onSuccess={() =>
+			Promise.all([
+				refreshWaitingList(shouldMoveToPreviousPageAfterCare),
+				invalidate(`app:client:${selectedClientId}:detail`),
+				invalidate(`app:client:${selectedClientId}:involved-employees`)
+			])}
+	/>
 </section>

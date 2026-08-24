@@ -21,6 +21,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale, localizeHref } from '$lib/paraglide/runtime';
 	import { resolve } from '$app/paths';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { ClientOverviewTarget, ClientOverviewViewModel } from '../../overview.shared';
 	import { formatOverviewDate } from '../overview-date';
 	import OverviewMainColumn from '../sections/OverviewMainColumn.svelte';
@@ -163,7 +164,7 @@
 		<div class="flex flex-wrap items-center gap-2 xl:justify-end">
 			{#if !isWaitlistClient}
 				{#if isInCareClient}
-					<PermissionGuard permission="CLIENT.STATUS.UPDATE">
+					<PermissionGuard permission={PERMISSIONS.CLIENT.STATUS_UPDATE}>
 						<Button variant="destructive" onclick={openPutOutOfCareForm}>
 							<ShieldAlert class="h-4 w-4" aria-hidden="true" />
 							{m.put_out_of_care()}
@@ -321,7 +322,7 @@
 	</section>
 
 	<div class="grid gap-6 xl:grid-cols-[1fr_380px]">
-		<OverviewMainColumn {client} {status} />
+		<OverviewMainColumn {client} {status} coordinator={clientDetail.coordinator ?? null} />
 		<OverviewSidebar {client} />
 	</div>
 </div>

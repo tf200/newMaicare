@@ -13,6 +13,7 @@ import type {
 	ListWaitingListClientsResponse,
 	WaitingListStatsResponse,
 	PutClientInCareRequest,
+	PutClientInCareResponse,
 	PutClientOutOfCareRequest,
 	PutClientOutOfCareResponse,
 	GetAppointmentCardResponse,
@@ -41,7 +42,10 @@ import type {
 	CreateClientEmergencyContactResponse,
 	ListClientEmergencyContactsParams,
 	ListClientEmergencyContactsResponse,
-	UpdateClientRequest
+	UpdateClientRequest,
+	ClientInvolvedEmployee,
+	CreateClientInvolvedEmployeeRequest,
+	UpdateClientInvolvedEmployeeRequest
 } from '$lib/types/api';
 
 export function listWaitingListClients(
@@ -81,8 +85,42 @@ export function getClientById(id: string, options?: ApiRequestOptions) {
 	return api.get<ApiEnvelope<GetClientResponse>>(`/clients/${id}`, options);
 }
 
+export function listClientInvolvedEmployees(clientId: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<PaginatedResponse<ClientInvolvedEmployee>>>(
+		`/clients/${clientId}/involved_employees?page=1&page_size=100`,
+		options
+	);
+}
+
+export function createClientInvolvedEmployee(
+	clientId: string,
+	payload: CreateClientInvolvedEmployeeRequest
+) {
+	return api.post<ApiEnvelope<ClientInvolvedEmployee>>(
+		`/clients/${clientId}/involved_employees`,
+		payload
+	);
+}
+
+export function updateClientInvolvedEmployee(
+	clientId: string,
+	assignmentId: string,
+	payload: UpdateClientInvolvedEmployeeRequest
+) {
+	return api.put<ApiEnvelope<ClientInvolvedEmployee>>(
+		`/clients/${clientId}/involved_employees/${assignmentId}`,
+		payload
+	);
+}
+
+export function deleteClientInvolvedEmployee(clientId: string, assignmentId: string) {
+	return api.delete<ApiEnvelope<{ id: string }>>(
+		`/clients/${clientId}/involved_employees/${assignmentId}`
+	);
+}
+
 export function putClientInCare(id: string, payload: PutClientInCareRequest) {
-	return api.put<ApiEnvelope<unknown>>(`/clients/${id}/put-in-care`, payload);
+	return api.put<ApiEnvelope<PutClientInCareResponse>>(`/clients/${id}/put-in-care`, payload);
 }
 
 export function putClientOutOfCare(id: string, payload: PutClientOutOfCareRequest) {

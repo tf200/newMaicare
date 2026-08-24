@@ -8,7 +8,8 @@
 		FileBarChart,
 		ScrollText,
 		Target,
-		CalendarCheck
+		CalendarCheck,
+		UsersRound
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 
@@ -52,6 +53,11 @@
 						label: m.contracts(),
 						href: resolve('/(app)/clients/[id]/contracts', { id: clientId }),
 						icon: ScrollText
+					},
+					{
+						label: m.involved_employees(),
+						href: resolve('/(app)/clients/[id]/involved-employees', { id: clientId }),
+						icon: UsersRound
 					}
 				],
 				client.clientName,
