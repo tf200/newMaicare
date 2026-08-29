@@ -474,25 +474,29 @@
 					</section>
 				{/if}
 
-				<section class="space-y-4 rounded-2xl border border-border bg-surface p-4">
-					<h4 class="text-xs font-bold tracking-widest text-text-subtle uppercase">
+				<section class="min-w-0 space-y-5">
+					<h4
+						class="border-b border-border pb-3 text-xs font-bold tracking-widest text-text-subtle uppercase"
+					>
 						{m.current_evaluation()}
 					</h4>
-					<Textarea
-						label={m.overall_notes()}
-						placeholder={m.placeholder_overall_notes()}
-						disabled={isReadOnly}
-						bind:value={$form.overall_notes}
-						error={formatFormError($errors.overall_notes)}
-					/>
+					<div class="pb-1">
+						<Textarea
+							label={m.overall_notes()}
+							placeholder={m.placeholder_overall_notes()}
+							disabled={isReadOnly}
+							bind:value={$form.overall_notes}
+							error={formatFormError($errors.overall_notes)}
+						/>
+					</div>
 
-					<div class="space-y-3">
+					<div class="divide-y divide-border border-t border-border">
 						{#each viewGoals as goal, index (goal.goal_id)}
-							<div class="rounded-xl border border-border p-3">
-								<div class="mb-3 flex flex-wrap items-start justify-between gap-2">
-									<div>
+							<section class="py-5 first:pt-5 last:pb-0">
+								<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+									<div class="min-w-0">
 										<p class="text-sm font-semibold text-text">{goal.title}</p>
-										<p class="text-xs text-text-muted">
+										<p class="mt-0.5 text-xs text-text-muted">
 											{goal.topic_name_snapshot ?? m.not_available_short()}
 										</p>
 									</div>
@@ -507,39 +511,39 @@
 									{/if}
 								</div>
 
-								{#if isReadOnly}
-									<div class="mb-3">
-										<p class="mb-1 text-xs font-bold tracking-wide text-text-subtle uppercase">
-											{m.progress()}
-										</p>
-										<p class="text-sm text-text">
-											{progressLabel($form.items[index]?.progress ?? 'no_progress')}
-										</p>
-									</div>
-									<Textarea
-										label={m.notes_label()}
-										disabled={true}
-										value={$form.items[index]?.notes ?? ''}
-									/>
-								{:else if $form.items[index]}
-									<Select
-										label={m.progress()}
-										options={progressOptions}
-										bind:value={$form.items[index].progress}
-										error={formatFormError($errors.items?.[index]?.progress)}
-									/>
-									<Textarea
-										label={m.notes_label()}
-										placeholder={m.placeholder_goal_notes()}
-										bind:value={$form.items[index].notes}
-										error={formatFormError($errors.items?.[index]?.notes)}
-									/>
-								{/if}
+								<div class="space-y-4">
+									{#if isReadOnly}
+										<div class="mb-3">
+											<p class="mb-1 text-xs font-bold tracking-wide text-text-subtle uppercase">
+												{m.progress()}
+											</p>
+											<p class="text-sm text-text">
+												{progressLabel($form.items[index]?.progress ?? 'no_progress')}
+											</p>
+										</div>
+										<Textarea
+											label={m.notes_label()}
+											disabled={true}
+											value={$form.items[index]?.notes ?? ''}
+										/>
+									{:else if $form.items[index]}
+										<Select
+											label={m.progress()}
+											options={progressOptions}
+											bind:value={$form.items[index].progress}
+											error={formatFormError($errors.items?.[index]?.progress)}
+										/>
+										<Textarea
+											label={m.notes_label()}
+											placeholder={m.placeholder_goal_notes()}
+											bind:value={$form.items[index].notes}
+											error={formatFormError($errors.items?.[index]?.notes)}
+										/>
+									{/if}
+								</div>
 
 								{#if showLastEvaluation && (goal.last_progress || goal.last_notes)}
-									<div
-										class="mt-2 rounded-lg border border-border bg-bg/40 p-2 text-xs text-text-muted"
-									>
+									<div class="mt-4 border-l-2 border-info/40 pl-3 text-xs text-text-muted">
 										<p class="font-semibold text-text">{m.last_evaluation_context()}</p>
 										{#if goal.last_progress}
 											<p>
@@ -551,7 +555,7 @@
 										{/if}
 									</div>
 								{/if}
-							</div>
+							</section>
 						{/each}
 					</div>
 				</section>
