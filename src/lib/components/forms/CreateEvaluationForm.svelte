@@ -59,6 +59,8 @@
 	let showDiscardConfirmation = $state(false);
 	let initialSnapshot = $state('');
 	let currentCycleConflict = $state(false);
+	let conflictEvaluation = $state<GoalEvaluationResponse | null>(null);
+	let showConflictReloadConfirmation = $state(false);
 	const formId = 'create-evaluation-form';
 
 	const { form, errors, enhance, reset } = superForm(
@@ -91,21 +93,37 @@
 
 						let response: Awaited<ReturnType<typeof updateEvaluationDraft>>;
 						let savedEvaluationId = currentEvaluationId;
+						let currentRevision = evaluation?.updated_at;
 
 						if (savedEvaluationId) {
-							response = await updateEvaluationDraft(savedEvaluationId, draftPayload);
+							if (!currentRevision) {
+								formError = m.evaluation_revision_required();
+								return;
+							}
+							response = await updateEvaluationDraft(
+								savedEvaluationId,
+								currentRevision,
+								draftPayload
+							);
+							currentRevision = response.data.updated_at;
 						} else {
 							const createPayload: CreateEvaluationRequest = { ...draftPayload, submit: false };
 							response = await createEvaluation(clientId!, createPayload);
 							savedEvaluationId = response.data.id;
+							currentRevision = response.data.updated_at;
 
 							if (form.data.submit) {
-								response = await updateEvaluationDraft(savedEvaluationId, draftPayload);
+								response = await updateEvaluationDraft(
+									savedEvaluationId,
+									currentRevision,
+									draftPayload
+								);
+								currentRevision = response.data.updated_at;
 							}
 						}
 
 						if (form.data.submit) {
-							response = await submitEvaluationDraft(savedEvaluationId);
+							response = await submitEvaluationDraft(savedEvaluationId, currentRevision);
 						}
 
 						evaluation = response.data;
@@ -239,7 +257,8 @@
 		code === 'EVALUATION_TOO_EARLY' ||
 		code === 'EVALUATION_ALREADY_COMPLETED' ||
 		code === 'EVALUATION_NOT_CURRENT_CYCLE' ||
-		code === 'EVALUATION_CONFLICT';
+		code === 'EVALUATION_CONFLICT' ||
+		code === 'EVALUATION_REVISION_REQUIRED';
 
 	const isEvaluationMutationErrorData = (data: unknown): data is EvaluationMutationErrorData =>
 		!!data && typeof data === 'object' && 'draft_saved' in data;
@@ -272,6 +291,8 @@
 				return m.evaluation_historical_read_only();
 			case 'EVALUATION_CONFLICT':
 				return m.evaluation_conflict();
+			case 'EVALUATION_REVISION_REQUIRED':
+				return m.evaluation_revision_required();
 		}
 	};
 
@@ -288,6 +309,14 @@
 			}
 			onSaved?.();
 			formError = `${m.evaluation_draft_saved_submit_blocked()} ${localizedEvaluationError(error.code)}`;
+			return;
+		}
+		if (error.code === 'EVALUATION_CONFLICT') {
+			conflictEvaluation = isEvaluationMutationErrorData(error.data)
+				? (error.data.evaluation ?? null)
+				: null;
+			showConflictReloadConfirmation = false;
+			formError = localizedEvaluationError(error.code);
 			return;
 		}
 
@@ -377,12 +406,30 @@
 		initialSnapshot = JSON.stringify(initialData);
 	};
 
+	const reloadConflictEvaluation = async () => {
+		const id = conflictEvaluation?.id ?? evaluation?.id;
+		if (!id || isLoading) return;
+		isLoading = true;
+		formError = '';
+		try {
+			await loadByEvaluationId(id);
+			conflictEvaluation = null;
+			showConflictReloadConfirmation = false;
+		} catch (error) {
+			formError = localizedEvaluationLoadError(error);
+		} finally {
+			isLoading = false;
+		}
+	};
+
 	const openCurrentCycleDraft = async () => {
 		const currentDraftId = bootstrap?.existing_draft?.id;
 		if (!currentDraftId || currentDraftId === evaluation?.id) return;
 		isLoading = true;
 		formError = '';
 		currentCycleConflict = false;
+		conflictEvaluation = null;
+		showConflictReloadConfirmation = false;
 		try {
 			await loadByEvaluationId(currentDraftId);
 		} catch (error) {
@@ -530,7 +577,37 @@
 					{/if}
 				</div>
 			{/if}
-			{#if formError}
+			{#if conflictEvaluation}
+				<div
+					class="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-text"
+					role="alert"
+				>
+					<p class="font-semibold">{m.evaluation_conflict_title()}</p>
+					<p class="mt-1 text-text-muted">{m.evaluation_conflict()}</p>
+					<p class="mt-2 text-xs text-text-muted">
+						{m.evaluation_server_updated_at({
+							date: new Date(conflictEvaluation.updated_at).toLocaleString(resolveLocale())
+						})}
+					</p>
+					{#if showConflictReloadConfirmation}
+						<p class="mt-3 font-medium">{m.evaluation_reload_discards_local_changes()}</p>
+						<div class="mt-3 flex flex-wrap gap-2">
+							<Button variant="ghost" onclick={() => (showConflictReloadConfirmation = false)}>
+								{m.keep_editing()}
+							</Button>
+							<Button variant="destructive" onclick={reloadConflictEvaluation}>
+								{m.reload_server_evaluation()}
+							</Button>
+						</div>
+					{:else}
+						<div class="mt-3">
+							<Button variant="secondary" onclick={() => (showConflictReloadConfirmation = true)}>
+								{m.review_server_version()}
+							</Button>
+						</div>
+					{/if}
+				</div>
+			{:else if formError}
 				<div
 					class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error"
 					role="alert"

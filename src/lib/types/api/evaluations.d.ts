@@ -110,7 +110,8 @@ export type EvaluationErrorCode =
 	| 'EVALUATION_TOO_EARLY'
 	| 'EVALUATION_ALREADY_COMPLETED'
 	| 'EVALUATION_NOT_CURRENT_CYCLE'
-	| 'EVALUATION_CONFLICT';
+	| 'EVALUATION_CONFLICT'
+	| 'EVALUATION_REVISION_REQUIRED';
 
 export interface GoalEvaluationItemResponse {
 	id: string;

@@ -2178,5 +2178,11 @@
 	"evaluation_invalid_progress": "Een van de geselecteerde voortgangswaarden is ongeldig.",
 	"evaluation_incomplete": "Selecteer de voortgang voor elk actief doel voordat u indient.",
 	"evaluation_conflict": "Deze evaluatie is elders gewijzigd. Uw invoer staat er nog; laad opnieuw voordat u weer opslaat.",
-	"evaluation_draft_saved_submit_blocked": "Uw concept is opgeslagen, maar kon niet worden ingediend."
+	"evaluation_draft_saved_submit_blocked": "Uw concept is opgeslagen, maar kon niet worden ingediend.",
+	"evaluation_revision_required": "Laad de evaluatie opnieuw voordat u opslaat, omdat de revisie ontbreekt.",
+	"evaluation_conflict_title": "Er is een nieuwere versie beschikbaar",
+	"evaluation_server_updated_at": "De serverversie is bijgewerkt op {date}.",
+	"evaluation_reload_discards_local_changes": "Door opnieuw te laden gaat de invoer die nu in dit formulier staat verloren.",
+	"reload_server_evaluation": "Verwerpen en opnieuw laden",
+	"review_server_version": "Serverversie bekijken"
 }

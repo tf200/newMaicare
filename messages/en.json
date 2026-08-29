@@ -2176,5 +2176,11 @@
 	"evaluation_invalid_progress": "One of the selected progress values is invalid.",
 	"evaluation_incomplete": "Select progress for every active goal before submitting.",
 	"evaluation_conflict": "This evaluation changed elsewhere. Your entries are still here; reload before saving again.",
-	"evaluation_draft_saved_submit_blocked": "Your draft was saved, but it could not be submitted."
+	"evaluation_draft_saved_submit_blocked": "Your draft was saved, but it could not be submitted.",
+	"evaluation_revision_required": "Reload the evaluation before saving because its revision is missing.",
+	"evaluation_conflict_title": "A newer version is available",
+	"evaluation_server_updated_at": "Server version updated {date}.",
+	"evaluation_reload_discards_local_changes": "Reloading will discard the entries currently shown in this form.",
+	"reload_server_evaluation": "Discard and reload",
+	"review_server_version": "Review server version"
 }

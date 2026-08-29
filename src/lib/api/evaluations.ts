@@ -59,17 +59,25 @@ export function createEvaluation(clientId: string, payload: CreateEvaluationRequ
 	);
 }
 
-export function updateEvaluationDraft(evaluationId: string, payload: UpdateEvaluationDraftRequest) {
+export function updateEvaluationDraft(
+	evaluationId: string,
+	revision: string,
+	payload: UpdateEvaluationDraftRequest
+) {
 	return api.patch<ApiEnvelope<CreateEvaluationResponse>>(
 		`/evaluations/${evaluationId}/draft`,
-		payload
+		payload,
+		{ headers: { 'If-Match': `"${revision}"` } }
 	);
 }
 
-export function submitEvaluationDraft(evaluationId: string) {
+export function submitEvaluationDraft(evaluationId: string, revision: string) {
 	return api.post<ApiEnvelope<CreateEvaluationResponse>>(
 		`/evaluations/${evaluationId}/submit`,
-		undefined
+		undefined,
+		{
+			headers: { 'If-Match': `"${revision}"` }
+		}
 	);
 }
 
