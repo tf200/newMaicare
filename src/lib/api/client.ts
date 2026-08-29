@@ -17,13 +17,19 @@ export interface BlobResponse {
 export class ApiClientError extends Error {
 	code?: string;
 	status: number;
+	data?: unknown;
 	details?: unknown;
 
-	constructor(message: string, status: number, options?: { code?: string; details?: unknown }) {
+	constructor(
+		message: string,
+		status: number,
+		options?: { code?: string; data?: unknown; details?: unknown }
+	) {
 		super(message);
 		this.name = 'ApiClientError';
 		this.status = status;
 		this.code = options?.code;
+		this.data = options?.data;
 		this.details = options?.details;
 	}
 }
@@ -188,8 +194,12 @@ class ApiClient {
 			payload && typeof payload === 'object' && 'details' in payload
 				? (payload as ApiErrorEnvelope).details
 				: undefined;
+		const data =
+			payload && typeof payload === 'object' && 'data' in payload
+				? (payload as ApiErrorEnvelope).data
+				: undefined;
 
-		return new ApiClientError(message, status, { code, details });
+		return new ApiClientError(message, status, { code, data, details });
 	}
 
 	get<T>(endpoint: string, options?: ApiRequestOptions) {

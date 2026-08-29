@@ -2167,5 +2167,14 @@
 	"open_current_evaluation": "Open current evaluation",
 	"evaluation_not_found": "This evaluation no longer exists.",
 	"evaluation_not_owner": "This draft belongs to another employee and cannot be changed or submitted by you.",
-	"evaluation_already_completed": "This evaluation has already been completed and can no longer be changed."
+	"evaluation_already_completed": "This evaluation has already been completed and can no longer be changed.",
+	"evaluation_client_not_in_care": "Evaluations are only available while the client is in care.",
+	"evaluation_no_active_goals": "This client has no active goals to evaluate.",
+	"evaluation_no_due_date": "Schedule an evaluation date before creating or submitting an evaluation.",
+	"evaluation_duplicate_goal": "A goal appears more than once in this evaluation. Reload the form and try again.",
+	"evaluation_goal_not_active": "One of these goals is no longer active. Reload the evaluation before continuing.",
+	"evaluation_invalid_progress": "One of the selected progress values is invalid.",
+	"evaluation_incomplete": "Select progress for every active goal before submitting.",
+	"evaluation_conflict": "This evaluation changed elsewhere. Your entries are still here; reload before saving again.",
+	"evaluation_draft_saved_submit_blocked": "Your draft was saved, but it could not be submitted."
 }

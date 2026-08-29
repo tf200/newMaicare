@@ -98,10 +98,19 @@ export interface UpdateEvaluationDraftRequest {
 }
 
 export type EvaluationErrorCode =
+	| 'EVALUATION_CLIENT_NOT_IN_CARE'
+	| 'EVALUATION_NO_ACTIVE_GOALS'
+	| 'EVALUATION_NO_DUE_DATE'
 	| 'EVALUATION_NOT_FOUND'
 	| 'EVALUATION_NOT_OWNER'
+	| 'EVALUATION_DUPLICATE_GOAL'
+	| 'EVALUATION_GOAL_NOT_ACTIVE'
+	| 'EVALUATION_INVALID_PROGRESS'
+	| 'EVALUATION_INCOMPLETE'
+	| 'EVALUATION_TOO_EARLY'
 	| 'EVALUATION_ALREADY_COMPLETED'
-	| 'EVALUATION_NOT_CURRENT_CYCLE';
+	| 'EVALUATION_NOT_CURRENT_CYCLE'
+	| 'EVALUATION_CONFLICT';
 
 export interface GoalEvaluationItemResponse {
 	id: string;
@@ -129,8 +138,12 @@ export interface GoalEvaluationResponse {
 	creator_name: string | null;
 	created_at: string;
 	updated_at: string;
-	submit_error?: string;
 	items: GoalEvaluationItemResponse[];
+}
+
+export interface EvaluationMutationErrorData {
+	draft_saved: boolean;
+	evaluation?: GoalEvaluationResponse;
 }
 
 export type CreateEvaluationResponse = GoalEvaluationResponse;

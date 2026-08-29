@@ -5,10 +5,11 @@ export interface ApiEnvelope<T> {
 	success: boolean;
 }
 
-export interface ApiErrorEnvelope {
+export interface ApiErrorEnvelope<T = unknown> {
 	message: string;
 	code?: string;
 	success?: boolean;
+	data?: T;
 	details?: unknown;
 }
 

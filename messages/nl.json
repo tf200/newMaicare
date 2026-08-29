@@ -2169,5 +2169,14 @@
 	"open_current_evaluation": "Open huidige evaluatie",
 	"evaluation_not_found": "Deze evaluatie bestaat niet meer.",
 	"evaluation_not_owner": "Dit concept is van een andere medewerker en kan niet door u worden gewijzigd of ingediend.",
-	"evaluation_already_completed": "Deze evaluatie is al voltooid en kan niet meer worden gewijzigd."
+	"evaluation_already_completed": "Deze evaluatie is al voltooid en kan niet meer worden gewijzigd.",
+	"evaluation_client_not_in_care": "Evaluaties zijn alleen beschikbaar zolang de client in zorg is.",
+	"evaluation_no_active_goals": "Deze client heeft geen actieve doelen om te evalueren.",
+	"evaluation_no_due_date": "Plan eerst een evaluatiedatum voordat u een evaluatie aanmaakt of indient.",
+	"evaluation_duplicate_goal": "Een doel komt meerdere keren voor in deze evaluatie. Laad het formulier opnieuw en probeer het nogmaals.",
+	"evaluation_goal_not_active": "Een van deze doelen is niet meer actief. Laad de evaluatie opnieuw voordat u doorgaat.",
+	"evaluation_invalid_progress": "Een van de geselecteerde voortgangswaarden is ongeldig.",
+	"evaluation_incomplete": "Selecteer de voortgang voor elk actief doel voordat u indient.",
+	"evaluation_conflict": "Deze evaluatie is elders gewijzigd. Uw invoer staat er nog; laad opnieuw voordat u weer opslaat.",
+	"evaluation_draft_saved_submit_blocked": "Uw concept is opgeslagen, maar kon niet worden ingediend."
 }

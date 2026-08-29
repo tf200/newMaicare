@@ -20,6 +20,7 @@
 		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
 		EvaluationErrorCode,
+		EvaluationMutationErrorData,
 		GoalEvaluationResponse,
 		UpdateEvaluationDraftRequest
 	} from '$lib/types/api';
@@ -126,11 +127,6 @@
 						initialSnapshot = JSON.stringify(updatedData);
 						onSaved?.();
 
-						if (response.data.status === 'draft' && response.data.submit_error) {
-							formError = normalizeErrorMessage(response.data.submit_error);
-							return;
-						}
-
 						toast.success(
 							response.data.status === 'draft'
 								? m.evaluation_draft_saved_success()
@@ -230,27 +226,68 @@
 		return 'bg-info text-white border border-info/60';
 	};
 
-	const normalizeErrorMessage = (message: string) => {
-		const lower = message.toLowerCase();
-		if (
-			lower.includes('cannot submit yet') ||
-			lower.includes('outside allowed window') ||
-			(lower.includes('allowed') && lower.includes('before due'))
-		) {
-			return m.evaluation_submit_not_allowed();
-		}
-		return message;
-	};
-
 	const isEvaluationErrorCode = (code: string | undefined): code is EvaluationErrorCode =>
+		code === 'EVALUATION_CLIENT_NOT_IN_CARE' ||
+		code === 'EVALUATION_NO_ACTIVE_GOALS' ||
+		code === 'EVALUATION_NO_DUE_DATE' ||
 		code === 'EVALUATION_NOT_FOUND' ||
 		code === 'EVALUATION_NOT_OWNER' ||
+		code === 'EVALUATION_DUPLICATE_GOAL' ||
+		code === 'EVALUATION_GOAL_NOT_ACTIVE' ||
+		code === 'EVALUATION_INVALID_PROGRESS' ||
+		code === 'EVALUATION_INCOMPLETE' ||
+		code === 'EVALUATION_TOO_EARLY' ||
 		code === 'EVALUATION_ALREADY_COMPLETED' ||
-		code === 'EVALUATION_NOT_CURRENT_CYCLE';
+		code === 'EVALUATION_NOT_CURRENT_CYCLE' ||
+		code === 'EVALUATION_CONFLICT';
+
+	const isEvaluationMutationErrorData = (data: unknown): data is EvaluationMutationErrorData =>
+		!!data && typeof data === 'object' && 'draft_saved' in data;
+
+	const localizedEvaluationError = (code: EvaluationErrorCode) => {
+		switch (code) {
+			case 'EVALUATION_CLIENT_NOT_IN_CARE':
+				return m.evaluation_client_not_in_care();
+			case 'EVALUATION_NO_ACTIVE_GOALS':
+				return m.evaluation_no_active_goals();
+			case 'EVALUATION_NO_DUE_DATE':
+				return m.evaluation_no_due_date();
+			case 'EVALUATION_NOT_FOUND':
+				return m.evaluation_not_found();
+			case 'EVALUATION_NOT_OWNER':
+				return m.evaluation_not_owner();
+			case 'EVALUATION_DUPLICATE_GOAL':
+				return m.evaluation_duplicate_goal();
+			case 'EVALUATION_GOAL_NOT_ACTIVE':
+				return m.evaluation_goal_not_active();
+			case 'EVALUATION_INVALID_PROGRESS':
+				return m.evaluation_invalid_progress();
+			case 'EVALUATION_INCOMPLETE':
+				return m.evaluation_incomplete();
+			case 'EVALUATION_TOO_EARLY':
+				return m.evaluation_submit_not_allowed();
+			case 'EVALUATION_ALREADY_COMPLETED':
+				return m.evaluation_already_completed();
+			case 'EVALUATION_NOT_CURRENT_CYCLE':
+				return m.evaluation_historical_read_only();
+			case 'EVALUATION_CONFLICT':
+				return m.evaluation_conflict();
+		}
+	};
 
 	const handleEvaluationMutationError = (error: unknown) => {
 		if (!(error instanceof ApiClientError) || !isEvaluationErrorCode(error.code)) {
 			formError = m.failed_save_evaluation();
+			return;
+		}
+
+		if (isEvaluationMutationErrorData(error.data) && error.data.draft_saved) {
+			if (error.data.evaluation) {
+				evaluation = error.data.evaluation;
+				mode = 'edit_draft';
+			}
+			onSaved?.();
+			formError = `${m.evaluation_draft_saved_submit_blocked()} ${localizedEvaluationError(error.code)}`;
 			return;
 		}
 
@@ -260,15 +297,18 @@
 				closeAndReset();
 				return;
 			case 'EVALUATION_NOT_OWNER':
-				formError = m.evaluation_not_owner();
+				formError = localizedEvaluationError(error.code);
 				return;
 			case 'EVALUATION_ALREADY_COMPLETED':
 				mode = 'view_only';
-				formError = m.evaluation_already_completed();
+				formError = localizedEvaluationError(error.code);
 				return;
 			case 'EVALUATION_NOT_CURRENT_CYCLE':
 				currentCycleConflict = true;
-				formError = m.evaluation_historical_read_only();
+				formError = localizedEvaluationError(error.code);
+				return;
+			default:
+				formError = localizedEvaluationError(error.code);
 		}
 	};
 
@@ -277,16 +317,7 @@
 			return m.failed_load_evaluation_form();
 		}
 
-		switch (error.code) {
-			case 'EVALUATION_NOT_FOUND':
-				return m.evaluation_not_found();
-			case 'EVALUATION_NOT_OWNER':
-				return m.evaluation_not_owner();
-			case 'EVALUATION_ALREADY_COMPLETED':
-				return m.evaluation_already_completed();
-			case 'EVALUATION_NOT_CURRENT_CYCLE':
-				return m.evaluation_historical_read_only();
-		}
+		return localizedEvaluationError(error.code);
 	};
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
