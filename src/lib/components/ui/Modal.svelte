@@ -34,6 +34,7 @@
 		closeLabel?: string;
 		ariaLabel?: string;
 		dismissible?: boolean;
+		onRequestClose?: () => boolean | void;
 		onClose?: () => void;
 		initialFocus?: HTMLElement | null | (() => HTMLElement | null);
 		class?: string;
@@ -51,6 +52,7 @@
 		closeLabel = 'Close',
 		ariaLabel = title ?? 'Dialog',
 		dismissible = true,
+		onRequestClose = undefined,
 		onClose = undefined,
 		initialFocus = undefined,
 		class: className = ''
@@ -69,6 +71,7 @@
 
 	function close() {
 		if (!dismissible) return;
+		if (onRequestClose?.() === false) return;
 		open = false;
 		onClose?.();
 	}

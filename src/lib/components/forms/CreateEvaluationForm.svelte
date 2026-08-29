@@ -49,9 +49,12 @@
 	let mode = $state<Mode>('create_new');
 	let formError = $state('');
 	let isLoading = $state(false);
+	let isSubmitting = $state(false);
+	let showDiscardConfirmation = $state(false);
+	let initialSnapshot = $state('');
 	const formId = 'create-evaluation-form';
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, reset } = superForm(
 		defaults(
 			{
 				submit: false,
@@ -65,7 +68,9 @@
 			SPA: true,
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
-				if (form.valid && clientId) {
+				if (form.valid && clientId && !isSubmitting) {
+					isSubmitting = true;
+					formError = '';
 					try {
 						const payload: CreateEvaluationRequest = {
 							overall_notes: trimToUndefined(form.data.overall_notes) ?? null,
@@ -95,6 +100,7 @@
 							}))
 						};
 						reset({ data: updatedData });
+						initialSnapshot = JSON.stringify(updatedData);
 						onSaved?.();
 
 						if (response.data.status === 'draft' && response.data.submit_error) {
@@ -109,12 +115,14 @@
 						);
 
 						if (response.data.status === 'completed' || response.data.status === 'archived') {
-							open = false;
+							closeAndReset();
 						}
 					} catch (error) {
 						formError = normalizeErrorMessage(
 							error instanceof Error ? error.message : m.failed_save_evaluation()
 						);
+					} finally {
+						isSubmitting = false;
 					}
 				}
 			}
@@ -146,6 +154,9 @@
 		evaluation?.status === 'completed' || evaluation?.status === 'archived'
 	);
 	const showLastEvaluation = $derived(!evaluation || evaluation.status === 'draft');
+	const isDirty = $derived(
+		!isReadOnly && initialSnapshot !== '' && JSON.stringify($form) !== initialSnapshot
+	);
 
 	const viewGoals = $derived.by(() => {
 		if (evaluation?.items?.length) {
@@ -253,6 +264,7 @@
 			}))
 		};
 		reset({ data: initialData });
+		initialSnapshot = JSON.stringify(initialData);
 	};
 
 	const loadBootstrap = async () => {
@@ -284,6 +296,38 @@
 			}))
 		};
 		reset({ data: initialData });
+		initialSnapshot = JSON.stringify(initialData);
+	};
+
+	const resetWorkflow = () => {
+		bootstrap = null;
+		evaluation = null;
+		mode = 'create_new';
+		formError = '';
+		isLoading = false;
+		showDiscardConfirmation = false;
+		initialSnapshot = '';
+		reset({
+			data: {
+				submit: false,
+				items: [],
+				overall_notes: ''
+			}
+		});
+	};
+
+	const closeAndReset = () => {
+		open = false;
+		resetWorkflow();
+	};
+
+	const requestClose = () => {
+		if (isSubmitting) return false;
+		if (isDirty) {
+			showDiscardConfirmation = true;
+			return false;
+		}
+		return true;
 	};
 
 	$effect(() => {
@@ -310,19 +354,30 @@
 	});
 
 	const saveDraft = () => {
+		if (isSubmitting) return;
 		$form.submit = false;
 		const formEl = document.getElementById(formId) as HTMLFormElement | null;
 		if (formEl) formEl.requestSubmit();
 	};
 
 	const submitEvaluation = () => {
+		if (isSubmitting) return;
 		$form.submit = true;
 		const formEl = document.getElementById(formId) as HTMLFormElement | null;
 		if (formEl) formEl.requestSubmit();
 	};
 </script>
 
-<Modal bind:open size="4xl" title={modalTitle} description={modalDescription}>
+<Modal
+	bind:open
+	size="4xl"
+	title={modalTitle}
+	description={modalDescription}
+	closeLabel={m.close()}
+	dismissible={!isSubmitting}
+	onRequestClose={requestClose}
+	onClose={resetWorkflow}
+>
 	{#if isLoading}
 		<div class="rounded-2xl border border-border bg-bg/50 p-6 text-sm text-text-muted">
 			{m.loading_evaluation_form()}
@@ -334,7 +389,10 @@
 	{:else}
 		<form id={formId} use:enhance class="space-y-5">
 			{#if formError}
-				<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error">
+				<div
+					class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error"
+					role="alert"
+				>
 					{formError}
 				</div>
 			{/if}
@@ -425,6 +483,7 @@
 						placeholder={m.placeholder_overall_notes()}
 						disabled={isReadOnly}
 						bind:value={$form.overall_notes}
+						error={formatFormError($errors.overall_notes)}
 					/>
 
 					<div class="space-y-3">
@@ -504,28 +563,47 @@
 	{#snippet footer()}
 		{#if isReadOnly}
 			<div class="flex justify-end">
-				<Button variant="ghost" onclick={() => (open = false)}>{m.close()}</Button>
+				<Button variant="ghost" onclick={closeAndReset}>{m.close()}</Button>
+			</div>
+		{:else if showDiscardConfirmation}
+			<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div class="min-w-0">
+					<p class="text-sm font-semibold text-text">
+						{m.discard_evaluation_changes_confirmation()}
+					</p>
+					<p class="text-xs text-text-muted">{m.evaluation_changes_will_be_lost()}</p>
+				</div>
+				<div class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+					<Button variant="ghost" onclick={() => (showDiscardConfirmation = false)}>
+						{m.keep_editing()}
+					</Button>
+					<Button variant="destructive" onclick={closeAndReset}>{m.discard_changes()}</Button>
+				</div>
 			</div>
 		{:else}
-			<div class="flex items-center justify-between gap-3">
+			<div class="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="inline-flex items-center gap-2 text-xs text-text-muted">
-					<CircleAlert class="h-3.5 w-3.5" />
+					<CircleAlert class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
 					{m.submit_saves_draft_notice()}
 				</div>
-				<div class="flex gap-2">
-					<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}
-						>{m.cancel()}</Button
+				<div class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+					<Button
+						variant="ghost"
+						onclick={() => {
+							if (requestClose()) closeAndReset();
+						}}
+						disabled={isSubmitting}>{m.cancel()}</Button
 					>
 					<Button
 						variant="secondary"
 						onclick={saveDraft}
-						isLoading={$delayed && !$form.submit}
-						disabled={$delayed && $form.submit}>{m.save_draft()}</Button
+						isLoading={isSubmitting && !$form.submit}
+						disabled={isSubmitting}>{m.save_draft()}</Button
 					>
 					<Button
 						onclick={submitEvaluation}
-						isLoading={$delayed && $form.submit}
-						disabled={$delayed && !$form.submit}>{m.submit()}</Button
+						isLoading={isSubmitting && $form.submit}
+						disabled={isSubmitting}>{m.submit()}</Button
 					>
 				</div>
 			</div>

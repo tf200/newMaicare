@@ -101,7 +101,7 @@
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-violet-100/20 blur-2xl"
+			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-brand/10 blur-2xl"
 		></div>
 		<div class="relative flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
@@ -111,7 +111,7 @@
 					</span>
 					<span>{m.care_coordination()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.evaluations()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.evaluations()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					{m.evaluations_description()}
 				</p>
@@ -122,7 +122,7 @@
 	<!-- KPI Row -->
 	{#await statsPromise}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each [1, 2, 3] as _}
+			{#each [1, 2, 3] as skeleton (skeleton)}
 				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
 					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
 					<div class="mt-3 h-8 w-14 animate-pulse rounded bg-border/70"></div>
@@ -217,10 +217,10 @@
 
 		{#snippet upcomingGoals(row: UpcomingEvaluation)}
 			<div
-				class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-1 ring-1 ring-sky-200"
+				class="inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-1 ring-1 ring-info/30"
 			>
-				<Target class="h-3.5 w-3.5 text-sky-600" />
-				<span class="text-xs font-bold text-sky-700">
+				<Target class="h-3.5 w-3.5 text-info" aria-hidden="true" />
+				<span class="text-xs font-bold text-info-strong">
 					{row.filledGoalsCount}/{row.totalGoalsCount}
 				</span>
 			</div>
@@ -229,7 +229,7 @@
 		{#snippet upcomingActions(row: UpcomingEvaluation)}
 			<div class="flex justify-end">
 				<button
-					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+					class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
 					aria-label={m.view_evaluation()}
 					onclick={() =>
 						openCreateEvaluationForm(row.clientId, `${row.clientFirstName} ${row.clientLastName}`)}
@@ -325,7 +325,7 @@
 			{#snippet draftActions(row: DraftEvaluation)}
 				<div class="flex justify-end">
 					<button
-						class="text-text-subtle transition hover:text-text"
+						class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
 						aria-label={m.continue_draft()}
 						onclick={() =>
 							openCreateEvaluationForm(
@@ -416,7 +416,7 @@
 			{#snippet submittedActions(row: SubmittedEvaluation)}
 				<div class="flex justify-end">
 					<button
-						class="text-text-subtle transition hover:text-text"
+						class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
 						aria-label={m.view_evaluation()}
 						onclick={() =>
 							openExistingEvaluationForm(
