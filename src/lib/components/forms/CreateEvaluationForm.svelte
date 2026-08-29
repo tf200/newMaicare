@@ -19,6 +19,7 @@
 	import type {
 		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
+		EvaluationErrorCode,
 		GoalEvaluationResponse,
 		UpdateEvaluationDraftRequest
 	} from '$lib/types/api';
@@ -140,14 +141,7 @@
 							closeAndReset();
 						}
 					} catch (error) {
-						if (error instanceof ApiClientError && error.code === 'EVALUATION_NOT_CURRENT_CYCLE') {
-							currentCycleConflict = true;
-							formError = m.evaluation_historical_read_only();
-							return;
-						}
-						formError = normalizeErrorMessage(
-							error instanceof Error ? error.message : m.failed_save_evaluation()
-						);
+						handleEvaluationMutationError(error);
 					} finally {
 						isSubmitting = false;
 					}
@@ -185,7 +179,10 @@
 					!isSameEvaluationDate(evaluation.evaluation_date, bootstrap.next_evaluation_date)))
 	);
 	const isReadOnly = $derived(
-		isHistoricalDraft || evaluation?.status === 'completed' || evaluation?.status === 'archived'
+		mode === 'view_only' ||
+			isHistoricalDraft ||
+			evaluation?.status === 'completed' ||
+			evaluation?.status === 'archived'
 	);
 	const showLastEvaluation = $derived(!evaluation || evaluation.status === 'draft');
 	const isDirty = $derived(
@@ -243,6 +240,53 @@
 			return m.evaluation_submit_not_allowed();
 		}
 		return message;
+	};
+
+	const isEvaluationErrorCode = (code: string | undefined): code is EvaluationErrorCode =>
+		code === 'EVALUATION_NOT_FOUND' ||
+		code === 'EVALUATION_NOT_OWNER' ||
+		code === 'EVALUATION_ALREADY_COMPLETED' ||
+		code === 'EVALUATION_NOT_CURRENT_CYCLE';
+
+	const handleEvaluationMutationError = (error: unknown) => {
+		if (!(error instanceof ApiClientError) || !isEvaluationErrorCode(error.code)) {
+			formError = m.failed_save_evaluation();
+			return;
+		}
+
+		switch (error.code) {
+			case 'EVALUATION_NOT_FOUND':
+				toast.error(m.evaluation_not_found());
+				closeAndReset();
+				return;
+			case 'EVALUATION_NOT_OWNER':
+				formError = m.evaluation_not_owner();
+				return;
+			case 'EVALUATION_ALREADY_COMPLETED':
+				mode = 'view_only';
+				formError = m.evaluation_already_completed();
+				return;
+			case 'EVALUATION_NOT_CURRENT_CYCLE':
+				currentCycleConflict = true;
+				formError = m.evaluation_historical_read_only();
+		}
+	};
+
+	const localizedEvaluationLoadError = (error: unknown) => {
+		if (!(error instanceof ApiClientError) || !isEvaluationErrorCode(error.code)) {
+			return m.failed_load_evaluation_form();
+		}
+
+		switch (error.code) {
+			case 'EVALUATION_NOT_FOUND':
+				return m.evaluation_not_found();
+			case 'EVALUATION_NOT_OWNER':
+				return m.evaluation_not_owner();
+			case 'EVALUATION_ALREADY_COMPLETED':
+				return m.evaluation_already_completed();
+			case 'EVALUATION_NOT_CURRENT_CYCLE':
+				return m.evaluation_historical_read_only();
+		}
 	};
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
@@ -311,9 +355,7 @@
 		try {
 			await loadByEvaluationId(currentDraftId);
 		} catch (error) {
-			formError = normalizeErrorMessage(
-				error instanceof Error ? error.message : m.failed_load_evaluation_form()
-			);
+			formError = localizedEvaluationLoadError(error);
 		} finally {
 			isLoading = false;
 		}
@@ -396,9 +438,7 @@
 						await loadBootstrap();
 					}
 				} catch (error) {
-					formError = normalizeErrorMessage(
-						error instanceof Error ? error.message : m.failed_load_evaluation_form()
-					);
+					formError = localizedEvaluationLoadError(error);
 				} finally {
 					isLoading = false;
 				}

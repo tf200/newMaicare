@@ -2164,5 +2164,8 @@
 	"system_settings_department_form_description": "Set the department details and optionally assign a department head.",
 	"system_settings_department_save_error_title": "Could not save department",
 	"evaluation_historical_read_only": "This draft belongs to an earlier evaluation cycle and can no longer be changed or submitted.",
-	"open_current_evaluation": "Open current evaluation"
+	"open_current_evaluation": "Open current evaluation",
+	"evaluation_not_found": "This evaluation no longer exists.",
+	"evaluation_not_owner": "This draft belongs to another employee and cannot be changed or submitted by you.",
+	"evaluation_already_completed": "This evaluation has already been completed and can no longer be changed."
 }

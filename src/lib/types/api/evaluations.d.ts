@@ -97,6 +97,12 @@ export interface UpdateEvaluationDraftRequest {
 	items: EvaluationItemInput[];
 }
 
+export type EvaluationErrorCode =
+	| 'EVALUATION_NOT_FOUND'
+	| 'EVALUATION_NOT_OWNER'
+	| 'EVALUATION_ALREADY_COMPLETED'
+	| 'EVALUATION_NOT_CURRENT_CYCLE';
+
 export interface GoalEvaluationItemResponse {
 	id: string;
 	evaluation_id: string;
