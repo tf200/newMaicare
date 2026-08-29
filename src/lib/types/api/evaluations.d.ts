@@ -41,12 +41,7 @@ export interface ListEvaluationsParams {
 }
 
 export type EvaluationProgress =
-	| 'no_progress'
-	| 'regression'
-	| 'limited_progress'
-	| 'good_progress'
-	| 'achieved'
-	| 'blocked';
+	'no_progress' | 'regression' | 'limited_progress' | 'good_progress' | 'achieved' | 'blocked';
 
 export interface EvaluationActiveGoal {
 	goal_id: string;
@@ -98,7 +93,7 @@ export interface CreateEvaluationRequest {
 }
 
 export interface UpdateEvaluationDraftRequest {
-	overall_notes?: string;
+	overall_notes?: string | null;
 	items: EvaluationItemInput[];
 }
 

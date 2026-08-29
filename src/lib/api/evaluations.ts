@@ -67,7 +67,10 @@ export function updateEvaluationDraft(evaluationId: string, payload: UpdateEvalu
 }
 
 export function submitEvaluationDraft(evaluationId: string) {
-	return api.post<ApiEnvelope<CreateEvaluationResponse>>(`/evaluations/${evaluationId}/submit`, {});
+	return api.post<ApiEnvelope<CreateEvaluationResponse>>(
+		`/evaluations/${evaluationId}/submit`,
+		undefined
+	);
 }
 
 export function getGoalEvaluation(evaluationId: string) {

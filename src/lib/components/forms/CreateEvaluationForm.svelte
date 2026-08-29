@@ -9,7 +9,9 @@
 	import {
 		createEvaluation,
 		getEvaluationBootstrap,
-		getGoalEvaluation
+		getGoalEvaluation,
+		submitEvaluationDraft,
+		updateEvaluationDraft
 	} from '$lib/api/evaluations';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
@@ -17,7 +19,8 @@
 	import type {
 		CreateEvaluationRequest,
 		EvaluationBootstrapResponse,
-		GoalEvaluationResponse
+		GoalEvaluationResponse,
+		UpdateEvaluationDraftRequest
 	} from '$lib/types/api';
 	import {
 		EvaluationSchema,
@@ -26,6 +29,7 @@
 	} from '$lib/schemas/evaluation';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { ApiClientError } from '$lib/api/client';
 
 	type Mode = 'create_new' | 'edit_draft' | 'view_only';
 
@@ -52,6 +56,7 @@
 	let isSubmitting = $state(false);
 	let showDiscardConfirmation = $state(false);
 	let initialSnapshot = $state('');
+	let currentCycleConflict = $state(false);
 	const formId = 'create-evaluation-form';
 
 	const { form, errors, enhance, reset } = superForm(
@@ -68,13 +73,13 @@
 			SPA: true,
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
-				if (form.valid && clientId && !isSubmitting) {
+				const currentEvaluationId = evaluation?.id ?? evaluationId;
+				if (form.valid && (clientId || currentEvaluationId) && !isSubmitting) {
 					isSubmitting = true;
 					formError = '';
 					try {
-						const payload: CreateEvaluationRequest = {
+						const draftPayload: UpdateEvaluationDraftRequest = {
 							overall_notes: trimToUndefined(form.data.overall_notes) ?? null,
-							submit: form.data.submit,
 							items: form.data.items.map((item) => ({
 								goal_id: item.goal_id,
 								progress: item.progress,
@@ -82,21 +87,38 @@
 							}))
 						};
 
-						const response = await createEvaluation(clientId, payload);
+						let response: Awaited<ReturnType<typeof updateEvaluationDraft>>;
+						let savedEvaluationId = currentEvaluationId;
+
+						if (savedEvaluationId) {
+							response = await updateEvaluationDraft(savedEvaluationId, draftPayload);
+						} else {
+							const createPayload: CreateEvaluationRequest = { ...draftPayload, submit: false };
+							response = await createEvaluation(clientId!, createPayload);
+							savedEvaluationId = response.data.id;
+
+							if (form.data.submit) {
+								response = await updateEvaluationDraft(savedEvaluationId, draftPayload);
+							}
+						}
+
+						if (form.data.submit) {
+							response = await submitEvaluationDraft(savedEvaluationId);
+						}
+
 						evaluation = response.data;
 						mode =
 							response.data.status === 'completed' || response.data.status === 'archived'
 								? 'view_only'
 								: 'edit_draft';
 
-						// Update form with fresh data from server
 						const updatedData: EvaluationInput = {
-							overall_notes: response.data.overall_notes ?? '',
+							overall_notes: form.data.overall_notes,
 							submit: false,
-							items: response.data.items.map((item) => ({
+							items: form.data.items.map((item) => ({
 								goal_id: item.goal_id,
 								progress: item.progress,
-								notes: item.notes ?? ''
+								notes: item.notes
 							}))
 						};
 						reset({ data: updatedData });
@@ -118,6 +140,11 @@
 							closeAndReset();
 						}
 					} catch (error) {
+						if (error instanceof ApiClientError && error.code === 'EVALUATION_NOT_CURRENT_CYCLE') {
+							currentCycleConflict = true;
+							formError = m.evaluation_historical_read_only();
+							return;
+						}
 						formError = normalizeErrorMessage(
 							error instanceof Error ? error.message : m.failed_save_evaluation()
 						);
@@ -150,8 +177,15 @@
 		return next;
 	});
 
+	const isHistoricalDraft = $derived(
+		currentCycleConflict ||
+			(evaluation?.status === 'draft' &&
+				!!bootstrap &&
+				(!bootstrap.next_evaluation_date ||
+					!isSameEvaluationDate(evaluation.evaluation_date, bootstrap.next_evaluation_date)))
+	);
 	const isReadOnly = $derived(
-		evaluation?.status === 'completed' || evaluation?.status === 'archived'
+		isHistoricalDraft || evaluation?.status === 'completed' || evaluation?.status === 'archived'
 	);
 	const showLastEvaluation = $derived(!evaluation || evaluation.status === 'draft');
 	const isDirty = $derived(
@@ -238,8 +272,9 @@
 		return m.low();
 	};
 
-	const isSameTimestamp = (left: string, right: string) =>
-		new Date(left).getTime() === new Date(right).getTime();
+	function isSameEvaluationDate(left: string, right: string) {
+		return left.slice(0, 10) === right.slice(0, 10);
+	}
 
 	const loadByEvaluationId = async (id: string) => {
 		const response = await getGoalEvaluation(id);
@@ -267,6 +302,23 @@
 		initialSnapshot = JSON.stringify(initialData);
 	};
 
+	const openCurrentCycleDraft = async () => {
+		const currentDraftId = bootstrap?.existing_draft?.id;
+		if (!currentDraftId || currentDraftId === evaluation?.id) return;
+		isLoading = true;
+		formError = '';
+		currentCycleConflict = false;
+		try {
+			await loadByEvaluationId(currentDraftId);
+		} catch (error) {
+			formError = normalizeErrorMessage(
+				error instanceof Error ? error.message : m.failed_load_evaluation_form()
+			);
+		} finally {
+			isLoading = false;
+		}
+	};
+
 	const loadBootstrap = async () => {
 		if (!clientId || !open) return;
 		const response = await getEvaluationBootstrap(clientId);
@@ -277,7 +329,7 @@
 		if (
 			response.data.existing_draft?.id &&
 			response.data.next_evaluation_date &&
-			isSameTimestamp(
+			isSameEvaluationDate(
 				response.data.existing_draft.evaluation_date,
 				response.data.next_evaluation_date
 			)
@@ -307,6 +359,7 @@
 		isLoading = false;
 		showDiscardConfirmation = false;
 		initialSnapshot = '';
+		currentCycleConflict = false;
 		reset({
 			data: {
 				submit: false,
@@ -388,6 +441,24 @@
 		</div>
 	{:else}
 		<form id={formId} use:enhance class="space-y-5">
+			{#if isHistoricalDraft}
+				<div
+					class="rounded-2xl border border-info/40 bg-info/10 p-4 text-sm text-text"
+					role="status"
+				>
+					<p class="font-semibold">{m.read_only()}</p>
+					<p class="mt-1 text-text-muted">{m.evaluation_historical_read_only()}</p>
+					{#if bootstrap?.existing_draft?.id && bootstrap.existing_draft.id !== evaluation?.id}
+						<button
+							type="button"
+							class="mt-3 font-semibold text-info underline underline-offset-2"
+							onclick={openCurrentCycleDraft}
+						>
+							{m.open_current_evaluation()}
+						</button>
+					{/if}
+				</div>
+			{/if}
 			{#if formError}
 				<div
 					class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error"

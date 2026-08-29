@@ -328,8 +328,8 @@
 						class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
 						aria-label={m.continue_draft()}
 						onclick={() =>
-							openCreateEvaluationForm(
-								row.clientId,
+							openExistingEvaluationForm(
+								row.evaluationId,
 								`${row.clientFirstName} ${row.clientLastName}`
 							)}
 					>

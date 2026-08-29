@@ -2164,5 +2164,7 @@
 	"system_settings_role_create_error_title": "Rol kon niet worden aangemaakt",
 	"system_settings_departments_description": "Beheer organisatieteams en afdelingshoofden.",
 	"system_settings_department_form_description": "Stel de afdelingsgegevens in en wijs eventueel een afdelingshoofd toe.",
-	"system_settings_department_save_error_title": "Afdeling kon niet worden opgeslagen"
+	"system_settings_department_save_error_title": "Afdeling kon niet worden opgeslagen",
+	"evaluation_historical_read_only": "Dit concept hoort bij een eerdere evaluatiecyclus en kan niet meer worden gewijzigd of ingediend.",
+	"open_current_evaluation": "Open huidige evaluatie"
 }
