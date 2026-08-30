@@ -9,10 +9,11 @@
 		ChevronRight,
 		Eye
 	} from 'lucide-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import CreateEvaluationForm from '$lib/components/forms/CreateEvaluationForm.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { getAuthState } from '$lib/state/auth.svelte';
@@ -137,29 +138,36 @@
 			{/each}
 		</div>
 	{:then stats}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			<StatCard
-				label={m.attention_required()}
-				value={stats.attentionRequired}
-				description={m.attention_required_description()}
-				icon={AlertTriangle}
-				color="rose"
+		{#if stats.loadError}
+			<InlineErrorBanner
+				message={stats.loadError}
+				onRetry={() => invalidate('app:evaluations:stats')}
 			/>
-			<StatCard
-				label={m.in_progress()}
-				value={stats.inProgress}
-				description={m.in_progress_description()}
-				icon={FileEdit}
-				color="blue"
-			/>
-			<StatCard
-				label={m.recently_finalized()}
-				value={stats.recentlyFinalized}
-				description={m.recently_finalized_description()}
-				icon={CheckCircle2}
-				color="emerald"
-			/>
-		</div>
+		{:else}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				<StatCard
+					label={m.attention_required()}
+					value={stats.attentionRequired}
+					description={m.attention_required_description()}
+					icon={AlertTriangle}
+					color="rose"
+				/>
+				<StatCard
+					label={m.in_progress()}
+					value={stats.inProgress}
+					description={m.in_progress_description()}
+					icon={FileEdit}
+					color="blue"
+				/>
+				<StatCard
+					label={m.recently_finalized()}
+					value={stats.recentlyFinalized}
+					description={m.recently_finalized_description()}
+					icon={CheckCircle2}
+					color="emerald"
+				/>
+			</div>
+		{/if}
 	{:catch}
 		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			<StatCard label={m.attention_required()} value="—" color="neutral" />

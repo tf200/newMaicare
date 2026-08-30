@@ -40,6 +40,13 @@ export interface ListEvaluationsParams {
 	pageSize: number;
 }
 
+export interface EvaluationStatsResponse {
+	attention_required: number;
+	in_progress: number;
+	recently_finalized: number;
+	as_of: string;
+}
+
 export type EvaluationProgress =
 	'no_progress' | 'regression' | 'limited_progress' | 'good_progress' | 'achieved' | 'blocked';
 

@@ -1884,6 +1884,7 @@
 	"no_in_care_clients_description": "Try adjusting the search or status filter.",
 	"failed_load_in_care_clients": "Failed to load clients in care.",
 	"failed_load_in_care_stats": "Failed to load in-care statistics.",
+	"failed_load_evaluation_stats": "Failed to load evaluation statistics.",
 	"contracts_page_title": "Contracts | MaiCare",
 	"contract_filters": "Contract Filters",
 	"contracts_page_description": "Manage care contracts, financing, timelines, and approval status.",

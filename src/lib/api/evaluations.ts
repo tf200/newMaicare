@@ -6,6 +6,7 @@ import type {
 	ListRecentSubmittedEvaluationsResponse,
 	ListRecentDraftEvaluationsResponse,
 	ListEvaluationsParams,
+	EvaluationStatsResponse,
 	EvaluationBootstrapResponse,
 	CreateEvaluationRequest,
 	CreateEvaluationResponse,
@@ -15,6 +16,10 @@ import type {
 	ListClientSubmittedEvaluationsResponse,
 	GoalEvaluationHistoryEntry
 } from '$lib/types/api';
+
+export function getEvaluationStats(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<EvaluationStatsResponse>>('/evaluations/stats', options);
+}
 
 export function listUpcomingEvaluations(params: ListEvaluationsParams) {
 	const searchParams = new URLSearchParams();

@@ -5,8 +5,10 @@ import { getAuthState } from '$lib/state/auth.svelte';
 import {
 	listUpcomingEvaluations,
 	listRecentSubmittedEvaluations,
-	listRecentDraftEvaluations
+	listRecentDraftEvaluations,
+	getEvaluationStats
 } from '$lib/api/evaluations';
+import { m } from '$lib/paraglide/messages';
 
 export interface UpcomingEvaluation {
 	clientId: string;
@@ -45,7 +47,15 @@ export interface DraftEvaluation {
 	totalGoalsCount: number;
 }
 
-export const load: PageLoad = ({ url }) => {
+export interface EvaluationStatsLoadResult {
+	attentionRequired: number;
+	inProgress: number;
+	recentlyFinalized: number;
+	asOf: string | null;
+	loadError: string | null;
+}
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
 	const auth = getAuthState();
 	if (!auth.hasAllPermissions([PERMISSIONS.CLIENT.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW])) {
 		error(403, 'You do not have permission to view this resource.');
@@ -53,6 +63,7 @@ export const load: PageLoad = ({ url }) => {
 
 	const page = Number(url.searchParams.get('page') ?? '1');
 	const pageSize = 10;
+	depends('app:evaluations:stats');
 
 	const upcoming = listUpcomingEvaluations({ page, pageSize }).then((res) =>
 		res.data.results.map((item): UpcomingEvaluation => ({
@@ -97,13 +108,21 @@ export const load: PageLoad = ({ url }) => {
 		}))
 	);
 
-	const stats = Promise.all([upcoming, submitted, drafts]).then(
-		([upcomingData, submittedData, draftsData]) => ({
-			attentionRequired: upcomingData.filter((e) => e.priority === 'critical').length,
-			inProgress: upcomingData.filter((e) => e.hasDraft).length + draftsData.length,
-			recentlyFinalized: submittedData.length
-		})
-	);
+	const stats: Promise<EvaluationStatsLoadResult> = getEvaluationStats({ fetchFn: fetch })
+		.then((response): EvaluationStatsLoadResult => ({
+			attentionRequired: response.data.attention_required,
+			inProgress: response.data.in_progress,
+			recentlyFinalized: response.data.recently_finalized,
+			asOf: response.data.as_of,
+			loadError: null
+		}))
+		.catch((error): EvaluationStatsLoadResult => ({
+			attentionRequired: 0,
+			inProgress: 0,
+			recentlyFinalized: 0,
+			asOf: null,
+			loadError: error instanceof Error ? error.message : m.failed_load_evaluation_stats()
+		}));
 
 	return {
 		upcoming,
