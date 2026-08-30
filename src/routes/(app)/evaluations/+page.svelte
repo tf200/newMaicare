@@ -9,7 +9,7 @@
 		ChevronRight,
 		Eye
 	} from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
@@ -20,51 +20,22 @@
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { PageData } from './$types';
-	import {
-		loadDraftEvaluationList,
-		loadEvaluationStats,
-		loadSubmittedEvaluationList,
-		loadUpcomingEvaluationList,
-		type UpcomingEvaluation,
-		type DraftEvaluation,
-		type SubmittedEvaluation
-	} from './+page';
+	import type { UpcomingEvaluation, DraftEvaluation, SubmittedEvaluation } from './+page';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { localizeHref } from '$lib/paraglide/runtime';
 	import { formatDateOnly } from '$lib/utils/date';
 	import { evaluationPageHref, type EvaluationPageKey } from './pagination';
+	import { evaluationDependenciesAfterSave } from './refresh';
 
 	let { data } = $props<{ data: PageData }>();
 	const auth = getAuthState();
 	const canMutateEvaluations = $derived(auth.hasPermission(PERMISSIONS.CLIENT.EVALUATION_CREATE));
 
-	let upcomingRetry = $state<{
-		source: typeof data.upcoming;
-		promise: typeof data.upcoming;
-	} | null>(null);
-	let draftsRetry = $state<{ source: typeof data.drafts; promise: typeof data.drafts } | null>(
-		null
-	);
-	let submittedRetry = $state<{
-		source: typeof data.submitted;
-		promise: typeof data.submitted;
-	} | null>(null);
-	let statsRetry = $state<{ source: typeof data.stats; promise: typeof data.stats } | null>(null);
-
-	const upcomingPromise = $derived(
-		upcomingRetry && upcomingRetry.source === data.upcoming ? upcomingRetry.promise : data.upcoming
-	);
-	const draftsPromise = $derived(
-		draftsRetry && draftsRetry.source === data.drafts ? draftsRetry.promise : data.drafts
-	);
-	const submittedPromise = $derived(
-		submittedRetry && submittedRetry.source === data.submitted
-			? submittedRetry.promise
-			: data.submitted
-	);
-	const statsPromise = $derived(
-		statsRetry && statsRetry.source === data.stats ? statsRetry.promise : data.stats
-	);
+	const upcomingPromise = $derived(data.upcoming);
+	const draftsPromise = $derived(data.drafts);
+	const submittedPromise = $derived(data.submitted);
+	const statsPromise = $derived(data.stats);
 
 	let showEvaluationForm = $state(false);
 	let activeClientId = $state<string | null>(null);
@@ -86,43 +57,28 @@
 		showEvaluationForm = true;
 	};
 
-	const handleEvaluationSaved = async () => {
-		await invalidateAll();
+	const handleEvaluationSaved = async (evaluation: {
+		status: 'draft' | 'completed' | 'archived';
+	}) => {
+		await Promise.all(evaluationDependenciesAfterSave(evaluation.status).map(invalidate));
 	};
 
 	const changeListingPage = (key: EvaluationPageKey, nextPage: number) => {
-		const href = evaluationPageHref(page.url, key, nextPage);
-		void goto(resolve(href as '/evaluations/'), {
+		const nextUrl = new URL(evaluationPageHref(page.url, key, nextPage), page.url);
+		const pathname = localizeHref(resolve('/(app)/evaluations'));
+		// The pathname is already produced by resolve() and then localized.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(`${pathname}${nextUrl.search}${nextUrl.hash}`, {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true
 		});
 	};
 
-	const retryUpcoming = () => {
-		upcomingRetry = {
-			source: data.upcoming,
-			promise: loadUpcomingEvaluationList(data.initial.upcomingPage, data.initial.pageSize)
-		};
-	};
-
-	const retryDrafts = () => {
-		draftsRetry = {
-			source: data.drafts,
-			promise: loadDraftEvaluationList(data.initial.draftsPage, data.initial.pageSize)
-		};
-	};
-
-	const retrySubmitted = () => {
-		submittedRetry = {
-			source: data.submitted,
-			promise: loadSubmittedEvaluationList(data.initial.submittedPage, data.initial.pageSize)
-		};
-	};
-
-	const retryStats = () => {
-		statsRetry = { source: data.stats, promise: loadEvaluationStats() };
-	};
+	const retryUpcoming = () => invalidate('app:evaluations:upcoming');
+	const retryDrafts = () => invalidate('app:evaluations:drafts');
+	const retrySubmitted = () => invalidate('app:evaluations:submitted');
+	const retryStats = () => invalidate('app:evaluations:stats');
 
 	// Columns for Upcoming Evaluations
 	const upcomingColumns: DataTableColumn[] = [
@@ -152,7 +108,9 @@
 
 	const formatDateTime = (dateStr: string) => {
 		if (!dateStr) return '—';
-		return new Date(dateStr).toLocaleString(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
+		const date = new Date(dateStr);
+		if (Number.isNaN(date.getTime())) return m.not_available_short();
+		return date.toLocaleString(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
 			day: 'numeric',
 			month: 'short',
 			hour: '2-digit',

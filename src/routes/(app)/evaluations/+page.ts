@@ -5,12 +5,10 @@ import { getAuthState } from '$lib/state/auth.svelte';
 import {
 	listUpcomingEvaluations,
 	listRecentSubmittedEvaluations,
-	listRecentDraftEvaluations,
-	getEvaluationStats
+	listRecentDraftEvaluations
 } from '$lib/api/evaluations';
 import { m } from '$lib/paraglide/messages';
 import type { EvaluationDateOnly, EvaluationDateTime } from '$lib/types/api';
-import type { ApiRequestOptions } from '$lib/api/client';
 import { EVALUATION_PAGE_SIZE, readEvaluationPage } from './pagination';
 
 export interface UpcomingEvaluation {
@@ -50,14 +48,6 @@ export interface DraftEvaluation {
 	totalGoalsCount: number;
 }
 
-export interface EvaluationStatsLoadResult {
-	attentionRequired: number;
-	inProgress: number;
-	recentlyFinalized: number;
-	asOf: EvaluationDateTime | null;
-	loadError: string | null;
-}
-
 export interface EvaluationListingLoadResult<Row> {
 	rows: Row[];
 	page: number;
@@ -66,12 +56,12 @@ export interface EvaluationListingLoadResult<Row> {
 	loadError: string | null;
 }
 
-export function loadUpcomingEvaluationList(
+function loadUpcomingEvaluationList(
 	page: number,
 	pageSize: number,
-	options?: ApiRequestOptions
+	fetchFn: typeof fetch
 ): Promise<EvaluationListingLoadResult<UpcomingEvaluation>> {
-	return listUpcomingEvaluations({ page, pageSize }, options)
+	return listUpcomingEvaluations({ page, pageSize }, { fetchFn })
 		.then((res) => ({
 			rows: res.data.results.map((item): UpcomingEvaluation => ({
 				clientId: item.client_id,
@@ -89,21 +79,21 @@ export function loadUpcomingEvaluationList(
 			totalCount: res.data.count,
 			loadError: null
 		}))
-		.catch((error): EvaluationListingLoadResult<UpcomingEvaluation> => ({
+		.catch((): EvaluationListingLoadResult<UpcomingEvaluation> => ({
 			rows: [],
 			page,
 			pageSize,
 			totalCount: 0,
-			loadError: error instanceof Error ? error.message : m.failed_load_evaluations()
+			loadError: m.failed_load_evaluations()
 		}));
 }
 
-export function loadSubmittedEvaluationList(
+function loadSubmittedEvaluationList(
 	page: number,
 	pageSize: number,
-	options?: ApiRequestOptions
+	fetchFn: typeof fetch
 ): Promise<EvaluationListingLoadResult<SubmittedEvaluation>> {
-	return listRecentSubmittedEvaluations({ page, pageSize }, options)
+	return listRecentSubmittedEvaluations({ page, pageSize }, { fetchFn })
 		.then((res) => ({
 			rows: res.data.results.map((item): SubmittedEvaluation => ({
 				evaluationId: item.evaluation_id,
@@ -121,21 +111,21 @@ export function loadSubmittedEvaluationList(
 			totalCount: res.data.count,
 			loadError: null
 		}))
-		.catch((error): EvaluationListingLoadResult<SubmittedEvaluation> => ({
+		.catch((): EvaluationListingLoadResult<SubmittedEvaluation> => ({
 			rows: [],
 			page,
 			pageSize,
 			totalCount: 0,
-			loadError: error instanceof Error ? error.message : m.failed_load_evaluations()
+			loadError: m.failed_load_evaluations()
 		}));
 }
 
-export function loadDraftEvaluationList(
+function loadDraftEvaluationList(
 	page: number,
 	pageSize: number,
-	options?: ApiRequestOptions
+	fetchFn: typeof fetch
 ): Promise<EvaluationListingLoadResult<DraftEvaluation>> {
-	return listRecentDraftEvaluations({ page, pageSize }, options)
+	return listRecentDraftEvaluations({ page, pageSize }, { fetchFn })
 		.then((res) => ({
 			rows: res.data.results.map((item): DraftEvaluation => ({
 				evaluationId: item.evaluation_id,
@@ -154,39 +144,19 @@ export function loadDraftEvaluationList(
 			totalCount: res.data.count,
 			loadError: null
 		}))
-		.catch((error): EvaluationListingLoadResult<DraftEvaluation> => ({
+		.catch((): EvaluationListingLoadResult<DraftEvaluation> => ({
 			rows: [],
 			page,
 			pageSize,
 			totalCount: 0,
-			loadError: error instanceof Error ? error.message : m.failed_load_evaluations()
-		}));
-}
-
-export function loadEvaluationStats(
-	options?: ApiRequestOptions
-): Promise<EvaluationStatsLoadResult> {
-	return getEvaluationStats(options)
-		.then((response): EvaluationStatsLoadResult => ({
-			attentionRequired: response.data.attention_required,
-			inProgress: response.data.in_progress,
-			recentlyFinalized: response.data.recently_finalized,
-			asOf: response.data.as_of,
-			loadError: null
-		}))
-		.catch((error): EvaluationStatsLoadResult => ({
-			attentionRequired: 0,
-			inProgress: 0,
-			recentlyFinalized: 0,
-			asOf: null,
-			loadError: error instanceof Error ? error.message : m.failed_load_evaluation_stats()
+			loadError: m.failed_load_evaluations()
 		}));
 }
 
 export const load: PageLoad = ({ url, fetch, depends }) => {
 	const auth = getAuthState();
 	if (!auth.hasAllPermissions([PERMISSIONS.CLIENT.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW])) {
-		error(403, 'You do not have permission to view this resource.');
+		error(403, m.evaluations_access_denied());
 	}
 
 	const upcomingPage = readEvaluationPage(url.searchParams, 'upcoming_page');
@@ -196,18 +166,15 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 	depends('app:evaluations:upcoming');
 	depends('app:evaluations:drafts');
 	depends('app:evaluations:submitted');
-	depends('app:evaluations:stats');
 
-	const upcoming = loadUpcomingEvaluationList(upcomingPage, pageSize, { fetchFn: fetch });
-	const submitted = loadSubmittedEvaluationList(submittedPage, pageSize, { fetchFn: fetch });
-	const drafts = loadDraftEvaluationList(draftsPage, pageSize, { fetchFn: fetch });
-	const stats = loadEvaluationStats({ fetchFn: fetch });
+	const upcoming = loadUpcomingEvaluationList(upcomingPage, pageSize, fetch);
+	const submitted = loadSubmittedEvaluationList(submittedPage, pageSize, fetch);
+	const drafts = loadDraftEvaluationList(draftsPage, pageSize, fetch);
 
 	return {
 		initial: { upcomingPage, draftsPage, submittedPage, pageSize },
 		upcoming,
 		submitted,
-		drafts,
-		stats
+		drafts
 	};
 };

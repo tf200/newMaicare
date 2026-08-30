@@ -63,9 +63,10 @@ export function listRecentDraftEvaluations(
 	);
 }
 
-export function getEvaluationBootstrap(clientId: string) {
+export function getEvaluationBootstrap(clientId: string, options?: ApiRequestOptions) {
 	return api.get<ApiEnvelope<EvaluationBootstrapResponse>>(
-		`/clients/${clientId}/evaluations/bootstrap`
+		`/clients/${clientId}/evaluations/bootstrap`,
+		options
 	);
 }
 
@@ -98,8 +99,8 @@ export function submitEvaluationDraft(evaluationId: string, revision: string) {
 	);
 }
 
-export function getGoalEvaluation(evaluationId: string) {
-	return api.get<ApiEnvelope<GoalEvaluationResponse>>(`/evaluations/${evaluationId}`);
+export function getGoalEvaluation(evaluationId: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<GoalEvaluationResponse>>(`/evaluations/${evaluationId}`, options);
 }
 
 export function getClientGoals(clientId: string, options?: ApiRequestOptions) {

@@ -122,6 +122,8 @@
 	"in_care": "In Care",
 	"evaluations": "Evaluations",
 	"evaluations_description": "Track client progress, manage periodic reviews, and finalize care goals.",
+	"evaluations_access_denied": "You do not have permission to view evaluations.",
+	"evaluation_saved_refresh_failed": "The evaluation was saved, but the overview could not be refreshed.",
 	"attention_required": "Attention Required",
 	"attention_required_description": "Critical evaluations due soon",
 	"in_progress": "In Progress",

@@ -49,7 +49,7 @@
 		evaluationId?: string | null;
 		clientName?: string | null;
 		canMutate?: boolean;
-		onSaved?: () => void;
+		onSaved?: (evaluation: GoalEvaluationResponse) => void | Promise<void>;
 	}>();
 	const toast = getToastState();
 
@@ -64,17 +64,27 @@
 	let currentCycleConflict = $state(false);
 	let conflictEvaluation = $state<GoalEvaluationResponse | null>(null);
 	let showConflictReloadConfirmation = $state(false);
-	const formId = 'create-evaluation-form';
+	let formElement = $state<HTMLFormElement | null>(null);
+	let loadController: AbortController | null = null;
+	let loadSequence = 0;
+
+	const emptyEvaluationInput: EvaluationSchemaInput = {
+		submit: false,
+		items: [],
+		overall_notes: ''
+	};
+
+	const notifySaved = async (savedEvaluation: GoalEvaluationResponse) => {
+		try {
+			await onSaved?.(savedEvaluation);
+			return true;
+		} catch {
+			return false;
+		}
+	};
 
 	const { form, errors, enhance, reset } = superForm(
-		defaults(
-			{
-				submit: false,
-				items: [],
-				overall_notes: ''
-			} as unknown as EvaluationSchemaInput,
-			valibotClient(EvaluationSchema)
-		),
+		defaults(emptyEvaluationInput, valibotClient(EvaluationSchema)),
 		{
 			validators: valibotClient(EvaluationSchema),
 			SPA: true,
@@ -114,15 +124,6 @@
 							response = await createEvaluation(clientId!, createPayload);
 							savedEvaluationId = response.data.id;
 							currentRevision = response.data.updated_at;
-
-							if (form.data.submit) {
-								response = await updateEvaluationDraft(
-									savedEvaluationId,
-									currentRevision,
-									draftPayload
-								);
-								currentRevision = response.data.updated_at;
-							}
 						}
 
 						if (form.data.submit) {
@@ -146,19 +147,23 @@
 						};
 						reset({ data: updatedData });
 						initialSnapshot = JSON.stringify(updatedData);
-						onSaved?.();
+						const refreshed = await notifySaved(response.data);
 
-						toast.success(
-							response.data.status === 'draft'
-								? m.evaluation_draft_saved_success()
-								: m.evaluation_submitted_success()
-						);
+						if (refreshed) {
+							toast.success(
+								response.data.status === 'draft'
+									? m.evaluation_draft_saved_success()
+									: m.evaluation_submitted_success()
+							);
+						} else {
+							toast.warning(m.evaluation_saved_refresh_failed());
+						}
 
 						if (response.data.status === 'completed' || response.data.status === 'archived') {
 							closeAndReset();
 						}
 					} catch (error) {
-						handleEvaluationMutationError(error);
+						await handleEvaluationMutationError(error);
 					} finally {
 						isSubmitting = false;
 					}
@@ -300,7 +305,7 @@
 		}
 	};
 
-	const handleEvaluationMutationError = (error: unknown) => {
+	const handleEvaluationMutationError = async (error: unknown) => {
 		if (!(error instanceof ApiClientError) || !isEvaluationErrorCode(error.code)) {
 			formError = m.failed_save_evaluation();
 			return;
@@ -311,7 +316,10 @@
 				evaluation = error.data.evaluation;
 				mode = 'edit_draft';
 			}
-			onSaved?.();
+			if (error.data.evaluation) {
+				const refreshed = await notifySaved(error.data.evaluation);
+				if (!refreshed) toast.warning(m.evaluation_saved_refresh_failed());
+			}
 			formError = `${m.evaluation_draft_saved_submit_blocked()} ${localizedEvaluationError(error.code)}`;
 			return;
 		}
@@ -370,7 +378,7 @@
 			case 'blocked':
 				return m.blocked();
 			default:
-				return value ? value.replace('_', ' ') : m.not_available_short();
+				return m.not_available_short();
 		}
 	};
 
@@ -380,18 +388,31 @@
 		return m.low();
 	};
 
-	const loadByEvaluationId = async (id: string) => {
-		const response = await getGoalEvaluation(id);
-		evaluation = response.data;
+	const isCurrentLoad = (sequence: number, controller: AbortController) =>
+		sequence === loadSequence && loadController === controller && !controller.signal.aborted;
+
+	const cancelEvaluationLoad = () => {
+		loadController?.abort();
+		loadController = null;
+		loadSequence += 1;
+	};
+
+	const loadByEvaluationId = async (id: string, sequence: number, controller: AbortController) => {
+		const response = await getGoalEvaluation(id, { signal: controller.signal });
+		let nextBootstrap: EvaluationBootstrapResponse | null = null;
+		const nextMode: Mode = response.data.status === 'draft' ? 'edit_draft' : 'view_only';
 
 		if (response.data.status === 'draft') {
-			mode = 'edit_draft';
-			const bootstrapResponse = await getEvaluationBootstrap(response.data.client_id);
-			bootstrap = bootstrapResponse.data;
-		} else {
-			mode = 'view_only';
-			bootstrap = null;
+			const bootstrapResponse = await getEvaluationBootstrap(response.data.client_id, {
+				signal: controller.signal
+			});
+			nextBootstrap = bootstrapResponse.data;
 		}
+
+		if (!isCurrentLoad(sequence, controller)) return false;
+		evaluation = response.data;
+		bootstrap = nextBootstrap;
+		mode = nextMode;
 
 		const initialData: EvaluationInput = {
 			overall_notes: response.data.overall_notes ?? '',
@@ -404,47 +425,18 @@
 		};
 		reset({ data: initialData });
 		initialSnapshot = JSON.stringify(initialData);
+		return true;
 	};
 
-	const reloadConflictEvaluation = async () => {
-		const id = conflictEvaluation?.id ?? evaluation?.id;
-		if (!id || isLoading) return;
-		isLoading = true;
-		formError = '';
-		try {
-			await loadByEvaluationId(id);
-			conflictEvaluation = null;
-			showConflictReloadConfirmation = false;
-		} catch (error) {
-			formError = localizedEvaluationLoadError(error);
-		} finally {
-			isLoading = false;
-		}
-	};
-
-	const openCurrentCycleDraft = async () => {
-		const currentDraftId = bootstrap?.existing_draft?.id;
-		if (!currentDraftId || currentDraftId === evaluation?.id) return;
-		isLoading = true;
-		formError = '';
-		currentCycleConflict = false;
-		conflictEvaluation = null;
-		showConflictReloadConfirmation = false;
-		try {
-			await loadByEvaluationId(currentDraftId);
-		} catch (error) {
-			formError = localizedEvaluationLoadError(error);
-		} finally {
-			isLoading = false;
-		}
-	};
-
-	const loadBootstrap = async () => {
-		if (!clientId || !open) return;
-		const response = await getEvaluationBootstrap(clientId);
-		bootstrap = response.data;
-		evaluation = null;
-		mode = 'create_new';
+	const loadBootstrap = async (
+		requestedClientId: string,
+		sequence: number,
+		controller: AbortController
+	) => {
+		const response = await getEvaluationBootstrap(requestedClientId, {
+			signal: controller.signal
+		});
+		if (!isCurrentLoad(sequence, controller)) return false;
 
 		if (
 			response.data.existing_draft?.id &&
@@ -454,10 +446,12 @@
 				response.data.next_evaluation_date
 			)
 		) {
-			await loadByEvaluationId(response.data.existing_draft.id);
-			return;
+			return loadByEvaluationId(response.data.existing_draft.id, sequence, controller);
 		}
 
+		bootstrap = response.data;
+		evaluation = null;
+		mode = 'create_new';
 		const initialData: EvaluationInput = {
 			overall_notes: '',
 			submit: false,
@@ -469,9 +463,61 @@
 		};
 		reset({ data: initialData });
 		initialSnapshot = JSON.stringify(initialData);
+		return true;
+	};
+
+	const runEvaluationLoad = async (
+		requestedEvaluationId: string | null,
+		requestedClientId: string | null
+	) => {
+		cancelEvaluationLoad();
+		const controller = new AbortController();
+		const sequence = loadSequence;
+		loadController = controller;
+		isLoading = true;
+		formError = '';
+
+		try {
+			if (requestedEvaluationId) {
+				return await loadByEvaluationId(requestedEvaluationId, sequence, controller);
+			}
+			if (requestedClientId) {
+				return await loadBootstrap(requestedClientId, sequence, controller);
+			}
+			return false;
+		} catch (error) {
+			if (isCurrentLoad(sequence, controller)) {
+				formError = localizedEvaluationLoadError(error);
+			}
+			return false;
+		} finally {
+			if (isCurrentLoad(sequence, controller)) {
+				isLoading = false;
+				loadController = null;
+			}
+		}
+	};
+
+	const reloadConflictEvaluation = async () => {
+		const id = conflictEvaluation?.id ?? evaluation?.id;
+		if (!id || isLoading) return;
+		const loaded = await runEvaluationLoad(id, null);
+		if (!loaded) return;
+		conflictEvaluation = null;
+		showConflictReloadConfirmation = false;
+	};
+
+	const openCurrentCycleDraft = async () => {
+		const currentDraftId = bootstrap?.existing_draft?.id;
+		if (!currentDraftId || currentDraftId === evaluation?.id) return;
+		currentCycleConflict = false;
+		conflictEvaluation = null;
+		showConflictReloadConfirmation = false;
+		await runEvaluationLoad(currentDraftId, null);
 	};
 
 	const resetWorkflow = () => {
+		cancelEvaluationLoad();
 		bootstrap = null;
 		evaluation = null;
 		mode = 'create_new';
@@ -505,37 +551,21 @@
 
 	$effect(() => {
 		if (open && (clientId || evaluationId)) {
-			isLoading = true;
-			formError = '';
-
-			(async () => {
-				try {
-					if (evaluationId) {
-						await loadByEvaluationId(evaluationId);
-					} else {
-						await loadBootstrap();
-					}
-				} catch (error) {
-					formError = localizedEvaluationLoadError(error);
-				} finally {
-					isLoading = false;
-				}
-			})();
+			void runEvaluationLoad(evaluationId, clientId);
 		}
+		return cancelEvaluationLoad;
 	});
 
 	const saveDraft = () => {
 		if (!canMutate || isSubmitting) return;
 		$form.submit = false;
-		const formEl = document.getElementById(formId) as HTMLFormElement | null;
-		if (formEl) formEl.requestSubmit();
+		formElement?.requestSubmit();
 	};
 
 	const submitEvaluation = () => {
 		if (!canMutate || isSubmitting) return;
 		$form.submit = true;
-		const formEl = document.getElementById(formId) as HTMLFormElement | null;
-		if (formEl) formEl.requestSubmit();
+		formElement?.requestSubmit();
 	};
 </script>
 
@@ -550,15 +580,19 @@
 	onClose={resetWorkflow}
 >
 	{#if isLoading}
-		<div class="rounded-2xl border border-border bg-bg/50 p-6 text-sm text-text-muted">
+		<div
+			class="rounded-2xl border border-border bg-bg/50 p-6 text-sm text-text-muted"
+			role="status"
+			aria-live="polite"
+		>
 			{m.loading_evaluation_form()}
 		</div>
 	{:else if !bootstrap && !evaluation}
-		<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error">
+		<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
 			{m.unable_load_evaluation_data()}
 		</div>
 	{:else}
-		<form id={formId} use:enhance class="space-y-5">
+		<form bind:this={formElement} use:enhance class="space-y-5">
 			{#if isHistoricalDraft}
 				<div
 					class="rounded-2xl border border-info/40 bg-info/10 p-4 text-sm text-text"
