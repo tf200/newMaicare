@@ -56,6 +56,8 @@ export interface EvaluationStatsResponse {
 export type EvaluationProgress =
 	'no_progress' | 'regression' | 'limited_progress' | 'good_progress' | 'achieved' | 'blocked';
 
+export type EvaluationProgressState = 'not_evaluated' | EvaluationProgress;
+
 export interface EvaluationActiveGoal {
 	goal_id: string;
 	title: string;
@@ -95,7 +97,7 @@ export interface EvaluationBootstrapResponse {
 
 export interface EvaluationItemInput {
 	goal_id: string;
-	progress: EvaluationProgress;
+	progress: EvaluationProgressState;
 	notes: string | null;
 }
 
@@ -133,7 +135,7 @@ export interface GoalEvaluationItemResponse {
 	goal_title: string;
 	goal_description: string | null;
 	topic_name_snapshot: string | null;
-	progress: EvaluationProgress;
+	progress: EvaluationProgressState;
 	notes: string | null;
 	created_at: EvaluationDateTime;
 	updated_at: EvaluationDateTime;

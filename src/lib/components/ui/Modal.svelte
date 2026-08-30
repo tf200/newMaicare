@@ -19,7 +19,8 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { X } from 'lucide-svelte';
+	import { LoaderCircle, X } from 'lucide-svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
 
@@ -30,7 +31,10 @@
 		children?: Snippet;
 		header?: Snippet;
 		footer?: Snippet;
+		loadingContent?: Snippet;
 		size?: ModalSize;
+		loading?: boolean;
+		loadingLabel?: string;
 		closeLabel?: string;
 		ariaLabel?: string;
 		dismissible?: boolean;
@@ -48,7 +52,10 @@
 		children,
 		header = undefined,
 		footer = undefined,
+		loadingContent = undefined,
 		size = 'md' as ModalSize,
+		loading = false,
+		loadingLabel = m.loading(),
 		closeLabel = 'Close',
 		ariaLabel = title ?? 'Dialog',
 		dismissible = true,
@@ -168,6 +175,7 @@
 			aria-labelledby={title ? titleId : undefined}
 			aria-label={title ? undefined : ariaLabel}
 			aria-describedby={description ? descriptionId : undefined}
+			aria-busy={loading}
 			tabindex="-1"
 			class="relative flex max-h-[90vh] w-full flex-col rounded-3xl bg-surface shadow-2xl ring-1 ring-border {maxWidths[
 				size
@@ -200,10 +208,29 @@
 			</div>
 
 			<div class="flex-1 overflow-y-auto p-6">
-				{@render children?.()}
+				{#if loading}
+					{#if loadingContent}
+						<div role="status" aria-live="polite" aria-label={loadingLabel}>
+							{@render loadingContent()}
+						</div>
+					{:else}
+						<div
+							class="flex min-h-48 flex-col items-center justify-center gap-4 text-center"
+							role="status"
+							aria-live="polite"
+						>
+							<div class="rounded-2xl border border-border bg-bg/60 p-3 shadow-sm">
+								<LoaderCircle class="h-6 w-6 animate-spin text-brand" aria-hidden="true" />
+							</div>
+							<p class="text-sm font-medium text-text-muted">{loadingLabel}</p>
+						</div>
+					{/if}
+				{:else}
+					{@render children?.()}
+				{/if}
 			</div>
 
-			{#if footer}
+			{#if footer && !loading}
 				<div class="rounded-b-3xl border-t border-border bg-bg/50 px-6 py-3">
 					{@render footer()}
 				</div>

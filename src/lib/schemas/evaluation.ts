@@ -9,9 +9,14 @@ export const EvaluationProgressSchema = v.picklist([
 	'blocked'
 ]);
 
+export const EvaluationProgressStateSchema = v.union([
+	v.literal('not_evaluated'),
+	EvaluationProgressSchema
+]);
+
 export const EvaluationItemSchema = v.object({
 	goal_id: v.pipe(v.string(), v.minLength(1)),
-	progress: EvaluationProgressSchema,
+	progress: EvaluationProgressStateSchema,
 	notes: v.optional(v.string())
 });
 

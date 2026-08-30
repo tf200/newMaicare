@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import * as v from 'valibot';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -29,10 +30,10 @@
 		type EvaluationInput,
 		type EvaluationSchemaInput
 	} from '$lib/schemas/evaluation';
-	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { formatDateOnly, isSameDateOnly } from '$lib/utils/date';
 	import { ApiClientError } from '$lib/api/client';
+	import { evaluationFormData, evaluationFormSnapshot } from './evaluation-form-state';
 
 	type Mode = 'create_new' | 'edit_draft' | 'view_only';
 
@@ -64,7 +65,7 @@
 	let currentCycleConflict = $state(false);
 	let conflictEvaluation = $state<GoalEvaluationResponse | null>(null);
 	let showConflictReloadConfirmation = $state(false);
-	let formElement = $state<HTMLFormElement | null>(null);
+	let submissionIntent = $state<'draft' | 'submit' | null>(null);
 	let loadController: AbortController | null = null;
 	let loadSequence = 0;
 
@@ -83,94 +84,81 @@
 		}
 	};
 
-	const { form, errors, enhance, reset } = superForm(
+	const { form, reset } = superForm(
 		defaults(emptyEvaluationInput, valibotClient(EvaluationSchema)),
-		{
-			validators: valibotClient(EvaluationSchema),
-			SPA: true,
-			dataType: 'json',
-			onUpdate: async ({ form }) => {
-				const currentEvaluationId = evaluation?.id ?? evaluationId;
-				if (form.valid && canMutate && (clientId || currentEvaluationId) && !isSubmitting) {
-					isSubmitting = true;
-					formError = '';
-					try {
-						const draftPayload: UpdateEvaluationDraftRequest = {
-							overall_notes: trimToUndefined(form.data.overall_notes) ?? null,
-							items: form.data.items.map((item) => ({
-								goal_id: item.goal_id,
-								progress: item.progress,
-								notes: trimToUndefined(item.notes) ?? null
-							}))
-						};
-
-						let response: Awaited<ReturnType<typeof updateEvaluationDraft>>;
-						let savedEvaluationId = currentEvaluationId;
-						let currentRevision = evaluation?.updated_at;
-
-						if (savedEvaluationId) {
-							if (!currentRevision) {
-								formError = m.evaluation_revision_required();
-								return;
-							}
-							response = await updateEvaluationDraft(
-								savedEvaluationId,
-								currentRevision,
-								draftPayload
-							);
-							currentRevision = response.data.updated_at;
-						} else {
-							const createPayload: CreateEvaluationRequest = { ...draftPayload, submit: false };
-							response = await createEvaluation(clientId!, createPayload);
-							savedEvaluationId = response.data.id;
-							currentRevision = response.data.updated_at;
-						}
-
-						if (form.data.submit) {
-							response = await submitEvaluationDraft(savedEvaluationId, currentRevision);
-						}
-
-						evaluation = response.data;
-						mode =
-							response.data.status === 'completed' || response.data.status === 'archived'
-								? 'view_only'
-								: 'edit_draft';
-
-						const updatedData: EvaluationInput = {
-							overall_notes: form.data.overall_notes,
-							submit: false,
-							items: form.data.items.map((item) => ({
-								goal_id: item.goal_id,
-								progress: item.progress,
-								notes: item.notes
-							}))
-						};
-						reset({ data: updatedData });
-						initialSnapshot = JSON.stringify(updatedData);
-						const refreshed = await notifySaved(response.data);
-
-						if (refreshed) {
-							toast.success(
-								response.data.status === 'draft'
-									? m.evaluation_draft_saved_success()
-									: m.evaluation_submitted_success()
-							);
-						} else {
-							toast.warning(m.evaluation_saved_refresh_failed());
-						}
-
-						if (response.data.status === 'completed' || response.data.status === 'archived') {
-							closeAndReset();
-						}
-					} catch (error) {
-						await handleEvaluationMutationError(error);
-					} finally {
-						isSubmitting = false;
-					}
-				}
-			}
-		}
+		{ SPA: true }
 	);
+
+	const saveEvaluation = async (shouldSubmit: boolean) => {
+		const currentEvaluationId = evaluation?.id ?? evaluationId;
+		if (!canMutate || (!clientId && !currentEvaluationId) || isLoading || isSubmitting) return;
+
+		const parsed = v.safeParse(EvaluationSchema, { ...$form, submit: shouldSubmit });
+		if (!parsed.success) {
+			formError = m.failed_save_evaluation();
+			return;
+		}
+		if (shouldSubmit && parsed.output.items.some((item) => item.progress === 'not_evaluated')) {
+			formError = m.evaluation_incomplete();
+			return;
+		}
+
+		isSubmitting = true;
+		submissionIntent = shouldSubmit ? 'submit' : 'draft';
+		formError = '';
+		try {
+			const draftPayload: UpdateEvaluationDraftRequest = {
+				overall_notes: trimToUndefined(parsed.output.overall_notes) ?? null,
+				items: parsed.output.items.map((item) => ({
+					goal_id: item.goal_id,
+					progress: item.progress,
+					notes: trimToUndefined(item.notes) ?? null
+				}))
+			};
+
+			let response: Awaited<ReturnType<typeof updateEvaluationDraft>>;
+			let savedEvaluationId = currentEvaluationId;
+			let currentRevision = evaluation?.updated_at;
+
+			if (savedEvaluationId) {
+				if (!currentRevision) {
+					formError = m.evaluation_revision_required();
+					return;
+				}
+				response = await updateEvaluationDraft(savedEvaluationId, currentRevision, draftPayload);
+				currentRevision = response.data.updated_at;
+			} else {
+				const createPayload: CreateEvaluationRequest = { ...draftPayload, submit: false };
+				response = await createEvaluation(clientId!, createPayload);
+				savedEvaluationId = response.data.id;
+				currentRevision = response.data.updated_at;
+			}
+
+			if (shouldSubmit) {
+				response = await submitEvaluationDraft(savedEvaluationId, currentRevision);
+			}
+
+			const savedEvaluation = response.data;
+			const updatedData = evaluationFormData(savedEvaluation, parsed.output.items);
+			evaluation = savedEvaluation;
+			reset({ data: updatedData });
+			initialSnapshot = evaluationFormSnapshot(updatedData);
+			closeAndReset();
+			toast.success(
+				savedEvaluation.status === 'draft'
+					? m.evaluation_draft_saved_success()
+					: m.evaluation_submitted_success()
+			);
+			if (!(await notifySaved(savedEvaluation))) {
+				toast.warning(m.evaluation_saved_refresh_failed());
+			}
+		} catch (error) {
+			await handleEvaluationMutationError(error);
+		} finally {
+			isSubmitting = false;
+			submissionIntent = null;
+		}
+	};
 
 	const progressOptions = [
 		{ value: 'no_progress', label: m.no_progress() },
@@ -192,6 +180,11 @@
 		}
 		return next;
 	});
+	const evaluationItemsByGoalId = $derived.by(() => {
+		const next: Record<string, GoalEvaluationResponse['items'][number]> = {};
+		for (const item of evaluation?.items ?? []) next[item.goal_id] = item;
+		return next;
+	});
 
 	const isHistoricalDraft = $derived(
 		currentCycleConflict ||
@@ -209,32 +202,24 @@
 	);
 	const showLastEvaluation = $derived(!evaluation || evaluation.status === 'draft');
 	const isDirty = $derived(
-		!isReadOnly && initialSnapshot !== '' && JSON.stringify($form) !== initialSnapshot
+		!isReadOnly && initialSnapshot !== '' && evaluationFormSnapshot($form) !== initialSnapshot
 	);
 
 	const viewGoals = $derived.by(() => {
-		if (evaluation?.items?.length) {
-			return evaluation.items.map((item) => {
-				const activeGoal = activeGoalsById[item.goal_id];
-				return {
-					goal_id: item.goal_id,
-					title: item.goal_title,
-					topic_name_snapshot: item.topic_name_snapshot,
-					priority: activeGoal?.priority,
-					last_progress: activeGoal?.last_progress ?? null,
-					last_notes: activeGoal?.last_notes ?? null
-				};
-			});
-		}
-
-		return sortedGoals.map((goal) => ({
-			goal_id: goal.goal_id,
-			title: goal.title,
-			topic_name_snapshot: goal.topic_name_snapshot,
-			priority: goal.priority,
-			last_progress: goal.last_progress,
-			last_notes: goal.last_notes
-		}));
+		return $form.items.map((formItem, formIndex) => {
+			const savedItem = evaluationItemsByGoalId[formItem.goal_id];
+			const activeGoal = activeGoalsById[formItem.goal_id];
+			return {
+				goal_id: formItem.goal_id,
+				formIndex,
+				title: savedItem?.goal_title ?? activeGoal?.title ?? m.not_available_short(),
+				topic_name_snapshot:
+					savedItem?.topic_name_snapshot ?? activeGoal?.topic_name_snapshot ?? null,
+				priority: activeGoal?.priority,
+				last_progress: activeGoal?.last_progress ?? null,
+				last_notes: activeGoal?.last_notes ?? null
+			};
+		});
 	});
 
 	const modalTitle = $derived.by(() => {
@@ -315,6 +300,9 @@
 			if (error.data.evaluation) {
 				evaluation = error.data.evaluation;
 				mode = 'edit_draft';
+				const savedData = evaluationFormData(error.data.evaluation, $form.items);
+				reset({ data: savedData });
+				initialSnapshot = evaluationFormSnapshot(savedData);
 			}
 			if (error.data.evaluation) {
 				const refreshed = await notifySaved(error.data.evaluation);
@@ -414,17 +402,14 @@
 		bootstrap = nextBootstrap;
 		mode = nextMode;
 
-		const initialData: EvaluationInput = {
-			overall_notes: response.data.overall_notes ?? '',
-			submit: false,
-			items: response.data.items.map((item) => ({
-				goal_id: item.goal_id,
-				progress: item.progress,
-				notes: item.notes ?? ''
-			}))
-		};
+		const preferredItems = (nextBootstrap?.active_goals ?? []).map((goal) => ({
+			goal_id: goal.goal_id,
+			progress: 'not_evaluated' as const,
+			notes: ''
+		}));
+		const initialData = evaluationFormData(response.data, preferredItems);
 		reset({ data: initialData });
-		initialSnapshot = JSON.stringify(initialData);
+		initialSnapshot = evaluationFormSnapshot(initialData);
 		return true;
 	};
 
@@ -457,12 +442,12 @@
 			submit: false,
 			items: response.data.active_goals.map((goal) => ({
 				goal_id: goal.goal_id,
-				progress: 'no_progress',
+				progress: 'not_evaluated',
 				notes: ''
 			}))
 		};
 		reset({ data: initialData });
-		initialSnapshot = JSON.stringify(initialData);
+		initialSnapshot = evaluationFormSnapshot(initialData);
 		return true;
 	};
 
@@ -523,9 +508,13 @@
 		mode = 'create_new';
 		formError = '';
 		isLoading = false;
+		isSubmitting = false;
+		submissionIntent = null;
 		showDiscardConfirmation = false;
 		initialSnapshot = '';
 		currentCycleConflict = false;
+		conflictEvaluation = null;
+		showConflictReloadConfirmation = false;
 		reset({
 			data: {
 				submit: false,
@@ -555,18 +544,6 @@
 		}
 		return cancelEvaluationLoad;
 	});
-
-	const saveDraft = () => {
-		if (!canMutate || isSubmitting) return;
-		$form.submit = false;
-		formElement?.requestSubmit();
-	};
-
-	const submitEvaluation = () => {
-		if (!canMutate || isSubmitting) return;
-		$form.submit = true;
-		formElement?.requestSubmit();
-	};
 </script>
 
 <Modal
@@ -575,24 +552,18 @@
 	title={modalTitle}
 	description={modalDescription}
 	closeLabel={m.close()}
+	loading={isLoading}
+	loadingLabel={m.loading_evaluation_form()}
 	dismissible={!isSubmitting}
 	onRequestClose={requestClose}
 	onClose={resetWorkflow}
 >
-	{#if isLoading}
-		<div
-			class="rounded-2xl border border-border bg-bg/50 p-6 text-sm text-text-muted"
-			role="status"
-			aria-live="polite"
-		>
-			{m.loading_evaluation_form()}
-		</div>
-	{:else if !bootstrap && !evaluation}
+	{#if !bootstrap && !evaluation}
 		<div class="rounded-2xl border border-error/30 bg-error/10 p-4 text-sm text-error" role="alert">
 			{m.unable_load_evaluation_data()}
 		</div>
 	{:else}
-		<form bind:this={formElement} use:enhance class="space-y-5">
+		<form onsubmit={(event) => event.preventDefault()} class="space-y-5">
 			{#if isHistoricalDraft}
 				<div
 					class="rounded-2xl border border-info/40 bg-info/10 p-4 text-sm text-text"
@@ -686,67 +657,117 @@
 				{/if}
 			</header>
 
-			<div class="grid grid-cols-1 gap-6 {showLastEvaluation ? 'xl:grid-cols-2' : ''}">
+			<div
+				class="grid grid-cols-1 items-start gap-5 {showLastEvaluation
+					? 'xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]'
+					: ''}"
+			>
 				{#if showLastEvaluation}
-					<section class="space-y-4 rounded-2xl border border-border bg-surface p-4">
-						<h4 class="text-xs font-bold tracking-widest text-text-subtle uppercase">
-							{m.last_evaluation()}
-						</h4>
+					<section
+						class="order-2 overflow-hidden rounded-3xl border border-border bg-bg/50 xl:sticky xl:top-0 xl:order-1"
+					>
+						<div class="border-b border-border bg-surface/80 px-5 py-4">
+							<p class="text-xs font-bold tracking-widest text-text-subtle uppercase">
+								{m.last_evaluation()}
+							</p>
+							<p class="mt-1 text-sm text-text-muted">{m.last_evaluation_context()}</p>
+						</div>
 						{#if bootstrap?.last_completed_evaluation}
-							<div class="space-y-3 text-sm text-text-muted">
-								<p>
-									<span class="font-semibold text-text">{m.evaluation_date()}:</span>
-									{formatDateOnly(
-										bootstrap.last_completed_evaluation.evaluation_date,
-										resolveLocale(),
-										m.not_available_short()
-									)}
-								</p>
-								<p>
-									<span class="font-semibold text-text">{m.submitted()}:</span>
-									{new Date(bootstrap.last_completed_evaluation.submitted_at).toLocaleString(
-										resolveLocale()
-									)}
-								</p>
-								<p>
-									<span class="font-semibold text-text">{m.created_by()}:</span>
-									{bootstrap.last_completed_evaluation.creator_name ?? m.not_available_short()}
-								</p>
-								<div class="rounded-xl border border-border bg-bg/40 p-3">
-									<p class="mb-1 text-xs font-bold tracking-wide text-text-subtle uppercase">
+							<div class="space-y-5 p-5">
+								<div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+									<div>
+										<p class="text-[10px] font-bold tracking-wider text-text-subtle uppercase">
+											{m.evaluation_date()}
+										</p>
+										<p class="mt-1 font-semibold text-text">
+											{formatDateOnly(
+												bootstrap.last_completed_evaluation.evaluation_date,
+												resolveLocale(),
+												m.not_available_short()
+											)}
+										</p>
+									</div>
+									<div>
+										<p class="text-[10px] font-bold tracking-wider text-text-subtle uppercase">
+											{m.created_by()}
+										</p>
+										<p class="mt-1 font-semibold text-text">
+											{bootstrap.last_completed_evaluation.creator_name ?? m.not_available_short()}
+										</p>
+									</div>
+									<div class="col-span-2">
+										<p class="text-[10px] font-bold tracking-wider text-text-subtle uppercase">
+											{m.submitted()}
+										</p>
+										<p class="mt-1 text-text-muted">
+											{new Date(bootstrap.last_completed_evaluation.submitted_at).toLocaleString(
+												resolveLocale()
+											)}
+										</p>
+									</div>
+								</div>
+
+								<div class="border-t border-border pt-4">
+									<p class="mb-2 text-[10px] font-bold tracking-wider text-text-subtle uppercase">
 										{m.notes_label()}
 									</p>
-									<p class="text-sm text-text">
+									<p class="text-sm leading-relaxed text-text">
 										{bootstrap.last_completed_evaluation.overall_notes ?? m.no_notes_available()}
 									</p>
 								</div>
+
+								<div class="divide-y divide-border border-t border-border">
+									{#each viewGoals as goal (goal.goal_id)}
+										<article class="py-4 first:pt-5 last:pb-0">
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0">
+													<p class="text-sm leading-snug font-semibold text-text">{goal.title}</p>
+													<p class="mt-1 text-xs text-text-subtle">
+														{goal.topic_name_snapshot ?? m.not_available_short()}
+													</p>
+												</div>
+												<span
+													class="shrink-0 rounded-full border border-info/25 bg-info/10 px-2.5 py-1 text-[11px] font-bold text-info"
+												>
+													{progressLabel(goal.last_progress)}
+												</span>
+											</div>
+											<p class="mt-3 text-sm leading-relaxed text-text-muted">
+												{goal.last_notes ?? m.no_notes_available()}
+											</p>
+										</article>
+									{/each}
+								</div>
 							</div>
 						{:else}
-							<div class="rounded-xl border border-border bg-bg/40 p-3 text-sm text-text-muted">
+							<div
+								class="m-5 rounded-2xl border border-dashed border-border p-5 text-sm text-text-muted"
+							>
 								{m.no_previous_evaluation_found()}
 							</div>
 						{/if}
 					</section>
 				{/if}
 
-				<section class="min-w-0 space-y-5">
-					<h4
-						class="border-b border-border pb-3 text-xs font-bold tracking-widest text-text-subtle uppercase"
-					>
-						{m.current_evaluation()}
-					</h4>
-					<div class="pb-1">
+				<section
+					class="order-1 min-w-0 rounded-3xl border border-border bg-surface p-5 sm:p-6 xl:order-2"
+				>
+					<div class="mb-5 border-b border-border pb-4">
+						<h4 class="text-xs font-bold tracking-widest text-text-subtle uppercase">
+							{m.current_evaluation()}
+						</h4>
+					</div>
+					<div class="pb-5">
 						<Textarea
 							label={m.overall_notes()}
 							placeholder={m.placeholder_overall_notes()}
 							disabled={isReadOnly}
 							bind:value={$form.overall_notes}
-							error={formatFormError($errors.overall_notes)}
 						/>
 					</div>
 
 					<div class="divide-y divide-border border-t border-border">
-						{#each viewGoals as goal, index (goal.goal_id)}
+						{#each viewGoals as goal (goal.goal_id)}
 							<section class="py-5 first:pt-5 last:pb-0">
 								<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 									<div class="min-w-0">
@@ -773,54 +794,42 @@
 												{m.progress()}
 											</p>
 											<p class="text-sm text-text">
-												{progressLabel($form.items[index]?.progress ?? 'no_progress')}
+												{progressLabel($form.items[goal.formIndex]?.progress ?? 'no_progress')}
 											</p>
 										</div>
 										<Textarea
 											label={m.notes_label()}
 											disabled={true}
-											value={$form.items[index]?.notes ?? ''}
+											value={$form.items[goal.formIndex]?.notes ?? ''}
 										/>
-									{:else if $form.items[index]}
+									{:else if $form.items[goal.formIndex]}
 										<Select
 											label={m.progress()}
 											options={progressOptions}
-											bind:value={$form.items[index].progress}
-											error={formatFormError($errors.items?.[index]?.progress)}
+											placeholder={m.select_progress()}
+											bind:value={$form.items[goal.formIndex].progress}
 										/>
 										<Textarea
 											label={m.notes_label()}
 											placeholder={m.placeholder_goal_notes()}
-											bind:value={$form.items[index].notes}
-											error={formatFormError($errors.items?.[index]?.notes)}
+											bind:value={$form.items[goal.formIndex].notes}
 										/>
 									{/if}
 								</div>
-
-								{#if showLastEvaluation && (goal.last_progress || goal.last_notes)}
-									<div class="mt-4 border-l-2 border-info/40 pl-3 text-xs text-text-muted">
-										<p class="font-semibold text-text">{m.last_evaluation_context()}</p>
-										{#if goal.last_progress}
-											<p>
-												{m.progress()}: {progressLabel(goal.last_progress)}
-											</p>
-										{/if}
-										{#if goal.last_notes}
-											<p>{m.notes_label()}: {goal.last_notes}</p>
-										{/if}
-									</div>
-								{/if}
 							</section>
 						{/each}
 					</div>
 				</section>
 			</div>
-			<button type="submit" class="hidden" aria-hidden="true"></button>
 		</form>
 	{/if}
 
 	{#snippet footer()}
-		{#if isReadOnly}
+		{#if !bootstrap && !evaluation}
+			<div class="flex justify-end">
+				<Button variant="ghost" onclick={closeAndReset}>{m.close()}</Button>
+			</div>
+		{:else if isReadOnly}
 			<div class="flex justify-end">
 				<Button variant="ghost" onclick={closeAndReset}>{m.close()}</Button>
 			</div>
@@ -854,14 +863,15 @@
 						disabled={isSubmitting}>{m.cancel()}</Button
 					>
 					<Button
-						variant="secondary"
-						onclick={saveDraft}
-						isLoading={isSubmitting && !$form.submit}
+						variant="ghost"
+						class="border border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
+						onclick={() => saveEvaluation(false)}
+						isLoading={isSubmitting && submissionIntent === 'draft'}
 						disabled={isSubmitting}>{m.save_draft()}</Button
 					>
 					<Button
-						onclick={submitEvaluation}
-						isLoading={isSubmitting && $form.submit}
+						onclick={() => saveEvaluation(true)}
+						isLoading={isSubmitting && submissionIntent === 'submit'}
 						disabled={isSubmitting}>{m.submit()}</Button
 					>
 				</div>
