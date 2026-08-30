@@ -21,6 +21,7 @@
 	import type { UpcomingEvaluation, DraftEvaluation, SubmittedEvaluation } from './+page';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { formatDateOnly } from '$lib/utils/date';
 
 	let { data } = $props<{ data: PageData }>();
 	const auth = getAuthState();
@@ -78,14 +79,8 @@
 		{ key: 'actions', label: '', align: 'right', width: '50px' }
 	];
 
-	const formatDate = (dateStr: string) => {
-		if (!dateStr) return '—';
-		return new Date(dateStr).toLocaleDateString(getLocale() === 'nl' ? 'nl-NL' : 'en-GB', {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric'
-		});
-	};
+	const formatDate = (dateStr: string) =>
+		formatDateOnly(dateStr, getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	const formatDateTime = (dateStr: string) => {
 		if (!dateStr) return '—';

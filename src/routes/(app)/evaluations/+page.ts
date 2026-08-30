@@ -9,12 +9,13 @@ import {
 	getEvaluationStats
 } from '$lib/api/evaluations';
 import { m } from '$lib/paraglide/messages';
+import type { EvaluationDateOnly, EvaluationDateTime } from '$lib/types/api';
 
 export interface UpcomingEvaluation {
 	clientId: string;
 	clientFirstName: string;
 	clientLastName: string;
-	dueDate: string;
+	dueDate: EvaluationDateOnly;
 	daysLeft: number;
 	priority: 'critical' | 'normal';
 	hasDraft: boolean;
@@ -27,9 +28,9 @@ export interface SubmittedEvaluation {
 	clientId: string;
 	clientFirstName: string;
 	clientLastName: string;
-	evaluationDate: string;
-	submittedAt: string;
-	nextEvaluationDate: string | null;
+	evaluationDate: EvaluationDateOnly;
+	submittedAt: EvaluationDateTime;
+	nextEvaluationDate: EvaluationDateOnly | null;
 	filledGoalsCount: number;
 	totalGoalsCount: number;
 }
@@ -39,8 +40,8 @@ export interface DraftEvaluation {
 	clientId: string;
 	clientFirstName: string;
 	clientLastName: string;
-	dueDate: string;
-	updatedAt: string;
+	dueDate: EvaluationDateOnly;
+	updatedAt: EvaluationDateTime;
 	daysLeft: number;
 	priority: 'critical' | 'normal';
 	filledGoalsCount: number;
@@ -51,7 +52,7 @@ export interface EvaluationStatsLoadResult {
 	attentionRequired: number;
 	inProgress: number;
 	recentlyFinalized: number;
-	asOf: string | null;
+	asOf: EvaluationDateTime | null;
 	loadError: string | null;
 }
 

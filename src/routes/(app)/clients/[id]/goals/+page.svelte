@@ -29,6 +29,7 @@
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { getAuthState } from '$lib/state/auth.svelte';
+	import { formatDateOnly } from '$lib/utils/date';
 	import type { GoalsOverviewLoadResult } from './+page';
 	import {
 		createClientGoal,
@@ -156,14 +157,14 @@
 		high: 'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30'
 	};
 
-	const formatDate = (value: string | null) => {
-		if (!value) return 'N/A';
-		return new Intl.DateTimeFormat('en-US', {
+	const formatEvaluationDate = (value: string | null) => formatDateOnly(value, 'en-US', 'N/A');
+
+	const formatSubmittedDate = (value: string) =>
+		new Intl.DateTimeFormat('en-US', {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
 		}).format(new Date(value));
-	};
 
 	// Types for history table
 	type HistoryRow = GoalsOverviewLoadResult['history'][0];
@@ -202,7 +203,7 @@
 
 {#snippet historyEvaluationDateCell(row: HistoryRow)}
 	<span class="text-sm font-semibold text-zinc-900 dark:text-white">
-		{formatDate(row.evaluation_date)}
+		{formatEvaluationDate(row.evaluation_date)}
 	</span>
 {/snippet}
 
@@ -220,7 +221,7 @@
 
 {#snippet historySubmittedCell(row: HistoryRow)}
 	<span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-		{formatDate(row.submitted_at)}
+		{formatSubmittedDate(row.submitted_at)}
 	</span>
 {/snippet}
 
@@ -488,7 +489,7 @@
 									>
 								</div>
 								<p class="mt-2 text-xs font-medium text-zinc-400">
-									{m.due_on({ date: formatDate(goalsData.next_evaluation_date) })}
+									{m.due_on({ date: formatEvaluationDate(goalsData.next_evaluation_date) })}
 								</p>
 							</div>
 						</div>
@@ -568,7 +569,7 @@
 									</div>
 									<div class="flex flex-col">
 										<span class="text-sm font-bold text-zinc-900 dark:text-white">
-											{formatDate(lastCompleted.evaluation_date)}
+											{formatEvaluationDate(lastCompleted.evaluation_date)}
 										</span>
 										<span class="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
 											{lastCompleted.creator_name}

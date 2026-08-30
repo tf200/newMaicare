@@ -1,6 +1,7 @@
 import type { ClientGender } from './common';
 import type { ContractCareType, ContractFinancingAct, ContractFinancingOption } from './contracts';
 import type { IntakeCareType, IntakeConclusionEnum } from './intake';
+import type { EvaluationDateOnly, EvaluationDateTime } from './evaluations';
 
 export interface ListWaitingListClientsResponse {
 	id: string;
@@ -427,7 +428,7 @@ export interface GetClientCareSchedule {
 	placed_in_care_at: string | null;
 	days_until_start: number | null;
 	should_be_active_now: boolean;
-	next_evaluation_date: string | null;
+	next_evaluation_date: EvaluationDateOnly | null;
 }
 
 export interface GetClientCoordinator {
@@ -448,8 +449,8 @@ export interface GetClientCare {
 	placed_in_care_at: string | null;
 	days_in_care: number;
 	evaluation_intervals_weeks: number;
-	last_evaluation_anchor_date: string | null;
-	next_evaluation_date: string | null;
+	last_evaluation_anchor_date: EvaluationDateOnly | null;
+	next_evaluation_date: EvaluationDateOnly | null;
 }
 
 export interface GetClientContractSummaryActiveContract {
@@ -470,18 +471,18 @@ export interface GetClientContractSummary {
 
 export interface GetClientEvaluationSummaryDraft {
 	id: string;
-	updated_at: string | null;
+	updated_at: EvaluationDateTime | null;
 }
 
 export interface GetClientEvaluationSummaryLastCompleted {
 	id: string;
-	submitted_at: string | null;
+	submitted_at: EvaluationDateTime | null;
 	created_by_employee_id: string | null;
 	creator_name: string | null;
 }
 
 export interface GetClientEvaluationSummary {
-	next_evaluation_date: string | null;
+	next_evaluation_date: EvaluationDateOnly | null;
 	days_left: number | null;
 	priority: 'critical' | 'normal' | null;
 	draft: GetClientEvaluationSummaryDraft | null;

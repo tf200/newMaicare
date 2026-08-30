@@ -31,6 +31,7 @@
 	} from '$lib/schemas/evaluation';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { formatDateOnly, isSameDateOnly } from '$lib/utils/date';
 	import { ApiClientError } from '$lib/api/client';
 
 	type Mode = 'create_new' | 'edit_draft' | 'view_only';
@@ -192,7 +193,7 @@
 			(evaluation?.status === 'draft' &&
 				!!bootstrap &&
 				(!bootstrap.next_evaluation_date ||
-					!isSameEvaluationDate(evaluation.evaluation_date, bootstrap.next_evaluation_date)))
+					!isSameDateOnly(evaluation.evaluation_date, bootstrap.next_evaluation_date)))
 	);
 	const isReadOnly = $derived(
 		!canMutate ||
@@ -379,10 +380,6 @@
 		return m.low();
 	};
 
-	function isSameEvaluationDate(left: string, right: string) {
-		return left.slice(0, 10) === right.slice(0, 10);
-	}
-
 	const loadByEvaluationId = async (id: string) => {
 		const response = await getGoalEvaluation(id);
 		evaluation = response.data;
@@ -452,7 +449,7 @@
 		if (
 			response.data.existing_draft?.id &&
 			response.data.next_evaluation_date &&
-			isSameEvaluationDate(
+			isSameDateOnly(
 				response.data.existing_draft.evaluation_date,
 				response.data.next_evaluation_date
 			)
@@ -634,7 +631,7 @@
 						<div class="flex items-center gap-2 text-sm font-semibold text-text-muted">
 							<CalendarClock class="h-4 w-4" />
 							{#if bootstrap.next_evaluation_date}
-								{m.days_left({ days: bootstrap.days_left })}
+								{m.days_left({ days: bootstrap.days_left ?? 0 })}
 							{:else}
 								{m.no_due_date_scheduled()}
 							{/if}
@@ -665,8 +662,10 @@
 							<div class="space-y-3 text-sm text-text-muted">
 								<p>
 									<span class="font-semibold text-text">{m.evaluation_date()}:</span>
-									{new Date(bootstrap.last_completed_evaluation.evaluation_date).toLocaleDateString(
-										resolveLocale()
+									{formatDateOnly(
+										bootstrap.last_completed_evaluation.evaluation_date,
+										resolveLocale(),
+										m.not_available_short()
 									)}
 								</p>
 								<p>

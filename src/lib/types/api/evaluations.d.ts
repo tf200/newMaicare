@@ -1,8 +1,14 @@
+/** Calendar date in YYYY-MM-DD format. It must not be converted through the browser timezone. */
+export type EvaluationDateOnly = `${number}-${number}-${number}`;
+
+/** RFC 3339 timestamp representing an instant. */
+export type EvaluationDateTime = string;
+
 export interface ListUpcomingEvaluationsResponse {
 	client_id: string;
 	client_first_name: string;
 	client_last_name: string;
-	due_date: string;
+	due_date: EvaluationDateOnly;
 	days_left: number;
 	priority: 'critical' | 'normal';
 	has_draft: boolean;
@@ -15,9 +21,9 @@ export interface ListRecentSubmittedEvaluationsResponse {
 	client_id: string;
 	client_first_name: string;
 	client_last_name: string;
-	evaluation_date: string;
-	submitted_at: string;
-	next_evaluation_date: string | null;
+	evaluation_date: EvaluationDateOnly;
+	submitted_at: EvaluationDateTime;
+	next_evaluation_date: EvaluationDateOnly | null;
 	filled_goals_count: number;
 	total_goals_count: number;
 }
@@ -27,8 +33,8 @@ export interface ListRecentDraftEvaluationsResponse {
 	client_id: string;
 	client_first_name: string;
 	client_last_name: string;
-	due_date: string;
-	updated_at: string;
+	due_date: EvaluationDateOnly;
+	updated_at: EvaluationDateTime;
 	days_left: number;
 	priority: 'critical' | 'normal';
 	filled_goals_count: number;
@@ -44,7 +50,7 @@ export interface EvaluationStatsResponse {
 	attention_required: number;
 	in_progress: number;
 	recently_finalized: number;
-	as_of: string;
+	as_of: EvaluationDateTime;
 }
 
 export type EvaluationProgress =
@@ -62,14 +68,14 @@ export interface EvaluationActiveGoal {
 
 export interface ExistingDraftEvaluationSummary {
 	id: string;
-	evaluation_date: string;
-	updated_at: string;
+	evaluation_date: EvaluationDateOnly;
+	updated_at: EvaluationDateTime;
 }
 
 export interface LastCompletedEvaluationSummary {
 	id: string;
-	evaluation_date: string;
-	submitted_at: string;
+	evaluation_date: EvaluationDateOnly;
+	submitted_at: EvaluationDateTime;
 	overall_notes: string | null;
 	created_by_employee_id: string | null;
 	creator_name: string | null;
@@ -79,9 +85,9 @@ export interface EvaluationBootstrapResponse {
 	client_id: string;
 	client_first_name: string;
 	client_last_name: string;
-	next_evaluation_date: string | null;
-	days_left: number;
-	priority: 'critical' | 'normal';
+	next_evaluation_date: EvaluationDateOnly | null;
+	days_left: number | null;
+	priority: 'critical' | 'normal' | null;
 	existing_draft: ExistingDraftEvaluationSummary | null;
 	last_completed_evaluation: LastCompletedEvaluationSummary | null;
 	active_goals: EvaluationActiveGoal[];
@@ -129,23 +135,23 @@ export interface GoalEvaluationItemResponse {
 	topic_name_snapshot: string | null;
 	progress: EvaluationProgress;
 	notes: string | null;
-	created_at: string;
-	updated_at: string;
+	created_at: EvaluationDateTime;
+	updated_at: EvaluationDateTime;
 }
 
 export interface GoalEvaluationResponse {
 	id: string;
 	client_id: string;
-	evaluation_date: string;
-	period_start: string | null;
-	period_end: string | null;
+	evaluation_date: EvaluationDateOnly;
+	period_start: EvaluationDateOnly | null;
+	period_end: EvaluationDateOnly | null;
 	evaluation_interval_weeks: number;
 	status: 'draft' | 'completed' | 'archived';
 	overall_notes: string | null;
 	created_by_employee_id: string | null;
 	creator_name: string | null;
-	created_at: string;
-	updated_at: string;
+	created_at: EvaluationDateTime;
+	updated_at: EvaluationDateTime;
 	items: GoalEvaluationItemResponse[];
 }
 
@@ -169,7 +175,8 @@ export interface ClientGoalsItemResponse {
 export interface ClientGoalsOverviewResponse {
 	goals?: ClientGoalsItemResponse[];
 	active_goals?: ClientGoalsItemResponse[];
-	next_evaluation_date: string | null;
+	next_evaluation_date: EvaluationDateOnly | null;
+	days_left: number | null;
 	my_draft_evaluation_id: string | null;
 	is_responsible_employee: boolean;
 	can_update_goals: boolean;
@@ -178,8 +185,8 @@ export interface ClientGoalsOverviewResponse {
 
 export interface ListClientSubmittedEvaluationsResponse {
 	evaluation_id: string;
-	evaluation_date: string;
-	submitted_at: string;
+	evaluation_date: EvaluationDateOnly;
+	submitted_at: EvaluationDateTime;
 	filled_goals_count: number;
 	total_goals_count: number;
 	created_by_employee_id: string | null;
@@ -188,12 +195,12 @@ export interface ListClientSubmittedEvaluationsResponse {
 
 export interface GoalEvaluationHistoryEntry {
 	evaluation_id: string;
-	evaluation_date: string;
-	submitted_at: string;
+	evaluation_date: EvaluationDateOnly;
+	submitted_at: EvaluationDateTime;
 	progress: EvaluationProgress;
 	notes: string | null;
 	created_by_employee_id: string | null;
 	creator_name: string | null;
-	period_start: string | null;
-	period_end: string | null;
+	period_start: EvaluationDateOnly | null;
+	period_end: EvaluationDateOnly | null;
 }

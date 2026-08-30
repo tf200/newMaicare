@@ -2,13 +2,13 @@ import { error } from '@sveltejs/kit';
 import { getClientGoals, listClientSubmittedEvaluations } from '$lib/api/evaluations';
 import { PERMISSIONS } from '$lib/config/permissions';
 import { getAuthState } from '$lib/state/auth.svelte';
-import type { EvaluationProgress } from '$lib/types/api';
+import type { EvaluationDateOnly, EvaluationDateTime, EvaluationProgress } from '$lib/types/api';
 import type { PageLoad } from './$types';
 
 export interface SubmittedEvaluationRow {
 	evaluation_id: string;
-	evaluation_date: string;
-	submitted_at: string;
+	evaluation_date: EvaluationDateOnly;
+	submitted_at: EvaluationDateTime;
 	filled_goals_count: number;
 	total_goals_count: number;
 	created_by_employee_id: string | null;
@@ -16,7 +16,7 @@ export interface SubmittedEvaluationRow {
 }
 
 export interface GoalsOverviewLoadResult {
-	next_evaluation_date: string | null;
+	next_evaluation_date: EvaluationDateOnly | null;
 	days_left: number | null;
 	my_draft_evaluation_id: string | null;
 	is_responsible_employee: boolean;
@@ -41,21 +41,7 @@ export interface GoalsOverviewLoadResult {
 	historyLoadError: string | null;
 }
 
-const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DEFAULT_PAGE_SIZE = 5;
-
-function getDaysLeft(dateValue: string | null): number | null {
-	if (!dateValue) return null;
-
-	const dueDate = new Date(dateValue);
-	if (Number.isNaN(dueDate.getTime())) return null;
-
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-	dueDate.setHours(0, 0, 0, 0);
-
-	return Math.max(0, Math.ceil((dueDate.getTime() - today.getTime()) / DAY_IN_MS));
-}
 
 export const load: PageLoad = ({ params, url, fetch, depends }) => {
 	const auth = getAuthState();
@@ -75,7 +61,7 @@ export const load: PageLoad = ({ params, url, fetch, depends }) => {
 		.then((res) => ({
 			payload: {
 				next_evaluation_date: res.data.next_evaluation_date,
-				days_left: getDaysLeft(res.data.next_evaluation_date),
+				days_left: res.data.days_left,
 				my_draft_evaluation_id: res.data.my_draft_evaluation_id,
 				is_responsible_employee: res.data.is_responsible_employee,
 				can_update_goals: res.data.can_update_goals,

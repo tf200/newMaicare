@@ -16,6 +16,7 @@
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { formatDateOnly } from '$lib/utils/date';
 
 	let {
 		open = $bindable(false),
@@ -92,14 +93,8 @@
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
-	const formatDate = (value: string | null) => {
-		if (!value) return m.not_available_short();
-		return new Intl.DateTimeFormat(resolveLocale(), {
-			day: '2-digit',
-			month: 'short',
-			year: 'numeric'
-		}).format(new Date(value));
-	};
+	const formatDate = (value: string | null) =>
+		formatDateOnly(value, resolveLocale(), m.not_available_short());
 
 	const isInitialLoading = $derived(loading && historyItems.length === 0);
 	const canLoadMore = $derived(nextPage !== null && !loading);
