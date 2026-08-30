@@ -40,12 +40,14 @@
 		clientId = null,
 		evaluationId = null,
 		clientName = null,
+		canMutate = false,
 		onSaved
 	} = $props<{
 		open?: boolean;
 		clientId?: string | null;
 		evaluationId?: string | null;
 		clientName?: string | null;
+		canMutate?: boolean;
 		onSaved?: () => void;
 	}>();
 	const toast = getToastState();
@@ -78,7 +80,7 @@
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
 				const currentEvaluationId = evaluation?.id ?? evaluationId;
-				if (form.valid && (clientId || currentEvaluationId) && !isSubmitting) {
+				if (form.valid && canMutate && (clientId || currentEvaluationId) && !isSubmitting) {
 					isSubmitting = true;
 					formError = '';
 					try {
@@ -193,7 +195,8 @@
 					!isSameEvaluationDate(evaluation.evaluation_date, bootstrap.next_evaluation_date)))
 	);
 	const isReadOnly = $derived(
-		mode === 'view_only' ||
+		!canMutate ||
+			mode === 'view_only' ||
 			isHistoricalDraft ||
 			evaluation?.status === 'completed' ||
 			evaluation?.status === 'archived'
@@ -525,14 +528,14 @@
 	});
 
 	const saveDraft = () => {
-		if (isSubmitting) return;
+		if (!canMutate || isSubmitting) return;
 		$form.submit = false;
 		const formEl = document.getElementById(formId) as HTMLFormElement | null;
 		if (formEl) formEl.requestSubmit();
 	};
 
 	const submitEvaluation = () => {
-		if (isSubmitting) return;
+		if (!canMutate || isSubmitting) return;
 		$form.submit = true;
 		const formEl = document.getElementById(formId) as HTMLFormElement | null;
 		if (formEl) formEl.requestSubmit();

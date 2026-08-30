@@ -3,6 +3,7 @@ export interface NavItem {
 	href?: string;
 	icon: any;
 	permission?: string;
+	anyOf?: string[];
 	children?: { label: string; href: string; permission?: string }[];
 }
 

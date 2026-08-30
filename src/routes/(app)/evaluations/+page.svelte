@@ -12,13 +12,18 @@
 	import { invalidateAll } from '$app/navigation';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import CreateEvaluationForm from '$lib/components/forms/CreateEvaluationForm.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { PageData } from './$types';
 	import type { UpcomingEvaluation, DraftEvaluation, SubmittedEvaluation } from './+page';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 
 	let { data } = $props<{ data: PageData }>();
+	const auth = getAuthState();
+	const canMutateEvaluations = $derived(auth.hasPermission(PERMISSIONS.CLIENT.EVALUATION_CREATE));
 
 	const upcomingPromise = $derived(data.upcoming);
 	const submittedPromise = $derived(data.submitted);
@@ -31,6 +36,7 @@
 	let activeClientName = $state<string | null>(null);
 
 	const openCreateEvaluationForm = (clientId: string, clientFullName: string) => {
+		if (!canMutateEvaluations) return;
 		activeClientId = clientId;
 		activeEvaluationId = null;
 		activeClientName = clientFullName;
@@ -227,16 +233,21 @@
 		{/snippet}
 
 		{#snippet upcomingActions(row: UpcomingEvaluation)}
-			<div class="flex justify-end">
-				<button
-					class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
-					aria-label={m.view_evaluation()}
-					onclick={() =>
-						openCreateEvaluationForm(row.clientId, `${row.clientFirstName} ${row.clientLastName}`)}
-				>
-					<ChevronRight class="h-5 w-5" />
-				</button>
-			</div>
+			<PermissionGuard permission={PERMISSIONS.CLIENT.EVALUATION_CREATE}>
+				<div class="flex justify-end">
+					<button
+						class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
+						aria-label={m.view_evaluation()}
+						onclick={() =>
+							openCreateEvaluationForm(
+								row.clientId,
+								`${row.clientFirstName} ${row.clientLastName}`
+							)}
+					>
+						<ChevronRight class="h-5 w-5" />
+					</button>
+				</div>
+			</PermissionGuard>
 		{/snippet}
 
 		{#await upcomingPromise}
@@ -323,19 +334,36 @@
 			{/snippet}
 
 			{#snippet draftActions(row: DraftEvaluation)}
-				<div class="flex justify-end">
-					<button
-						class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
-						aria-label={m.continue_draft()}
-						onclick={() =>
-							openExistingEvaluationForm(
-								row.evaluationId,
-								`${row.clientFirstName} ${row.clientLastName}`
-							)}
-					>
-						<ChevronRight class="h-4 w-4" />
-					</button>
-				</div>
+				{#snippet viewDraft()}
+					<div class="flex justify-end">
+						<button
+							class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
+							aria-label={m.view_evaluation()}
+							onclick={() =>
+								openExistingEvaluationForm(
+									row.evaluationId,
+									`${row.clientFirstName} ${row.clientLastName}`
+								)}
+						>
+							<Eye class="h-4 w-4" />
+						</button>
+					</div>
+				{/snippet}
+				<PermissionGuard permission={PERMISSIONS.CLIENT.EVALUATION_CREATE} fallback={viewDraft}>
+					<div class="flex justify-end">
+						<button
+							class="flex h-11 w-11 items-center justify-center rounded-xl text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:bg-border/70"
+							aria-label={m.continue_draft()}
+							onclick={() =>
+								openExistingEvaluationForm(
+									row.evaluationId,
+									`${row.clientFirstName} ${row.clientLastName}`
+								)}
+						>
+							<ChevronRight class="h-4 w-4" />
+						</button>
+					</div>
+				</PermissionGuard>
 			{/snippet}
 
 			{#await draftsPromise}
@@ -484,6 +512,7 @@
 		clientId={activeClientId}
 		evaluationId={activeEvaluationId}
 		clientName={activeClientName}
+		canMutate={canMutateEvaluations}
 		onSaved={handleEvaluationSaved}
 	/>
 </section>

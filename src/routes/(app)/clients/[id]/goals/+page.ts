@@ -1,4 +1,7 @@
+import { error } from '@sveltejs/kit';
 import { getClientGoals, listClientSubmittedEvaluations } from '$lib/api/evaluations';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { getAuthState } from '$lib/state/auth.svelte';
 import type { EvaluationProgress } from '$lib/types/api';
 import type { PageLoad } from './$types';
 
@@ -55,6 +58,11 @@ function getDaysLeft(dateValue: string | null): number | null {
 }
 
 export const load: PageLoad = ({ params, url, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CLIENT.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW])) {
+		error(403, 'You do not have permission to view this resource.');
+	}
+
 	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
 	const pageSize = Math.max(
 		1,

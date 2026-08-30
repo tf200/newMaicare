@@ -26,6 +26,9 @@
 	import CreateGoalModal from '$lib/components/clients/CreateGoalModal.svelte';
 	import UpdateGoalModal from '$lib/components/clients/UpdateGoalModal.svelte';
 	import CreateEvaluationForm from '$lib/components/forms/CreateEvaluationForm.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { GoalsOverviewLoadResult } from './+page';
 	import {
 		createClientGoal,
@@ -45,6 +48,8 @@
 		};
 	}>();
 	const toast = getToastState();
+	const auth = getAuthState();
+	const canMutateEvaluations = $derived(auth.hasPermission(PERMISSIONS.CLIENT.EVALUATION_CREATE));
 
 	let progressModalOpen = $state(false);
 	let createGoalModalOpen = $state(false);
@@ -90,6 +95,7 @@
 	};
 
 	const openCreateEvaluationForm = (clientId: string) => {
+		if (!canMutateEvaluations) return;
 		activeClientId = clientId;
 		activeEvaluationId = null;
 		activeClientName = data.clientName ?? null;
@@ -97,6 +103,11 @@
 	};
 
 	const openDraftEvaluationForm = (clientId: string, evaluationId: string) => {
+		if (!canMutateEvaluations) return;
+		openExistingEvaluationForm(clientId, evaluationId);
+	};
+
+	const openExistingEvaluationForm = (clientId: string, evaluationId: string) => {
 		activeClientId = clientId;
 		activeEvaluationId = evaluationId;
 		activeClientName = data.clientName ?? null;
@@ -213,11 +224,12 @@
 	</span>
 {/snippet}
 
-{#snippet historyActionsCell()}
+{#snippet historyActionsCell(row: HistoryRow)}
 	<div class="flex justify-end gap-1">
 		<button
 			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
 			title={m.view_evaluation()}
+			onclick={() => openExistingEvaluationForm(page.params.id ?? '', row.evaluation_id)}
 		>
 			<Eye class="h-4 w-4" />
 		</button>
@@ -483,59 +495,61 @@
 					</div>
 
 					<!-- Draft / Action Card -->
-					{#if goalsData.my_draft_evaluation_id}
-						<div
-							class="rounded-3xl border border-amber-100 bg-amber-50/50 p-6 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/10"
-						>
-							<div class="space-y-4">
-								<div class="flex items-center gap-2">
-									<Clock class="h-5 w-5 text-amber-600 dark:text-amber-500" />
-									<h3 class="text-lg font-bold text-amber-900 dark:text-amber-400">
-										{m.draft_in_progress_title()}
-									</h3>
+					<PermissionGuard permission={PERMISSIONS.CLIENT.EVALUATION_CREATE}>
+						{#if goalsData.my_draft_evaluation_id}
+							<div
+								class="rounded-3xl border border-amber-100 bg-amber-50/50 p-6 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/10"
+							>
+								<div class="space-y-4">
+									<div class="flex items-center gap-2">
+										<Clock class="h-5 w-5 text-amber-600 dark:text-amber-500" />
+										<h3 class="text-lg font-bold text-amber-900 dark:text-amber-400">
+											{m.draft_in_progress_title()}
+										</h3>
+									</div>
+									<p class="text-sm font-medium text-amber-700 dark:text-amber-300">
+										{m.draft_in_progress_description()}
+									</p>
+									<Button
+										class="h-12 w-full gap-2 rounded-xl bg-amber-600 font-bold text-white shadow-lg shadow-amber-500/10 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
+										onclick={() => {
+											const clientId = page.params.id;
+											if (!clientId || !goalsData.my_draft_evaluation_id) return;
+											openDraftEvaluationForm(clientId, goalsData.my_draft_evaluation_id);
+										}}
+									>
+										<Play class="h-4 w-4" fill="currentColor" />
+										{m.continue_evaluation()}
+									</Button>
 								</div>
-								<p class="text-sm font-medium text-amber-700 dark:text-amber-300">
-									{m.draft_in_progress_description()}
-								</p>
-								<Button
-									class="h-12 w-full gap-2 rounded-xl bg-amber-600 font-bold text-white shadow-lg shadow-amber-500/10 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
-									onclick={() => {
-										const clientId = page.params.id;
-										if (!clientId || !goalsData.my_draft_evaluation_id) return;
-										openDraftEvaluationForm(clientId, goalsData.my_draft_evaluation_id);
-									}}
-								>
-									<Play class="h-4 w-4" fill="currentColor" />
-									{m.continue_evaluation()}
-								</Button>
 							</div>
-						</div>
-					{:else if goalsData.is_responsible_employee}
-						<div
-							class="rounded-3xl border border-indigo-100 bg-indigo-50/30 p-6 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/5"
-						>
-							<div class="space-y-4">
-								<div class="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
-									<CheckCircle2 class="h-5 w-5" />
-									<h3 class="text-lg font-bold">{m.ready_for_review()}</h3>
+						{:else if goalsData.is_responsible_employee}
+							<div
+								class="rounded-3xl border border-indigo-100 bg-indigo-50/30 p-6 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/5"
+							>
+								<div class="space-y-4">
+									<div class="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+										<CheckCircle2 class="h-5 w-5" />
+										<h3 class="text-lg font-bold">{m.ready_for_review()}</h3>
+									</div>
+									<p class="text-sm font-medium text-indigo-600 dark:text-indigo-400/80">
+										{m.start_evaluation_description()}
+									</p>
+									<Button
+										class="h-12 w-full gap-2 rounded-xl bg-indigo-600 font-bold text-white shadow-lg shadow-indigo-500/10 hover:opacity-90 dark:bg-indigo-500 dark:text-black"
+										onclick={() => {
+											const clientId = page.params.id;
+											if (!clientId) return;
+											openCreateEvaluationForm(clientId);
+										}}
+									>
+										<Plus class="h-4 w-4" />
+										{m.start_evaluation()}
+									</Button>
 								</div>
-								<p class="text-sm font-medium text-indigo-600 dark:text-indigo-400/80">
-									{m.start_evaluation_description()}
-								</p>
-								<Button
-									class="h-12 w-full gap-2 rounded-xl bg-indigo-600 font-bold text-white shadow-lg shadow-indigo-500/10 hover:opacity-90 dark:bg-indigo-500 dark:text-black"
-									onclick={() => {
-										const clientId = page.params.id;
-										if (!clientId) return;
-										openCreateEvaluationForm(clientId);
-									}}
-								>
-									<Plus class="h-4 w-4" />
-									{m.start_evaluation()}
-								</Button>
 							</div>
-						</div>
-					{/if}
+						{/if}
+					</PermissionGuard>
 
 					<!-- Last Evaluation Summary -->
 					<div
@@ -563,6 +577,8 @@
 								</div>
 								<button
 									class="group flex w-full items-center justify-between rounded-xl border border-zinc-100 p-3 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
+									onclick={() =>
+										openExistingEvaluationForm(page.params.id ?? '', lastCompleted.evaluation_id)}
 								>
 									{m.view_full_report()}
 									<ArrowRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
@@ -592,6 +608,7 @@
 	clientId={activeClientId}
 	evaluationId={activeEvaluationId}
 	clientName={activeClientName}
+	canMutate={canMutateEvaluations}
 	onSaved={handleEvaluationSaved}
 />
 

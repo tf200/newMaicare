@@ -1,4 +1,7 @@
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { getAuthState } from '$lib/state/auth.svelte';
 import {
 	listUpcomingEvaluations,
 	listRecentSubmittedEvaluations,
@@ -43,56 +46,55 @@ export interface DraftEvaluation {
 }
 
 export const load: PageLoad = ({ url }) => {
+	const auth = getAuthState();
+	if (!auth.hasAllPermissions([PERMISSIONS.CLIENT.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW])) {
+		error(403, 'You do not have permission to view this resource.');
+	}
+
 	const page = Number(url.searchParams.get('page') ?? '1');
 	const pageSize = 10;
 
 	const upcoming = listUpcomingEvaluations({ page, pageSize }).then((res) =>
-		res.data.results.map(
-			(item): UpcomingEvaluation => ({
-				clientId: item.client_id,
-				clientFirstName: item.client_first_name,
-				clientLastName: item.client_last_name,
-				dueDate: item.due_date,
-				daysLeft: item.days_left,
-				priority: item.priority,
-				hasDraft: item.has_draft,
-				filledGoalsCount: item.filled_goals_count,
-				totalGoalsCount: item.total_goals_count
-			})
-		)
+		res.data.results.map((item): UpcomingEvaluation => ({
+			clientId: item.client_id,
+			clientFirstName: item.client_first_name,
+			clientLastName: item.client_last_name,
+			dueDate: item.due_date,
+			daysLeft: item.days_left,
+			priority: item.priority,
+			hasDraft: item.has_draft,
+			filledGoalsCount: item.filled_goals_count,
+			totalGoalsCount: item.total_goals_count
+		}))
 	);
 
 	const submitted = listRecentSubmittedEvaluations({ page, pageSize }).then((res) =>
-		res.data.results.map(
-			(item): SubmittedEvaluation => ({
-				evaluationId: item.evaluation_id,
-				clientId: item.client_id,
-				clientFirstName: item.client_first_name,
-				clientLastName: item.client_last_name,
-				evaluationDate: item.evaluation_date,
-				submittedAt: item.submitted_at,
-				nextEvaluationDate: item.next_evaluation_date,
-				filledGoalsCount: item.filled_goals_count,
-				totalGoalsCount: item.total_goals_count
-			})
-		)
+		res.data.results.map((item): SubmittedEvaluation => ({
+			evaluationId: item.evaluation_id,
+			clientId: item.client_id,
+			clientFirstName: item.client_first_name,
+			clientLastName: item.client_last_name,
+			evaluationDate: item.evaluation_date,
+			submittedAt: item.submitted_at,
+			nextEvaluationDate: item.next_evaluation_date,
+			filledGoalsCount: item.filled_goals_count,
+			totalGoalsCount: item.total_goals_count
+		}))
 	);
 
 	const drafts = listRecentDraftEvaluations({ page, pageSize }).then((res) =>
-		res.data.results.map(
-			(item): DraftEvaluation => ({
-				evaluationId: item.evaluation_id,
-				clientId: item.client_id,
-				clientFirstName: item.client_first_name,
-				clientLastName: item.client_last_name,
-				dueDate: item.due_date,
-				updatedAt: item.updated_at,
-				daysLeft: item.days_left,
-				priority: item.priority,
-				filledGoalsCount: item.filled_goals_count,
-				totalGoalsCount: item.total_goals_count
-			})
-		)
+		res.data.results.map((item): DraftEvaluation => ({
+			evaluationId: item.evaluation_id,
+			clientId: item.client_id,
+			clientFirstName: item.client_first_name,
+			clientLastName: item.client_last_name,
+			dueDate: item.due_date,
+			updatedAt: item.updated_at,
+			daysLeft: item.days_left,
+			priority: item.priority,
+			filledGoalsCount: item.filled_goals_count,
+			totalGoalsCount: item.total_goals_count
+		}))
 	);
 
 	const stats = Promise.all([upcoming, submitted, drafts]).then(

@@ -28,6 +28,7 @@
 		href?: string;
 		icon: any;
 		permission?: string;
+		anyOf?: string[];
 		children?: { label: string; href: string; permission?: string }[];
 	}
 
@@ -61,7 +62,7 @@
 		{
 			label: m.care_coordination(),
 			icon: HeartHandshake,
-			permission: PERMISSIONS.CARE_COORDINATION.VIEW,
+			anyOf: [PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW],
 			children: [
 				{
 					label: m.organization(),
@@ -93,7 +94,7 @@
 				{
 					label: m.evaluations(),
 					href: '/evaluations',
-					permission: 'CARE_COORDINATION.VIEW'
+					permission: PERMISSIONS.CLIENT.EVALUATION_VIEW
 				},
 				{
 					label: m.incidents(),
@@ -298,7 +299,7 @@
 				{@const isExpanded = expandedItems[item.label] || (hasChildren && active && !collapsed)}
 				{@const activeChildHref = hasChildren ? getActiveChildHref(item) : null}
 
-				<PermissionGuard permission={item.permission}>
+				<PermissionGuard permission={item.permission} anyOf={item.anyOf}>
 					<div class="space-y-1">
 						<Tooltip content={item.label} position="right" disabled={!collapsed}>
 							<button
