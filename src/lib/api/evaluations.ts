@@ -21,33 +21,45 @@ export function getEvaluationStats(options?: ApiRequestOptions) {
 	return api.get<ApiEnvelope<EvaluationStatsResponse>>('/evaluations/stats', options);
 }
 
-export function listUpcomingEvaluations(params: ListEvaluationsParams) {
+export function listUpcomingEvaluations(
+	params: ListEvaluationsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.pageSize));
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListUpcomingEvaluationsResponse>>>(
-		`/evaluations/upcoming?${searchParams.toString()}`
+		`/evaluations/upcoming?${searchParams.toString()}`,
+		options
 	);
 }
 
-export function listRecentSubmittedEvaluations(params: ListEvaluationsParams) {
+export function listRecentSubmittedEvaluations(
+	params: ListEvaluationsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.pageSize));
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListRecentSubmittedEvaluationsResponse>>>(
-		`/evaluations/recent-submitted?${searchParams.toString()}`
+		`/evaluations/recent-submitted?${searchParams.toString()}`,
+		options
 	);
 }
 
-export function listRecentDraftEvaluations(params: ListEvaluationsParams) {
+export function listRecentDraftEvaluations(
+	params: ListEvaluationsParams,
+	options?: ApiRequestOptions
+) {
 	const searchParams = new URLSearchParams();
 	searchParams.set('page', String(params.page));
 	searchParams.set('page_size', String(params.pageSize));
 
 	return api.get<ApiEnvelope<PaginatedResponse<ListRecentDraftEvaluationsResponse>>>(
-		`/evaluations/recent-drafts?${searchParams.toString()}`
+		`/evaluations/recent-drafts?${searchParams.toString()}`,
+		options
 	);
 }
 

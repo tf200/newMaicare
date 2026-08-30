@@ -1887,6 +1887,7 @@
 	"failed_load_in_care_clients": "Kan cliënten in zorg niet laden.",
 	"failed_load_in_care_stats": "Kan statistieken voor cliënten in zorg niet laden.",
 	"failed_load_evaluation_stats": "Kan evaluatiestatistieken niet laden.",
+	"failed_load_evaluations": "Kan evaluaties niet laden.",
 	"contracts_page_title": "Contracten | MaiCare",
 	"contract_filters": "Contractfilters",
 	"contracts_page_description": "Beheer zorgcontracten, financiering, looptijden en goedkeuringsstatus.",

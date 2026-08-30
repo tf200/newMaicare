@@ -9,7 +9,9 @@
 		ChevronRight,
 		Eye
 	} from 'lucide-svelte';
-	import { invalidate, invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -18,19 +20,51 @@
 	import { PERMISSIONS } from '$lib/config/permissions';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import type { PageData } from './$types';
-	import type { UpcomingEvaluation, DraftEvaluation, SubmittedEvaluation } from './+page';
+	import {
+		loadDraftEvaluationList,
+		loadEvaluationStats,
+		loadSubmittedEvaluationList,
+		loadUpcomingEvaluationList,
+		type UpcomingEvaluation,
+		type DraftEvaluation,
+		type SubmittedEvaluation
+	} from './+page';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { formatDateOnly } from '$lib/utils/date';
+	import { evaluationPageHref, type EvaluationPageKey } from './pagination';
 
 	let { data } = $props<{ data: PageData }>();
 	const auth = getAuthState();
 	const canMutateEvaluations = $derived(auth.hasPermission(PERMISSIONS.CLIENT.EVALUATION_CREATE));
 
-	const upcomingPromise = $derived(data.upcoming);
-	const submittedPromise = $derived(data.submitted);
-	const draftsPromise = $derived(data.drafts);
-	const statsPromise = $derived(data.stats);
+	let upcomingRetry = $state<{
+		source: typeof data.upcoming;
+		promise: typeof data.upcoming;
+	} | null>(null);
+	let draftsRetry = $state<{ source: typeof data.drafts; promise: typeof data.drafts } | null>(
+		null
+	);
+	let submittedRetry = $state<{
+		source: typeof data.submitted;
+		promise: typeof data.submitted;
+	} | null>(null);
+	let statsRetry = $state<{ source: typeof data.stats; promise: typeof data.stats } | null>(null);
+
+	const upcomingPromise = $derived(
+		upcomingRetry && upcomingRetry.source === data.upcoming ? upcomingRetry.promise : data.upcoming
+	);
+	const draftsPromise = $derived(
+		draftsRetry && draftsRetry.source === data.drafts ? draftsRetry.promise : data.drafts
+	);
+	const submittedPromise = $derived(
+		submittedRetry && submittedRetry.source === data.submitted
+			? submittedRetry.promise
+			: data.submitted
+	);
+	const statsPromise = $derived(
+		statsRetry && statsRetry.source === data.stats ? statsRetry.promise : data.stats
+	);
 
 	let showEvaluationForm = $state(false);
 	let activeClientId = $state<string | null>(null);
@@ -54,6 +88,40 @@
 
 	const handleEvaluationSaved = async () => {
 		await invalidateAll();
+	};
+
+	const changeListingPage = (key: EvaluationPageKey, nextPage: number) => {
+		const href = evaluationPageHref(page.url, key, nextPage);
+		void goto(resolve(href as '/evaluations/'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	};
+
+	const retryUpcoming = () => {
+		upcomingRetry = {
+			source: data.upcoming,
+			promise: loadUpcomingEvaluationList(data.initial.upcomingPage, data.initial.pageSize)
+		};
+	};
+
+	const retryDrafts = () => {
+		draftsRetry = {
+			source: data.drafts,
+			promise: loadDraftEvaluationList(data.initial.draftsPage, data.initial.pageSize)
+		};
+	};
+
+	const retrySubmitted = () => {
+		submittedRetry = {
+			source: data.submitted,
+			promise: loadSubmittedEvaluationList(data.initial.submittedPage, data.initial.pageSize)
+		};
+	};
+
+	const retryStats = () => {
+		statsRetry = { source: data.stats, promise: loadEvaluationStats() };
 	};
 
 	// Columns for Upcoming Evaluations
@@ -134,10 +202,7 @@
 		</div>
 	{:then stats}
 		{#if stats.loadError}
-			<InlineErrorBanner
-				message={stats.loadError}
-				onRetry={() => invalidate('app:evaluations:stats')}
-			/>
+			<InlineErrorBanner message={stats.loadError} onRetry={retryStats} />
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				<StatCard
@@ -274,8 +339,16 @@
 		{:then upcoming}
 			<DataTable
 				columns={upcomingColumns}
-				rows={upcoming}
-				pagination={false}
+				rows={upcoming.rows}
+				pagination={{
+					mode: 'server',
+					page: upcoming.page,
+					pageSize: upcoming.pageSize,
+					totalCount: upcoming.totalCount,
+					onPageChange: (nextPage) => changeListingPage('upcoming_page', nextPage)
+				}}
+				error={upcoming.loadError ?? undefined}
+				onRetry={retryUpcoming}
 				rowKey="clientId"
 				title={m.upcoming_evaluations()}
 				description={m.upcoming_evaluations_description()}
@@ -388,8 +461,16 @@
 			{:then drafts}
 				<DataTable
 					columns={draftColumns}
-					rows={drafts}
-					pagination={false}
+					rows={drafts.rows}
+					pagination={{
+						mode: 'server',
+						page: drafts.page,
+						pageSize: drafts.pageSize,
+						totalCount: drafts.totalCount,
+						onPageChange: (nextPage) => changeListingPage('drafts_page', nextPage)
+					}}
+					error={drafts.loadError ?? undefined}
+					onRetry={retryDrafts}
 					rowKey="evaluationId"
 					title={m.recent_drafts()}
 					description={m.recent_drafts_description()}
@@ -479,8 +560,16 @@
 			{:then submitted}
 				<DataTable
 					columns={submittedColumns}
-					rows={submitted}
-					pagination={false}
+					rows={submitted.rows}
+					pagination={{
+						mode: 'server',
+						page: submitted.page,
+						pageSize: submitted.pageSize,
+						totalCount: submitted.totalCount,
+						onPageChange: (nextPage) => changeListingPage('submitted_page', nextPage)
+					}}
+					error={submitted.loadError ?? undefined}
+					onRetry={retrySubmitted}
 					rowKey="evaluationId"
 					title={m.recently_submitted()}
 					description={m.recently_submitted_description()}
