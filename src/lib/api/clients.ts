@@ -116,6 +116,10 @@ export function updateClientCoordinator(clientId: string, payload: UpdateClientC
 	);
 }
 
+export function deleteClientCoordinator(clientId: string) {
+	return api.delete<ApiEnvelope<{ id: string }>>(`/clients/${clientId}/coordinator`);
+}
+
 export function createClientInvolvedEmployee(
 	clientId: string,
 	payload: CreateClientInvolvedEmployeeRequest

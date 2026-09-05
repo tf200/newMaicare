@@ -25,6 +25,7 @@
 	} from 'lucide-svelte';
 	import {
 		createClientInvolvedEmployee,
+		deleteClientCoordinator,
 		deleteClientInvolvedEmployee,
 		updateClientInvolvedEmployee,
 		updateClientCoordinator
@@ -74,6 +75,7 @@
 	let coordinatorModalOpen = $state(false);
 	let coordinatorEmployeeName = $state('');
 	let coordinatorSaving = $state(false);
+	let coordinatorDeleting = $state(false);
 	let coordinatorSubmissionRequested = $state(false);
 	let coordinatorInitial = $state({ employeeId: '', startDate: '' });
 	let roleCatalog = $state.raw<ClientInvolvedEmployeeRole[]>([]);
@@ -297,6 +299,30 @@
 		editing = null;
 	}
 
+	async function unassignCoordinator(assignment: ClientCoordinatorAssignment | null) {
+		if (
+			!assignment ||
+			coordinatorDeleting ||
+			!auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_DELETE) ||
+			!confirm(m.coordinator_unassign_confirm({ name: assignment.employee_name }))
+		)
+			return;
+		coordinatorDeleting = true;
+		formError = null;
+		try {
+			await deleteClientCoordinator(clientId);
+			await Promise.all([
+				invalidate(`app:client:${clientId}:coordinator`),
+				invalidate(`app:client:${clientId}:involved-employees`),
+				invalidate(`app:client:${clientId}:detail`)
+			]);
+		} catch (error) {
+			formError = error instanceof Error ? error.message : m.coordinator_unassign_failed();
+		} finally {
+			coordinatorDeleting = false;
+		}
+	}
+
 	async function remove(item: ClientInvolvedEmployee) {
 		if (
 			deletingId ||
@@ -362,15 +388,27 @@
 			</div>
 			{#await coordinatorPromise then result}
 				{#if !result.loadError}
-					<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE}
-						><PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE}
-							><Button variant="secondary" onclick={() => openCoordinatorEditor(result.coordinator)}
-								><Pencil class="h-4 w-4" />{result.coordinator
-									? m.edit()
-									: m.assign_coordinator()}</Button
+					<div class="flex flex-wrap gap-2">
+						<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE}
+							><PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE}
+								><Button variant="secondary" onclick={() => openCoordinatorEditor(result.coordinator)}
+									><Pencil class="h-4 w-4" />{result.coordinator
+										? m.edit()
+										: m.assign_coordinator()}</Button
+								></PermissionGuard
 							></PermissionGuard
-						></PermissionGuard
-					>
+						>{#if result.coordinator}
+							<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_DELETE}
+								><Button
+									variant="destructive"
+									isLoading={coordinatorDeleting}
+									disabled={coordinatorDeleting}
+									onclick={() => unassignCoordinator(result.coordinator)}
+									><Trash2 class="h-4 w-4" />{m.unassign_coordinator()}</Button
+								></PermissionGuard
+							>
+						{/if}
+					</div>
 				{/if}
 			{/await}
 		</div>
