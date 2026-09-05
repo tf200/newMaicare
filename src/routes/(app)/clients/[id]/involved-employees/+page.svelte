@@ -13,30 +13,55 @@
 		type InvolvedEmployeeFormInput
 	} from '$lib/schemas/involved-employee';
 	import { formatFormError } from '$lib/utils/form-errors';
-	import { BriefcaseBusiness, CalendarDays, Pencil, Plus, Trash2, UsersRound } from 'lucide-svelte';
+	import { createClientCoordinatorSchema } from '$lib/schemas/client-coordinator';
+	import {
+		BriefcaseBusiness,
+		CalendarDays,
+		Pencil,
+		Plus,
+		Trash2,
+		UsersRound,
+		UserRound
+	} from 'lucide-svelte';
 	import {
 		createClientInvolvedEmployee,
 		deleteClientInvolvedEmployee,
-		updateClientInvolvedEmployee
+		updateClientInvolvedEmployee,
+		updateClientCoordinator
 	} from '$lib/api/clients';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
-	import type { ClientInvolvedEmployee } from '$lib/types/api';
-	import type { InvolvedEmployeesLoadResult } from './+page';
+	import Select from '$lib/components/ui/Select.svelte';
+	import type {
+		ClientCoordinatorAssignment,
+		ClientInvolvedEmployee,
+		ClientInvolvedEmployeeRole
+	} from '$lib/types/api';
+	import type {
+		CoordinatorLoadResult,
+		InvolvedEmployeeRolesLoadResult,
+		InvolvedEmployeesLoadResult
+	} from './+page';
 
 	let { data } = $props<{
-		data: { involvedEmployeesData: Promise<InvolvedEmployeesLoadResult>; clientName?: string };
+		data: {
+			involvedEmployeesData: Promise<InvolvedEmployeesLoadResult>;
+			rolesData: Promise<InvolvedEmployeeRolesLoadResult>;
+			coordinatorData: Promise<CoordinatorLoadResult>;
+			clientName?: string;
+		};
 	}>();
 	const auth = getAuthState();
 	const breadcrumbs = getBreadcrumbsState();
 	const dataPromise = $derived(data.involvedEmployeesData);
+	const rolesPromise = $derived(data.rolesData);
+	const coordinatorPromise = $derived(data.coordinatorData);
 	const clientId = $derived(page.params.id ?? '');
 
 	let modalOpen = $state(false);
@@ -45,7 +70,24 @@
 	let submissionRequested = $state(false);
 	let deletingId = $state<string | null>(null);
 	let formError = $state<string | null>(null);
-	const isCoordinatorRole = (value: string) => value.trim().toLowerCase() === 'coordinator';
+	let coordinatorError = $state<string | null>(null);
+	let coordinatorModalOpen = $state(false);
+	let coordinatorEmployeeName = $state('');
+	let coordinatorSaving = $state(false);
+	let coordinatorSubmissionRequested = $state(false);
+	let coordinatorInitial = $state({ employeeId: '', startDate: '' });
+	let roleCatalog = $state.raw<ClientInvolvedEmployeeRole[]>([]);
+	let rolesLoading = $state(true);
+	const canManageCoordinator = $derived(
+		auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE) &&
+			auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE)
+	);
+	const rolesAvailable = $derived(!rolesLoading && roleCatalog.length > 0);
+	const isCoordinatorRole = (value: string) => value === 'coordinator';
+	const roleLabel = (role: string | undefined) =>
+		roleCatalog.find((item) => item.role === role)?.label ?? role ?? m.not_available();
+	const roleDescription = (role: string | undefined) =>
+		role ? roleCatalog.find((item) => item.role === role)?.description : undefined;
 	const schema = createInvolvedEmployeeSchema({
 		employeeRequired: m.involved_employee_required(),
 		startDateRequired: m.involved_employee_required(),
@@ -72,8 +114,9 @@
 					submissionRequested = false;
 					return;
 				}
-				if (isCoordinatorRole(result.data.role)) {
-					formError = m.involved_employee_coordinator_hint();
+				const selectedRole = roleCatalog.find((role) => role.role === result.data.role);
+				if (!rolesAvailable || !selectedRole || selectedRole.role === 'coordinator') {
+					formError = m.involved_employee_required();
 					submissionRequested = false;
 					return;
 				}
@@ -83,13 +126,16 @@
 					const payload = {
 						...result.data,
 						start_date: `${result.data.start_date}T00:00:00Z`,
-						role: result.data.role.trim()
+						role: selectedRole.role
 					};
 					if (editing) await updateClientInvolvedEmployee(clientId, editing.id, payload);
 					else await createClientInvolvedEmployee(clientId, payload);
 					resetForm();
 					modalOpen = false;
-					await invalidate(`app:client:${clientId}:involved-employees`);
+					await Promise.all([
+						invalidate(`app:client:${clientId}:involved-employees`),
+						invalidate(`app:client:${clientId}:detail`)
+					]);
 				} catch (error) {
 					formError = error instanceof Error ? error.message : m.involved_employee_save_failed();
 				} finally {
@@ -98,6 +144,39 @@
 				}
 			}
 		}
+	);
+
+	const coordinatorSchema = createClientCoordinatorSchema({
+		employeeRequired: m.coordinator_employee_required(),
+		dateFormat: m.coordinator_date_invalid()
+	});
+	const {
+		form: coordinatorForm,
+		errors: coordinatorErrors,
+		enhance: enhanceCoordinator,
+		reset: resetCoordinator
+	} = superForm(defaults({ employee_id: '', start_date: '' }, valibotClient(coordinatorSchema)), {
+		id: 'client-coordinator',
+		SPA: true,
+		dataType: 'json',
+		validators: valibotClient(coordinatorSchema),
+		onSubmit: ({ cancel }) => {
+			if (coordinatorSaving || coordinatorSubmissionRequested || !canManageCoordinator) cancel();
+			else coordinatorSubmissionRequested = true;
+		},
+		onUpdate: async ({ form: result }) => {
+			if (!coordinatorSubmissionRequested) return;
+			if (!result.valid) {
+				coordinatorSubmissionRequested = false;
+				return;
+			}
+			await saveCoordinator();
+			coordinatorSubmissionRequested = false;
+		}
+	});
+	const coordinatorUnchanged = $derived(
+		$coordinatorForm.employee_id === coordinatorInitial.employeeId &&
+			$coordinatorForm.start_date === coordinatorInitial.startDate
 	);
 
 	$effect(() => {
@@ -130,8 +209,65 @@
 			new Date(value)
 		);
 
+	const openCoordinatorEditor = (assignment: ClientCoordinatorAssignment | null) => {
+		if (!canManageCoordinator) return;
+		coordinatorEmployeeName = assignment?.employee_name ?? '';
+		const startDate = assignment?.start_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+		resetCoordinator({
+			data: { employee_id: assignment?.employee_id ?? '', start_date: startDate }
+		});
+		coordinatorInitial = { employeeId: assignment?.employee_id ?? '', startDate };
+		coordinatorError = null;
+		coordinatorModalOpen = true;
+	};
+
+	function closeCoordinator() {
+		if (coordinatorSaving) return;
+		coordinatorModalOpen = false;
+		resetCoordinator();
+		coordinatorEmployeeName = '';
+		coordinatorError = null;
+	}
+
+	const saveCoordinator = async () => {
+		if (!canManageCoordinator || coordinatorSaving || coordinatorUnchanged) return;
+		coordinatorSaving = true;
+		coordinatorError = null;
+		try {
+			await updateClientCoordinator(clientId, {
+				employee_id: $coordinatorForm.employee_id,
+				start_date: `${$coordinatorForm.start_date}T00:00:00Z`
+			});
+			coordinatorModalOpen = false;
+			resetCoordinator();
+			await Promise.all([
+				invalidate(`app:client:${clientId}:coordinator`),
+				invalidate(`app:client:${clientId}:involved-employees`),
+				invalidate(`app:client:${clientId}:detail`)
+			]);
+		} catch (error) {
+			coordinatorError = error instanceof Error ? error.message : m.coordinator_save_failed();
+		} finally {
+			coordinatorSaving = false;
+		}
+	};
+
+	$effect(() => {
+		let active = true;
+		rolesLoading = true;
+		rolesPromise.then((result: InvolvedEmployeeRolesLoadResult) => {
+			if (active) {
+				roleCatalog = result.roles;
+				rolesLoading = false;
+			}
+		});
+		return () => {
+			active = false;
+		};
+	});
+
 	function openCreate() {
-		if (!auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE)) return;
+		if (!rolesAvailable || !auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE)) return;
 		editing = null;
 		reset({
 			data: { employee_id: '', start_date: new Date().toISOString().slice(0, 10), role: '' }
@@ -141,7 +277,7 @@
 	}
 
 	function openEdit(item: ClientInvolvedEmployee) {
-		if (isCoordinatorRole(item.role)) return;
+		if (!rolesAvailable || isCoordinatorRole(item.role)) return;
 		if (!auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE)) return;
 		editing = item;
 		reset({
@@ -163,6 +299,8 @@
 
 	async function remove(item: ClientInvolvedEmployee) {
 		if (
+			deletingId ||
+			isCoordinatorRole(item.role) ||
 			!auth.hasPermission(PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_DELETE) ||
 			!confirm(m.involved_employee_delete_confirm({ name: item.employee_name }))
 		)
@@ -171,6 +309,7 @@
 		try {
 			await deleteClientInvolvedEmployee(clientId, item.id);
 			await invalidate(`app:client:${clientId}:involved-employees`);
+			await invalidate(`app:client:${clientId}:detail`);
 		} catch (error) {
 			formError = error instanceof Error ? error.message : m.involved_employee_delete_failed();
 		} finally {
@@ -201,11 +340,86 @@
 				</p>
 			</div>
 			<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE}
-				><Button onclick={openCreate}><Plus class="h-4 w-4" />{m.add_involved_employee()}</Button
+				><Button onclick={openCreate} disabled={!rolesAvailable}
+					><Plus class="h-4 w-4" />{m.add_involved_employee()}</Button
 				></PermissionGuard
 			>
 		</div>
 	</header>
+
+	<section class="rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="flex items-start gap-3">
+				<div
+					class="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary"
+				>
+					<UserRound class="h-5 w-5" />
+				</div>
+				<div>
+					<h2 class="text-lg font-semibold tracking-tight text-text">{m.main_coordinator()}</h2>
+					<p class="mt-1 text-sm text-text-muted">{m.coordinator_summary_description()}</p>
+				</div>
+			</div>
+			{#await coordinatorPromise then result}
+				{#if !result.loadError}
+					<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_CREATE}
+						><PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE}
+							><Button variant="secondary" onclick={() => openCoordinatorEditor(result.coordinator)}
+								><Pencil class="h-4 w-4" />{result.coordinator
+									? m.edit()
+									: m.assign_coordinator()}</Button
+							></PermissionGuard
+						></PermissionGuard
+					>
+				{/if}
+			{/await}
+		</div>
+		{#await coordinatorPromise}
+			<div
+				class="mt-5 grid animate-pulse gap-4 rounded-2xl border border-border bg-bg p-4 sm:grid-cols-3"
+				aria-label={m.loading()}
+			>
+				<div class="h-12 rounded-xl bg-border/70"></div>
+				<div class="h-12 rounded-xl bg-border/70"></div>
+				<div class="h-12 rounded-xl bg-border/70"></div>
+			</div>
+		{:then coordinatorResult}
+			{@const coordinator = coordinatorResult.coordinator}
+			{#if coordinatorResult.loadError}<InlineErrorBanner
+					message={coordinatorResult.loadError}
+					onRetry={() => invalidate(`app:client:${clientId}:coordinator`)}
+				/>
+			{:else if coordinator}<div
+					class="mt-5 grid gap-3 rounded-2xl border border-border bg-bg p-4 sm:grid-cols-3"
+				>
+					<div>
+						<p class="text-xs font-semibold tracking-wide text-text-muted uppercase">
+							{m.employee()}
+						</p>
+						<p class="mt-1 text-sm font-semibold text-text">{coordinator.employee_name}</p>
+					</div>
+					<div>
+						<p class="text-xs font-semibold tracking-wide text-text-muted uppercase">
+							{m.start_date()}
+						</p>
+						<p class="mt-1 text-sm font-semibold text-text">{formatDate(coordinator.start_date)}</p>
+					</div>
+					<div>
+						<p class="text-xs font-semibold tracking-wide text-text-muted uppercase">{m.role()}</p>
+						<p class="mt-1 text-sm font-semibold text-text">{roleLabel(coordinator.role)}</p>
+					</div>
+				</div>
+			{:else}<p
+					class="mt-5 rounded-2xl border border-dashed border-border bg-bg px-4 py-3 text-sm text-text-muted"
+				>
+					{m.no_coordinator_assigned()}
+				</p>{/if}
+		{/await}
+	</section>
+	{#await rolesPromise then rolesResult}{#if rolesResult.loadError}<InlineErrorBanner
+				message={rolesResult.loadError}
+				onRetry={() => invalidate('app:involved-employee-roles')}
+			/>{/if}{/await}
 
 	{#await dataPromise}
 		<div class="grid gap-3 sm:grid-cols-2">
@@ -231,7 +445,7 @@
 					<article
 						class="group rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
 					>
-						<div class="flex items-start justify-between gap-3">
+						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="flex min-w-0 items-center gap-3">
 								<div
 									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 font-bold text-brand"
@@ -245,27 +459,28 @@
 								</div>
 								<div class="min-w-0">
 									<h2 class="truncate font-bold text-text">{item.employee_name}</h2>
-									<p class="truncate text-xs text-text-muted">{item.employee_id}</p>
 								</div>
 							</div>
 							<span
 								class="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand"
-								>{isCoordinatorRole(item.role) ? m.coordinator() : item.role}</span
+								>{roleLabel(item.role)}</span
 							>
 						</div>
+						{#if roleDescription(item.role)}<p class="mt-2 text-xs text-text-muted">
+								{roleDescription(item.role)}
+							</p>{/if}
 						<div class="mt-5 flex items-center gap-2 text-sm text-text-muted">
 							<CalendarDays class="h-4 w-4 text-brand" />{m.starts_on()}
 							{formatDate(item.start_date)}
 						</div>
 						{#if !isCoordinatorRole(item.role)}
-							<div
-								class="mt-4 flex justify-end gap-2 border-t border-border pt-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-							>
+							<div class="mt-4 flex justify-end gap-2 border-t border-border pt-3">
 								<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_UPDATE}
 									><Button
 										variant="ghost"
 										class="px-3 py-2"
 										aria-label={m.edit()}
+										disabled={!rolesAvailable}
 										onclick={() => openEdit(item)}><Pencil class="h-4 w-4" /></Button
 									></PermissionGuard
 								><PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_DELETE}
@@ -274,6 +489,7 @@
 										class="px-3 py-2"
 										aria-label={m.delete()}
 										isLoading={deletingId === item.id}
+										disabled={deletingId !== null}
 										onclick={() => remove(item)}><Trash2 class="h-4 w-4" /></Button
 									></PermissionGuard
 								>
@@ -294,11 +510,13 @@
 
 <Modal
 	bind:open={modalOpen}
+	dismissible={!saving}
 	onClose={resetForm}
 	title={editing ? m.edit_involved_employee() : m.add_involved_employee()}
 	description={m.involved_employee_form_description()}
 >
 	<form id="involved-employee-form" method="POST" use:enhance class="space-y-4" novalidate>
+		{#if formError}<InlineErrorBanner message={formError} />{/if}
 		<SearchSelect
 			label={m.employee()}
 			value={$form.employee_id}
@@ -316,27 +534,72 @@
 			bind:value={$form.start_date}
 			error={formatFormError($errors.start_date)}
 		/>
-		<Input
+		<Select
+			disabled={!rolesAvailable || saving}
 			label={m.role()}
 			bind:value={$form.role}
-			placeholder={m.involved_employee_role_placeholder()}
+			options={roleCatalog
+				.filter((item) => item.role !== 'coordinator')
+				.map((item) => ({ value: item.role, label: item.label }))}
+			placeholder={m.select_role_placeholder()}
 			error={formatFormError($errors.role)}
 		/>
-		{#if isCoordinatorRole($form.role)}<p
-				class="rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700"
-			>
-				{m.involved_employee_coordinator_hint()}
+		{#if roleDescription($form.role)}<p class="rounded-xl bg-bg px-3 py-2 text-xs text-text-muted">
+				{roleDescription($form.role)}
 			</p>{/if}
 		<div class="flex justify-end gap-2 pt-2">
 			<Button
 				variant="ghost"
 				type="button"
+				disabled={saving}
 				onclick={() => {
 					resetForm();
 					modalOpen = false;
 				}}>{m.cancel()}</Button
-			><Button type="submit" isLoading={saving}
+			><Button type="submit" isLoading={saving} disabled={!rolesAvailable}
 				>{editing ? m.save_changes() : m.add_involved_employee()}</Button
+			>
+		</div>
+	</form>
+</Modal>
+
+<Modal
+	bind:open={coordinatorModalOpen}
+	dismissible={!coordinatorSaving}
+	onClose={closeCoordinator}
+	title={m.assign_coordinator()}
+	description={m.coordinator_editor_description()}
+>
+	<form method="POST" use:enhanceCoordinator class="space-y-4" novalidate>
+		<SearchSelect
+			label={m.employee()}
+			bind:value={$coordinatorForm.employee_id}
+			bind:displayValue={coordinatorEmployeeName}
+			loadOptions={loadEmployeeOptions}
+			disabled={coordinatorSaving}
+			error={formatFormError($coordinatorErrors.employee_id)}
+			labelFn={employeeLabel}
+			valueFn={(employee) => employee.id}
+			placeholder={m.select_employee_placeholder()}
+			searchPlaceholder={m.search_employee_placeholder()}
+		/>
+		<DatePicker
+			label={m.start_date()}
+			bind:value={$coordinatorForm.start_date}
+			error={formatFormError($coordinatorErrors.start_date)}
+		/>
+		{#if coordinatorError}<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+			>
+				{coordinatorError}
+			</div>{/if}
+		<div class="flex justify-end gap-2 pt-2">
+			<Button variant="ghost" type="button" disabled={coordinatorSaving} onclick={closeCoordinator}
+				>{m.cancel()}</Button
+			><Button
+				type="submit"
+				isLoading={coordinatorSaving}
+				disabled={!canManageCoordinator || coordinatorUnchanged}>{m.save_changes()}</Button
 			>
 		</div>
 	</form>

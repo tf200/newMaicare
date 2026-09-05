@@ -112,12 +112,42 @@ export interface PutClientInCareResponse {
 	placed_in_care_at: string | null;
 }
 
+export type ClientInvolvedRole =
+	| 'coordinator'
+	| 'primary_counselor'
+	| 'secondary_counselor'
+	| 'behavioral_scientist'
+	| 'case_manager'
+	| 'specialist'
+	| 'other';
+
+export interface ClientInvolvedEmployeeRole {
+	role: ClientInvolvedRole;
+	label: string;
+	description: string;
+}
+
+export interface ClientCoordinatorAssignment {
+	id: string;
+	client_id: string;
+	employee_id: string;
+	start_date: string;
+	role: 'coordinator';
+	employee_name: string;
+	created_at: string;
+}
+
+export interface UpdateClientCoordinatorRequest {
+	employee_id: string;
+	start_date?: string;
+}
+
 export interface ClientInvolvedEmployee {
 	id: string;
 	client_id: string;
 	employee_id: string;
 	start_date: string;
-	role: string;
+	role: ClientInvolvedRole;
 	employee_name: string;
 	created_at: string;
 }
@@ -125,13 +155,13 @@ export interface ClientInvolvedEmployee {
 export interface CreateClientInvolvedEmployeeRequest {
 	employee_id: string;
 	start_date: string;
-	role: string;
+	role: Exclude<ClientInvolvedRole, 'coordinator'>;
 }
 
 export interface UpdateClientInvolvedEmployeeRequest {
 	employee_id?: string;
 	start_date?: string;
-	role?: string;
+	role?: Exclude<ClientInvolvedRole, 'coordinator'>;
 }
 
 export type ClientDischargeReason =
@@ -698,7 +728,6 @@ export interface UpdateClientRequest {
 	filenumber?: string | null;
 	sender_id?: string | null;
 	location_id?: string | null;
-	coordinator_employee_id?: string;
 	education_currently_enrolled?: boolean;
 	education_institution?: string | null;
 	education_mentor_name?: string | null;

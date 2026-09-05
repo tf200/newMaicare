@@ -10,7 +10,8 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
-	import { getClientById, putClientInCare } from '$lib/api/clients';
+	import { getClientCoordinator, putClientInCare } from '$lib/api/clients';
+	import { ApiClientError } from '$lib/api/client';
 	import type { GetClientCoordinator, PutClientInCareRequest } from '$lib/types/api';
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { PERMISSIONS } from '$lib/config/permissions';
@@ -173,24 +174,33 @@
 		resetFormFields();
 
 		try {
-			const coordinator =
-				snapshot === undefined
-					? (await getClientById(id, { signal: requestController.signal })).data.coordinator
-					: snapshot;
+			let coordinatorEmployeeId = snapshot?.employee_id ?? null;
+			let coordinatorDisplayName = snapshot
+				? `${snapshot.first_name ?? ''} ${snapshot.last_name ?? ''}`.trim()
+				: '';
+			if (snapshot === undefined) {
+				try {
+					const response = await getClientCoordinator(id, { signal: requestController.signal });
+					coordinatorEmployeeId = response.data.employee_id;
+					coordinatorDisplayName = response.data.employee_name;
+				} catch (error) {
+					if (error instanceof ApiClientError && error.status === 404) {
+						coordinatorEmployeeId = null;
+						coordinatorDisplayName = '';
+					} else throw error;
+				}
+			}
 			if (sequence !== requestSequence) return;
-			initialCoordinatorEmployeeId = coordinator?.employee_id ?? null;
+			initialCoordinatorEmployeeId = coordinatorEmployeeId;
 			reset({
 				data: {
 					care_start_date: '',
-					coordinator_employee_id: coordinator?.employee_id ?? '',
+					coordinator_employee_id: coordinatorEmployeeId ?? '',
 					placed_in_care_at: '',
 					reason: ''
 				}
 			});
-			coordinatorName =
-				coordinator?.first_name && coordinator.last_name
-					? `${coordinator.first_name} ${coordinator.last_name}`.trim()
-					: '';
+			coordinatorName = coordinatorDisplayName;
 		} catch (error) {
 			if (
 				sequence !== requestSequence ||

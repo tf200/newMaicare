@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import { superForm, defaults } from 'sveltekit-superforms';
 	import { valibotClient } from 'sveltekit-superforms/adapters';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -52,7 +55,6 @@
 				filenumber: '',
 				sender_id: '',
 				location_id: '',
-				coordinator_employee_id: '',
 				education_currently_enrolled: false,
 				education_institution: '',
 				education_mentor_name: '',
@@ -94,7 +96,6 @@
 							filenumber: trimToUndefined(form.data.filenumber) ?? null,
 							sender_id: trimToUndefined(form.data.sender_id) ?? null,
 							location_id: trimToUndefined(form.data.location_id) ?? null,
-							coordinator_employee_id: trimToUndefined(form.data.coordinator_employee_id),
 							education_currently_enrolled: form.data.education_currently_enrolled,
 							education_institution: trimToUndefined(form.data.education_institution) ?? null,
 							education_mentor_name: trimToUndefined(form.data.education_mentor_name) ?? null,
@@ -148,7 +149,6 @@
 			filenumber: String(data.client.file_number ?? ''),
 			sender_id: '',
 			location_id: data.client.location?.id ?? '',
-			coordinator_employee_id: data.coordinator?.employee_id ?? '',
 			education_currently_enrolled: data.client.education?.currently_enrolled ?? false,
 			education_institution: data.client.education?.institution ?? '',
 			education_mentor_name: data.client.education?.mentor_name ?? '',
@@ -167,7 +167,6 @@
 		};
 		coordinatorName =
 			`${data.coordinator?.first_name ?? ''} ${data.coordinator?.last_name ?? ''}`.trim();
-
 		reset({ data: initialData });
 		initializedId = clientId;
 	};
@@ -201,7 +200,6 @@
 	const handleCancel = () => {
 		errorMessage = '';
 		initializedId = null;
-		coordinatorName = '';
 		open = false;
 	};
 
@@ -358,14 +356,27 @@
 						bind:value={$form.sender_id}
 						placeholder={m.search_sender_placeholder()}
 					/>
-					<SearchSelect
-						label={m.main_coordinator()}
-						loadOptions={loadEmployees}
-						bind:value={$form.coordinator_employee_id}
-						bind:displayValue={coordinatorName}
-						placeholder={m.select_coordinator()}
-						searchPlaceholder={m.search_employees()}
-					/>
+					<div class="rounded-xl border border-border bg-bg px-4 py-3">
+						<p class="text-xs font-semibold tracking-wide text-text-muted uppercase">
+							{m.main_coordinator()}
+						</p>
+						<p class="mt-1 text-sm font-medium text-text">
+							{coordinatorName || m.no_coordinator_assigned()}
+						</p>
+						{#if clientId}
+							<PermissionGuard permission={PERMISSIONS.CLIENT.INVOLVED_EMPLOYEE_VIEW}>
+								<a
+									class="mt-2 inline-block rounded text-xs font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+									href={resolve('/(app)/clients/[id]/involved-employees', { id: clientId })}
+									onclick={(event) => {
+										if (!window.confirm(m.coordinator_leave_client_edit_confirmation()))
+											event.preventDefault();
+										else handleCancel();
+									}}>{m.coordinator_edit_on_involved_page()}</a
+								>
+							</PermissionGuard>
+						{/if}
+					</div>
 				</div>
 			</section>
 

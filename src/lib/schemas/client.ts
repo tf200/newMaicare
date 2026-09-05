@@ -14,7 +14,6 @@ export const EditClientSchema = v.object({
 	filenumber: v.optional(v.string()),
 	sender_id: v.optional(v.string()),
 	location_id: v.optional(v.string()),
-	coordinator_employee_id: v.optional(v.string()),
 	education_currently_enrolled: v.boolean(),
 	education_institution: v.optional(v.string()),
 	education_mentor_name: v.optional(v.string()),

@@ -45,8 +45,18 @@ import type {
 	UpdateClientRequest,
 	ClientInvolvedEmployee,
 	CreateClientInvolvedEmployeeRequest,
-	UpdateClientInvolvedEmployeeRequest
+	UpdateClientInvolvedEmployeeRequest,
+	ClientInvolvedEmployeeRole,
+	ClientCoordinatorAssignment,
+	UpdateClientCoordinatorRequest
 } from '$lib/types/api';
+
+export function listClientInvolvedEmployeeRoles(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<ClientInvolvedEmployeeRole[]>>(
+		'/clients/involved_employees/roles',
+		options
+	);
+}
 
 export function listWaitingListClients(
 	params: ListWaitingListClientsParams,
@@ -89,6 +99,20 @@ export function listClientInvolvedEmployees(clientId: string, options?: ApiReque
 	return api.get<ApiEnvelope<PaginatedResponse<ClientInvolvedEmployee>>>(
 		`/clients/${clientId}/involved_employees?page=1&page_size=100`,
 		options
+	);
+}
+
+export function getClientCoordinator(clientId: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<ClientCoordinatorAssignment>>(
+		`/clients/${clientId}/coordinator`,
+		options
+	);
+}
+
+export function updateClientCoordinator(clientId: string, payload: UpdateClientCoordinatorRequest) {
+	return api.put<ApiEnvelope<ClientCoordinatorAssignment>>(
+		`/clients/${clientId}/coordinator`,
+		payload
 	);
 }
 

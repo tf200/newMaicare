@@ -13,7 +13,23 @@ export const createInvolvedEmployeeSchema = (messages: {
 			v.minLength(1, messages.startDateRequired),
 			v.regex(/^\d{4}-\d{2}-\d{2}$/, messages.dateFormat)
 		),
-		role: v.pipe(v.string(), v.trim(), v.minLength(1, messages.roleRequired))
+		role: v.pipe(
+			v.string(),
+			v.trim(),
+			v.minLength(1, messages.roleRequired),
+			v.check(
+				(value) =>
+					[
+						'primary_counselor',
+						'secondary_counselor',
+						'behavioral_scientist',
+						'case_manager',
+						'specialist',
+						'other'
+					].includes(value),
+				messages.roleRequired
+			)
+		)
 	});
 
 export type InvolvedEmployeeFormInput = v.InferInput<
