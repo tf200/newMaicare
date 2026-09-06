@@ -2,6 +2,7 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { m } from '$lib/paraglide/messages';
+	import { getLocale } from '$lib/paraglide/runtime';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import {
@@ -22,6 +23,7 @@
 	import { getToastState } from '$lib/state/toast.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import GoalProgressModal from '$lib/components/clients/GoalProgressModal.svelte';
 	import CreateGoalModal from '$lib/components/clients/CreateGoalModal.svelte';
 	import UpdateGoalModal from '$lib/components/clients/UpdateGoalModal.svelte';
@@ -127,18 +129,12 @@
 	const goalsDataPromise = $derived(data.goalsData);
 
 	const progressBadge: Record<string, string> = {
-		no_progress:
-			'bg-zinc-500/10 text-zinc-700 border-zinc-500/20 dark:bg-zinc-500/20 dark:text-zinc-300 dark:border-zinc-500/30',
-		regression:
-			'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30',
-		limited_progress:
-			'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
-		good_progress:
-			'bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30',
-		achieved:
-			'bg-indigo-500/10 text-indigo-700 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30',
-		blocked:
-			'bg-rose-500/10 text-rose-700 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
+		no_progress: 'border-border bg-bg text-text-muted',
+		regression: 'border-error/30 bg-error/10 text-error-strong',
+		limited_progress: 'border-warning/30 bg-warning/10 text-warning-strong',
+		good_progress: 'border-success/30 bg-success/10 text-success-strong',
+		achieved: 'border-brand/30 bg-brand/10 text-brand-strong',
+		blocked: 'border-error/30 bg-error/10 text-error-strong'
 	};
 
 	const progressLabel: Record<string, () => string> = {
@@ -151,16 +147,22 @@
 	};
 
 	const priorityBadge: Record<string, string> = {
-		low: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20 dark:bg-zinc-500/20 dark:text-zinc-300 dark:border-zinc-500/30',
-		medium:
-			'bg-sky-500/10 text-sky-700 border-sky-500/20 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/30',
-		high: 'bg-amber-500/10 text-amber-700 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30'
+		low: 'border-border bg-bg text-text-muted',
+		medium: 'border-info/30 bg-info/10 text-info-strong',
+		high: 'border-warning/30 bg-warning/10 text-warning-strong'
+	};
+	const priorityLabel = (priority: GoalToEdit['priority']) => {
+		if (priority === 'high') return m.high();
+		if (priority === 'medium') return m.medium();
+		return m.low();
 	};
 
-	const formatEvaluationDate = (value: string | null) => formatDateOnly(value, 'en-US', 'N/A');
+	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+	const formatEvaluationDate = (value: string | null) =>
+		formatDateOnly(value, resolveLocale(), m.not_available_short());
 
 	const formatSubmittedDate = (value: string) =>
-		new Intl.DateTimeFormat('en-US', {
+		new Intl.DateTimeFormat(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
@@ -202,25 +204,25 @@
 </svelte:head>
 
 {#snippet historyEvaluationDateCell(row: HistoryRow)}
-	<span class="text-sm font-semibold text-zinc-900 dark:text-white">
+	<span class="text-sm font-semibold text-text">
 		{formatEvaluationDate(row.evaluation_date)}
 	</span>
 {/snippet}
 
 {#snippet historyCompletionCell(row: HistoryRow)}
-	<span class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+	<span class="text-sm font-semibold text-text">
 		{row.filled_goals_count}/{row.total_goals_count}
 	</span>
 {/snippet}
 
 {#snippet historyCreatorCell(row: HistoryRow)}
-	<span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-		{row.creator_name || 'N/A'}
+	<span class="text-sm font-medium text-text">
+		{row.creator_name || m.not_available_short()}
 	</span>
 {/snippet}
 
 {#snippet historySubmittedCell(row: HistoryRow)}
-	<span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+	<span class="text-sm font-medium text-text-muted">
 		{formatSubmittedDate(row.submitted_at)}
 	</span>
 {/snippet}
@@ -228,8 +230,9 @@
 {#snippet historyActionsCell(row: HistoryRow)}
 	<div class="flex justify-end gap-1">
 		<button
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+			class="flex h-10 w-10 items-center justify-center rounded-xl text-text-subtle transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 			title={m.view_evaluation()}
+			aria-label={m.view_evaluation()}
 			onclick={() => openExistingEvaluationForm(page.params.id ?? '', row.evaluation_id)}
 		>
 			<Eye class="h-4 w-4" />
@@ -239,15 +242,15 @@
 
 {#await goalsDataPromise}
 	<div class="space-y-4">
-		<div class="h-24 w-full animate-pulse rounded-3xl bg-zinc-200 dark:bg-zinc-800"></div>
+		<div class="h-40 w-full animate-pulse rounded-3xl border border-border bg-surface"></div>
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
 			<div class="space-y-4 lg:col-span-8">
-				<div class="h-48 w-full animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800/50"></div>
-				<div class="h-48 w-full animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800/50"></div>
+				<div class="h-48 w-full animate-pulse rounded-3xl border border-border bg-surface"></div>
+				<div class="h-64 w-full animate-pulse rounded-3xl border border-border bg-surface"></div>
 			</div>
 			<div class="space-y-4 lg:col-span-4">
-				<div class="h-32 w-full animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800/50"></div>
-				<div class="h-32 w-full animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800/50"></div>
+				<div class="h-40 w-full animate-pulse rounded-3xl border border-border bg-surface"></div>
+				<div class="h-40 w-full animate-pulse rounded-3xl border border-border bg-surface"></div>
 			</div>
 		</div>
 	</div>
@@ -255,31 +258,21 @@
 	{@const lastCompleted = goalsData.history[0] ?? null}
 
 	<section class="space-y-8 pb-12">
-		<!-- Standard Header Card -->
 		<header
-			class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white/90 p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/90"
+			class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 		>
-			<div
-				class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-400/20 to-emerald-500/10 blur-2xl"
-			></div>
-
 			<div class="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-2">
-					<div class="hidden"></div>
-					<div
-						class="flex items-center gap-3 text-sm font-semibold text-indigo-600 dark:text-indigo-400"
-					>
-						<span
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10"
-						>
+					<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+						<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10">
 							<Target class="h-5 w-5" />
 						</span>
 						<span>{m.client_care_plan()}</span>
 					</div>
-					<h1 class="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+					<h1 class="text-2xl font-bold tracking-tight text-text">
 						{m.goals_evaluations()}
 					</h1>
-					<p class="max-w-2xl text-sm font-medium text-zinc-500 dark:text-zinc-400">
+					<p class="max-w-2xl text-sm font-medium text-text-muted">
 						{m.goals_evaluations_description()}
 					</p>
 				</div>
@@ -288,7 +281,7 @@
 					<Button
 						disabled={!goalsData.can_update_goals}
 						onclick={() => (createGoalModalOpen = true)}
-						class="gap-2 bg-indigo-600 text-white shadow-sm hover:opacity-90 dark:bg-indigo-400 dark:text-black"
+						class="gap-2"
 					>
 						<Plus class="h-4 w-4" />
 						{m.new_goal()}
@@ -297,17 +290,15 @@
 			</div>
 		</header>
 		{#if goalsData.loadError}
-			<div
-				class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-300"
-			>
-				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
-				<p class="text-sm font-medium">{goalsData.loadError}</p>
-			</div>
+			<InlineErrorBanner
+				message={goalsData.loadError}
+				onRetry={() => invalidate(`app:client:${page.params.id}:goals`)}
+			/>
 		{/if}
 
 		{#if !goalsData.can_update_goals}
 			<div
-				class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
+				class="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-warning-strong"
 			>
 				<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
 				<div class="space-y-1">
@@ -321,15 +312,15 @@
 
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
 			<!-- Left Column: Active Goals & History -->
-			<div class="space-y-12 lg:col-span-8">
+			<div class="space-y-8 lg:col-span-8">
 				<!-- Active Goals -->
 				<div class="space-y-6">
 					<div class="flex items-center justify-between px-1">
-						<h2 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+						<h2 class="text-lg font-semibold tracking-tight text-text">
 							{m.active_goals()}
 						</h2>
 						<span
-							class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+							class="rounded-full border border-border bg-bg px-3 py-1 text-xs font-bold text-text-muted"
 						>
 							{goalsData.active_goals.length}
 							{m.goals()}
@@ -338,17 +329,17 @@
 
 					{#if goalsData.active_goals.length === 0}
 						<div
-							class="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+							class="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-3xl border border-border bg-surface shadow-sm"
 						>
 							<div
-								class="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+								class="flex h-16 w-16 items-center justify-center rounded-full bg-bg text-text-muted"
 							>
 								<Activity class="h-8 w-8" />
 							</div>
-							<p class="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
+							<p class="text-lg font-semibold tracking-tight text-text">
 								{m.no_active_goals()}
 							</p>
-							<p class="text-sm text-zinc-500 dark:text-zinc-400">
+							<p class="text-sm text-text-muted">
 								{m.add_goals_to_track()}
 							</p>
 						</div>
@@ -356,14 +347,16 @@
 						<div class="grid gap-4 sm:grid-cols-2">
 							{#each goalsData.active_goals as goal (goal.id)}
 								<article
-									class="group relative flex flex-col justify-between rounded-3xl border border-zinc-100 bg-white p-6 shadow-xs transition-all duration-300 hover:border-indigo-500/30 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-400/30"
+									class="group relative flex flex-col justify-between rounded-3xl border border-border bg-surface p-6 shadow-sm transition-colors hover:border-brand/30"
 								>
 									<div class="space-y-4">
 										<div class="flex items-start justify-between">
-											<span class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
+											<span class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
 												{goal.topic_name}
 											</span>
-											<div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+											<div
+												class="flex gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+											>
 												<button
 													disabled={!goalsData.can_update_goals}
 													onclick={() => {
@@ -376,13 +369,14 @@
 														};
 														updateGoalModalOpen = true;
 													}}
-													class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 disabled:pointer-events-none disabled:opacity-30 dark:hover:bg-zinc-800 dark:hover:text-white"
+													class="flex h-10 w-10 items-center justify-center rounded-xl text-text-subtle hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30"
+													aria-label={m.edit_goals()}
 												>
 													<Pencil class="h-3.5 w-3.5" />
 												</button>
 											</div>
 										</div>
-										<h3 class="text-lg leading-tight font-bold text-zinc-900 dark:text-white">
+										<h3 class="text-lg leading-tight font-semibold text-text">
 											{goal.title}
 										</h3>
 
@@ -392,7 +386,7 @@
 													goal.priority
 												] || priorityBadge.medium}"
 											>
-												{goal.priority}
+												{priorityLabel(goal.priority)}
 											</span>
 											{#if goal.last_evaluation_progress}
 												<span
@@ -408,11 +402,11 @@
 											{/if}
 										</div>
 
-										<div class="mt-6 border-t border-zinc-50 pt-4 dark:border-zinc-800/50">
+										<div class="mt-6 border-t border-border pt-4">
 											<Button
 												variant="ghost"
 												onclick={() => openProgressModal(goal.id, goal.title)}
-												class="h-9 w-full justify-between px-3 text-[11px] font-bold text-zinc-500 hover:text-indigo-600 dark:text-zinc-400 dark:hover:text-indigo-400"
+												class="h-10 w-full justify-between px-3 text-xs font-bold text-text-muted hover:text-brand"
 											>
 												{m.view_progress_history()}
 												<TrendingUp class="h-3.5 w-3.5" />
@@ -429,10 +423,15 @@
 				<DataTable
 					columns={historyColumns}
 					rows={goalsData.history}
-					currentPage={goalsData.historyPagination.page}
-					pageSize={goalsData.historyPagination.pageSize}
-					totalCount={goalsData.historyPagination.count}
-					onPageChange={updateHistoryPage}
+					pagination={{
+						mode: 'server',
+						page: goalsData.historyPagination.page,
+						pageSize: goalsData.historyPagination.pageSize,
+						totalCount: goalsData.historyPagination.count,
+						onPageChange: updateHistoryPage
+					}}
+					error={goalsData.historyLoadError ?? undefined}
+					onRetry={() => invalidate(`app:client:${page.params.id}:evaluation-history`)}
 					title={m.evaluation_history()}
 					description={m.evaluation_history_description()}
 					emptyTitle={m.no_history_found()}
@@ -445,14 +444,6 @@
 						actions: historyActionsCell
 					}}
 				/>
-				{#if goalsData.historyLoadError}
-					<div
-						class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
-					>
-						<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
-						<p class="text-xs font-medium">{goalsData.historyLoadError}</p>
-					</div>
-				{/if}
 			</div>
 
 			<!-- Right Column: Status & Actions -->
@@ -460,35 +451,30 @@
 				<div class="sticky top-24 space-y-6">
 					<!-- Next Evaluation Card -->
 					<div
-						class="relative overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+						class="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-sm"
 					>
-						<div
-							class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-indigo-500/5 blur-2xl"
-						></div>
 						<div class="relative space-y-4">
 							<div class="flex items-center justify-between">
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+									class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand"
 								>
 									<CalendarClock class="h-5 w-5" />
 								</div>
-								<span class="text-[10px] font-bold tracking-widest text-zinc-400 uppercase"
+								<span class="text-xs font-semibold tracking-wide text-text-subtle uppercase"
 									>{m.evaluation_period()}</span
 								>
 							</div>
 							<div>
-								<h3 class="text-sm font-bold text-zinc-500 dark:text-zinc-400">
+								<h3 class="text-sm font-semibold text-text-muted">
 									{m.next_review_in()}
 								</h3>
 								<div class="mt-1 flex items-baseline gap-1">
-									<span class="text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
-										{goalsData.days_left ?? 'N/A'}
+									<span class="text-4xl font-bold tracking-tight text-text">
+										{goalsData.days_left ?? m.not_available_short()}
 									</span>
-									<span class="text-lg font-medium text-zinc-500 dark:text-zinc-400"
-										>{m.days()}</span
-									>
+									<span class="text-lg font-medium text-text-muted">{m.days()}</span>
 								</div>
-								<p class="mt-2 text-xs font-medium text-zinc-400">
+								<p class="mt-2 text-xs font-medium text-text-subtle">
 									{m.due_on({ date: formatEvaluationDate(goalsData.next_evaluation_date) })}
 								</p>
 							</div>
@@ -498,21 +484,19 @@
 					<!-- Draft / Action Card -->
 					<PermissionGuard permission={PERMISSIONS.CLIENT.EVALUATION_CREATE}>
 						{#if goalsData.my_draft_evaluation_id}
-							<div
-								class="rounded-3xl border border-amber-100 bg-amber-50/50 p-6 shadow-sm dark:border-amber-900/30 dark:bg-amber-900/10"
-							>
+							<div class="rounded-3xl border border-warning/30 bg-warning/10 p-6 shadow-sm">
 								<div class="space-y-4">
 									<div class="flex items-center gap-2">
-										<Clock class="h-5 w-5 text-amber-600 dark:text-amber-500" />
-										<h3 class="text-lg font-bold text-amber-900 dark:text-amber-400">
+										<Clock class="h-5 w-5 text-warning-strong" />
+										<h3 class="text-lg font-semibold text-warning-strong">
 											{m.draft_in_progress_title()}
 										</h3>
 									</div>
-									<p class="text-sm font-medium text-amber-700 dark:text-amber-300">
+									<p class="text-sm font-medium text-text-muted">
 										{m.draft_in_progress_description()}
 									</p>
 									<Button
-										class="h-12 w-full gap-2 rounded-xl bg-amber-600 font-bold text-white shadow-lg shadow-amber-500/10 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
+										class="h-12 w-full gap-2"
 										onclick={() => {
 											const clientId = page.params.id;
 											if (!clientId || !goalsData.my_draft_evaluation_id) return;
@@ -525,19 +509,17 @@
 								</div>
 							</div>
 						{:else if goalsData.is_responsible_employee}
-							<div
-								class="rounded-3xl border border-indigo-100 bg-indigo-50/30 p-6 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-900/5"
-							>
+							<div class="rounded-3xl border border-brand/30 bg-brand/10 p-6 shadow-sm">
 								<div class="space-y-4">
-									<div class="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+									<div class="flex items-center gap-2 text-brand-strong">
 										<CheckCircle2 class="h-5 w-5" />
-										<h3 class="text-lg font-bold">{m.ready_for_review()}</h3>
+										<h3 class="text-lg font-semibold">{m.ready_for_review()}</h3>
 									</div>
-									<p class="text-sm font-medium text-indigo-600 dark:text-indigo-400/80">
+									<p class="text-sm font-medium text-text-muted">
 										{m.start_evaluation_description()}
 									</p>
 									<Button
-										class="h-12 w-full gap-2 rounded-xl bg-indigo-600 font-bold text-white shadow-lg shadow-indigo-500/10 hover:opacity-90 dark:bg-indigo-500 dark:text-black"
+										class="h-12 w-full gap-2"
 										onclick={() => {
 											const clientId = page.params.id;
 											if (!clientId) return;
@@ -553,31 +535,29 @@
 					</PermissionGuard>
 
 					<!-- Last Evaluation Summary -->
-					<div
-						class="rounded-3xl border border-zinc-100 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
-					>
-						<h3 class="text-xs font-bold tracking-widest text-zinc-400 uppercase">
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm">
+						<h3 class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
 							{m.last_completed()}
 						</h3>
 						<div class="mt-4 space-y-3">
 							{#if lastCompleted}
 								<div class="flex items-center gap-3">
 									<div
-										class="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+										class="flex h-10 w-10 items-center justify-center rounded-xl bg-bg text-text-muted"
 									>
 										<CheckCircle2 class="h-4 w-4" />
 									</div>
 									<div class="flex flex-col">
-										<span class="text-sm font-bold text-zinc-900 dark:text-white">
+										<span class="text-sm font-bold text-text">
 											{formatEvaluationDate(lastCompleted.evaluation_date)}
 										</span>
-										<span class="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+										<span class="text-xs font-medium text-text-muted">
 											{lastCompleted.creator_name}
 										</span>
 									</div>
 								</div>
 								<button
-									class="group flex w-full items-center justify-between rounded-xl border border-zinc-100 p-3 text-xs font-bold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
+									class="group flex min-h-11 w-full items-center justify-between rounded-xl border border-border p-3 text-xs font-bold text-text-muted transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 									onclick={() =>
 										openExistingEvaluationForm(page.params.id ?? '', lastCompleted.evaluation_id)}
 								>
@@ -585,7 +565,7 @@
 									<ArrowRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
 								</button>
 							{:else}
-								<p class="text-sm font-medium text-zinc-400 italic">
+								<p class="text-sm font-medium text-text-subtle italic">
 									{m.no_past_evaluations()}
 								</p>
 							{/if}
