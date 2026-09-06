@@ -512,6 +512,7 @@
 	"identification": "Identificatie",
 	"placement": "Plaatsing",
 	"failed_update_client": "Cliënt bijwerken mislukt. Probeer het opnieuw.",
+	"discard_client_changes_confirmation": "Wil je de niet-opgeslagen cliëntwijzigingen verwerpen?",
 	"failed_load_client": "Cliëntgegevens laden mislukt.",
 	"school_internship": "School / Stage",
 	"school_internship_desc": "Onderwijs- en stageverplichtingen.",

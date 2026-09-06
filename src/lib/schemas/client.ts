@@ -1,8 +1,9 @@
 import * as v from 'valibot';
+import { m } from '$lib/paraglide/messages';
 
 export const EditClientSchema = v.object({
-	first_name: v.pipe(v.string(), v.minLength(1, 'First name is required.')),
-	last_name: v.pipe(v.string(), v.minLength(1, 'Last name is required.')),
+	first_name: v.pipe(v.string(), v.minLength(1, m.required_field())),
+	last_name: v.pipe(v.string(), v.minLength(1, m.required_field())),
 	date_of_birth: v.optional(v.string()),
 	identity: v.boolean(),
 	bsn: v.optional(v.string()),

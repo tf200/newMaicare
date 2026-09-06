@@ -512,6 +512,7 @@
 	"identification": "Identification",
 	"placement": "Placement",
 	"failed_update_client": "Failed to update client. Please try again.",
+	"discard_client_changes_confirmation": "Discard your unsaved client changes?",
 	"failed_load_client": "Failed to load client data.",
 	"school_internship": "School / Internship",
 	"school_internship_desc": "Education and internship commitments.",

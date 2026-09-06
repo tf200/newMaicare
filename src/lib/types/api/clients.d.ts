@@ -543,9 +543,14 @@ export interface GetClientCore {
 	id: string;
 	first_name: string;
 	last_name: string;
+	identity: boolean;
 	bsn: string | number | null;
 	bsn_verified_by?: string | null;
 	bsn_verified_by_name?: string | null;
+	nationality: string | null;
+	email: string;
+	phone_number: string | null;
+	sender_id: string | null;
 	file_number: string | number | null;
 	gender: ClientGender | null;
 	date_of_birth: string | null;
@@ -742,4 +747,24 @@ export interface UpdateClientRequest {
 	work_current_position?: string | null;
 	work_start_date?: string | null;
 	work_additional_notes?: string | null;
+}
+
+export interface UpdateClientResponse {
+	id: string;
+	first_name: string;
+	last_name: string;
+	date_of_birth: string;
+	identity: boolean;
+	status: ClientStatus;
+	bsn: string | null;
+	bsn_verified_by: string | null;
+	email: string;
+	phone_number: string | null;
+	gender: ClientGender;
+	filenumber: string;
+	created: string;
+	sender_id: string | null;
+	location_id: string | null;
+	addresses: GetClientAddress[];
+	has_untaken_medications: boolean;
 }

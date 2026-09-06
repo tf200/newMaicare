@@ -37,9 +37,13 @@
 	let isLoadingData = $state(false);
 	let initializedId = $state<string | null>(null);
 	let coordinatorName = $state('');
+	let verifierDisplay = $state('');
+	let locationDisplay = $state('');
+	let senderDisplay = $state('');
+	let requestSequence = 0;
 	const formId = 'edit-client-form';
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, delayed, reset, tainted } = superForm(
 		defaults(
 			{
 				first_name: '',
@@ -88,7 +92,9 @@
 							date_of_birth: toRFC3339(form.data.date_of_birth) || null,
 							identity: form.data.identity,
 							bsn: trimToUndefined(form.data.bsn) ?? null,
-							bsn_verified_by: trimToUndefined(form.data.bsn_verified_by) ?? null,
+							bsn_verified_by: form.data.identity
+								? (trimToUndefined(form.data.bsn_verified_by) ?? null)
+								: null,
 							nationality: trimToUndefined(form.data.nationality) ?? null,
 							email: trimToUndefined(form.data.email) ?? null,
 							phone_number: trimToUndefined(form.data.phone_number) ?? null,
@@ -118,8 +124,8 @@
 
 						await updateClient(clientId, payload);
 						toast.success(m.client_updated_success());
+						resetFormState();
 						open = false;
-						initializedId = null;
 						onUpdated?.();
 					} catch (error) {
 						errorMessage = error instanceof Error ? error.message : m.failed_update_client();
@@ -139,15 +145,15 @@
 			first_name: data.client.first_name ?? '',
 			last_name: data.client.last_name ?? '',
 			date_of_birth: toDateInput(data.client.date_of_birth),
-			identity: false,
+			identity: data.client.identity,
 			bsn: typeof data.client.bsn === 'string' ? data.client.bsn : String(data.client.bsn ?? ''),
-			bsn_verified_by: '',
-			nationality: '',
-			email: data.sender?.email_address ?? '',
-			phone_number: data.sender?.phone_number ?? '',
+			bsn_verified_by: data.client.bsn_verified_by ?? '',
+			nationality: data.client.nationality ?? '',
+			email: data.client.email,
+			phone_number: data.client.phone_number ?? '',
 			gender: data.client.gender ?? undefined,
 			filenumber: String(data.client.file_number ?? ''),
-			sender_id: '',
+			sender_id: data.client.sender_id ?? '',
 			location_id: data.client.location?.id ?? '',
 			education_currently_enrolled: data.client.education?.currently_enrolled ?? false,
 			education_institution: data.client.education?.institution ?? '',
@@ -167,12 +173,18 @@
 		};
 		coordinatorName =
 			`${data.coordinator?.first_name ?? ''} ${data.coordinator?.last_name ?? ''}`.trim();
+		verifierDisplay = data.client.bsn_verified_by_name ?? '';
+		locationDisplay = data.client.location?.name ?? '';
+		senderDisplay = data.sender?.name ?? '';
+		errorMessage = '';
 		reset({ data: initialData });
 		initializedId = clientId;
 	};
 
 	const fetchAndPopulate = async () => {
 		if (!clientId) return;
+		const requestedClientId = clientId;
+		const sequence = ++requestSequence;
 		if (clientData) {
 			populateForm(clientData);
 			return;
@@ -182,12 +194,14 @@
 		errorMessage = '';
 
 		try {
-			const response = await getClientById(clientId);
+			const response = await getClientById(requestedClientId);
+			if (sequence !== requestSequence || !open || clientId !== requestedClientId) return;
 			populateForm(response.data);
 		} catch (error) {
+			if (sequence !== requestSequence || !open || clientId !== requestedClientId) return;
 			errorMessage = error instanceof Error ? error.message : m.failed_load_client();
 		} finally {
-			isLoadingData = false;
+			if (sequence === requestSequence) isLoadingData = false;
 		}
 	};
 
@@ -197,9 +211,41 @@
 		fetchAndPopulate();
 	});
 
-	const handleCancel = () => {
+	const hasUnsavedChanges = $derived(Boolean($tainted));
+
+	const resetFormState = () => {
+		requestSequence += 1;
+		reset();
 		errorMessage = '';
+		isLoadingData = false;
 		initializedId = null;
+		coordinatorName = '';
+		verifierDisplay = '';
+		locationDisplay = '';
+		senderDisplay = '';
+	};
+
+	const confirmDiscard = () =>
+		!hasUnsavedChanges || window.confirm(m.discard_client_changes_confirmation());
+
+	const handleCancel = () => {
+		if (!confirmDiscard()) return;
+		resetFormState();
+		open = false;
+	};
+
+	const handleRequestClose = () => {
+		if (!confirmDiscard()) return false;
+		resetFormState();
+		return true;
+	};
+
+	const handleCoordinatorNavigation = (event: MouseEvent) => {
+		if (hasUnsavedChanges && !window.confirm(m.coordinator_leave_client_edit_confirmation())) {
+			event.preventDefault();
+			return;
+		}
+		resetFormState();
 		open = false;
 	};
 
@@ -248,7 +294,13 @@
 	};
 </script>
 
-<Modal bind:open title={m.edit_client_title()} description={m.edit_client_description()} size="2xl">
+<Modal
+	bind:open
+	title={m.edit_client_title()}
+	description={m.edit_client_description()}
+	size="2xl"
+	onRequestClose={handleRequestClose}
+>
 	{#if isLoadingData}
 		<div class="flex items-center justify-center py-16">
 			<div class="flex flex-col items-center gap-3">
@@ -264,9 +316,8 @@
 				</div>
 			{/if}
 
-			<!-- Personal Information -->
 			<section class="space-y-4">
-				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
+				<h3 class="border-b border-border pb-2 text-lg font-semibold tracking-tight text-text">
 					{m.personal_info()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -314,9 +365,8 @@
 				</div>
 			</section>
 
-			<!-- Identification -->
 			<section class="space-y-4">
-				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
+				<h3 class="border-b border-border pb-2 text-lg font-semibold tracking-tight text-text">
 					{m.identification()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -332,15 +382,17 @@
 							label={m.bsn_verified_by()}
 							loadOptions={loadEmployees}
 							bind:value={$form.bsn_verified_by}
+							bind:displayValue={verifierDisplay}
 							placeholder={m.search_employee_placeholder()}
+							error={formatFormError($errors.bsn_verified_by)}
+							loadErrorText={m.failed_load_employees()}
 						/>
 					{/if}
 				</div>
 			</section>
 
-			<!-- Placement -->
 			<section class="space-y-4">
-				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
+				<h3 class="border-b border-border pb-2 text-lg font-semibold tracking-tight text-text">
 					{m.placement()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -348,13 +400,19 @@
 						label={m.location()}
 						loadOptions={loadLocations}
 						bind:value={$form.location_id}
+						bind:displayValue={locationDisplay}
 						placeholder={m.search_location_placeholder()}
+						error={formatFormError($errors.location_id)}
+						loadErrorText={m.failed_load_locations()}
 					/>
 					<SearchSelect
 						label={m.sender()}
 						loadOptions={loadSenders}
 						bind:value={$form.sender_id}
+						bind:displayValue={senderDisplay}
 						placeholder={m.search_sender_placeholder()}
+						error={formatFormError($errors.sender_id)}
+						loadErrorText={m.failed_load_senders()}
 					/>
 					<div class="rounded-xl border border-border bg-bg px-4 py-3">
 						<p class="text-xs font-semibold tracking-wide text-text-muted uppercase">
@@ -368,11 +426,7 @@
 								<a
 									class="mt-2 inline-block rounded text-xs font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-brand"
 									href={resolve('/(app)/clients/[id]/involved-employees', { id: clientId })}
-									onclick={(event) => {
-										if (!window.confirm(m.coordinator_leave_client_edit_confirmation()))
-											event.preventDefault();
-										else handleCancel();
-									}}>{m.coordinator_edit_on_involved_page()}</a
+									onclick={handleCoordinatorNavigation}>{m.coordinator_edit_on_involved_page()}</a
 								>
 							</PermissionGuard>
 						{/if}
@@ -380,9 +434,8 @@
 				</div>
 			</section>
 
-			<!-- Education -->
 			<section class="space-y-4">
-				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
+				<h3 class="border-b border-border pb-2 text-lg font-semibold tracking-tight text-text">
 					{m.education_section()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -432,9 +485,8 @@
 				{/if}
 			</section>
 
-			<!-- Work -->
 			<section class="space-y-4">
-				<h3 class="border-b border-border pb-2 text-sm font-bold tracking-wide text-text uppercase">
+				<h3 class="border-b border-border pb-2 text-lg font-semibold tracking-tight text-text">
 					{m.work_section()}
 				</h3>
 				<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -488,8 +540,13 @@
 	{/if}
 
 	{#snippet footer()}
-		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed || isLoadingData}>
+		<div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+			<Button
+				variant="ghost"
+				onclick={handleCancel}
+				disabled={$delayed || isLoadingData}
+				class="w-full sm:w-auto"
+			>
 				{m.cancel()}
 			</Button>
 			<Button
@@ -498,6 +555,7 @@
 				type="submit"
 				isLoading={$delayed}
 				disabled={isLoadingData || initializedId !== clientId}
+				class="w-full sm:w-auto"
 			>
 				{$delayed ? m.saving() : m.save_changes()}
 			</Button>

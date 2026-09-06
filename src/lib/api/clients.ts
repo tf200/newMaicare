@@ -46,6 +46,7 @@ import type {
 	ClientInvolvedEmployee,
 	CreateClientInvolvedEmployeeRequest,
 	UpdateClientInvolvedEmployeeRequest,
+	UpdateClientResponse,
 	ClientInvolvedEmployeeRole,
 	ClientCoordinatorAssignment,
 	UpdateClientCoordinatorRequest
@@ -159,7 +160,7 @@ export function putClientOutOfCare(id: string, payload: PutClientOutOfCareReques
 }
 
 export function updateClient(id: string, payload: UpdateClientRequest) {
-	return api.put<ApiEnvelope<GetClientResponse>>(`/clients/${id}`, payload);
+	return api.put<ApiEnvelope<UpdateClientResponse>>(`/clients/${id}`, payload);
 }
 
 export function listInCareClients(params: ListInCareClientsParams, options?: ApiRequestOptions) {
