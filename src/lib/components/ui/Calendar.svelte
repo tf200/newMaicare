@@ -16,6 +16,8 @@
 		selectedDate?: Date;
 		initialView?: CalendarView;
 		loading?: boolean;
+		initialLoading?: boolean;
+		hasLoaded?: boolean;
 	}
 
 	let {
@@ -25,7 +27,9 @@
 		onRangeChange,
 		selectedDate = new Date(),
 		initialView = 'month',
-		loading = false
+		loading = false,
+		initialLoading = false,
+		hasLoaded = false
 	}: Props = $props();
 
 	let view = $derived<CalendarView>(initialView);
@@ -388,6 +392,8 @@
 
 	const eventAriaLabel = (appointment: Appointment) =>
 		`${appointment.title}, ${formatTime(appointment.start)}–${formatTime(appointment.end)}`;
+	const kindLabel = (kind: Appointment['kind']) =>
+		kind === 'reminder' ? m.reminder_label() : m.appointment_label();
 </script>
 
 <div class="relative flex flex-col gap-6" aria-busy={loading}>
@@ -504,7 +510,36 @@
 		</div>
 	{/if}
 
-	{#if view === 'month'}
+	{#if hasLoaded && !loading && appointments.length === 0}
+		<div
+			class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-surface px-6 py-8 text-center"
+			role="status"
+		>
+			<div class="text-base font-bold text-text">{m.calendar_empty_title()}</div>
+			<p class="mt-1 max-w-md text-sm text-text-muted">{m.calendar_empty_description()}</p>
+		</div>
+	{/if}
+
+	{#if initialLoading}
+		<div
+			class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm"
+			role="status"
+			aria-label={m.calendar_loading()}
+		>
+			<div class="grid grid-cols-7 gap-px border-b border-border bg-border">
+				{#each Array.from({ length: 7 }, (_, index) => index) as index (index)}
+					<div class="h-11 animate-pulse bg-bg/80"></div>
+				{/each}
+			</div>
+			<div class="grid min-h-[32rem] grid-cols-7 grid-rows-6 gap-px bg-border/60">
+				{#each Array.from({ length: 42 }, (_, index) => index) as index (index)}
+					<div class="animate-pulse bg-surface p-3">
+						<div class="h-7 w-7 rounded-full bg-border/60"></div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else if view === 'month'}
 		<!-- Month View -->
 		<div class="overflow-x-auto rounded-3xl border border-border bg-surface shadow-sm">
 			<div class="grid min-w-[720px] grid-cols-7 border-b border-border bg-bg/60">
@@ -533,7 +568,15 @@
 								class="inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none
 					{isToday(date) ? 'bg-brand text-white hover:bg-brand-hover dark:text-black' : ''}"
 							>
-								{date.getDate()}
+								<span class="sr-only"
+									>{formatDate(date, {
+										weekday: 'long',
+										month: 'long',
+										day: 'numeric',
+										year: 'numeric'
+									})}</span
+								>
+								<span aria-hidden="true">{date.getDate()}</span>
 							</button>
 
 							{#if onAddAppointment}<button
@@ -574,6 +617,10 @@
 										view = 'day';
 									}}
 									class="rounded-lg px-2 py-1 text-left text-[10px] font-bold text-text-muted hover:bg-border/30"
+									aria-label={m.calendar_more_on_date({
+										count: dayApps.length - 1,
+										date: formatDate(date, { month: 'long', day: 'numeric' })
+									})}
 								>
 									+{dayApps.length - 1}
 									{m.more()}
@@ -737,7 +784,7 @@
 										<div
 											class="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
 										>
-											{item.app.kind}
+											{kindLabel(item.app.kind)}
 										</div>
 									</div>
 								</button>
@@ -814,7 +861,7 @@
 										<div
 											class="shrink-0 rounded-full bg-surface/80 px-2 py-1 text-[10px] font-bold tracking-widest text-text uppercase"
 										>
-											{app.kind}
+											{kindLabel(app.kind)}
 										</div>
 									</button>
 								{/each}

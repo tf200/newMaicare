@@ -1,12 +1,10 @@
-<script lang="ts">
+<script lang="ts" generics="Option">
 	import { Check, ChevronsUpDown, Loader2, Search, X } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal';
 	import { floating } from '$lib/actions/floating';
 	import { m } from '$lib/paraglide/messages';
 	import { selectSizeClasses, type SelectSize } from './_sizes';
-
-	type Option = any;
 
 	interface Props {
 		label?: string;
@@ -19,8 +17,10 @@
 		loadOptions: (query: string) => Promise<Option[]>;
 		labelFn?: (opt: Option) => string;
 		valueFn?: (opt: Option) => string;
+		loadErrorText?: string;
 	}
 
+	const generatedId = $props.id();
 	let {
 		label,
 		value = $bindable<string[]>([]),
@@ -28,22 +28,28 @@
 		searchPlaceholder = undefined,
 		error = undefined,
 		size = 'md',
-		id = `multi-search-${Math.random().toString(36).substr(2, 9)}`,
+		id = generatedId,
 		loadOptions,
-		labelFn = (opt: Option) => String(opt?.label ?? ''),
-		valueFn = (opt: Option) => String(opt?.value ?? '')
+		labelFn = (opt: Option) => String((opt as { label?: unknown } | null)?.label ?? ''),
+		valueFn = (opt: Option) => String((opt as { value?: unknown } | null)?.value ?? ''),
+		loadErrorText = m.options_load_error()
 	}: Props = $props();
 
 	let isOpen = $state(false);
 	let isLoading = $state(false);
 	let options = $state<Option[]>([]);
 	let searchQuery = $state('');
+	let loadError = $state(false);
+	let requestSequence = 0;
 	let searchInput = $state<HTMLInputElement>();
-	let triggerEl = $state<HTMLElement>();
+	let triggerEl = $state<HTMLButtonElement>();
+	let anchorEl = $state<HTMLDivElement>();
 	let dropdownEl = $state<HTMLElement>();
 	let resolvedPlaceholder = $derived(placeholder ?? m.select_items_placeholder());
 	let resolvedSearchPlaceholder = $derived(searchPlaceholder ?? m.search_placeholder_short());
 	let sizeClass = $derived(selectSizeClasses[size]);
+	let errorId = $derived(`${id}-error`);
+	let listboxId = $derived(`${id}-listbox`);
 
 	let selectedOptions = $derived(options.filter((opt) => value.includes(valueFn(opt))));
 
@@ -59,14 +65,20 @@
 	}
 
 	async function fetchOptions(query: string) {
+		const sequence = ++requestSequence;
 		isLoading = true;
+		loadError = false;
 		try {
-			options = (await loadOptions(query)) || [];
+			const result = (await loadOptions(query)) || [];
+			if (sequence === requestSequence) options = result;
 		} catch (e) {
 			console.error(e);
-			options = [];
+			if (sequence === requestSequence) {
+				options = [];
+				loadError = true;
+			}
 		} finally {
-			isLoading = false;
+			if (sequence === requestSequence) isLoading = false;
 		}
 	}
 
@@ -87,9 +99,15 @@
 		}
 	}
 
-	function remove(val: string, e: Event) {
-		e.stopPropagation();
+	function remove(val: string) {
 		value = value.filter((v: string) => v !== val);
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape' || !isOpen) return;
+		event.preventDefault();
+		isOpen = false;
+		triggerEl?.focus();
 	}
 
 	function handleOutsideClick(node: HTMLElement) {
@@ -100,9 +118,11 @@
 			}
 		};
 		document.addEventListener('click', handleClick);
+		document.addEventListener('keydown', handleKeydown);
 		return {
 			destroy() {
 				document.removeEventListener('click', handleClick);
+				document.removeEventListener('keydown', handleKeydown);
 			}
 		};
 	}
@@ -116,15 +136,11 @@
 	{/if}
 
 	<div class="relative">
-		<button
-			{id}
-			bind:this={triggerEl}
-			type="button"
-			onclick={toggle}
-			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20 {error
+		<div
+			bind:this={anchorEl}
+			class="flex w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-text transition-[border-color,box-shadow,background-color] duration-150 focus-within:ring-2 focus-within:ring-brand/20 {error
 				? 'border-error'
 				: ''}"
-			aria-expanded={isOpen}
 		>
 			{#if value.length === 0}
 				<span class="text-text-subtle">{resolvedPlaceholder}</span>
@@ -135,31 +151,46 @@
 						transition:scale={{ duration: 150 }}
 					>
 						{labelFn(item)}
-						<div
-							role="button"
-							tabindex="0"
-							onclick={(e) => remove(valueFn(item), e)}
-							onkeydown={(e) => e.key === 'Enter' && remove(valueFn(item), e)}
-							class="cursor-pointer rounded-full p-0.5 hover:bg-border/50"
+						<button
+							type="button"
+							onclick={() => remove(valueFn(item))}
+							aria-label={`${m.remove()} ${labelFn(item)}`}
+							class="cursor-pointer rounded-full p-0.5 hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							<X class="h-3 w-3" />
-						</div>
+						</button>
 					</span>
 				{/each}
 			{/if}
 
-			<div class="ml-auto shrink-0 text-text-subtle">
+			<button
+				{id}
+				bind:this={triggerEl}
+				type="button"
+				onclick={toggle}
+				class="ml-auto shrink-0 rounded-lg p-1 text-text-subtle focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				role="combobox"
+				aria-haspopup="listbox"
+				aria-controls={listboxId}
+				aria-expanded={isOpen}
+				aria-invalid={error ? true : undefined}
+				aria-describedby={error ? errorId : undefined}
+				aria-label={label ?? resolvedPlaceholder}
+			>
 				<ChevronsUpDown class="h-4 w-4" />
-			</div>
-		</button>
+			</button>
+		</div>
 
-		{#if isOpen && triggerEl}
+		{#if isOpen && anchorEl}
 			<div
 				bind:this={dropdownEl}
 				use:portal
-				use:floating={{ anchor: triggerEl, matchWidth: true }}
+				use:floating={{ anchor: anchorEl, matchWidth: true }}
 				class="z-[9999] mt-2 max-h-60 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
 				transition:scale={{ start: 0.95, duration: 100 }}
+				id={listboxId}
+				role="listbox"
+				aria-multiselectable="true"
 			>
 				<div class="border-b border-border p-2">
 					<div class="relative">
@@ -181,6 +212,8 @@
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							{m.loading()}...
 						</div>
+					{:else if loadError}
+						<div class="p-3 text-center text-sm text-error" role="alert">{loadErrorText}</div>
 					{:else if options.length === 0}
 						<div class="p-3 text-center text-sm text-text-muted">
 							{m.no_results_found()}
@@ -189,6 +222,8 @@
 						{#each options as option (valueFn(option))}
 							<button
 								type="button"
+								role="option"
+								aria-selected={value.includes(valueFn(option))}
 								onclick={() => select(option)}
 								class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-border/50 {value.includes(
 									valueFn(option)
@@ -208,6 +243,6 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
+		<p id={errorId} class="ml-1 text-xs font-medium text-error">{error}</p>
 	{/if}
 </div>

@@ -46,12 +46,23 @@
 	// Parse the initial value or default to now
 	const initialDate = value ? new SvelteDate(value) : new SvelteDate();
 	const viewDate = initialDate;
+	let lastEmittedValue = $state(value);
 
 	// Keep track of time separately to persist it when changing dates
 	let selectedHour = $state(initialDate.getHours());
 	let selectedMinute = $state(initialDate.getMinutes());
 
 	let view = $state<View>('days');
+
+	$effect(() => {
+		if (!value || value === lastEmittedValue) return;
+		const next = new Date(value);
+		if (Number.isNaN(next.getTime())) return;
+		viewDate.setTime(next.getTime());
+		selectedHour = next.getHours();
+		selectedMinute = next.getMinutes();
+		lastEmittedValue = value;
+	});
 
 	// Calendar logic
 	const days = $derived.by(() => {
@@ -108,7 +119,8 @@
 		const finalDate = new SvelteDate(viewDate);
 		finalDate.setHours(selectedHour);
 		finalDate.setMinutes(selectedMinute);
-		value = finalDate.toISOString();
+		lastEmittedValue = finalDate.toISOString();
+		value = lastEmittedValue;
 	}
 
 	function selectDate(date: Date) {
@@ -168,6 +180,14 @@
 		if (!isOpen) view = 'days';
 	}
 
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape' || !isOpen) return;
+		event.preventDefault();
+		isOpen = false;
+		view = 'days';
+		triggerEl?.focus();
+	}
+
 	function manageRoot(node: HTMLDivElement) {
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as Node;
@@ -177,8 +197,10 @@
 			}
 		};
 		document.addEventListener('click', handleClick);
+		document.addEventListener('keydown', handleKeydown);
 		return () => {
 			document.removeEventListener('click', handleClick);
+			document.removeEventListener('keydown', handleKeydown);
 		};
 	}
 

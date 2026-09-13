@@ -1,4 +1,9 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { CalendarDays } from 'lucide-svelte';
+	import { listClients } from '$lib/api/clients';
 	import { listEmployees } from '$lib/api/employees';
 	import { createEvent, getEvent, listEvents, updateEvent } from '$lib/api/events';
 	import AppointmentForm from '$lib/components/forms/AppointmentForm.svelte';
@@ -11,6 +16,7 @@
 	import { getAuthState } from '$lib/state/auth.svelte';
 	import { getToastState } from '$lib/state/toast.svelte';
 	import type { Appointment } from '$lib/types/appointments';
+	import type { PageProps } from './$types';
 	import type {
 		CreateEventReminderInput,
 		CreateEventResponse,
@@ -20,6 +26,9 @@
 
 	type CalendarRange = { start: Date; end: Date };
 	type EmployeeOption = { label: string; value: string };
+	type AttendeeOption = { label: string; value: string };
+
+	let { data }: PageProps = $props();
 
 	const auth = getAuthState();
 	const toast = getToastState();
@@ -27,7 +36,8 @@
 	let appointments = $state.raw<Appointment[]>([]);
 	let currentRange = $state<CalendarRange | null>(null);
 	let isLoadingAppointments = $state(false);
-	let loadError = $state<string | null>(null);
+	let rangeLoadError = $state<string | null>(null);
+	let detailLoadError = $state<string | null>(null);
 	let requestSequence = 0;
 	let requestController: AbortController | null = null;
 	let detailRequestSequence = 0;
@@ -41,8 +51,15 @@
 	let isSavingAppointment = $state(false);
 	let saveError = $state<string | null>(null);
 
-	let filteredEmployeeId = $state('');
+	let filteredEmployeeId = $derived(data.initial.employeeId);
 	let filteredEmployeeLabel = $state('');
+	let hasLoadedRange = $state(false);
+
+	$effect(() => {
+		void data.employeeLabel.then((label) => {
+			if (filteredEmployeeId === data.initial.employeeId) filteredEmployeeLabel = label;
+		});
+	});
 
 	const canCreateAppointments = $derived(auth.hasPermission(PERMISSIONS.APPOINTMENT.CREATE));
 	const canEditAppointments = $derived(auth.hasPermission(PERMISSIONS.APPOINTMENT.UPDATE));
@@ -120,7 +137,7 @@
 		requestController = controller;
 		const sequence = ++requestSequence;
 		isLoadingAppointments = true;
-		loadError = null;
+		rangeLoadError = null;
 
 		try {
 			const response = await listEvents(
@@ -135,10 +152,12 @@
 			);
 			if (sequence !== requestSequence) return;
 			appointments = response.data.map(mapOccurrence);
+			hasLoadedRange = true;
 		} catch (error) {
 			if (controller.signal.aborted || sequence !== requestSequence) return;
 			console.error('Failed to load events:', error);
-			loadError = m.calendar_load_error();
+			rangeLoadError = m.calendar_load_error();
+			hasLoadedRange = true;
 		} finally {
 			if (sequence === requestSequence) isLoadingAppointments = false;
 		}
@@ -150,6 +169,16 @@
 	}
 
 	function handleEmployeeFilterChange() {
+		const url = new URL(page.url);
+		if (filteredEmployeeId) url.searchParams.set('employee', filteredEmployeeId);
+		else url.searchParams.delete('employee');
+		// The path is resolved; the query string is appended separately to preserve typed routing.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(resolve('/(app)/calendar') + url.search, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 		if (currentRange) void fetchEvents(currentRange.start, currentRange.end);
 	}
 
@@ -158,6 +187,22 @@
 		return response.data.results.map((employee) => ({
 			label: `${employee.first_name} ${employee.last_name}`,
 			value: employee.id
+		}));
+	}
+
+	async function loadAttendeeEmployeeOptions(query: string): Promise<AttendeeOption[]> {
+		const response = await listEmployees({ page: 1, pageSize: 50, search: query || undefined });
+		return response.data.results.map((employee) => ({
+			label: `${employee.first_name} ${employee.last_name}`.trim(),
+			value: employee.id
+		}));
+	}
+
+	async function loadClientOptions(query: string): Promise<AttendeeOption[]> {
+		const response = await listClients({ page: 1, pageSize: 50, search: query || undefined });
+		return response.data.results.map((client) => ({
+			label: `${client.first_name} ${client.last_name}`.trim(),
+			value: client.id
 		}));
 	}
 
@@ -183,8 +228,12 @@
 		const controller = new AbortController();
 		detailRequestController = controller;
 		const sequence = ++detailRequestSequence;
+		selectedAppointment = occurrence;
+		detailLoadError = null;
+		formDirty = false;
+		workflowKey += 1;
+		isModalOpen = true;
 		isLoadingAppointment = true;
-		loadError = null;
 		try {
 			const response = await getEvent(occurrence.id, { signal: controller.signal });
 			let appointment = mapEvent(response.data, occurrence);
@@ -200,11 +249,12 @@
 				};
 			}
 			if (sequence !== detailRequestSequence) return;
-			openWorkflow(appointment);
+			selectedAppointment = appointment;
+			workflowKey += 1;
 		} catch (error) {
 			if (controller.signal.aborted || sequence !== detailRequestSequence) return;
 			console.error('Failed to load event details:', error);
-			loadError = m.calendar_event_details_error();
+			detailLoadError = m.calendar_event_details_error();
 		} finally {
 			if (sequence === detailRequestSequence) isLoadingAppointment = false;
 		}
@@ -215,8 +265,10 @@
 		if (requireConfirmation && formDirty && !window.confirm(m.discard_appointment_changes()))
 			return;
 		isModalOpen = false;
+		detailRequestController?.abort();
 		selectedAppointment = null;
 		saveError = null;
+		detailLoadError = null;
 		formDirty = false;
 	}
 
@@ -290,33 +342,46 @@
 	<title>{m.appointments()} | MaiCare</title>
 </svelte:head>
 
-<div class="flex flex-col gap-8">
-	<header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-text">{m.appointments()}</h1>
-			<p class="mt-1 text-sm text-text-muted">{m.appointments_subtitle()}</p>
-		</div>
-
-		{#if canViewAllAppointments}
-			<div class="w-full rounded-3xl border border-border bg-surface p-4 shadow-sm lg:w-80">
-				<SearchSelect
-					label={m.filter_by_employee()}
-					loadOptions={loadEmployeeOptions}
-					bind:value={filteredEmployeeId}
-					bind:displayValue={filteredEmployeeLabel}
-					placeholder={m.all_employees()}
-					searchPlaceholder={m.search_employees()}
-					loadErrorText={m.calendar_employee_options_error()}
-					onchange={handleEmployeeFilterChange}
-				/>
+<section class="space-y-6">
+	<header
+		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
+	>
+		<div
+			class="pointer-events-none absolute -top-20 -right-12 h-52 w-52 rounded-full bg-linear-to-br from-brand/15 to-success/10 blur-2xl"
+		></div>
+		<div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+			<div class="space-y-3">
+				<div class="flex items-center gap-3 text-sm font-semibold text-brand-strong">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
+						<CalendarDays aria-hidden="true" class="h-5 w-5" />
+					</span>
+					<span>{m.calendar_schedule()}</span>
+				</div>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.appointments()}</h1>
+				<p class="max-w-2xl text-sm font-medium text-text-muted">{m.appointments_subtitle()}</p>
 			</div>
-		{/if}
+
+			{#if canViewAllAppointments}
+				<div class="w-full lg:w-80">
+					<SearchSelect
+						label={m.filter_by_employee()}
+						loadOptions={loadEmployeeOptions}
+						bind:value={filteredEmployeeId}
+						bind:displayValue={filteredEmployeeLabel}
+						placeholder={m.all_employees()}
+						searchPlaceholder={m.search_employees()}
+						loadErrorText={m.calendar_employee_options_error()}
+						onchange={handleEmployeeFilterChange}
+					/>
+				</div>
+			{/if}
+		</div>
 	</header>
 
-	{#if loadError}
+	{#if rangeLoadError}
 		<InlineErrorBanner
 			title={m.unable_to_load_appointments()}
-			message={loadError}
+			message={rangeLoadError}
 			onRetry={currentRange ? () => fetchEvents(currentRange!.start, currentRange!.end) : undefined}
 		/>
 	{/if}
@@ -326,9 +391,11 @@
 		onAddAppointment={canCreateAppointments ? handleAddAppointment : undefined}
 		onEditAppointment={canEditAppointments ? handleEditAppointment : undefined}
 		onRangeChange={handleRangeChange}
-		loading={isLoadingAppointments || isLoadingAppointment}
+		loading={isLoadingAppointments}
+		initialLoading={isLoadingAppointments && !hasLoadedRange}
+		hasLoaded={hasLoadedRange}
 	/>
-</div>
+</section>
 
 <Modal
 	title={selectedAppointment?.id ? m.edit_appointment() : m.new_appointment()}
@@ -337,22 +404,32 @@
 		: m.new_appointment_description()}
 	bind:open={isModalOpen}
 	dismissible={!formDirty && !isSavingAppointment}
+	loading={isLoadingAppointment}
+	loadingLabel={m.calendar_loading_details()}
 	closeLabel={m.close()}
 	onClose={() => closeWorkflow(false)}
 >
-	{#if saveError}
+	{#if detailLoadError}
+		<div class="mb-6">
+			<InlineErrorBanner title={m.unable_to_load_appointments()} message={detailLoadError} />
+		</div>
+	{:else if saveError}
 		<div class="mb-6">
 			<InlineErrorBanner title={m.unable_to_save_appointment()} message={saveError} />
 		</div>
 	{/if}
 
-	{#key workflowKey}
-		<AppointmentForm
-			appointment={selectedAppointment ?? {}}
-			onSave={handleSaveAppointment}
-			loading={isSavingAppointment}
-			onCancel={() => closeWorkflow()}
-			onDirtyChange={(dirty) => (formDirty = dirty)}
-		/>
-	{/key}
+	{#if !detailLoadError}
+		{#key workflowKey}
+			<AppointmentForm
+				appointment={selectedAppointment ?? {}}
+				onSave={handleSaveAppointment}
+				loading={isSavingAppointment}
+				loadEmployeeOptions={loadAttendeeEmployeeOptions}
+				{loadClientOptions}
+				onCancel={() => closeWorkflow()}
+				onDirtyChange={(dirty) => (formDirty = dirty)}
+			/>
+		{/key}
+	{/if}
 </Modal>

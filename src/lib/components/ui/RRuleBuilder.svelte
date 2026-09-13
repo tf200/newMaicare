@@ -4,6 +4,7 @@
 	import Toggle from './Toggle.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { SvelteDate } from 'svelte/reactivity';
 
 	interface Props {
 		rrule: string | undefined;
@@ -36,7 +37,7 @@
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 	const addDays = (date: Date, amount: number) => {
-		const next = new Date(date);
+		const next = new SvelteDate(date);
 		next.setDate(next.getDate() + amount);
 		return next;
 	};
@@ -106,7 +107,7 @@
 			<h3 class="font-semibold text-text">{m.recurring_event()}</h3>
 			<p class="text-sm text-text-muted">{m.repeating_schedule_description()}</p>
 		</div>
-		<Toggle bind:checked={isRecurring} label="" description="" />
+		<Toggle bind:checked={isRecurring} ariaLabel={m.recurring_event()} />
 	</div>
 
 	{#if isRecurring}
@@ -130,6 +131,8 @@
 							<button
 								type="button"
 								onclick={() => toggleDay(day.value)}
+								aria-pressed={byDay.includes(day.value)}
+								aria-label={day.label}
 								class="h-10 w-10 rounded-lg text-sm font-semibold transition-colors {byDay.includes(
 									day.value
 								)

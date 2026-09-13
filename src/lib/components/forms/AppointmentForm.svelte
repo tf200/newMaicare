@@ -11,11 +11,13 @@
 	import RRuleBuilder from '$lib/components/ui/RRuleBuilder.svelte';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import type { Appointment } from '$lib/types/appointments';
-	import { listEmployees, type EmployeeListItem } from '$lib/api/employees';
-	import { listClients } from '$lib/api/clients';
 	import { createAppointmentSchema, type AppointmentInput } from '$lib/schemas/appointment';
-	import type { ListClientsResponse } from '$lib/types/api/clients';
 	import type { EventMutationScope } from '$lib/types/api';
+
+	interface AppointmentAttendeeOption {
+		label: string;
+		value: string;
+	}
 
 	interface Props {
 		appointment?: Partial<Appointment>;
@@ -23,9 +25,19 @@
 		onCancel: () => void;
 		onDirtyChange?: (dirty: boolean) => void;
 		loading?: boolean;
+		loadEmployeeOptions: (query: string) => Promise<AppointmentAttendeeOption[]>;
+		loadClientOptions: (query: string) => Promise<AppointmentAttendeeOption[]>;
 	}
 
-	let { appointment = {}, onSave, onCancel, onDirtyChange, loading = false }: Props = $props();
+	let {
+		appointment = {},
+		onSave,
+		onCancel,
+		onDirtyChange,
+		loading = false,
+		loadEmployeeOptions,
+		loadClientOptions
+	}: Props = $props();
 
 	function getInitialReminderValue() {
 		const initialReminder = appointment.reminders?.[0];
@@ -129,41 +141,14 @@
 	const canEditReminders = $derived(!appointment.isRecurringInstance || mutationScope !== 'single');
 
 	function handleMutationScopeChange(value: string) {
-		mutationScope = value as EventMutationScope;
+		if (value !== 'single' && value !== 'future' && value !== 'series') return;
+		mutationScope = value;
 		if (mutationScope === 'series' && appointment.masterStart && appointment.masterEnd) {
 			$form.start = appointment.masterStart;
 			$form.end = appointment.masterEnd;
 		} else if (appointment.occurrenceStart && appointment.occurrenceEnd) {
 			$form.start = appointment.occurrenceStart;
 			$form.end = appointment.occurrenceEnd;
-		}
-	}
-
-	// Load employees with search
-	async function loadEmployees(query: string) {
-		try {
-			const response = await listEmployees({ search: query, page: 1, pageSize: 50 });
-			return response.data.results.map((emp: EmployeeListItem) => ({
-				value: emp.id,
-				label: `${emp.first_name} ${emp.last_name}`
-			}));
-		} catch (e) {
-			console.error('Failed to load employees:', e);
-			return [];
-		}
-	}
-
-	// Load clients with search
-	async function loadClients(query: string) {
-		try {
-			const response = await listClients({ search: query, page: 1, pageSize: 50 });
-			return response.data.results.map((client: ListClientsResponse) => ({
-				value: client.id,
-				label: `${client.first_name} ${client.last_name}`
-			}));
-		} catch (e) {
-			console.error('Failed to load clients:', e);
-			return [];
 		}
 	}
 
@@ -190,7 +175,7 @@
 			label={m.type()}
 			options={kindOptions}
 			bind:value={$form.kind}
-			error={($errors.kind as string[] | undefined)?.join('\n')}
+			error={formatFormError($errors.kind)}
 		/>
 
 		<!-- Color -->
@@ -240,7 +225,7 @@
 				/>
 			</div>
 			{#if $errors.color}
-				<p class="mt-1 text-xs text-error">{($errors.color as string[])?.join('\n')}</p>
+				<p class="mt-1 text-xs text-error">{formatFormError($errors.color)}</p>
 			{/if}
 		</div>
 
@@ -296,22 +281,24 @@
 		<div class="md:col-span-2">
 			<MultiSearchSelect
 				label={m.involved_employees()}
-				loadOptions={loadEmployees}
+				loadOptions={loadEmployeeOptions}
 				bind:value={$form.attendeeEmployeeIds}
 				placeholder={m.search_select_employees_placeholder()}
 				searchPlaceholder={m.search_employees()}
-				error={($errors.attendeeEmployeeIds as string[] | undefined)?.join('\n')}
+				error={formatFormError($errors.attendeeEmployeeIds)}
+				loadErrorText={m.calendar_employee_options_error()}
 			/>
 		</div>
 
 		<div class="md:col-span-2">
 			<MultiSearchSelect
 				label={m.involved_clients()}
-				loadOptions={loadClients}
+				loadOptions={loadClientOptions}
 				bind:value={$form.attendeeClientIds}
 				placeholder={m.search_select_clients_placeholder()}
 				searchPlaceholder={m.search_clients()}
-				error={($errors.attendeeClientIds as string[] | undefined)?.join('\n')}
+				error={formatFormError($errors.attendeeClientIds)}
+				loadErrorText={m.calendar_client_options_error()}
 			/>
 		</div>
 
