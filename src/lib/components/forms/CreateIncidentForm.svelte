@@ -10,7 +10,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import DateTimePicker from '$lib/components/ui/DateTimePicker.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
@@ -20,23 +19,19 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
-		CreateIncidentInformedParty,
 		CreateIncidentRequest,
 		IncidentCauseCategory,
 		IncidentFollowUpAction,
+		IncidentInformedParty,
 		IncidentNeededConsultation,
 		IncidentPhysicalInjury,
+		IncidentPsychologicalDamage,
 		IncidentRecurrenceRisk,
 		IncidentReporterInvolvement,
 		ListClientsResponse,
 		OrganizationLocation
 	} from '$lib/types/api';
-	import type {
-		IncidentDetail,
-		InformedParty,
-		IncidentSeverity,
-		IncidentType
-	} from '$lib/types/incidents';
+	import type { IncidentDetail, IncidentSeverity, IncidentType } from '$lib/types/incidents';
 	import { IncidentSchema, type IncidentInput } from '$lib/schemas/incident';
 
 	let {
@@ -118,7 +113,7 @@
 							additional_details: form.data.additional_details || null,
 							informed_parties:
 								form.data.informed_parties.length > 0
-									? (form.data.informed_parties as CreateIncidentInformedParty[])
+									? (form.data.informed_parties as IncidentInformedParty[])
 									: undefined,
 							cause_categories:
 								form.data.cause_categories.length > 0
@@ -156,9 +151,14 @@
 		{ value: 'alarmed', label: m.alarmed() }
 	];
 
-	const informedPartyOptions: Array<{ value: CreateIncidentInformedParty; label: string }> = [
-		{ value: 'family', label: m.family() },
-		{ value: 'manager', label: m.manager() }
+	const informedPartyOptions: Array<{ value: IncidentInformedParty; label: string }> = [
+		{ value: 'parents_guardians', label: m.parents_guardians() },
+		{ value: 'care_coordinator', label: m.care_coordinator() },
+		{ value: 'referrer', label: m.referrer() },
+		{ value: 'healthcare_provider', label: m.healthcare_provider() },
+		{ value: 'inspectorate', label: m.inspectorate() },
+		{ value: 'police', label: m.police() },
+		{ value: 'other', label: m.other() }
 	];
 
 	const severityOptions: Array<{ value: IncidentSeverity; label: string }> = [
@@ -189,8 +189,7 @@
 	];
 
 	const causeCategoryOptions: Array<{ value: IncidentCauseCategory; label: string }> = [
-		{ value: 'internal_personal', label: m.internal_personal() },
-		{ value: 'external_environmental', label: m.external_environmental() },
+		{ value: 'external', label: m.external_environmental() },
 		{ value: 'organizational', label: m.organizational() },
 		{ value: 'technical', label: m.technical() },
 		{ value: 'employee_related', label: m.employee_related() },
@@ -216,35 +215,33 @@
 		{ value: 'consult_gp', label: m.consult_gp() }
 	];
 
-	const followUpActionOptions: Array<{ value: IncidentFollowUpAction; label: string }> = [
-		{ value: 'medical_check', label: m.medical_check() },
-		{ value: 'family_contact', label: m.family_contact() },
-		{ value: 'internal_review', label: m.internal_review() },
-		{ value: 'official_report', label: m.official_report() },
-		{ value: 'notify_inspectorate', label: m.notify_inspectorate() },
-		{ value: 'notify_referrer', label: m.notify_referrer() },
+	const psychologicalDamageOptions: Array<{
+		value: IncidentPsychologicalDamage;
+		label: string;
+	}> = [
+		{ value: 'no', label: m.no() },
+		{ value: 'not_noticeable_yet', label: m.not_noticeable_yet() },
+		{ value: 'drowsiness', label: m.drowsiness() },
+		{ value: 'unrest', label: m.unrest() },
 		{ value: 'other', label: m.other() }
 	];
 
-	const toEditableInformedParty = (value: InformedParty): CreateIncidentInformedParty | null => {
-		if (value === 'care_coordinator') return 'manager';
-		if (value === 'parents_guardians') return 'family';
-		return null;
-	};
-
-	const toEditableCauseCategory = (
-		value: IncidentCauseCategory
-	): IncidentInput['cause_categories'][number] =>
-		value === 'external' ? 'external_environmental' : value;
+	const followUpActionOptions: Array<{ value: IncidentFollowUpAction; label: string }> = [
+		{ value: 'notify_parents_guardians', label: m.notify_parents_guardians() },
+		{ value: 'notify_referrer', label: m.notify_referrer() },
+		{ value: 'notify_inspectorate', label: m.notify_inspectorate() },
+		{ value: 'medical_consultation', label: m.medical_consultation() },
+		{ value: 'care_plan_adjustment', label: m.care_plan_adjustment() },
+		{ value: 'team_evaluation', label: m.team_evaluation() },
+		{ value: 'other', label: m.other() }
+	];
 
 	const toFormFromIncident = (incident: IncidentDetail): IncidentInput => ({
 		client_id: incident.clientId,
 		employee_id: incident.employeeId ?? '',
 		location_id: incident.locationId ?? '',
 		reporter_involvement: incident.reporterInvolvement ?? 'directly_involved',
-		informed_parties: incident.informedParties
-			.map(toEditableInformedParty)
-			.filter((value): value is CreateIncidentInformedParty => value !== null),
+		informed_parties: incident.informedParties,
 		occurred_at: incident.occurredAt,
 		incident_type: incident.incidentType,
 		severity_of_incident: incident.severity,
@@ -252,7 +249,7 @@
 		recurrence_risk: incident.recurrenceRisk,
 		incident_prevent_steps: incident.incidentPreventSteps ?? '',
 		incident_taken_measures: incident.incidentTakenMeasures ?? '',
-		cause_categories: incident.causeCategories.map(toEditableCauseCategory),
+		cause_categories: incident.causeCategories,
 		cause_explanation: incident.causeExplanation ?? '',
 		physical_injury: incident.physicalInjury,
 		physical_injury_desc: incident.physicalInjuryDesc ?? '',
@@ -504,9 +501,10 @@
 				rows={3}
 				bind:value={$form.physical_injury_desc}
 			/>
-			<Input
+			<Select
 				label={m.psychological_damage()}
 				placeholder={m.placeholder_psychological_damage()}
+				options={psychologicalDamageOptions}
 				bind:value={$form.psychological_damage}
 			/>
 			<Textarea

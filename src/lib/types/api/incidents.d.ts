@@ -33,14 +33,7 @@ export type IncidentInformedParty =
 export type IncidentRecurrenceRisk = 'very_low' | 'means' | 'high' | 'very_high';
 
 export type IncidentCauseCategory =
-	| 'internal_personal'
-	| 'external_environmental'
-	| 'external'
-	| 'organizational'
-	| 'technical'
-	| 'employee_related'
-	| 'client_related'
-	| 'other';
+	'external' | 'organizational' | 'technical' | 'employee_related' | 'client_related' | 'other';
 
 export type IncidentPhysicalInjury =
 	| 'no_injuries'
@@ -62,12 +55,12 @@ export type IncidentPsychologicalDamage =
 export type IncidentNeededConsultation = 'no' | 'not_clear' | 'hospitalization' | 'consult_gp';
 
 export type IncidentFollowUpAction =
-	| 'medical_check'
-	| 'family_contact'
-	| 'internal_review'
-	| 'official_report'
-	| 'notify_inspectorate'
+	| 'notify_parents_guardians'
 	| 'notify_referrer'
+	| 'notify_inspectorate'
+	| 'medical_consultation'
+	| 'care_plan_adjustment'
+	| 'team_evaluation'
 	| 'other';
 
 export interface IncidentDetailResponse {
@@ -120,14 +113,12 @@ export interface IncidentCountsResponse {
 	past_24h_count: number;
 }
 
-export type CreateIncidentInformedParty = 'family' | 'manager';
-
 export interface CreateIncidentRequest {
 	client_id: string;
 	employee_id?: string;
 	location_id?: string;
 	reporter_involvement: IncidentReporterInvolvement;
-	informed_parties?: CreateIncidentInformedParty[];
+	informed_parties?: IncidentInformedParty[];
 	occurred_at?: string;
 	incident_type: IncidentType;
 	severity_of_incident: IncidentSeverity;
@@ -139,7 +130,7 @@ export interface CreateIncidentRequest {
 	cause_explanation?: string | null;
 	physical_injury: IncidentPhysicalInjury;
 	physical_injury_desc?: string | null;
-	psychological_damage?: string;
+	psychological_damage?: IncidentPsychologicalDamage;
 	psychological_damage_desc?: string | null;
 	needed_consultation: IncidentNeededConsultation;
 	follow_up_actions?: IncidentFollowUpAction[];

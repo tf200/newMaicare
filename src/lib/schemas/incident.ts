@@ -33,8 +33,7 @@ export const IncidentSeveritySchema = v.picklist([
 export const RecurrenceRiskSchema = v.picklist(['very_low', 'means', 'high', 'very_high']);
 
 export const CauseCategorySchema = v.picklist([
-	'internal_personal',
-	'external_environmental',
+	'external',
 	'organizational',
 	'technical',
 	'employee_related',
@@ -61,16 +60,32 @@ export const NeededConsultationSchema = v.picklist([
 ]);
 
 export const FollowUpActionSchema = v.picklist([
-	'medical_check',
-	'family_contact',
-	'internal_review',
-	'official_report',
-	'notify_inspectorate',
+	'notify_parents_guardians',
 	'notify_referrer',
+	'notify_inspectorate',
+	'medical_consultation',
+	'care_plan_adjustment',
+	'team_evaluation',
 	'other'
 ]);
 
-export const InformedPartySchema = v.picklist(['family', 'manager']);
+export const InformedPartySchema = v.picklist([
+	'parents_guardians',
+	'care_coordinator',
+	'referrer',
+	'healthcare_provider',
+	'inspectorate',
+	'police',
+	'other'
+]);
+
+export const PsychologicalDamageSchema = v.picklist([
+	'no',
+	'not_noticeable_yet',
+	'drowsiness',
+	'unrest',
+	'other'
+]);
 
 export const IncidentSchema = v.object({
 	client_id: v.pipe(
@@ -112,7 +127,7 @@ export const IncidentSchema = v.object({
 		v.minLength(1, () => m.required_field())
 	),
 	physical_injury_desc: v.optional(v.string()),
-	psychological_damage: v.optional(v.string()),
+	psychological_damage: v.optional(PsychologicalDamageSchema),
 	psychological_damage_desc: v.optional(v.string()),
 	needed_consultation: v.pipe(
 		NeededConsultationSchema,

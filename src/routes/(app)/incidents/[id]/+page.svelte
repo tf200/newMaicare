@@ -198,8 +198,6 @@
 	};
 
 	const causeCategoryLabels: Record<CauseCategory, () => string> = {
-		internal_personal: () => m.internal_personal(),
-		external_environmental: () => m.external_environmental(),
 		external: () => m.external_environmental(),
 		organizational: () => m.organizational(),
 		technical: () => m.technical(),
@@ -235,12 +233,12 @@
 	};
 
 	const followUpActionLabels: Record<FollowUpAction, () => string> = {
-		medical_check: () => m.medical_check(),
-		family_contact: () => m.family_contact(),
-		internal_review: () => m.internal_review(),
-		official_report: () => m.official_report(),
-		notify_inspectorate: () => m.notify_inspectorate(),
+		notify_parents_guardians: () => m.notify_parents_guardians(),
 		notify_referrer: () => m.notify_referrer(),
+		notify_inspectorate: () => m.notify_inspectorate(),
+		medical_consultation: () => m.medical_consultation(),
+		care_plan_adjustment: () => m.care_plan_adjustment(),
+		team_evaluation: () => m.team_evaluation(),
 		other: () => m.other()
 	};
 </script>

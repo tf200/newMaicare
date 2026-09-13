@@ -26,14 +26,7 @@ export type InformedParty =
 export type RecurrenceRisk = 'very_low' | 'means' | 'high' | 'very_high';
 
 export type CauseCategory =
-	| 'internal_personal'
-	| 'external_environmental'
-	| 'external'
-	| 'organizational'
-	| 'technical'
-	| 'employee_related'
-	| 'client_related'
-	| 'other';
+	'external' | 'organizational' | 'technical' | 'employee_related' | 'client_related' | 'other';
 
 export type PhysicalInjury =
 	| 'no_injuries'
@@ -50,12 +43,12 @@ export type PsychologicalDamage = 'no' | 'not_noticeable_yet' | 'drowsiness' | '
 export type NeededConsultation = 'no' | 'not_clear' | 'hospitalization' | 'consult_gp';
 
 export type FollowUpAction =
-	| 'medical_check'
-	| 'family_contact'
-	| 'internal_review'
-	| 'official_report'
-	| 'notify_inspectorate'
+	| 'notify_parents_guardians'
 	| 'notify_referrer'
+	| 'notify_inspectorate'
+	| 'medical_consultation'
+	| 'care_plan_adjustment'
+	| 'team_evaluation'
 	| 'other';
 
 export interface Incident {
