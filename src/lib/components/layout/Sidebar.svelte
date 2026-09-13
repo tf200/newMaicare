@@ -40,7 +40,12 @@
 			permission: 'DASHBOARD.VIEW'
 		},
 		{ label: m.clients(), href: '/clients', icon: UsersRound, permission: 'CLIENT.VIEW' },
-		{ label: m.calendar(), href: '/calendar', icon: Calendar, permission: 'DASHBOARD.VIEW' },
+		{
+			label: m.calendar(),
+			href: '/calendar',
+			icon: Calendar,
+			permission: PERMISSIONS.APPOINTMENT.VIEW
+		},
 		{
 			label: m.employees(),
 			href: '/employees',
