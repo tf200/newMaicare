@@ -17,6 +17,8 @@
 	import { ContractSchema, type ContractCareType, type ContractInput } from '$lib/schemas/contract';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
+	import { beforeNavigate } from '$app/navigation';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -28,6 +30,7 @@
 	let uploadedAttachments = $state<Array<{ id: string; name: string }>>([]);
 	let currentUploadFileId = $state<string | null>(null);
 	let uploadKey = $state(0);
+	let uploadInProgress = $state(false);
 	const formId = 'create-contract-form';
 	type TimeUnitOption = { value: CreateContractRequest['price_time_unit']; label: string };
 	const initialContractForm: ContractInput = {
@@ -49,9 +52,10 @@
 		attachment_ids: []
 	};
 
-	const { form, errors, enhance, delayed, submitting, reset } = superForm<ContractInput>(
+	const { form, errors, enhance, delayed, submitting, tainted, reset } = superForm<ContractInput>(
 		defaults(initialContractForm, valibotClient(ContractSchema)),
 		{
+			...getFormErrorNavigationOptions(),
 			validators: valibotClient(ContractSchema),
 			SPA: true,
 			dataType: 'json',
@@ -60,6 +64,10 @@
 			},
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
+					if (uploadInProgress) {
+						errorMessage = m.waiting_for_uploads();
+						return;
+					}
 					errorMessage = '';
 					try {
 						const payload: CreateContractRequest = {
@@ -74,8 +82,8 @@
 						clearTransientState();
 						onCreated?.();
 						open = false;
-					} catch (error) {
-						errorMessage = error instanceof Error ? error.message : m.failed_create_contract();
+					} catch {
+						errorMessage = m.failed_create_contract();
 					}
 				}
 			}
@@ -151,6 +159,7 @@
 
 		uploadedAttachments = [...uploadedAttachments, { id: fileId, name: fileName }];
 		currentUploadFileId = null;
+		uploadInProgress = false;
 		uploadKey += 1;
 	};
 
@@ -163,13 +172,29 @@
 		errorMessage = '';
 		uploadedAttachments = [];
 		currentUploadFileId = null;
+		uploadInProgress = false;
 		uploadKey += 1;
 	};
 
+	const hasUnsavedChanges = $derived(Boolean($tainted) || uploadedAttachments.length > 0);
+	const confirmDiscard = () =>
+		!hasUnsavedChanges || window.confirm(m.discard_contract_changes_confirmation());
+
 	const handleCancel = () => {
+		if (uploadInProgress || !confirmDiscard()) return;
 		clearTransientState();
 		open = false;
 	};
+
+	const handleRequestClose = () => {
+		if (uploadInProgress || !confirmDiscard()) return false;
+		clearTransientState();
+		return true;
+	};
+
+	beforeNavigate((navigation) => {
+		if (open && (uploadInProgress || (hasUnsavedChanges && !confirmDiscard()))) navigation.cancel();
+	});
 
 	const loadClients = async (query: string) => {
 		const res = await listClients({ search: query, page: 1, pageSize: 50 });
@@ -213,7 +238,7 @@
 	size="4xl"
 	closeLabel={m.close()}
 	dismissible={!$submitting}
-	onClose={clearTransientState}
+	onRequestClose={handleRequestClose}
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
@@ -377,6 +402,7 @@
 						{#key uploadKey}
 							<FileUpload
 								bind:fileId={currentUploadFileId}
+								bind:uploading={uploadInProgress}
 								onUpload={handleAttachmentUploaded}
 								accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
 							/>
@@ -422,14 +448,16 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting || uploadInProgress}
+				>{m.cancel()}</Button
+			>
 			<Button
 				variant="secondary"
 				class="gap-2"
 				form={formId}
 				type="submit"
 				isLoading={$delayed}
-				disabled={$submitting}
+				disabled={$submitting || uploadInProgress}
 			>
 				<Plus class="h-4 w-4" />
 				{$delayed ? m.creating_contract() : m.create_contract()}

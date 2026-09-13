@@ -187,8 +187,7 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 				loadError: null
 			} satisfies ContractsLoadResult;
 		})
-		.catch((error): ContractsLoadResult => {
-			const message = error instanceof Error ? error.message : m.failed_load_contracts();
+		.catch((): ContractsLoadResult => {
 			return {
 				rows: [],
 				stats: {
@@ -215,7 +214,7 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 						endDateTo
 					}
 				} satisfies PaginationState<ContractsFilters>,
-				loadError: message
+				loadError: m.failed_load_contracts()
 			};
 		});
 

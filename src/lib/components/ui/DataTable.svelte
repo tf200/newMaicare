@@ -246,6 +246,7 @@
 
 	<div class="overflow-x-auto px-4 sm:px-6">
 		<table class="min-w-full text-left">
+			{#if title}<caption class="sr-only">{title}</caption>{/if}
 			<thead class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
 				<tr>
 					{#each columns as column (column.key)}

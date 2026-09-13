@@ -2,6 +2,7 @@
 	import { Filter, Check, ChevronDown } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import DatePicker from './DatePicker.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type FilterItem = {
 		key: string;
@@ -21,9 +22,9 @@
 		groups,
 		onUpdate,
 		onClear,
-		title = 'Filters',
-		buttonLabel = 'Filters',
-		clearLabel = 'Clear all',
+		title = m.filters(),
+		buttonLabel = m.filters(),
+		clearLabel = m.clear_all(),
 		iconOnly = false
 	} = $props<{
 		filters: FiltersState;
@@ -37,6 +38,7 @@
 	}>();
 
 	let isOpen = $state(false);
+	const popupId = $props.id();
 
 	function toggleOpen() {
 		isOpen = !isOpen;
@@ -73,7 +75,11 @@
 
 <div class="relative inline-block w-full text-left sm:w-auto" data-filter-root>
 	<button
+		type="button"
 		onclick={toggleOpen}
+		aria-expanded={isOpen}
+		aria-haspopup="dialog"
+		aria-controls={popupId}
 		aria-label={title || buttonLabel}
 		class="group inline-flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-auto sm:justify-start {isOpen
 			? 'border-brand/50 text-text ring-2 ring-brand/20'
@@ -97,6 +103,9 @@
 
 	{#if isOpen}
 		<div
+			id={popupId}
+			role="dialog"
+			aria-label={title}
 			transition:scale={{ start: 0.95, duration: 100 }}
 			class="absolute top-full left-0 z-50 mt-2 w-full origin-top-right rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5 focus:outline-none sm:right-0 sm:left-auto sm:w-[340px]"
 		>
@@ -104,8 +113,9 @@
 				<h3 class="text-sm font-semibold text-text">{title}</h3>
 				{#if onClear && activeFilterCount > 0}
 					<button
+						type="button"
 						onclick={() => onClear?.()}
-						class="text-xs font-medium text-text-muted hover:text-brand hover:underline"
+						class="rounded-lg text-xs font-medium text-text-muted hover:text-brand hover:underline focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 					>
 						{clearLabel}
 					</button>
@@ -138,8 +148,9 @@
 									{:else}
 										{@const isChecked = Boolean(filters[item.key])}
 										<button
+											type="button"
 											onclick={() => toggleFilter(item.key)}
-											class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+											class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 										>
 											<span class={isChecked ? 'font-medium text-text' : 'text-text-muted'}>
 												{item.label}

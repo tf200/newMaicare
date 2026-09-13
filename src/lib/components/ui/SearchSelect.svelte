@@ -61,6 +61,7 @@
 	let dropdownEl = $state<HTMLDivElement>();
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let requestSequence = 0;
+	let activeIndex = $state(-1);
 
 	let listboxId = $derived(`${id}-listbox`);
 	let errorId = $derived(`${id}-error`);
@@ -91,9 +92,11 @@
 			const result = await loadOptions(query);
 			if (sequence !== requestSequence) return;
 			options = result ?? [];
+			activeIndex = options.length > 0 ? 0 : -1;
 		} catch {
 			if (sequence !== requestSequence) return;
 			options = [];
+			activeIndex = -1;
 			loadError = loadErrorText;
 		} finally {
 			if (sequence === requestSequence) isLoading = false;
@@ -120,6 +123,10 @@
 		triggerEl?.focus();
 	}
 
+	function optionId(index: number) {
+		return `${listboxId}-option-${index}`;
+	}
+
 	function clear() {
 		value = '';
 		displayValue = '';
@@ -129,6 +136,31 @@
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowDown' && options.length > 0) {
+			event.preventDefault();
+			activeIndex = (activeIndex + 1) % options.length;
+			return;
+		}
+		if (event.key === 'ArrowUp' && options.length > 0) {
+			event.preventDefault();
+			activeIndex = activeIndex <= 0 ? options.length - 1 : activeIndex - 1;
+			return;
+		}
+		if (event.key === 'Home' && options.length > 0) {
+			event.preventDefault();
+			activeIndex = 0;
+			return;
+		}
+		if (event.key === 'End' && options.length > 0) {
+			event.preventDefault();
+			activeIndex = options.length - 1;
+			return;
+		}
+		if (event.key === 'Enter' && activeIndex >= 0) {
+			event.preventDefault();
+			select(options[activeIndex]);
+			return;
+		}
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			isOpen = false;
@@ -229,6 +261,7 @@
 							type="text"
 							role="searchbox"
 							aria-controls={listboxId}
+							aria-activedescendant={activeIndex >= 0 ? optionId(activeIndex) : undefined}
 							value={searchQuery}
 							oninput={handleSearch}
 							onkeydown={handleSearchKeydown}
@@ -258,16 +291,20 @@
 					{:else if options.length === 0}
 						<div class="p-4 text-center text-sm text-text-muted">{m.no_results_found()}</div>
 					{:else}
-						{#each options as option (valueFn(option))}
+						{#each options as option, index (valueFn(option))}
 							<button
+								id={optionId(index)}
 								type="button"
 								role="option"
 								aria-selected={currentValue === valueFn(option)}
 								onclick={() => select(option)}
+								onpointerenter={() => (activeIndex = index)}
 								class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-100 {currentValue ===
 								valueFn(option)
 									? 'bg-brand/10 font-semibold text-brand'
-									: 'text-text hover:bg-border/50'}"
+									: activeIndex === index
+										? 'bg-border/50 text-text'
+										: 'text-text hover:bg-border/50'}"
 							>
 								<span class="min-w-0 flex-1 overflow-hidden">
 									{#if item}{@render item(option)}{:else}<span class="block truncate"

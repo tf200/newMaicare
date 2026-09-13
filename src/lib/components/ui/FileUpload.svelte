@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { uploadManager } from '$lib/state/upload.svelte';
+	import { AttachmentService } from '$lib/api/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -15,6 +15,7 @@
 			file: File,
 			onProgress?: (progress: number) => void
 		) => Promise<{ file_id: string }>;
+		uploading?: boolean;
 	}
 
 	let {
@@ -26,7 +27,8 @@
 		class: className,
 		helperText,
 		onUpload,
-		uploadFile
+		uploadFile,
+		uploading = $bindable(false)
 	}: Props = $props();
 
 	const inputId = $props.id();
@@ -37,6 +39,7 @@
 	} | null>(null);
 	let fileName = $state<string | null>(null);
 	let inputResetKey = $state(0);
+	let selectionSequence = 0;
 
 	async function handleFileSelect(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -44,14 +47,18 @@
 		if (!selected) return;
 
 		fileName = selected.name;
-		localUpload = uploadFile ? { progress: 0, status: 'uploading' } : null;
+		localUpload = { progress: 0, status: 'uploading' };
+		uploading = true;
+		const sequence = ++selectionSequence;
 
 		try {
+			const updateProgress = (progress: number) => {
+				if (sequence === selectionSequence && localUpload) localUpload.progress = progress;
+			};
 			const result = uploadFile
-				? await uploadFile(selected, (progress) => {
-						if (localUpload) localUpload.progress = progress;
-					})
-				: await uploadManager.uploadFile(selected);
+				? await uploadFile(selected, updateProgress)
+				: await AttachmentService.fullUploadFlow(selected, updateProgress);
+			if (sequence !== selectionSequence) return;
 
 			if (localUpload) {
 				localUpload.status = 'completed';
@@ -61,6 +68,7 @@
 			fileId = result.file_id;
 			if (onUpload) onUpload(result.file_id, selected.name);
 		} catch (err) {
+			if (sequence !== selectionSequence) return;
 			const message = err instanceof Error ? err.message : m.upload_failed();
 			if (localUpload) {
 				localUpload.status = 'error';
@@ -68,19 +76,26 @@
 			} else {
 				localUpload = { progress: 0, status: 'error', error: message };
 			}
+		} finally {
+			if (sequence === selectionSequence) uploading = false;
 		}
 	}
 
-	// Find the active upload in the manager to show progress
-	let managedUpload = $derived(uploadManager.uploads.find((u) => u.file.name === fileName));
-	let activeUpload = $derived(localUpload ?? managedUpload);
+	let activeUpload = $derived(localUpload);
 
 	function removeFile() {
+		selectionSequence += 1;
+		uploading = false;
 		fileId = null;
 		fileName = null;
 		localUpload = null;
 		inputResetKey += 1;
 	}
+
+	$effect(() => () => {
+		selectionSequence += 1;
+		uploading = false;
+	});
 </script>
 
 <div class="space-y-2 {className}">

@@ -69,6 +69,7 @@
 			icon: HeartHandshake,
 			anyOf: [
 				PERMISSIONS.CARE_COORDINATION.VIEW,
+				PERMISSIONS.CONTRACT.VIEW,
 				PERMISSIONS.CLIENT.EVALUATION_VIEW,
 				PERMISSIONS.CLIENT.INCIDENT_VIEW
 			],
@@ -78,7 +79,11 @@
 					href: '/organization',
 					permission: PERMISSIONS.ORGANISATION.VIEW
 				},
-				{ label: m.contracts(), href: '/contracts', permission: 'CARE_COORDINATION.VIEW' },
+				{
+					label: m.contracts(),
+					href: '/contracts',
+					permission: PERMISSIONS.CONTRACT.VIEW
+				},
 				{ label: m.senders(), href: '/senders', permission: 'SENDER.VIEW' },
 				{
 					label: m.registrations(),

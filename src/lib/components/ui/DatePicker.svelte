@@ -6,7 +6,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { selectSizeClasses, type SelectSize } from './_sizes';
+	import { SvelteDate } from 'svelte/reactivity';
 
+	const generatedId = $props.id();
 	let {
 		label,
 		value = $bindable(),
@@ -15,7 +17,7 @@
 		minDate = undefined,
 		size = 'lg',
 		compact = false,
-		id = `date-${Math.random().toString(36).substr(2, 9)}`
+		id = generatedId
 	} = $props<{
 		label?: string;
 		value?: string;
@@ -40,9 +42,13 @@
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
 
 	const addDays = (date: Date, amount: number) => {
-		const next = new Date(date);
+		const next = new SvelteDate(date);
 		next.setDate(next.getDate() + amount);
 		return next;
+	};
+	const isBeforeMinDate = (date: Date) => {
+		const minimum = parseDateValue(minDate);
+		return minimum ? date < minimum : false;
 	};
 
 	function formatDateValue(date: Date) {
@@ -59,6 +65,8 @@
 	let sizeClass = $derived(selectSizeClasses[resolvedSize as SelectSize]);
 	let viewDate = $state(parseDateValue(value) ?? new Date());
 	let view = $state<View>('days');
+	let errorId = $derived(`${id}-error`);
+	let calendarId = $derived(`${id}-calendar`);
 
 	// Calendar logic
 	const days = $derived.by(() => {
@@ -151,6 +159,14 @@
 		else view = 'days';
 	}
 
+	function toggleCalendar() {
+		if (!isOpen) {
+			viewDate = parseDateValue(value) ?? new Date();
+			view = 'days';
+		}
+		isOpen = !isOpen;
+	}
+
 	function handleOutsideClick(node: HTMLElement) {
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as Node;
@@ -181,7 +197,13 @@
 			{id}
 			bind:this={triggerEl}
 			type="button"
-			onclick={() => (isOpen = !isOpen)}
+			role="combobox"
+			onclick={toggleCalendar}
+			aria-expanded={isOpen}
+			aria-haspopup="dialog"
+			aria-controls={calendarId}
+			aria-invalid={error ? true : undefined}
+			aria-describedby={error ? errorId : undefined}
 			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-left text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20"
 		>
 			<CalendarIcon class="h-4 w-4 text-text-subtle" />
@@ -194,6 +216,9 @@
 
 		{#if isOpen && triggerEl}
 			<div
+				id={calendarId}
+				role="dialog"
+				aria-label={label ?? m.select_date_placeholder()}
 				bind:this={dropdownEl}
 				use:portal
 				use:floating={{ anchor: triggerEl }}
@@ -205,21 +230,23 @@
 						<button
 							type="button"
 							onclick={prev}
-							class="rounded-lg p-1 text-text hover:bg-border/50"
+							aria-label={m.previous_month()}
+							class="rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							<ChevronLeft class="h-5 w-5" />
 						</button>
 						<button
 							type="button"
 							onclick={toggleView}
-							class="font-semibold text-text transition-colors hover:text-brand"
+							class="rounded-lg font-semibold text-text transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							{headerText}
 						</button>
 						<button
 							type="button"
 							onclick={next}
-							class="rounded-lg p-1 text-text hover:bg-border/50"
+							aria-label={m.next_month()}
+							class="rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							<ChevronRight class="h-5 w-5" />
 						</button>
@@ -244,8 +271,11 @@
 											<button
 												type="button"
 												onclick={() => selectDate(date)}
+												disabled={isBeforeMinDate(date)}
 												class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
-															{value === formatDateValue(date) ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
+															{value === formatDateValue(date)
+													? 'bg-brand font-bold text-white hover:opacity-90'
+													: ''} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
 											>
 												{date.getDate()}
 											</button>
@@ -300,6 +330,6 @@
 		{/if}
 	</div>
 	{#if error}
-		<p class="ml-1 text-xs font-medium text-error">{error}</p>
+		<p id={errorId} class="ml-1 text-xs font-medium text-error">{error}</p>
 	{/if}
 </div>

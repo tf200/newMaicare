@@ -12,6 +12,7 @@
 		UsersRound
 	} from 'lucide-svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -52,7 +53,8 @@
 					{
 						label: m.contracts(),
 						href: resolve('/(app)/clients/[id]/contracts', { id: clientId }),
-						icon: ScrollText
+						icon: ScrollText,
+						permission: PERMISSIONS.CONTRACT.VIEW
 					},
 					{
 						label: m.involved_employees(),

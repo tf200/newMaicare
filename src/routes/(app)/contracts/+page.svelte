@@ -220,8 +220,6 @@
 	const applySearch = (value: string) => {
 		updateQuery(1, {
 			...initial.filters,
-			clientName: '',
-			senderName: '',
 			search: value.trim()
 		});
 	};
@@ -229,8 +227,6 @@
 	const applyFinancingOption = (value: ContractFinancingOption | '') => {
 		updateQuery(1, {
 			...initial.filters,
-			clientName: '',
-			senderName: '',
 			financingOption: value ? [value] : []
 		});
 	};
@@ -256,8 +252,6 @@
 
 		updateQuery(1, {
 			...initial.filters,
-			clientName: '',
-			senderName: '',
 			status,
 			careType,
 			financingAct,
@@ -269,17 +263,20 @@
 	const clearFilters = () => {
 		updateQuery(1, {
 			...initial.filters,
-			clientName: '',
-			senderName: '',
 			status: [],
 			careType: [],
 			financingAct: [],
+			financingOption: [],
 			endDateFrom: '',
 			endDateTo: ''
 		});
 	};
 
 	const refreshContracts = () => invalidate('app:contracts:list');
+	const openContract = (row: ContractsRow) =>
+		goto(resolve('/(app)/contracts/[id]', { id: row.id }));
+	const careTypeLabel = (careType: ContractCareType) =>
+		careType === 'ambulante' ? m.ambulante() : m.accommodation();
 </script>
 
 <svelte:head>
@@ -311,6 +308,8 @@
 			filters={activeFilters}
 			groups={filterGroups}
 			title={m.contract_filters()}
+			buttonLabel={m.filters()}
+			clearLabel={m.clear_all()}
 			onUpdate={handleFilterUpdate}
 			onClear={clearFilters}
 		/>
@@ -371,7 +370,9 @@
 {#snippet careCell(row: ContractsRow)}
 	<div class="space-y-1">
 		<p class="text-sm font-semibold text-text">{row.careName}</p>
-		<p class="text-xs font-medium text-text-muted capitalize">{row.careType} - {row.senderName}</p>
+		<p class="text-xs font-medium text-text-muted">
+			{careTypeLabel(row.careType)} - {row.senderName}
+		</p>
 	</div>
 {/snippet}
 
@@ -476,8 +477,7 @@
 				page: currentPage,
 				pageSize,
 				totalCount: 0,
-				onPageChange: (nextPage) =>
-					updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })
+				onPageChange: (nextPage) => updateQuery(nextPage, initial.filters)
 			}}
 			rowKey="id"
 			title={m.contracts()}
@@ -533,8 +533,7 @@
 				page: contractsData.pagination.page,
 				pageSize: contractsData.pagination.pageSize,
 				totalCount: contractsData.pagination.count,
-				onPageChange: (nextPage) =>
-					updateQuery(nextPage, { ...initial.filters, clientName: '', senderName: '' })
+				onPageChange: (nextPage) => updateQuery(nextPage, initial.filters)
 			}}
 			rowKey="id"
 			title={m.contracts()}
@@ -542,6 +541,7 @@
 			toolbar={tableFilters}
 			error={contractsData.loadError ?? undefined}
 			onRetry={refreshContracts}
+			onRowClick={openContract}
 			cells={{
 				client: clientCell,
 				care: careCell,
