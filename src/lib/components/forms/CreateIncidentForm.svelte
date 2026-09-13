@@ -64,7 +64,7 @@
 
 	const isEditMode = $derived(Boolean(incidentId));
 
-	const { form, errors, enhance, delayed, tainted, reset } = superForm(
+	const { form, errors, enhance, submitting, tainted, reset } = superForm(
 		defaults(
 			{
 				client_id: '',
@@ -100,7 +100,9 @@
 			dataType: 'json',
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
+					errorMessage = '';
 					try {
+						const emails = parseEmails(form.data.emails);
 						const payload: CreateIncidentRequest = {
 							...form.data,
 							employee_id: form.data.employee_id || undefined,
@@ -126,14 +128,14 @@
 								form.data.follow_up_actions.length > 0
 									? (form.data.follow_up_actions as IncidentFollowUpAction[])
 									: undefined,
-							emails: parseEmails(form.data.emails)
+							emails: emails.length > 0 ? emails : undefined
 						};
 
 						if (isEditMode && incidentId) {
 							await updateIncident(incidentId, payload);
 							toast.success(m.incident_updated_success());
 						} else {
-							await createIncident(form.data.client_id, payload);
+							await createIncident(payload);
 							toast.success(m.incident_created_success());
 						}
 						onCreated?.();
@@ -374,7 +376,10 @@
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{errorMessage}
 			</div>
 		{/if}
@@ -565,10 +570,17 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end gap-3">
-			<Button variant="ghost" onclick={handleCancel} disabled={$delayed}>{m.cancel()}</Button>
-			<Button variant="secondary" class="gap-2" form={formId} type="submit" isLoading={$delayed}>
+			<Button variant="ghost" onclick={handleCancel} disabled={$submitting}>{m.cancel()}</Button>
+			<Button
+				variant="secondary"
+				class="gap-2"
+				form={formId}
+				type="submit"
+				isLoading={$submitting}
+				disabled={$submitting}
+			>
 				<Plus class="h-4 w-4" />
-				{$delayed
+				{$submitting
 					? isEditMode
 						? m.updating_incident()
 						: m.creating_incident()

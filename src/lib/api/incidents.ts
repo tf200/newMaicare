@@ -41,8 +41,8 @@ export function confirmIncident(incidentId: string) {
 	return api.post<ApiEnvelope<unknown>>(`/incidents/${incidentId}/confirm`, {});
 }
 
-export function createIncident(clientId: string, payload: CreateIncidentRequest) {
-	return api.post<ApiEnvelope<unknown>>(`/clients/${clientId}/incidents`, payload);
+export function createIncident(payload: CreateIncidentRequest) {
+	return api.post<ApiEnvelope<unknown>>('/incidents', payload);
 }
 
 export function updateIncident(incidentId: string, payload: CreateIncidentRequest) {

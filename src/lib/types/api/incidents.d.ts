@@ -135,14 +135,14 @@ export interface CreateIncidentRequest {
 	recurrence_risk: IncidentRecurrenceRisk;
 	incident_prevent_steps?: string | null;
 	incident_taken_measures?: string | null;
-	cause_categories?: string[];
+	cause_categories?: IncidentCauseCategory[];
 	cause_explanation?: string | null;
 	physical_injury: IncidentPhysicalInjury;
 	physical_injury_desc?: string | null;
 	psychological_damage?: string;
 	psychological_damage_desc?: string | null;
 	needed_consultation: IncidentNeededConsultation;
-	follow_up_actions?: string[];
+	follow_up_actions?: IncidentFollowUpAction[];
 	follow_up_notes?: string | null;
 	is_employee_absent?: boolean;
 	additional_details?: string | null;

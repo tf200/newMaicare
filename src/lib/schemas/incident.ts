@@ -1,4 +1,7 @@
 import * as v from 'valibot';
+import { m } from '$lib/paraglide/messages';
+
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 export const ReporterInvolvementSchema = v.picklist([
 	'directly_involved',
@@ -70,30 +73,50 @@ export const FollowUpActionSchema = v.picklist([
 export const InformedPartySchema = v.picklist(['family', 'manager']);
 
 export const IncidentSchema = v.object({
-	client_id: v.pipe(v.string(), v.minLength(1, 'Client is required')),
+	client_id: v.pipe(
+		v.string(),
+		v.minLength(1, () => m.required_field()),
+		v.uuid(() => m.required_field()),
+		v.check(
+			(value) => value !== NIL_UUID,
+			() => m.required_field()
+		)
+	),
 	employee_id: v.optional(v.string()),
 	location_id: v.optional(v.string()),
 	reporter_involvement: v.pipe(
 		ReporterInvolvementSchema,
-		v.minLength(1, 'Reporter involvement is required')
+		v.minLength(1, () => m.required_field())
 	),
 	informed_parties: v.array(InformedPartySchema),
-	occurred_at: v.pipe(v.string(), v.minLength(1, 'Occurrence date is required')),
-	incident_type: v.pipe(IncidentTypeSchema, v.minLength(1, 'Incident type is required')),
-	severity_of_incident: v.pipe(IncidentSeveritySchema, v.minLength(1, 'Severity is required')),
+	occurred_at: v.optional(v.string()),
+	incident_type: v.pipe(
+		IncidentTypeSchema,
+		v.minLength(1, () => m.required_field())
+	),
+	severity_of_incident: v.pipe(
+		IncidentSeveritySchema,
+		v.minLength(1, () => m.required_field())
+	),
 	incident_explanation: v.optional(v.string()),
-	recurrence_risk: v.pipe(RecurrenceRiskSchema, v.minLength(1, 'Recurrence risk is required')),
+	recurrence_risk: v.pipe(
+		RecurrenceRiskSchema,
+		v.minLength(1, () => m.required_field())
+	),
 	incident_prevent_steps: v.optional(v.string()),
 	incident_taken_measures: v.optional(v.string()),
 	cause_categories: v.array(CauseCategorySchema),
 	cause_explanation: v.optional(v.string()),
-	physical_injury: v.pipe(PhysicalInjurySchema, v.minLength(1, 'Physical injury is required')),
+	physical_injury: v.pipe(
+		PhysicalInjurySchema,
+		v.minLength(1, () => m.required_field())
+	),
 	physical_injury_desc: v.optional(v.string()),
 	psychological_damage: v.optional(v.string()),
 	psychological_damage_desc: v.optional(v.string()),
 	needed_consultation: v.pipe(
 		NeededConsultationSchema,
-		v.minLength(1, 'Needed consultation is required')
+		v.minLength(1, () => m.required_field())
 	),
 	follow_up_actions: v.array(FollowUpActionSchema),
 	follow_up_notes: v.optional(v.string()),
@@ -101,14 +124,17 @@ export const IncidentSchema = v.object({
 	additional_details: v.optional(v.string()),
 	emails: v.pipe(
 		v.string(),
-		v.check((val) => {
-			const emails = val
-				.split(/[\n,;]+/)
-				.map((e) => e.trim())
-				.filter((e) => e.length > 0);
+		v.check(
+			(val) => {
+				const emails = val
+					.split(/[\n,;]+/)
+					.map((e) => e.trim())
+					.filter((e) => e.length > 0);
 
-			return emails.every((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-		}, 'One or more email addresses are invalid')
+				return emails.every((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+			},
+			() => m.invalid_email()
+		)
 	)
 });
 
