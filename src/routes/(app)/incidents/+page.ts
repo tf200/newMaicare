@@ -44,7 +44,7 @@ const parsePositiveInteger = (value: string | null, fallback: number, maximum?: 
 
 export const load: PageLoad = ({ url, fetch, depends }) => {
 	const auth = getAuthState();
-	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.INCIDENT.VIEW])) {
+	if (!auth.hasPermission(PERMISSIONS.CLIENT.INCIDENT_VIEW)) {
 		error(403, m.incidents_access_denied());
 	}
 

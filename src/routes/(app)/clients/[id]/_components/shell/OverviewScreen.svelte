@@ -179,14 +179,16 @@
 					<MessageSquare class="h-4 w-4" aria-hidden="true" />
 					{m.new_progress_report()}
 				</Button>
-				<Button
-					variant="ghost"
-					onclick={openCreateIncidentForm}
-					class="border border-border bg-surface shadow-sm"
-				>
-					<ShieldAlert class="h-4 w-4" aria-hidden="true" />
-					{m.log_incident()}
-				</Button>
+				<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CREATE}>
+					<Button
+						variant="ghost"
+						onclick={openCreateIncidentForm}
+						class="border border-border bg-surface shadow-sm"
+					>
+						<ShieldAlert class="h-4 w-4" aria-hidden="true" />
+						{m.log_incident()}
+					</Button>
+				</PermissionGuard>
 			{/if}
 			<a
 				href={resolve(
@@ -335,12 +337,14 @@
 	/>
 {/if}
 
-<CreateIncidentForm
-	bind:open={showCreateIncidentForm}
-	preselectedClientId={client.id}
-	preselectedClientDisplay={`${client.firstName} ${client.lastName}`.trim()}
-	onCreated={() => invalidate(`app:client:${client.id}:detail`)}
-/>
+<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CREATE}>
+	<CreateIncidentForm
+		bind:open={showCreateIncidentForm}
+		preselectedClientId={client.id}
+		preselectedClientDisplay={`${client.firstName} ${client.lastName}`.trim()}
+		onCreated={() => invalidate(`app:client:${client.id}:detail`)}
+	/>
+</PermissionGuard>
 
 <CreateProgressReportModal
 	bind:open={showCreateProgressReportModal}

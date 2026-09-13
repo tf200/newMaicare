@@ -62,7 +62,11 @@
 		{
 			label: m.care_coordination(),
 			icon: HeartHandshake,
-			anyOf: [PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.CLIENT.EVALUATION_VIEW],
+			anyOf: [
+				PERMISSIONS.CARE_COORDINATION.VIEW,
+				PERMISSIONS.CLIENT.EVALUATION_VIEW,
+				PERMISSIONS.CLIENT.INCIDENT_VIEW
+			],
 			children: [
 				{
 					label: m.organization(),
@@ -99,7 +103,7 @@
 				{
 					label: m.incidents(),
 					href: '/incidents',
-					permission: PERMISSIONS.INCIDENT.VIEW
+					permission: PERMISSIONS.CLIENT.INCIDENT_VIEW
 				}
 			]
 		},

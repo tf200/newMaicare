@@ -1,6 +1,10 @@
 import { getIncident } from '$lib/api/incidents';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
+import { getAuthState } from '$lib/state/auth.svelte';
 import type { IncidentDetailResponse } from '$lib/types/api';
 import type { IncidentDetail } from '$lib/types/incidents';
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
 export interface IncidentDetailLoadResult {
@@ -45,22 +49,29 @@ const mapIncidentDetail = (payload: IncidentDetailResponse): IncidentDetail => (
 	emails: payload.emails
 });
 
-export const load: PageLoad = ({ params }) => {
-	const incidentId = params.id;
+export const load: PageLoad = ({ params, fetch, depends }) => {
+	const auth = getAuthState();
+	if (!auth.hasPermission(PERMISSIONS.CLIENT.INCIDENT_VIEW)) {
+		error(403, m.incidents_access_denied());
+	}
 
-	const incidentData: Promise<IncidentDetailLoadResult> = getIncident(incidentId)
+	const incidentId = params.id;
+	depends(`app:incidents:${incidentId}:detail`);
+
+	const incidentData: Promise<IncidentDetailLoadResult> = getIncident(incidentId, {
+		fetchFn: fetch
+	})
 		.then((response) => ({
 			incident: mapIncidentDetail(response.data),
 			loadError: null
 		}))
-		.catch(
-			(error): IncidentDetailLoadResult => ({
-				incident: null,
-				loadError: error instanceof Error ? error.message : 'Failed to load incident details.'
-			})
-		);
+		.catch((error): IncidentDetailLoadResult => ({
+			incident: null,
+			loadError: error instanceof Error ? error.message : m.failed_load_incidents()
+		}));
 
 	return {
+		incidentId,
 		incidentData
 	};
 };

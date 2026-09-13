@@ -1,5 +1,7 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import {
 		AlertTriangle,
 		BadgeEuro,
@@ -48,6 +50,7 @@
 		label: string;
 		icon: ComponentType;
 		href?: string;
+		allOf?: string[];
 	}
 
 	const summary = {
@@ -162,7 +165,12 @@
 		{ label: 'Create invoice', icon: ReceiptText, href: '/finances/invoices/new' },
 		{ label: 'Generate invoices', icon: WalletCards },
 		{ label: 'Auto-schedule', icon: Sparkles, href: '/schedules' },
-		{ label: 'Create incident', icon: ShieldAlert, href: '/incidents' },
+		{
+			label: 'Create incident',
+			icon: ShieldAlert,
+			href: '/incidents',
+			allOf: [PERMISSIONS.CLIENT.INCIDENT_VIEW, PERMISSIONS.CLIENT.INCIDENT_CREATE]
+		},
 		{ label: 'Add location', icon: Building2, href: '/organization' }
 	];
 
@@ -337,23 +345,25 @@
 			</div>
 			<div class="mt-4 grid grid-cols-2 gap-2">
 				{#each quickActions as action (action.label)}
-					{#if action.href}
-						<a
-							href={action.href}
-							class="flex items-center gap-2 rounded-2xl border border-border bg-zinc-50/70 px-3 py-2.5 text-xs font-bold text-text transition hover:border-indigo-500/30 hover:bg-indigo-500/5 dark:bg-zinc-950/50"
-						>
-							<action.icon class="h-4 w-4 shrink-0 text-brand" />
-							<span class="truncate">{action.label}</span>
-						</a>
-					{:else}
-						<button
-							type="button"
-							class="flex items-center gap-2 rounded-2xl border border-border bg-zinc-50/70 px-3 py-2.5 text-left text-xs font-bold text-text transition hover:border-indigo-500/30 hover:bg-indigo-500/5 dark:bg-zinc-950/50"
-						>
-							<action.icon class="h-4 w-4 shrink-0 text-brand" />
-							<span class="truncate">{action.label}</span>
-						</button>
-					{/if}
+					<PermissionGuard allOf={action.allOf}>
+						{#if action.href}
+							<a
+								href={action.href}
+								class="flex items-center gap-2 rounded-2xl border border-border bg-zinc-50/70 px-3 py-2.5 text-xs font-bold text-text transition hover:border-indigo-500/30 hover:bg-indigo-500/5 dark:bg-zinc-950/50"
+							>
+								<action.icon class="h-4 w-4 shrink-0 text-brand" />
+								<span class="truncate">{action.label}</span>
+							</a>
+						{:else}
+							<button
+								type="button"
+								class="flex items-center gap-2 rounded-2xl border border-border bg-zinc-50/70 px-3 py-2.5 text-left text-xs font-bold text-text transition hover:border-indigo-500/30 hover:bg-indigo-500/5 dark:bg-zinc-950/50"
+							>
+								<action.icon class="h-4 w-4 shrink-0 text-brand" />
+								<span class="truncate">{action.label}</span>
+							</button>
+						{/if}
+					</PermissionGuard>
 				{/each}
 			</div>
 		</section>

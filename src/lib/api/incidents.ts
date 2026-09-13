@@ -29,8 +29,8 @@ export function listIncidents(params: ListIncidentsParams, options?: ApiRequestO
 	return api.get<ApiEnvelope<PaginatedResponse<IncidentListItemResponse>>>(endpoint, options);
 }
 
-export function getIncident(incidentId: string) {
-	return api.get<ApiEnvelope<IncidentDetailResponse>>(`/incidents/${incidentId}`);
+export function getIncident(incidentId: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<IncidentDetailResponse>>(`/incidents/${incidentId}`, options);
 }
 
 export function getIncidentCounts(options?: ApiRequestOptions) {

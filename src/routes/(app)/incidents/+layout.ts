@@ -16,7 +16,7 @@ export interface IncidentCountsLoadResult {
 
 export const load: LayoutLoad = ({ fetch, depends }) => {
 	const auth = getAuthState();
-	if (!auth.hasAllPermissions([PERMISSIONS.CARE_COORDINATION.VIEW, PERMISSIONS.INCIDENT.VIEW])) {
+	if (!auth.hasPermission(PERMISSIONS.CLIENT.INCIDENT_VIEW)) {
 		error(403, m.incident_statistics_access_denied());
 	}
 

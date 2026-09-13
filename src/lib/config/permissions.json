@@ -336,11 +336,6 @@
 			"method": ["PUT"]
 		},
 		{
-			"name": "INCIDENT.VIEW",
-			"resource": "/incidents",
-			"method": ["GET"]
-		},
-		{
 			"name": "FINANCE.VIEW",
 			"resource": "/finance",
 			"method": ["GET"]

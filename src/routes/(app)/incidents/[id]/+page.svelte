@@ -19,7 +19,7 @@
 		History,
 		Pencil
 	} from 'lucide-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { getToastState } from '$lib/state/toast.svelte';
 	import { confirmIncident, getIncidentFile } from '$lib/api/incidents';
@@ -27,6 +27,8 @@
 	import CreateIncidentForm from '$lib/components/forms/CreateIncidentForm.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 	import type { IncidentDetailLoadResult } from './+page';
 	import type {
 		IncidentType,
@@ -43,6 +45,7 @@
 
 	let { data } = $props<{
 		data: {
+			incidentId: string;
 			incidentData: Promise<IncidentDetailLoadResult>;
 		};
 	}>();
@@ -77,7 +80,6 @@
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
-		const incident = data.incidentData;
 		breadcrumbs.items = [
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.incidents(), href: '/incidents' },
@@ -103,7 +105,10 @@
 			toast.success(m.incident_confirmed_success());
 			isConfirmModalOpen = false;
 			try {
-				await invalidateAll();
+				await Promise.all([
+					invalidate(`app:incidents:${incidentId}:detail`),
+					invalidate('app:incidents:counts')
+				]);
 			} catch (error) {
 				console.error('Failed to refresh after confirming incident:', error);
 			}
@@ -114,9 +119,12 @@
 		}
 	};
 
-	const handleIncidentUpdated = async () => {
+	const handleIncidentUpdated = async (incidentId: string) => {
 		isEditModalOpen = false;
-		await invalidateAll();
+		await Promise.all([
+			invalidate(`app:incidents:${incidentId}:detail`),
+			invalidate('app:incidents:counts')
+		]);
 	};
 
 	// --- Helpers ---
@@ -128,15 +136,6 @@
 			year: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
-		});
-	};
-
-	const formatSimpleDate = (dateString?: string) => {
-		if (!dateString) return 'N/A';
-		return new Date(dateString).toLocaleDateString('nl-NL', {
-			day: '2-digit',
-			month: 'short',
-			year: 'numeric'
 		});
 	};
 
@@ -258,63 +257,70 @@
 		</div>
 	{:then incidentData}
 		{#if incidentData.loadError}
-			<InlineErrorBanner message={incidentData.loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner
+				message={incidentData.loadError}
+				onRetry={() => invalidate(`app:incidents:${data.incidentId}:detail`)}
+			/>
 		{:else if incidentData.incident}
 			{@const incident = incidentData.incident as import('$lib/types/incidents').IncidentDetail}
-			<CreateIncidentForm
-				bind:open={isEditModalOpen}
-				incidentId={incident.id}
-				initialIncident={incident}
-				onCreated={handleIncidentUpdated}
-			/>
-			<Modal
-				bind:open={isConfirmModalOpen}
-				title={m.confirm_and_notify()}
-				description={m.confirm_and_notify_description()}
-				size="md"
-			>
-				<div class="space-y-4">
-					<div class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
-						<div class="flex items-start gap-3">
-							<span
-								class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"
-							>
-								<Mail class="h-4 w-4" />
-							</span>
-							<div class="space-y-2">
-								<p class="text-sm font-semibold text-amber-900">
-									{m.are_you_sure_confirm()}
-								</p>
-								<p class="text-sm text-amber-800">
-									{m.confirm_incident_warning()}
-								</p>
+			<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_UPDATE}>
+				<CreateIncidentForm
+					bind:open={isEditModalOpen}
+					incidentId={incident.id}
+					initialIncident={incident}
+					onCreated={() => handleIncidentUpdated(incident.id)}
+				/>
+			</PermissionGuard>
+			<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CONFIRM}>
+				<Modal
+					bind:open={isConfirmModalOpen}
+					title={m.confirm_and_notify()}
+					description={m.confirm_and_notify_description()}
+					size="md"
+				>
+					<div class="space-y-4">
+						<div class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
+							<div class="flex items-start gap-3">
+								<span
+									class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"
+								>
+									<Mail class="h-4 w-4" />
+								</span>
+								<div class="space-y-2">
+									<p class="text-sm font-semibold text-amber-900">
+										{m.are_you_sure_confirm()}
+									</p>
+									<p class="text-sm text-amber-800">
+										{m.confirm_incident_warning()}
+									</p>
+								</div>
 							</div>
 						</div>
+
+						{#if confirmIncidentError}
+							<InlineErrorBanner
+								message={confirmIncidentError}
+								onRetry={() => handleConfirmIncident(incident.id)}
+							/>
+						{/if}
 					</div>
 
-					{#if confirmIncidentError}
-						<InlineErrorBanner
-							message={confirmIncidentError}
-							onRetry={() => handleConfirmIncident(incident.id)}
-						/>
-					{/if}
-				</div>
-
-				{#snippet footer()}
-					<div class="flex justify-end gap-3">
-						<Button variant="ghost" onclick={closeConfirmModal} disabled={isConfirmingIncident}
-							>{m.cancel()}</Button
-						>
-						<Button
-							onclick={() => handleConfirmIncident(incident.id)}
-							isLoading={isConfirmingIncident}
-							disabled={isConfirmingIncident}
-						>
-							{isConfirmingIncident ? m.confirming_incident() : m.yes_confirm_incident()}
-						</Button>
-					</div>
-				{/snippet}
-			</Modal>
+					{#snippet footer()}
+						<div class="flex justify-end gap-3">
+							<Button variant="ghost" onclick={closeConfirmModal} disabled={isConfirmingIncident}
+								>{m.cancel()}</Button
+							>
+							<Button
+								onclick={() => handleConfirmIncident(incident.id)}
+								isLoading={isConfirmingIncident}
+								disabled={isConfirmingIncident}
+							>
+								{isConfirmingIncident ? m.confirming_incident() : m.yes_confirm_incident()}
+							</Button>
+						</div>
+					{/snippet}
+				</Modal>
+			</PermissionGuard>
 
 			<!-- Breadcrumbs & Actions -->
 			<div class="flex items-center justify-between">
@@ -329,21 +335,25 @@
 						<FileText class="h-4 w-4" />
 						{isExportingPdf ? m.loading() : m.export_pdf()}
 					</button>
-					<button
-						onclick={() => (isEditModalOpen = true)}
-						class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-					>
-						<Pencil class="h-4 w-4" />
-						{m.edit_incident()}
-					</button>
-					{#if !incident.isConfirmed}
+					<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_UPDATE}>
 						<button
-							onclick={openConfirmModal}
-							class="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong dark:text-zinc-900"
+							onclick={() => (isEditModalOpen = true)}
+							class="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold text-text shadow-sm transition hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 						>
-							<CheckCircle2 class="h-4 w-4" />
-							{m.confirm_incident()}
+							<Pencil class="h-4 w-4" />
+							{m.edit_incident()}
 						</button>
+					</PermissionGuard>
+					{#if !incident.isConfirmed}
+						<PermissionGuard permission={PERMISSIONS.CLIENT.INCIDENT_CONFIRM}>
+							<button
+								onclick={openConfirmModal}
+								class="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong dark:text-zinc-900"
+							>
+								<CheckCircle2 class="h-4 w-4" />
+								{m.confirm_incident()}
+							</button>
+						</PermissionGuard>
 					{/if}
 				</div>
 			</div>
