@@ -84,6 +84,7 @@ Keep pages and layouts as data-connected containers. Keep UI components pure and
 - Do not introduce new Zod usage. Existing Zod dependencies are legacy until intentionally migrated.
 - Search, filters, tabs, sorting, pagination, and other non-persistent controls may use typed local state and URL query parameters without Superforms.
 - Disable duplicate submissions, show a pending state, and surface field errors through the shared input component's `error` prop.
+- After failed validation, reveal the first invalid control and move focus to it where appropriate. Persisted forms should use the shared Superforms error-navigation options so modal scroll containers, mobile focus behavior, and reduced-motion preferences are handled consistently.
 - Display top-level API failures in a visible form error banner.
 - Reset modal form state when a modal closes without saving, and reset/close it after a successful mutation.
 

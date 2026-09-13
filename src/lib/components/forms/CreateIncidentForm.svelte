@@ -16,6 +16,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { formatFormError } from '$lib/utils/form-errors';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
 	import type {
@@ -90,6 +91,7 @@
 			valibotClient(IncidentSchema)
 		),
 		{
+			...getFormErrorNavigationOptions(),
 			validators: valibotClient(IncidentSchema),
 			SPA: true,
 			dataType: 'json',
@@ -407,6 +409,7 @@
 					labelFn={(employee) => `${employee.first_name} ${employee.last_name}`}
 					valueFn={(employee) => employee.id}
 					placeholder={m.search_employee_placeholder()}
+					error={formatFormError($errors.employee_id)}
 				/>
 				<SearchSelect
 					label={m.location()}
@@ -417,8 +420,13 @@
 					labelFn={(location) => location.name}
 					valueFn={(location) => location.id}
 					placeholder={m.search_location_placeholder()}
+					error={formatFormError($errors.location_id)}
 				/>
-				<DateTimePicker label={m.occurred_at()} bind:value={$form.occurred_at} />
+				<DateTimePicker
+					label={m.occurred_at()}
+					bind:value={$form.occurred_at}
+					error={formatFormError($errors.occurred_at)}
+				/>
 				<Select
 					label={m.reporter_involvement()}
 					bind:value={$form.reporter_involvement}
@@ -474,12 +482,14 @@
 					bind:value={$form.informed_parties}
 					options={informedPartyOptions}
 					placeholder={m.select_informed_parties()}
+					error={formatFormError($errors.informed_parties)}
 				/>
 				<MultiSelect
 					label={m.cause_categories()}
 					bind:value={$form.cause_categories}
 					options={causeCategoryOptions}
 					placeholder={m.select_cause_categories()}
+					error={formatFormError($errors.cause_categories)}
 				/>
 			</div>
 
@@ -488,30 +498,35 @@
 				placeholder={m.placeholder_incident_explanation()}
 				rows={4}
 				bind:value={$form.incident_explanation}
+				error={formatFormError($errors.incident_explanation)}
 			/>
 			<Textarea
 				label={m.cause_explanation()}
 				placeholder={m.placeholder_cause_explanation()}
 				rows={3}
 				bind:value={$form.cause_explanation}
+				error={formatFormError($errors.cause_explanation)}
 			/>
 			<Textarea
 				label={m.physical_injury_details()}
 				placeholder={m.placeholder_physical_injury_details()}
 				rows={3}
 				bind:value={$form.physical_injury_desc}
+				error={formatFormError($errors.physical_injury_desc)}
 			/>
 			<Select
 				label={m.psychological_damage()}
 				placeholder={m.placeholder_psychological_damage()}
 				options={psychologicalDamageOptions}
 				bind:value={$form.psychological_damage}
+				error={formatFormError($errors.psychological_damage)}
 			/>
 			<Textarea
 				label={m.psychological_damage_details()}
 				placeholder={m.placeholder_psychological_damage_details()}
 				rows={3}
 				bind:value={$form.psychological_damage_desc}
+				error={formatFormError($errors.psychological_damage_desc)}
 			/>
 		</section>
 
@@ -525,6 +540,7 @@
 					bind:value={$form.follow_up_actions}
 					options={followUpActionOptions}
 					placeholder={m.select_follow_up_actions()}
+					error={formatFormError($errors.follow_up_actions)}
 				/>
 				<div class="rounded-xl border border-border bg-surface/50 p-4">
 					<Checkbox label={m.employee_absent_incident()} bind:checked={$form.is_employee_absent} />
@@ -536,24 +552,28 @@
 				placeholder={m.placeholder_prevention_steps()}
 				rows={3}
 				bind:value={$form.incident_prevent_steps}
+				error={formatFormError($errors.incident_prevent_steps)}
 			/>
 			<Textarea
 				label={m.taken_measures()}
 				placeholder={m.placeholder_taken_measures()}
 				rows={3}
 				bind:value={$form.incident_taken_measures}
+				error={formatFormError($errors.incident_taken_measures)}
 			/>
 			<Textarea
 				label={m.follow_up_notes()}
 				placeholder={m.placeholder_follow_up_notes()}
 				rows={3}
 				bind:value={$form.follow_up_notes}
+				error={formatFormError($errors.follow_up_notes)}
 			/>
 			<Textarea
 				label={m.additional_details()}
 				placeholder={m.placeholder_additional_details()}
 				rows={3}
 				bind:value={$form.additional_details}
+				error={formatFormError($errors.additional_details)}
 			/>
 			<Textarea
 				label={m.notification_emails()}
