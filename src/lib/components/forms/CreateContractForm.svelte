@@ -8,12 +8,20 @@
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import FileUpload from '$lib/components/ui/FileUpload.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import CreateContractTypeForm from '$lib/components/forms/CreateContractTypeForm.svelte';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { Trash2, Plus, Paperclip } from 'lucide-svelte';
 	import { createContract } from '$lib/api/contracts';
+	import { listContractTypes } from '$lib/api/contract-types';
 	import { listClients } from '$lib/api/clients';
 	import { listSenders } from '$lib/api/senders';
-	import type { ListClientsResponse, SenderListItem, CreateContractRequest } from '$lib/types/api';
+	import type {
+		ContractType,
+		ListClientsResponse,
+		SenderListItem,
+		CreateContractRequest
+	} from '$lib/types/api';
 	import { ContractSchema, type ContractCareType, type ContractInput } from '$lib/schemas/contract';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
@@ -21,6 +29,7 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { AttachmentService } from '$lib/api/attachments';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -33,6 +42,9 @@
 	let currentUploadFileId = $state<string | null>(null);
 	let uploadKey = $state(0);
 	let uploadInProgress = $state(false);
+	let showCreateContractType = $state(false);
+	let contractTypeDisplayValue = $state('');
+	let contractTypes = $state<ContractType[] | null>(null);
 	const formId = 'create-contract-form';
 	type TimeUnitOption = { value: CreateContractRequest['price_time_unit']; label: string };
 	const initialContractForm: ContractInput = {
@@ -173,6 +185,9 @@
 	const clearTransientState = () => {
 		reset();
 		errorMessage = '';
+		showCreateContractType = false;
+		contractTypeDisplayValue = '';
+		contractTypes = null;
 		uploadedAttachments = [];
 		currentUploadFileId = null;
 		uploadInProgress = false;
@@ -207,6 +222,28 @@
 	const loadSenders = async (query: string) => {
 		const res = await listSenders({ search: query, page: 1, pageSize: 50 });
 		return res.data.results;
+	};
+
+	const loadContractTypes = async (query: string) => {
+		if (!contractTypes) {
+			const response = await listContractTypes();
+			contractTypes = response.data;
+		}
+		const normalizedQuery = query.trim().toLocaleLowerCase();
+		if (!normalizedQuery) return contractTypes;
+
+		return contractTypes.filter((contractType) =>
+			contractType.name.toLocaleLowerCase().includes(normalizedQuery)
+		);
+	};
+
+	const handleContractTypeCreated = (contractType: ContractType) => {
+		contractTypes = [
+			...(contractTypes ?? []).filter((option) => option.id !== contractType.id),
+			contractType
+		].sort((left, right) => left.name.localeCompare(right.name));
+		$form.type_id = contractType.id;
+		contractTypeDisplayValue = contractType.name;
 	};
 
 	const uploadAttachment = (
@@ -325,12 +362,31 @@
 					error={formatFormError($errors.end_date)}
 					required
 				/>
-				<Input
-					label={m.type_id_optional()}
-					placeholder={m.placeholder_uuid()}
-					bind:value={$form.type_id}
-					error={formatFormError($errors.type_id)}
-				/>
+				<div class="space-y-2">
+					<SearchSelect
+						label={m.contract_type()}
+						loadOptions={loadContractTypes}
+						bind:value={$form.type_id}
+						bind:displayValue={contractTypeDisplayValue}
+						labelFn={(contractType) => contractType.name}
+						valueFn={(contractType) => contractType.id}
+						placeholder={m.select_contract_type()}
+						searchPlaceholder={m.search_placeholder_short()}
+						loadErrorText={m.unable_to_load_contract_types()}
+						error={formatFormError($errors.type_id)}
+					/>
+					<PermissionGuard permission={PERMISSIONS.CONTRACT_TYPE.CREATE}>
+						<Button
+							type="button"
+							variant="ghost"
+							class="w-full justify-start px-2 py-1.5 text-brand"
+							onclick={() => (showCreateContractType = true)}
+						>
+							<Plus class="h-4 w-4" />
+							{m.create_contract_type()}
+						</Button>
+					</PermissionGuard>
+				</div>
 			</div>
 		</section>
 
@@ -482,3 +538,8 @@
 		</div>
 	{/snippet}
 </Modal>
+
+<CreateContractTypeForm
+	bind:open={showCreateContractType}
+	onCreated={handleContractTypeCreated}
+/>

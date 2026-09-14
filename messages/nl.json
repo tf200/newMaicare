@@ -2224,5 +2224,14 @@
 	"evaluation_server_updated_at": "De serverversie is bijgewerkt op {date}.",
 	"evaluation_reload_discards_local_changes": "Door opnieuw te laden gaat de invoer die nu in dit formulier staat verloren.",
 	"reload_server_evaluation": "Verwerpen en opnieuw laden",
-	"review_server_version": "Serverversie bekijken"
+	"review_server_version": "Serverversie bekijken",
+	"create_contract_type": "Contracttype aanmaken",
+	"create_contract_type_description": "Voeg een herbruikbaar contracttype toe en selecteer het voor dit contract.",
+	"contract_type_name": "Naam contracttype",
+	"contract_type_name_placeholder": "Bijvoorbeeld Begeleid wonen",
+	"contract_type_name_required": "De naam van het contracttype is verplicht.",
+	"contract_type_name_too_long": "De naam van het contracttype mag maximaal 100 tekens bevatten.",
+	"contract_type_created_success": "Het contracttype is klaar voor gebruik.",
+	"failed_create_contract_type": "Het contracttype kon niet worden aangemaakt.",
+	"unable_to_load_contract_types": "Contracttypen konden niet worden geladen."
 }

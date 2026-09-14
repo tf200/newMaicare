@@ -266,7 +266,7 @@
 			"method": ["DELETE"]
 		},
 		{
-			"name": "CONTRACT_TYPE.VIEW",
+			"name": "CONTRACT.VIEW",
 			"resource": "/contract_types",
 			"method": ["GET"]
 		},

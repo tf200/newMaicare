@@ -2222,5 +2222,14 @@
 	"evaluation_server_updated_at": "Server version updated {date}.",
 	"evaluation_reload_discards_local_changes": "Reloading will discard the entries currently shown in this form.",
 	"reload_server_evaluation": "Discard and reload",
-	"review_server_version": "Review server version"
+	"review_server_version": "Review server version",
+	"create_contract_type": "Create contract type",
+	"create_contract_type_description": "Add a reusable contract type and select it for this contract.",
+	"contract_type_name": "Contract type name",
+	"contract_type_name_placeholder": "For example, Supported living",
+	"contract_type_name_required": "Contract type name is required.",
+	"contract_type_name_too_long": "Contract type name must be 100 characters or fewer.",
+	"contract_type_created_success": "Contract type is ready to use.",
+	"failed_create_contract_type": "The contract type could not be created.",
+	"unable_to_load_contract_types": "Contract types could not be loaded."
 }

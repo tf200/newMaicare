@@ -5,6 +5,15 @@ export type ContractHoursType = 'weekly' | 'all_period';
 export type ContractFinancingAct = 'WMO' | 'ZVW' | 'WLZ' | 'JW' | 'WPG';
 export type ContractFinancingOption = 'ZIN' | 'PGB';
 
+export interface ContractType {
+	id: string;
+	name: string;
+}
+
+export interface CreateContractTypeRequest {
+	name: string;
+}
+
 export interface ListContractsResponse {
 	id: string;
 	client_id: string;
