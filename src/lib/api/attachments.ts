@@ -12,10 +12,14 @@ export class AttachmentService {
 	/**
 	 * Step 1: Initialize the upload with the backend
 	 */
-	static async initUpload(params: InitUploadRequest): Promise<InitUploadResponse> {
+	static async initUpload(
+		params: InitUploadRequest,
+		signal?: AbortSignal
+	): Promise<InitUploadResponse> {
 		const response = await api.post<ApiEnvelope<InitUploadResponse>>(
 			'/attachments/upload/init',
-			params
+			params,
+			{ signal }
 		);
 		return response.data;
 	}
@@ -27,10 +31,12 @@ export class AttachmentService {
 	static uploadToStorage(
 		url: string,
 		file: File,
-		onProgress?: (progress: number) => void
+		onProgress?: (progress: number) => void,
+		signal?: AbortSignal
 	): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
+			const abort = () => xhr.abort();
 
 			xhr.open('PUT', url);
 			xhr.setRequestHeader('Content-Type', file.type);
@@ -45,6 +51,7 @@ export class AttachmentService {
 			}
 
 			xhr.onload = () => {
+				signal?.removeEventListener('abort', abort);
 				if (xhr.status >= 200 && xhr.status < 300) {
 					resolve();
 				} else {
@@ -53,13 +60,20 @@ export class AttachmentService {
 			};
 
 			xhr.onerror = () => {
+				signal?.removeEventListener('abort', abort);
 				reject(
 					new Error(
 						'Storage upload failed before the server responded. This usually means the storage bucket is rejecting the browser request because of CORS or upload endpoint configuration.'
 					)
 				);
 			};
+			xhr.onabort = () => {
+				signal?.removeEventListener('abort', abort);
+				reject(new DOMException('Upload aborted', 'AbortError'));
+			};
 
+			if (signal?.aborted) return xhr.abort();
+			signal?.addEventListener('abort', abort, { once: true });
 			xhr.send(file);
 		});
 	}
@@ -67,10 +81,14 @@ export class AttachmentService {
 	/**
 	 * Step 3: Confirm the upload with the backend
 	 */
-	static async confirmUpload(params: ConfirmUploadRequest): Promise<ConfirmUploadResponse> {
+	static async confirmUpload(
+		params: ConfirmUploadRequest,
+		signal?: AbortSignal
+	): Promise<ConfirmUploadResponse> {
 		const response = await api.post<ApiEnvelope<ConfirmUploadResponse>>(
 			'/attachments/upload/confirm',
-			params
+			params,
+			{ signal }
 		);
 		return response.data;
 	}
@@ -85,21 +103,28 @@ export class AttachmentService {
 	 */
 	static async fullUploadFlow(
 		file: File,
-		onProgress?: (progress: number) => void
+		onProgress?: (progress: number) => void,
+		signal?: AbortSignal
 	): Promise<ConfirmUploadResponse> {
 		// Step 1: Init
-		const initData = await this.initUpload({
-			filename: file.name,
-			content_type: file.type,
-			size: file.size
-		});
+		const initData = await AttachmentService.initUpload(
+			{
+				filename: file.name,
+				content_type: file.type,
+				size: file.size
+			},
+			signal
+		);
 
 		// Step 2: Storage
-		await this.uploadToStorage(initData.upload_url, file, onProgress);
+		await AttachmentService.uploadToStorage(initData.upload_url, file, onProgress, signal);
 
 		// Step 3: Confirm
-		return await this.confirmUpload({
-			file_id: initData.file_id
-		});
+		return await AttachmentService.confirmUpload(
+			{
+				file_id: initData.file_id
+			},
+			signal
+		);
 	}
 }

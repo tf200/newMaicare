@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { AttachmentService } from '$lib/api/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -11,10 +10,12 @@
 		class?: string;
 		helperText?: string;
 		onUpload?: (fileId: string, fileName: string) => void;
-		uploadFile?: (
+		uploadFile: (
 			file: File,
-			onProgress?: (progress: number) => void
+			onProgress?: (progress: number) => void,
+			signal?: AbortSignal
 		) => Promise<{ file_id: string }>;
+		maxSize?: number;
 		uploading?: boolean;
 	}
 
@@ -28,6 +29,7 @@
 		helperText,
 		onUpload,
 		uploadFile,
+		maxSize = 10 * 1024 * 1024,
 		uploading = $bindable(false)
 	}: Props = $props();
 
@@ -40,24 +42,45 @@
 	let fileName = $state<string | null>(null);
 	let inputResetKey = $state(0);
 	let selectionSequence = 0;
+	let uploadController: AbortController | null = null;
+
+	function acceptsFile(file: File) {
+		if (!accept) return true;
+		return accept.split(',').some((rule) => {
+			const normalizedRule = rule.trim().toLowerCase();
+			if (normalizedRule.startsWith('.')) return file.name.toLowerCase().endsWith(normalizedRule);
+			if (normalizedRule.endsWith('/*')) return file.type.startsWith(normalizedRule.slice(0, -1));
+			return file.type.toLowerCase() === normalizedRule;
+		});
+	}
 
 	async function handleFileSelect(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const selected = target.files?.[0];
 		if (!selected) return;
+		if (selected.size > maxSize) {
+			localUpload = { progress: 0, status: 'error', error: m.file_too_large_10mb() };
+			target.value = '';
+			return;
+		}
+		if (!acceptsFile(selected)) {
+			localUpload = { progress: 0, status: 'error', error: m.unsupported_file_type() };
+			target.value = '';
+			return;
+		}
 
 		fileName = selected.name;
 		localUpload = { progress: 0, status: 'uploading' };
 		uploading = true;
 		const sequence = ++selectionSequence;
+		uploadController?.abort();
+		uploadController = new AbortController();
 
 		try {
 			const updateProgress = (progress: number) => {
 				if (sequence === selectionSequence && localUpload) localUpload.progress = progress;
 			};
-			const result = uploadFile
-				? await uploadFile(selected, updateProgress)
-				: await AttachmentService.fullUploadFlow(selected, updateProgress);
+			const result = await uploadFile(selected, updateProgress, uploadController.signal);
 			if (sequence !== selectionSequence) return;
 
 			if (localUpload) {
@@ -69,6 +92,7 @@
 			if (onUpload) onUpload(result.file_id, selected.name);
 		} catch (err) {
 			if (sequence !== selectionSequence) return;
+			if (err instanceof DOMException && err.name === 'AbortError') return;
 			const message = err instanceof Error ? err.message : m.upload_failed();
 			if (localUpload) {
 				localUpload.status = 'error';
@@ -77,13 +101,18 @@
 				localUpload = { progress: 0, status: 'error', error: message };
 			}
 		} finally {
-			if (sequence === selectionSequence) uploading = false;
+			if (sequence === selectionSequence) {
+				uploading = false;
+				uploadController = null;
+			}
 		}
 	}
 
 	let activeUpload = $derived(localUpload);
 
 	function removeFile() {
+		uploadController?.abort();
+		uploadController = null;
 		selectionSequence += 1;
 		uploading = false;
 		fileId = null;
@@ -93,6 +122,7 @@
 	}
 
 	$effect(() => () => {
+		uploadController?.abort();
 		selectionSequence += 1;
 		uploading = false;
 	});
@@ -227,6 +257,8 @@
 	</div>
 
 	{#if error || activeUpload?.error}
-		<p class="ml-1 text-xs font-medium text-error">{error || activeUpload?.error}</p>
+		<p class="ml-1 text-xs font-medium text-error" role="alert">
+			{error || activeUpload?.error}
+		</p>
 	{/if}
 </div>

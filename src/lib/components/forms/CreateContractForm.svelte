@@ -19,6 +19,8 @@
 	import { getToastState } from '$lib/state/toast.svelte';
 	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 	import { beforeNavigate } from '$app/navigation';
+	import { AttachmentService } from '$lib/api/attachments';
+	import { trimToUndefined } from '$lib/utils/form-values';
 
 	let { open = $bindable(false), onCreated } = $props<{
 		open?: boolean;
@@ -72,6 +74,7 @@
 					try {
 						const payload: CreateContractRequest = {
 							...form.data,
+							type_id: trimToUndefined(form.data.type_id),
 							start_date: toRFC3339(form.data.start_date),
 							end_date: toRFC3339(form.data.end_date),
 							attachment_ids: uploadedAttachments.map((a) => a.id)
@@ -205,6 +208,12 @@
 		const res = await listSenders({ search: query, page: 1, pageSize: 50 });
 		return res.data.results;
 	};
+
+	const uploadAttachment = (
+		file: File,
+		onProgress?: (progress: number) => void,
+		signal?: AbortSignal
+	) => AttachmentService.fullUploadFlow(file, onProgress, signal);
 </script>
 
 {#snippet clientItem(option: ListClientsResponse)}
@@ -242,7 +251,10 @@
 >
 	<form id={formId} use:enhance class="space-y-6">
 		{#if errorMessage}
-			<div class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+			<div
+				class="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+				role="alert"
+			>
 				{errorMessage}
 			</div>
 		{/if}
@@ -263,6 +275,7 @@
 					valueFn={(client) => client.id}
 					placeholder={m.search_client_placeholder()}
 					loadErrorText={m.unable_to_load_clients()}
+					ariaRequired
 				/>
 				<SearchSelect
 					label={m.sender()}
@@ -274,6 +287,7 @@
 					valueFn={(sender) => sender.id}
 					placeholder={m.search_sender_placeholder()}
 					loadErrorText={m.unable_to_load_senders()}
+					ariaRequired
 				/>
 			</div>
 		</section>
@@ -303,11 +317,13 @@
 					label={m.start_date()}
 					bind:value={$form.start_date}
 					error={formatFormError($errors.start_date)}
+					required
 				/>
 				<DatePicker
 					label={m.end_date()}
 					bind:value={$form.end_date}
 					error={formatFormError($errors.end_date)}
+					required
 				/>
 				<Input
 					label={m.type_id_optional()}
@@ -404,6 +420,7 @@
 								bind:fileId={currentUploadFileId}
 								bind:uploading={uploadInProgress}
 								onUpload={handleAttachmentUploaded}
+								uploadFile={uploadAttachment}
 								accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
 							/>
 						{/key}
@@ -452,7 +469,7 @@
 				>{m.cancel()}</Button
 			>
 			<Button
-				variant="secondary"
+				variant="primary"
 				class="gap-2"
 				form={formId}
 				type="submit"

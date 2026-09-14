@@ -23,6 +23,7 @@
 	import { MedicationOrderSchema, type MedicationOrderSchemaInput } from '$lib/schemas/medication';
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
+	import { AttachmentService } from '$lib/api/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import { getToastState } from '$lib/state/toast.svelte';
 
@@ -468,6 +469,7 @@
 							<FileUpload
 								bind:fileId={currentUploadFileId}
 								onUpload={handleAttachmentUploaded}
+								uploadFile={AttachmentService.fullUploadFlow}
 								accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
 							/>
 						{/key}

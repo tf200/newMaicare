@@ -17,6 +17,7 @@
 		minDate = undefined,
 		size = 'lg',
 		compact = false,
+		required = false,
 		id = generatedId
 	} = $props<{
 		label?: string;
@@ -27,6 +28,7 @@
 		size?: SelectSize;
 		/** @deprecated Use size="sm" instead */
 		compact?: boolean;
+		required?: boolean;
 		id?: string;
 	}>();
 
@@ -204,6 +206,7 @@
 			aria-controls={calendarId}
 			aria-invalid={error ? true : undefined}
 			aria-describedby={error ? errorId : undefined}
+			aria-required={required}
 			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface {sizeClass} text-left text-text outline-hidden transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2 focus:ring-brand/20"
 		>
 			<CalendarIcon class="h-4 w-4 text-text-subtle" />

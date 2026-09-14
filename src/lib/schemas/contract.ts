@@ -51,7 +51,15 @@ export const ContractSchema = v.pipe(
 		hours_type: v.optional(ContractHoursTypeSchema),
 		financing_act: ContractFinancingActSchema,
 		financing_option: ContractFinancingOptionSchema,
-		type_id: v.optional(v.string()),
+		type_id: v.optional(
+			v.pipe(
+				v.string(),
+				v.check(
+					(value) => value === '' || v.is(v.pipe(v.string(), v.uuid()), value),
+					() => m.type_id_must_be_uuid()
+				)
+			)
+		),
 		reminder_period: v.optional(
 			v.pipe(
 				v.union([v.number(), v.string()]),
@@ -59,7 +67,14 @@ export const ContractSchema = v.pipe(
 					if (typeof val === 'number') return val;
 					if (!val) return undefined;
 					return Number.parseInt(val, 10);
-				})
+				}),
+				v.optional(
+					v.pipe(
+						v.number(() => m.reminder_period_must_be_number()),
+						v.integer(() => m.reminder_period_must_be_whole_days()),
+						v.minValue(0, () => m.reminder_period_must_be_non_negative())
+					)
+				)
 			)
 		),
 		VAT: v.optional(

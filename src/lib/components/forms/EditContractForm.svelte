@@ -25,6 +25,7 @@
 	import { formatFormError } from '$lib/utils/form-errors';
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { AttachmentService } from '$lib/api/attachments';
 
 	interface EditableContractData {
 		id: string;
@@ -399,6 +400,7 @@
 							<FileUpload
 								bind:fileId={currentUploadFileId}
 								onUpload={handleAttachmentUploaded}
+								uploadFile={AttachmentService.fullUploadFlow}
 								accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
 							/>
 						{/key}

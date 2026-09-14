@@ -27,6 +27,7 @@
 		valueFn?: (option: Option) => string;
 		loadErrorText?: string;
 		retryLabel?: string;
+		ariaRequired?: boolean;
 	}
 
 	const generatedId = $props.id();
@@ -48,7 +49,8 @@
 		labelFn = (option: Option) => String((option as { label?: unknown } | null)?.label ?? ''),
 		valueFn = (option: Option) => String((option as { value?: unknown } | null)?.value ?? ''),
 		loadErrorText = 'Unable to load options.',
-		retryLabel = m.retry()
+		retryLabel = m.retry(),
+		ariaRequired = false
 	}: Props = $props();
 
 	let isOpen = $state(false);
@@ -224,6 +226,7 @@
 			aria-expanded={isOpen}
 			aria-invalid={error ? true : undefined}
 			aria-describedby={error ? errorId : undefined}
+			aria-required={ariaRequired}
 		>
 			<span class="min-w-0 truncate {hasValue ? 'font-medium' : 'text-text-subtle'}"
 				>{selectedLabel}</span
