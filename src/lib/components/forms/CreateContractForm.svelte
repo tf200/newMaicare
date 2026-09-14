@@ -31,9 +31,16 @@
 	import { trimToUndefined } from '$lib/utils/form-values';
 	import { PERMISSIONS } from '$lib/config/permissions';
 
-	let { open = $bindable(false), onCreated } = $props<{
+	let {
+		open = $bindable(false),
+		onCreated,
+		preselectedClientId = null,
+		preselectedClientDisplay = ''
+	} = $props<{
 		open?: boolean;
 		onCreated?: () => void;
+		preselectedClientId?: string | null;
+		preselectedClientDisplay?: string;
 	}>();
 	const toast = getToastState();
 
@@ -86,6 +93,7 @@
 					try {
 						const payload: CreateContractRequest = {
 							...form.data,
+							client_id: preselectedClientId ?? form.data.client_id,
 							type_id: trimToUndefined(form.data.type_id),
 							start_date: toRFC3339(form.data.start_date),
 							end_date: toRFC3339(form.data.end_date),
@@ -182,8 +190,22 @@
 		uploadedAttachments = uploadedAttachments.filter((_, idx) => idx !== index);
 	};
 
+	const isClientPreselected = $derived(Boolean(preselectedClientId));
+
+	let wasOpen = $state(false);
+
+	$effect(() => {
+		if (open && !wasOpen && isClientPreselected && preselectedClientId) {
+			$form.client_id = preselectedClientId;
+		}
+		wasOpen = open;
+	});
+
 	const clearTransientState = () => {
 		reset();
+		if (preselectedClientId) {
+			$form.client_id = preselectedClientId;
+		}
 		errorMessage = '';
 		showCreateContractType = false;
 		contractTypeDisplayValue = '';
@@ -302,18 +324,31 @@
 				{m.parties()}
 			</h3>
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-				<SearchSelect
-					label={m.client()}
-					loadOptions={loadClients}
-					bind:value={$form.client_id}
-					error={formatFormError($errors.client_id)}
-					item={clientItem}
-					labelFn={(client) => `${client.first_name} ${client.last_name}`}
-					valueFn={(client) => client.id}
-					placeholder={m.search_client_placeholder()}
-					loadErrorText={m.unable_to_load_clients()}
-					ariaRequired
-				/>
+				{#if isClientPreselected}
+					<div
+						class="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg px-4 py-3 md:col-span-2"
+					>
+						<span class="text-xs font-bold tracking-wider text-text-muted uppercase">
+							{m.for_client()}
+						</span>
+						<span class="truncate text-sm font-semibold text-text">
+							{preselectedClientDisplay || m.breadcrumb_client_detail()}
+						</span>
+					</div>
+				{:else}
+					<SearchSelect
+						label={m.client()}
+						loadOptions={loadClients}
+						bind:value={$form.client_id}
+						error={formatFormError($errors.client_id)}
+						item={clientItem}
+						labelFn={(client) => `${client.first_name} ${client.last_name}`}
+						valueFn={(client) => client.id}
+						placeholder={m.search_client_placeholder()}
+						loadErrorText={m.unable_to_load_clients()}
+						ariaRequired
+					/>
+				{/if}
 				<SearchSelect
 					label={m.sender()}
 					loadOptions={loadSenders}

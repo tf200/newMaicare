@@ -1,14 +1,27 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { Calendar, Clock3, HandCoins, ShieldCheck, ScrollText } from 'lucide-svelte';
+	import {
+		Calendar,
+		Clock3,
+		HandCoins,
+		Plus,
+		ShieldCheck,
+		ScrollText
+	} from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import CreateContractForm from '$lib/components/forms/CreateContractForm.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import { getAuthState } from '$lib/state/auth.svelte';
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
 	import type { ListClientContractsResponse } from '$lib/types/api';
+	import type { ClientDetailLoadResult } from '../+layout';
 	import type { ClientContractsLoadResult } from './+page';
 
 	let { data } = $props<{
@@ -18,11 +31,37 @@
 				pageSize: number;
 			};
 			contractsData: Promise<ClientContractsLoadResult>;
+			clientId: string;
+			clientData: Promise<ClientDetailLoadResult>;
 		};
 	}>();
 
 	const contractsDataPromise = $derived(data.contractsData);
 	const initial = $derived(data.initial);
+	const clientId = $derived(data.clientId ?? page.params.id ?? '');
+	const auth = getAuthState();
+	const canCreateContract = $derived(auth.hasPermission(PERMISSIONS.CONTRACT.CREATE));
+
+	let showCreateContract = $state(false);
+	let clientDisplayName = $state('');
+
+	$effect(() => {
+		let cancelled = false;
+		clientDisplayName = '';
+		void data.clientData.then((result: ClientDetailLoadResult) => {
+			if (cancelled) return;
+			clientDisplayName = result.clientName;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const refreshClientContracts = () =>
+		Promise.all([
+			invalidate(`app:client:${clientId}:contracts`),
+			invalidate(`app:client:${clientId}:detail`)
+		]);
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
@@ -30,7 +69,7 @@
 			{ label: m.breadcrumb_home(), href: '/dashboard' },
 			{ label: m.clients(), href: '/clients' },
 			{
-				label: data.clientName ?? m.breadcrumb_client_detail(),
+				label: clientDisplayName || m.breadcrumb_client_detail(),
 				href: `/clients/${page.params.id}`
 			},
 			{ label: m.contracts() }
@@ -126,20 +165,38 @@
 		<div
 			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-violet-100/20 blur-2xl"
 		></div>
-		<div class="relative space-y-2">
-			<div class="hidden"></div>
-			<div class="flex items-center gap-3 text-sm font-semibold text-brand">
-				<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
-					<ScrollText class="h-5 w-5" />
-				</span>
-				<span>{m.client_administration()}</span>
+		<div class="relative flex flex-wrap items-start justify-between gap-6">
+			<div class="space-y-2">
+				<div class="hidden"></div>
+				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
+					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
+						<ScrollText class="h-5 w-5" />
+					</span>
+					<span>{m.client_administration()}</span>
+				</div>
+				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.contracts()}</h1>
+				<p class="max-w-2xl text-sm font-medium text-text-muted">
+					{m.contracts_overview()}
+				</p>
 			</div>
-			<h1 class="text-3xl font-bold tracking-tighter text-text">{m.contracts()}</h1>
-			<p class="max-w-2xl text-sm font-medium text-text-muted">
-				{m.contracts_overview()}
-			</p>
+
+			<PermissionGuard permission={PERMISSIONS.CONTRACT.CREATE}>
+				<Button class="gap-2" onclick={() => (showCreateContract = true)}>
+					<Plus class="h-4 w-4" />
+					{m.create_contract()}
+				</Button>
+			</PermissionGuard>
 		</div>
 	</header>
+
+	<PermissionGuard permission={PERMISSIONS.CONTRACT.CREATE}>
+		<CreateContractForm
+			bind:open={showCreateContract}
+			preselectedClientId={clientId}
+			preselectedClientDisplay={clientDisplayName}
+			onCreated={refreshClientContracts}
+		/>
+	</PermissionGuard>
 
 	{#await contractsDataPromise}
 		<DataTable
@@ -170,8 +227,9 @@
 			description={m.client_contracts_description()}
 			emptyTitle={m.no_contracts_found()}
 			emptyDescription={m.no_contracts_description()}
-			emptyActionLabel="No action"
-			emptyActionDisabled
+			emptyActionLabel={m.create_contract()}
+			emptyAction={() => (showCreateContract = true)}
+			emptyActionDisabled={!canCreateContract}
 			cells={{ care: careCell, financing: financingCell, period: periodCell, days: daysCell }}
 		/>
 	{/await}

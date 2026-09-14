@@ -55,6 +55,7 @@ export const load: PageLoad = ({ params, url, fetch, depends }) => {
 			page,
 			pageSize
 		},
-		contractsData
+		contractsData,
+		clientId: params.id
 	};
 };
