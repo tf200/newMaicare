@@ -77,6 +77,7 @@
 		defaults(initialContractForm, valibotClient(ContractSchema)),
 		{
 			...getFormErrorNavigationOptions(),
+			id: formId,
 			validators: valibotClient(ContractSchema),
 			SPA: true,
 			dataType: 'json',

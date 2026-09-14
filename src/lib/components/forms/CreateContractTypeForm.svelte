@@ -29,6 +29,7 @@
 		defaults({ name: '' }, valibotClient(ContractTypeSchema)),
 		{
 			...getFormErrorNavigationOptions(),
+			id: formId,
 			validators: valibotClient(ContractTypeSchema),
 			SPA: true,
 			dataType: 'json',
