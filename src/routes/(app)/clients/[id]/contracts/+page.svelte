@@ -155,16 +155,18 @@
 
 {#snippet actionsCell(contract: ListClientContractsResponse)}
 	<div class="flex justify-end">
-		<PermissionGuard permission={PERMISSIONS.CONTRACT.VIEW}>
-			<a
-				href={resolve('/(app)/contracts/[id]', { id: contract.id })}
-				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-				title={m.view_details()}
-				aria-label={m.view_details()}
-			>
-				<Eye class="h-4 w-4" />
-			</a>
-		</PermissionGuard>
+		{#if contract.id}
+			<PermissionGuard permission={PERMISSIONS.CONTRACT.VIEW}>
+				<a
+					href={resolve('/(app)/contracts/[id]', { id: contract.id })}
+					class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+					title={m.view_details()}
+					aria-label={m.view_details()}
+				>
+					<Eye class="h-4 w-4" />
+				</a>
+			</PermissionGuard>
+		{/if}
 	</div>
 {/snippet}
 
@@ -240,7 +242,9 @@
 			totalCount={contractsData.pagination.count}
 			onPageChange={updatePage}
 			onRowClick={canViewContract
-				? (row) => goto(resolve('/(app)/contracts/[id]', { id: row.id }))
+				? (row) => {
+						if (row.id) goto(resolve('/(app)/contracts/[id]', { id: row.id }));
+					}
 				: undefined}
 			title={m.client_contracts()}
 			description={m.client_contracts_description()}
