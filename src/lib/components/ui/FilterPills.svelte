@@ -45,17 +45,17 @@
 	type PillColor = NonNullable<FilterPill['color']>;
 
 	const activeColorMap: Record<PillColor, string> = {
-		brand: 'bg-btn-primary-bg text-surface shadow-sm',
-		warning: 'bg-warning text-surface shadow-sm',
-		success: 'bg-success text-surface shadow-sm',
-		error: 'bg-error text-surface shadow-sm',
-		info: 'bg-info text-surface shadow-sm',
-		neutral: 'bg-text-muted text-surface shadow-sm',
-		amber: 'bg-warning text-surface shadow-sm',
-		emerald: 'bg-success text-surface shadow-sm',
-		rose: 'bg-error text-surface shadow-sm',
-		blue: 'bg-info text-surface shadow-sm',
-		slate: 'bg-text-muted text-surface shadow-sm'
+		brand: 'bg-btn-primary-bg text-btn-primary-text shadow-sm',
+		warning: 'bg-warning/15 text-warning-strong',
+		success: 'bg-success/15 text-success-strong',
+		error: 'bg-error/15 text-error-strong',
+		info: 'bg-info/15 text-info-strong',
+		neutral: 'bg-border text-text',
+		amber: 'bg-warning/15 text-warning-strong',
+		emerald: 'bg-success/15 text-success-strong',
+		rose: 'bg-error/15 text-error-strong',
+		blue: 'bg-info/15 text-info-strong',
+		slate: 'bg-border text-text'
 	};
 
 	const inactiveClass =
@@ -79,7 +79,7 @@
 			type="button"
 			aria-pressed={isActive}
 			onclick={() => handleClick(pill.id)}
-			class="h-9 rounded-full px-4 text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none {isActive
+			class="min-h-11 rounded-full px-4 text-xs font-semibold transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none {isActive
 				? activeColorMap[color]
 				: inactiveClass}"
 		>

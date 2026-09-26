@@ -20,20 +20,20 @@
 		},
 		emerald: {
 			hoverBorder: 'hover:border-success/30',
-			iconColor: 'text-success',
-			valueColor: 'text-success',
+			iconColor: 'text-success-strong',
+			valueColor: 'text-success-strong',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		amber: {
 			hoverBorder: 'hover:border-warning/30',
-			iconColor: 'text-warning',
-			valueColor: 'text-warning',
+			iconColor: 'text-warning-strong',
+			valueColor: 'text-warning-strong',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		rose: {
 			hoverBorder: 'hover:border-error/30',
-			iconColor: 'text-error',
-			valueColor: 'text-error',
+			iconColor: 'text-error-strong',
+			valueColor: 'text-error-strong',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		slate: {
@@ -44,25 +44,25 @@
 		},
 		brand: {
 			hoverBorder: 'hover:border-brand/30',
-			iconColor: 'text-brand',
+			iconColor: 'text-brand-strong',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		secondary: {
 			hoverBorder: 'hover:border-secondary/30',
-			iconColor: 'text-secondary',
+			iconColor: 'text-secondary-strong',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		blue: {
 			hoverBorder: 'hover:border-info/30',
-			iconColor: 'text-info',
+			iconColor: 'text-info-strong',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		},
 		cyan: {
 			hoverBorder: 'hover:border-info/30',
-			iconColor: 'text-info',
+			iconColor: 'text-info-strong',
 			valueColor: 'text-text',
 			iconOpacity: 'opacity-[0.03] group-hover:opacity-10'
 		}
@@ -106,7 +106,7 @@
 		</div>
 	{/if}
 	<div class="relative">
-		<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+		<div class="text-xs font-semibold text-text-muted">
 			{label}
 		</div>
 		<div

@@ -11,6 +11,14 @@ export type InvoiceStatus =
 export type InvoiceSource = 'auto' | 'manual' | 'imported';
 export type InvoiceType = 'standard' | 'credit_note';
 
+export interface InvoiceStatsResponse {
+	total_invoices: number;
+	currency: 'EUR';
+	outstanding_balance: number;
+	received_payments: number;
+	overdue_amount: number;
+}
+
 export interface ListInvoicesResponse {
 	id: string;
 	invoice_number: string;
@@ -97,7 +105,7 @@ export interface GetInvoiceByIDResponse {
 	vat_total_amount: number;
 	gross_total_amount: number;
 	pdf_attachment_id: string | null;
-	extra_content?: Record<string, any>;
+	extra_content?: Record<string, unknown>;
 	locked_at?: string | null;
 	warning_count?: number;
 	client_id: string;
@@ -168,20 +176,10 @@ export interface UpdateInvoiceResponse {
 }
 
 export type InvoicePaymentMethod =
-	| 'bank_transfer'
-	| 'credit_card'
-	| 'check'
-	| 'cash'
-	| 'other'
-	| string;
+	'bank_transfer' | 'credit_card' | 'check' | 'cash' | 'other' | string;
 
 export type InvoicePaymentStatus =
-	| 'completed'
-	| 'pending'
-	| 'failed'
-	| 'reversed'
-	| 'refunded'
-	| string;
+	'completed' | 'pending' | 'failed' | 'reversed' | 'refunded' | string;
 
 export interface InvoicePayment {
 	id: string;

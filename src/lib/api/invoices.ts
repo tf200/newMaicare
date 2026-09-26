@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { ApiRequestOptions } from './client';
 import type { ApiEnvelope, PaginatedResponse } from '$lib/types/api';
 import type {
 	ListInvoicesResponse,
@@ -15,8 +16,13 @@ import type {
 	CreateInvoicePaymentRequest,
 	CreateInvoicePaymentResponse,
 	UpdateInvoicePaymentRequest,
-	UpdateInvoicePaymentResponse
+	UpdateInvoicePaymentResponse,
+	InvoiceStatsResponse
 } from '$lib/types/api/invoices';
+
+export function getInvoiceStats(options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<InvoiceStatsResponse>>('/invoices/stats', options);
+}
 
 export function getInvoice(id: string) {
 	return api.get<ApiEnvelope<GetInvoiceByIDResponse>>(`/invoices/${id}`);
@@ -73,7 +79,7 @@ export function updateInvoicePayment(
 	);
 }
 
-export function listInvoices(params: InvoicesFilters = {}) {
+export function listInvoices(params: InvoicesFilters = {}, options?: ApiRequestOptions) {
 	const searchParams = new URLSearchParams();
 
 	if (params.page) searchParams.set('page', String(params.page));
@@ -101,5 +107,5 @@ export function listInvoices(params: InvoicesFilters = {}) {
 	const query = searchParams.toString();
 	const endpoint = query ? `/invoices?${query}` : '/invoices';
 
-	return api.get<ApiEnvelope<PaginatedResponse<ListInvoicesResponse>>>(endpoint);
+	return api.get<ApiEnvelope<PaginatedResponse<ListInvoicesResponse>>>(endpoint, options);
 }

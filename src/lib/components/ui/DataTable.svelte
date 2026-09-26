@@ -190,6 +190,7 @@
 </script>
 
 <section
+	aria-busy={loading}
 	class="{surface === 'card'
 		? 'rounded-3xl border border-border bg-surface shadow-sm'
 		: ''} {className}"
@@ -202,7 +203,7 @@
 		>
 			<div class="max-w-[320px] shrink-0">
 				{#if title}
-					<h2 class="text-2xl font-bold tracking-tighter text-text">
+					<h2 class="text-lg font-semibold tracking-tight text-text">
 						{title}
 					</h2>
 				{/if}
@@ -231,7 +232,7 @@
 
 	{#if error}
 		<div
-			class="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-medium text-error sm:mx-6"
+			class="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-medium text-error-strong sm:mx-6"
 		>
 			<span>{error}</span>
 			{#if onRetry}
@@ -245,12 +246,14 @@
 	{/if}
 
 	<div class="overflow-x-auto px-4 sm:px-6">
+		{#if loading}<span class="sr-only" role="status">{m.loading()}</span>{/if}
 		<table class="min-w-full text-left">
 			{#if title}<caption class="sr-only">{title}</caption>{/if}
-			<thead class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
+			<thead class="text-xs font-semibold text-text-muted">
 				<tr>
 					{#each columns as column (column.key)}
 						<th
+							scope="col"
 							class="group px-6 py-4 {alignClass(column.align)} {column.headerClass ??
 								column.class ??
 								''}"

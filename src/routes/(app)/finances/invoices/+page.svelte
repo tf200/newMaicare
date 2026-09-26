@@ -5,62 +5,66 @@
 		FileText,
 		Search,
 		Eye,
-		Download,
+		Plus,
 		AlertCircle,
-		CheckCircle2,
 		Clock,
-		Wallet,
-		CreditCard
+		Wallet
 	} from 'lucide-svelte';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import FilterPills, { type FilterPill } from '$lib/components/ui/FilterPills.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
-	import type { DataTableColumn } from '$lib/components/ui/DataTable.svelte';
-	import Filters from '$lib/components/ui/FilterDropdown.svelte';
-	import type {
-		ListInvoicesResponse,
-		InvoicesFilters,
-		InvoiceStatus
-	} from '$lib/types/api/invoices';
-	import type { InvoicesLoadResult } from './+page';
-	import { goto, invalidateAll } from '$app/navigation';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import type { DataTableColumn, DataTableEmptyState } from '$lib/components/ui/DataTable.svelte';
+	import Filters, {
+		type FilterGroup,
+		type FiltersState
+	} from '$lib/components/ui/FilterDropdown.svelte';
+	import type { ListInvoicesResponse, InvoiceStatus } from '$lib/types/api/invoices';
+	import type { PageProps } from './$types';
+	import { goto, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { getLocale } from '$lib/paraglide/runtime';
+	import { untrack } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { getAuthState } from '$lib/state/auth.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
 
-	let { data } = $props<{
-		data: {
-			initial: {
-				page: number;
-				pageSize: number;
-				filters: InvoicesFilters;
-			};
-			invoicesData: Promise<InvoicesLoadResult>;
-		};
-	}>();
+	let { data }: PageProps = $props();
 
 	const invoicesDataPromise = $derived.by(() => data.invoicesData);
+	const invoiceStatsPromise = $derived.by(() => data.invoiceStats);
 	const initial = $derived.by(() => data.initial);
 	const currentPage = $derived.by(() => initial.page);
 	const pageSize = $derived.by(() => initial.pageSize);
+	const auth = getAuthState();
+	const canCreateInvoice = $derived(auth.hasPermission(PERMISSIONS.INVOICE.CREATE));
+	const createInvoiceHref = resolve('/(app)/finances/invoices/new');
+	const retryInvoices = () => invalidate('app:invoices:list');
 
 	const appliedSearch = $derived.by(() => (initial.filters.q ?? '').trim());
 	let searchTerm = $state('');
 
 	$effect(() => {
-		if (searchTerm !== appliedSearch) {
-			searchTerm = appliedSearch;
-		}
+		const nextSearch = appliedSearch;
+		untrack(() => {
+			searchTerm = nextSearch;
+		});
 	});
 
-	type UIFilters = InvoicesFilters & {
+	interface UIFilters extends FiltersState {
+		status?: InvoiceStatus;
+		q?: string;
+		locked?: boolean;
+		start_date?: string;
+		end_date?: string;
 		source_auto?: boolean;
 		source_manual?: boolean;
 		source_imported?: boolean;
 		type_standard?: boolean;
 		type_credit?: boolean;
-		[key: string]: any;
-	};
+	}
 
 	const defaultFilters: UIFilters = {
 		status: undefined,
@@ -78,7 +82,11 @@
 	let filters = $derived.by(() => {
 		const f: UIFilters = {
 			...defaultFilters,
-			...initial.filters
+			status: initial.filters.status,
+			q: initial.filters.q,
+			locked: initial.filters.locked,
+			start_date: initial.filters.start_date,
+			end_date: initial.filters.end_date
 		};
 		if (initial.filters.source === 'auto') f.source_auto = true;
 		if (initial.filters.source === 'manual') f.source_manual = true;
@@ -89,7 +97,7 @@
 		return f;
 	});
 
-	const filterGroups = $derived([
+	const filterGroups: FilterGroup[] = $derived([
 		{
 			label: m.properties(),
 			items: [{ key: 'locked', label: m.locked() }]
@@ -116,42 +124,40 @@
 				{ key: 'end_date', label: m.to(), type: 'date' }
 			]
 		}
-	] as any[]);
+	]);
 
 	const statusMeta: Record<InvoiceStatus, { label: string; className: string }> = $derived({
 		outstanding: {
 			label: m.outstanding_status(),
-			className: 'bg-amber-500 text-white border border-amber-600/60 shadow-sm shadow-amber-600/30'
+			className: 'bg-warning/15 text-warning-strong'
 		},
 		partially_paid: {
 			label: m.partially_paid(),
-			className: 'bg-blue-600 text-white border border-blue-700/60 shadow-sm shadow-blue-700/30'
+			className: 'bg-info/15 text-info-strong'
 		},
 		paid: {
 			label: m.paid(),
-			className:
-				'bg-emerald-600 text-white border border-emerald-700/60 shadow-sm shadow-emerald-700/30'
+			className: 'bg-success/15 text-success-strong'
 		},
 		expired: {
 			label: m.expired(),
-			className: 'bg-rose-600 text-white border border-rose-700/60 shadow-sm shadow-rose-700/30'
+			className: 'bg-error/15 text-error-strong'
 		},
 		overpaid: {
 			label: m.overpaid(),
-			className:
-				'bg-purple-600 text-white border border-purple-700/60 shadow-sm shadow-purple-700/30'
+			className: 'bg-secondary/15 text-secondary-strong'
 		},
 		imported: {
 			label: m.imported(),
-			className: 'bg-zinc-600 text-white border border-zinc-700/60 shadow-sm shadow-zinc-700/30'
+			className: 'bg-border text-text-muted'
 		},
 		concept: {
 			label: m.concept(),
-			className: 'bg-zinc-100 text-zinc-600 border border-zinc-300 shadow-sm shadow-zinc-200/30'
+			className: 'bg-border text-text-muted'
 		},
 		canceled: {
 			label: m.canceled(),
-			className: 'bg-zinc-800 text-zinc-300 border border-zinc-900 shadow-sm shadow-zinc-900/30'
+			className: 'bg-border text-text-muted'
 		}
 	});
 
@@ -178,7 +184,7 @@
 		});
 
 	const buildQuery = (pageValue: number, nextFilters: UIFilters) => {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		params.set('page', String(pageValue));
 		params.set('page_size', String(pageSize));
 
@@ -206,10 +212,14 @@
 	const updateQuery = (pageValue: number, nextFilters: UIFilters) => {
 		const nextQuery = buildQuery(pageValue, nextFilters);
 		if (page.url.searchParams.toString() === nextQuery) return;
-		goto(`?${nextQuery}`, { replaceState: true, keepFocus: true, noScroll: true });
+		goto(resolve(`/(app)/finances/invoices?${nextQuery}`), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	};
 
-	const handleFilterUpdate = (nextFilters: any) => {
+	const handleFilterUpdate = (nextFilters: UIFilters) => {
 		if (nextFilters.source_auto && !filters.source_auto) {
 			nextFilters.source_manual = undefined;
 			nextFilters.source_imported = undefined;
@@ -227,7 +237,7 @@
 			nextFilters.type_standard = undefined;
 		}
 
-		setFilters(nextFilters as UIFilters);
+		setFilters(nextFilters);
 	};
 
 	const applySearch = () => {
@@ -246,27 +256,66 @@
 		{ id: 'paid', label: m.paid(), color: 'emerald' },
 		{ id: 'expired', label: m.overdue_status(), color: 'rose' }
 	];
+
+	const hasActiveFilters = $derived(
+		Boolean(
+			initial.filters.status ||
+			initial.filters.q ||
+			initial.filters.source ||
+			initial.filters.invoice_type ||
+			initial.filters.locked ||
+			initial.filters.start_date ||
+			initial.filters.end_date
+		)
+	);
+	const emptyState: DataTableEmptyState = $derived(
+		hasActiveFilters
+			? { title: m.no_matching_invoices(), action: { label: m.clear_all(), onClick: clearFilters } }
+			: {
+					title: m.no_invoices_title(),
+					description: m.no_invoices_description(),
+					action: canCreateInvoice
+						? { label: m.create_invoice(), onClick: () => goto(createInvoiceHref) }
+						: undefined
+				}
+	);
 </script>
 
-{#snippet tableFilters()}
+{#snippet tableToolbar()}
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-		<div class="relative w-full sm:w-auto">
-			<Search
-				class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
-			/>
-			<input
-				type="text"
-				placeholder={m.search_invoices_placeholder()}
-				bind:value={searchTerm}
-				class="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-64"
-				onkeydown={(event) => {
-					if (event.key === 'Enter') applySearch();
-				}}
-				onblur={applySearch}
-			/>
-		</div>
+		<form
+			class="flex w-full items-center gap-2 sm:w-auto"
+			onsubmit={(event) => {
+				event.preventDefault();
+				applySearch();
+			}}
+		>
+			<div class="relative min-w-0 flex-1 sm:flex-none">
+				<label class="sr-only" for="invoice-search">{m.search_invoices_label()}</label>
+				<Search
+					class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-subtle"
+				/>
+				<input
+					id="invoice-search"
+					type="text"
+					placeholder={m.search_invoices_placeholder()}
+					bind:value={searchTerm}
+					class="min-h-11 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none sm:w-64"
+				/>
+			</div>
+			<button
+				type="submit"
+				class="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold text-text hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				>{m.search()}</button
+			>
+		</form>
 
-		<FilterPills pills={invoiceFilterPills} activeId={filters.status ?? ''} onSelect={(id) => setFilters({ ...filters, status: id === '' ? undefined : id as InvoiceStatus })} />
+		<FilterPills
+			pills={invoiceFilterPills}
+			activeId={filters.status ?? ''}
+			onSelect={(id) =>
+				setFilters({ ...filters, status: id === '' ? undefined : (id as InvoiceStatus) })}
+		/>
 
 		<div class="hidden h-6 w-px bg-border sm:block"></div>
 
@@ -293,10 +342,14 @@
 		</div>
 		<div>
 			<div class="flex items-center gap-2">
-				<p class="text-sm font-semibold text-text">{row.invoice_number}</p>
+				<a
+					href={resolve('/(app)/finances/invoices/[id]', { id: row.id })}
+					class="rounded-lg text-sm font-semibold text-text hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+					>{row.invoice_number}</a
+				>
 				{#if row.is_overdue}
 					<div
-						class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-sm"
+						class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-error text-surface shadow-sm"
 						title={m.overdue_status()}
 					>
 						<AlertCircle class="h-2.5 w-2.5" />
@@ -322,12 +375,12 @@
 			{formatCurrency(row.gross_total_amount, row.currency)}
 		</span>
 		{#if row.balance_due_amount > 0}
-			<span class="block text-[11px] font-medium text-amber-600 dark:text-amber-500">
+			<span class="block text-xs font-medium text-warning-strong">
 				{m.due_label()}
 				{formatCurrency(row.balance_due_amount, row.currency)}
 			</span>
 		{:else if row.paid_total_amount > 0}
-			<span class="block text-[11px] font-medium text-emerald-600 dark:text-emerald-500">
+			<span class="block text-xs font-medium text-success-strong">
 				{m.paid()}: {formatCurrency(row.paid_total_amount, row.currency)}
 			</span>
 		{/if}
@@ -351,7 +404,7 @@
 		</div>
 		<div
 			class="flex items-center gap-1.5 text-xs {row.is_overdue
-				? 'font-bold text-rose-600'
+				? 'font-bold text-error-strong'
 				: 'text-text-subtle'}"
 		>
 			<span class="font-medium">{m.due_label()}</span>
@@ -364,7 +417,8 @@
 	<div class="flex justify-end gap-1">
 		<a
 			href={resolve('/(app)/finances/invoices/[id]', { id: row.id })}
-			class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition hover:bg-border/50 hover:text-text"
+			class="flex h-11 w-11 items-center justify-center rounded-xl text-text-muted transition hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+			aria-label={m.view_invoice()}
 			title={m.view_invoice()}
 		>
 			<Eye class="h-4 w-4" />
@@ -373,13 +427,8 @@
 {/snippet}
 
 <section class="space-y-6">
-	<header
-		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
-	>
-		<div
-			class="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-linear-to-br from-indigo-100/70 to-emerald-100/20 blur-2xl dark:from-indigo-900/40 dark:to-emerald-900/20"
-		></div>
-		<div class="relative flex flex-wrap items-start justify-between gap-6">
+	<header class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+		<div class="flex flex-wrap items-start justify-between gap-6">
 			<div class="space-y-3">
 				<div class="flex items-center gap-3 text-sm font-semibold text-brand">
 					<span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10">
@@ -387,37 +436,88 @@
 					</span>
 					<span>{m.finances()}</span>
 				</div>
-				<h1 class="text-3xl font-bold tracking-tighter text-text">{m.invoices()}</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-text">{m.invoices()}</h1>
 				<p class="max-w-2xl text-sm font-medium text-text-muted">
 					{m.invoices_description()}
 				</p>
 			</div>
+			<PermissionGuard permission={PERMISSIONS.INVOICE.CREATE}>
+				<a
+					href={createInvoiceHref}
+					class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-btn-primary-bg px-4 text-sm font-semibold text-btn-primary-text shadow-sm transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
+				>
+					<Plus class="h-4 w-4" />{m.create_invoice()}
+				</a>
+			</PermissionGuard>
 		</div>
 	</header>
 
-	{#await invoicesDataPromise}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			{#each [1, 2, 3, 4] as _}
-				<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
-					<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
-					<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+	{#if invoiceStatsPromise}
+		{#await invoiceStatsPromise}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				{#each [1, 2, 3, 4] as skeletonIndex (skeletonIndex)}
+					<div class="rounded-3xl border border-border bg-surface p-5 shadow-sm" aria-busy="true">
+						<div class="h-3 w-24 animate-pulse rounded bg-border/70"></div>
+						<div class="mt-3 h-8 w-16 animate-pulse rounded bg-border/70"></div>
+					</div>
+				{/each}
+			</div>
+		{:then statsData}
+			{#if statsData.loadError}
+				<InlineErrorBanner
+					message={statsData.loadError}
+					onRetry={() => invalidate('app:invoices:stats')}
+				/>
+			{:else}
+				<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+					<StatCard
+						label={m.total_invoices()}
+						value={statsData.stats.total_invoices}
+						description={m.all_time()}
+						icon={FileText}
+					/>
+					<StatCard
+						label={m.outstanding_balance()}
+						value={formatCurrency(statsData.stats.outstanding_balance, statsData.stats.currency)}
+						description={m.all_time_eur()}
+						icon={Clock}
+						color="amber"
+					/>
+					<StatCard
+						label={m.received_payments()}
+						value={formatCurrency(statsData.stats.received_payments, statsData.stats.currency)}
+						description={m.all_time_eur()}
+						icon={Wallet}
+						color="emerald"
+					/>
+					<StatCard
+						label={m.overdue_amount()}
+						value={formatCurrency(statsData.stats.overdue_amount, statsData.stats.currency)}
+						description={m.all_time_eur()}
+						icon={AlertCircle}
+						color="rose"
+					/>
 				</div>
-			{/each}
-		</div>
+			{/if}
+		{/await}
+	{/if}
 
+	{#await invoicesDataPromise}
 		<DataTable
 			{columns}
 			rows={[]}
 			loading
-			{currentPage}
-			{pageSize}
-			totalCount={0}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(resolve('/(app)/finances/invoices/[id]', { id: row.id }))}
+			pagination={{
+				mode: 'server',
+				page: currentPage,
+				pageSize,
+				totalCount: 0,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
 			rowKey="id"
 			title={m.all_invoices_title()}
 			description={m.all_invoices_description()}
-			filters={tableFilters}
+			toolbar={tableToolbar}
 			cells={{
 				invoice: invoiceCell,
 				client: clientCell,
@@ -429,113 +529,28 @@
 		/>
 	{:then invoicesData}
 		{@const invoices = invoicesData.invoices}
-		{@const outstandingTotal = invoices
-			.filter(
-				(row: ListInvoicesResponse) =>
-					row.status === 'outstanding' || row.status === 'partially_paid'
-			)
-			.reduce((sum: number, row: ListInvoicesResponse) => sum + row.balance_due_amount, 0)}
-		{@const overdueTotal = invoices
-			.filter((row: ListInvoicesResponse) => row.is_overdue)
-			.reduce((sum: number, row: ListInvoicesResponse) => sum + row.balance_due_amount, 0)}
-		{@const paidTotal = invoices
-			.filter(
-				(row: ListInvoicesResponse) => row.status === 'paid' || row.status === 'partially_paid'
-			)
-			.reduce((sum: number, row: ListInvoicesResponse) => sum + row.paid_total_amount, 0)}
-
-		{#if invoicesData.loadError}
-			<InlineErrorBanner message={invoicesData.loadError} onRetry={() => invalidateAll()} />
-		{/if}
-
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-			<div
-				class="relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm"
-			>
-				<div class="absolute -right-4 -bottom-4 opacity-[0.03] dark:opacity-5">
-					<FileText class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.total_invoices()}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-						{invoicesData.pagination.count}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.all_time()}</p>
-				</div>
-			</div>
-
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Clock class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.outstanding_balance()}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-amber-500 sm:text-3xl">
-						{formatCurrency(outstandingTotal)}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.awaiting_payment()}</p>
-				</div>
-			</div>
-
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-emerald-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-emerald-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<Wallet class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.received_payments()}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-emerald-600 sm:text-3xl">
-						{formatCurrency(paidTotal)}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.processed_successfully()}</p>
-				</div>
-			</div>
-
-			<div
-				class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-rose-500/30"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 text-rose-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-				>
-					<AlertCircle class="h-32 w-32" />
-				</div>
-				<div class="relative">
-					<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-						{m.overdue_amount()}
-					</div>
-					<div class="mt-2 text-2xl font-bold tracking-tight text-rose-600 sm:text-3xl">
-						{formatCurrency(overdueTotal)}
-					</div>
-					<p class="mt-2 text-xs font-medium text-text-muted">{m.needs_immediate_attention()}</p>
-				</div>
-			</div>
-		</div>
-
 		<DataTable
 			{columns}
 			rows={invoices}
-			currentPage={invoicesData.pagination.page}
-			pageSize={invoicesData.pagination.pageSize}
-			totalCount={invoicesData.pagination.count}
-			onPageChange={(nextPage) => updateQuery(nextPage, { ...filters })}
-			onRowClick={(row) => goto(resolve('/(app)/finances/invoices/[id]', { id: row.id }))}
+			pagination={{
+				mode: 'server',
+				page: invoicesData.pagination.page,
+				pageSize: invoicesData.pagination.pageSize,
+				totalCount: invoicesData.pagination.count,
+				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
+			}}
 			rowKey="id"
 			title={m.all_invoices_title()}
 			description={m.all_invoices_description()}
-			filters={tableFilters}
+			toolbar={tableToolbar}
+			empty={invoicesData.pagination.count > 0 && invoices.length === 0
+				? {
+						title: m.no_invoices_on_page(),
+						action: { label: m.back_to_first_page(), onClick: () => updateQuery(1, { ...filters }) }
+					}
+				: emptyState}
+			error={invoicesData.loadError ?? undefined}
+			onRetry={retryInvoices}
 			cells={{
 				invoice: invoiceCell,
 				client: clientCell,

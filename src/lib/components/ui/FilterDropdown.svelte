@@ -1,21 +1,24 @@
-<script lang="ts">
-	import { Filter, Check, ChevronDown } from 'lucide-svelte';
-	import { scale } from 'svelte/transition';
-	import DatePicker from './DatePicker.svelte';
-	import { m } from '$lib/paraglide/messages';
-
-	type FilterItem = {
+<script module lang="ts">
+	export type FilterItem = {
 		key: string;
 		label: string;
 		type?: 'checkbox' | 'date';
 	};
 
-	type FilterGroup = {
+	export type FilterGroup = {
 		label: string;
 		items: FilterItem[];
 	};
 
-	type FiltersState = Record<string, boolean | string | number | undefined>;
+	export type FiltersState = Record<string, boolean | string | number | undefined>;
+</script>
+
+<script lang="ts" generics="Filters extends FiltersState">
+	import { Filter, Check, ChevronDown } from 'lucide-svelte';
+	import { scale } from 'svelte/transition';
+	import { tick } from 'svelte';
+	import DatePicker from './DatePicker.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		filters,
@@ -27,9 +30,9 @@
 		clearLabel = m.clear_all(),
 		iconOnly = false
 	} = $props<{
-		filters: FiltersState;
+		filters: Filters;
 		groups: FilterGroup[];
-		onUpdate: (newFilters: FiltersState) => void;
+		onUpdate: (newFilters: Filters) => void;
 		onClear?: () => void;
 		title?: string;
 		buttonLabel?: string;
@@ -38,17 +41,35 @@
 	}>();
 
 	let isOpen = $state(false);
+	let rootEl: HTMLDivElement;
+	let triggerEl: HTMLButtonElement;
+	let popupEl = $state<HTMLDivElement>();
 	const popupId = $props.id();
 
-	function toggleOpen() {
+	async function toggleOpen() {
 		isOpen = !isOpen;
+		if (isOpen) {
+			await tick();
+			popupEl?.querySelector<HTMLButtonElement>('button')?.focus();
+		}
 	}
 
 	function handleDocumentClick(event: MouseEvent) {
 		if (!isOpen) return;
 		const target = event.target as Element | null;
-		if (!target?.closest('[data-filter-root]')) {
+		if (!target || (!rootEl.contains(target) && !target.closest('[data-date-picker-popup]'))) {
 			isOpen = false;
+		}
+	}
+
+	function handleDocumentKeydown(event: KeyboardEvent) {
+		if (
+			isOpen &&
+			event.key === 'Escape' &&
+			!(event.target as Element)?.closest('[data-date-picker-popup]')
+		) {
+			isOpen = false;
+			triggerEl.focus();
 		}
 	}
 
@@ -71,17 +92,18 @@
 	});
 </script>
 
-<svelte:document onclick={handleDocumentClick} />
+<svelte:document onclick={handleDocumentClick} onkeydown={handleDocumentKeydown} />
 
-<div class="relative inline-block w-full text-left sm:w-auto" data-filter-root>
+<div class="relative inline-block w-full text-left sm:w-auto" bind:this={rootEl}>
 	<button
+		bind:this={triggerEl}
 		type="button"
 		onclick={toggleOpen}
 		aria-expanded={isOpen}
 		aria-haspopup="dialog"
 		aria-controls={popupId}
 		aria-label={title || buttonLabel}
-		class="group inline-flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus:ring-2 focus:ring-brand/20 focus:outline-none sm:w-auto sm:justify-start {isOpen
+		class="group inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-text-muted transition-all hover:border-brand/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none sm:w-auto sm:justify-start {isOpen
 			? 'border-brand/50 text-text ring-2 ring-brand/20'
 			: ''} {activeFilterCount > 0 ? 'border-brand/20 bg-brand/5 text-brand' : ''}"
 	>
@@ -103,11 +125,13 @@
 
 	{#if isOpen}
 		<div
+			bind:this={popupEl}
 			id={popupId}
 			role="dialog"
+			aria-modal="false"
 			aria-label={title}
 			transition:scale={{ start: 0.95, duration: 100 }}
-			class="absolute top-full left-0 z-50 mt-2 w-full origin-top-right rounded-2xl border border-border bg-surface shadow-xl ring-1 ring-black/5 focus:outline-none sm:right-0 sm:left-auto sm:w-[340px]"
+			class="absolute top-full left-0 z-50 mt-2 w-full origin-top-right rounded-2xl border border-border bg-surface shadow-xl focus:outline-none sm:right-0 sm:left-auto sm:w-[340px]"
 		>
 			<div class="flex items-center justify-between border-b border-border px-4 py-3">
 				<h3 class="text-sm font-semibold text-text">{title}</h3>
@@ -115,7 +139,7 @@
 					<button
 						type="button"
 						onclick={() => onClear?.()}
-						class="rounded-lg text-xs font-medium text-text-muted hover:text-brand hover:underline focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+						class="min-h-11 rounded-lg px-2 text-xs font-medium text-text-muted hover:text-brand hover:underline focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 					>
 						{clearLabel}
 					</button>
@@ -150,14 +174,15 @@
 										<button
 											type="button"
 											onclick={() => toggleFilter(item.key)}
-											class="hover:bg-surface-alt flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+											aria-pressed={isChecked}
+											class="flex min-h-11 w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-bg focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 										>
 											<span class={isChecked ? 'font-medium text-text' : 'text-text-muted'}>
 												{item.label}
 											</span>
 											<div
 												class="flex h-5 w-5 items-center justify-center rounded border transition-all {isChecked
-													? 'border-brand bg-brand text-white'
+													? 'border-brand-strong bg-brand-strong text-surface'
 													: 'border-border bg-surface'}"
 											>
 												{#if isChecked}

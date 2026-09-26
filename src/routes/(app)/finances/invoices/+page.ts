@@ -7,6 +7,10 @@ import type {
 	InvoiceSource,
 	InvoiceType
 } from '$lib/types/api/invoices';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
+import { error } from '@sveltejs/kit';
 
 export interface InvoicesLoadResult {
 	invoices: ListInvoicesResponse[];
@@ -19,25 +23,60 @@ export interface InvoicesLoadResult {
 	loadError: string | null;
 }
 
-export const load: PageLoad = async ({ url, depends }) => {
-	depends('invoices:list');
+const parsePage = (value: string | null, fallback: number) => {
+	const parsed = Number(value);
+	return value && Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
 
-	const page = Number(url.searchParams.get('page')) || 1;
-	const pageSize = Number(url.searchParams.get('page_size')) || 20;
+const invoiceStatuses: InvoiceStatus[] = [
+	'outstanding',
+	'partially_paid',
+	'paid',
+	'expired',
+	'overpaid',
+	'imported',
+	'concept',
+	'canceled'
+];
+const invoiceSources: InvoiceSource[] = ['auto', 'manual', 'imported'];
+const invoiceTypes: InvoiceType[] = ['standard', 'credit_note'];
+
+const parseOption = <T extends string>(
+	value: string | null,
+	options: readonly T[]
+): T | undefined => options.find((option) => option === value);
+
+const parseDate = (value: string | null): string | undefined => {
+	if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+	const date = new Date(value);
+	return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+		? value
+		: undefined;
+};
+
+export const load: PageLoad = ({ url, fetch, depends }) => {
+	if (!getAuthState().hasAllPermissions([PERMISSIONS.CLIENT.VIEW, PERMISSIONS.INVOICE.VIEW])) {
+		error(403, m.invoices_access_denied());
+	}
+
+	depends('app:invoices:list');
+
+	const page = parsePage(url.searchParams.get('page'), 1);
+	const pageSize = Math.min(parsePage(url.searchParams.get('page_size'), 20), 100);
 
 	const filters: InvoicesFilters = {
-		status: (url.searchParams.get('status') as InvoiceStatus) || undefined,
-		q: url.searchParams.get('q') || undefined,
-		source: (url.searchParams.get('source') as InvoiceSource) || undefined,
-		invoice_type: (url.searchParams.get('invoice_type') as InvoiceType) || undefined,
-		locked: url.searchParams.has('locked') ? url.searchParams.get('locked') === 'true' : undefined,
-		start_date: url.searchParams.get('start_date') || undefined,
-		end_date: url.searchParams.get('end_date') || undefined,
+		status: parseOption(url.searchParams.get('status'), invoiceStatuses),
+		q: url.searchParams.get('q')?.trim().slice(0, 120) || undefined,
+		source: parseOption(url.searchParams.get('source'), invoiceSources),
+		invoice_type: parseOption(url.searchParams.get('invoice_type'), invoiceTypes),
+		locked: url.searchParams.get('locked') === 'true' ? true : undefined,
+		start_date: parseDate(url.searchParams.get('start_date')),
+		end_date: parseDate(url.searchParams.get('end_date')),
 		page,
 		page_size: pageSize
 	};
 
-	const invoicesData = listInvoices(filters)
+	const invoicesData: Promise<InvoicesLoadResult> = listInvoices(filters, { fetchFn: fetch })
 		.then((response) => {
 			const { count, page_size, results } = response.data;
 			return {
@@ -52,7 +91,7 @@ export const load: PageLoad = async ({ url, depends }) => {
 			} satisfies InvoicesLoadResult;
 		})
 		.catch((error): InvoicesLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load invoices.';
+			const message = error instanceof Error ? error.message : m.failed_load_invoices();
 			return {
 				invoices: [],
 				pagination: {

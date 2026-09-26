@@ -37,23 +37,23 @@
 	};
 </script>
 
-<div class="flex items-center justify-between gap-4 {className}">
+<div class="flex flex-wrap items-center justify-between gap-4 {className}">
 	<button
 		type="button"
-		class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+		class="min-h-11 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 		onclick={previousPage}
 		disabled={currentPage <= 1}
 	>
 		{m.previous()}
 	</button>
-	<span class="font-mono text-xs tracking-tighter text-text-subtle">
+	<span class="text-xs text-text-muted">
 		{rangeStart}—{rangeEnd}
 		{m.of()}
 		{totalCount}
 	</span>
 	<button
 		type="button"
-		class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+		class="min-h-11 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text-muted transition hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 		onclick={nextPage}
 		disabled={currentPage >= totalPages}
 	>

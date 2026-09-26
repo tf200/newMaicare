@@ -7,6 +7,7 @@
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { selectSizeClasses, type SelectSize } from './_sizes';
 	import { SvelteDate } from 'svelte/reactivity';
+	import { tick } from 'svelte';
 
 	const generatedId = $props.id();
 	let {
@@ -73,18 +74,20 @@
 	// Calendar logic
 	const days = $derived.by(() => {
 		const formatter = new Intl.DateTimeFormat(resolveLocale(), { weekday: 'short' });
-		const base = new Date(Date.UTC(2023, 0, 1));
+		const base = new Date(2023, 0, 2);
 		return Array.from({ length: 7 }, (_, i) => formatter.format(addDays(base, i)));
 	});
 	const monthNames = $derived.by(() => {
 		const formatter = new Intl.DateTimeFormat(resolveLocale(), { month: 'long' });
-		return Array.from({ length: 12 }, (_, i) => formatter.format(new Date(Date.UTC(2023, i, 1))));
+		return Array.from({ length: 12 }, (_, i) => formatter.format(new Date(2023, i, 1)));
 	});
 
 	let daysInMonth = $derived(
 		new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
 	);
-	let firstDayOfMonth = $derived(new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay());
+	let firstDayOfMonth = $derived(
+		(new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay() + 6) % 7
+	);
 
 	// Array of days to render
 	let calendarDays = $derived.by(() => {
@@ -123,16 +126,21 @@
 		value = nextValue;
 		onchange?.(nextValue);
 		isOpen = false;
+		triggerEl?.focus();
 	}
 
-	function selectMonth(monthIndex: number) {
+	async function selectMonth(monthIndex: number) {
 		viewDate = new Date(viewDate.getFullYear(), monthIndex, 1);
 		view = 'days';
+		await tick();
+		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
 	}
 
-	function selectYear(year: number) {
+	async function selectYear(year: number) {
 		viewDate = new Date(year, viewDate.getMonth(), 1);
 		view = 'months';
+		await tick();
+		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
 	}
 
 	function next() {
@@ -161,12 +169,24 @@
 		else view = 'days';
 	}
 
-	function toggleCalendar() {
+	async function toggleCalendar() {
 		if (!isOpen) {
 			viewDate = parseDateValue(value) ?? new Date();
 			view = 'days';
 		}
 		isOpen = !isOpen;
+		if (isOpen) {
+			await tick();
+			dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
+		}
+	}
+
+	function handleDocumentKeydown(event: KeyboardEvent) {
+		if (isOpen && event.key === 'Escape') {
+			isOpen = false;
+			view = 'days';
+			triggerEl?.focus();
+		}
 	}
 
 	function handleOutsideClick(node: HTMLElement) {
@@ -186,6 +206,8 @@
 		};
 	}
 </script>
+
+<svelte:document onkeydown={handleDocumentKeydown} />
 
 <div class="space-y-2" use:handleOutsideClick>
 	{#if label}
@@ -219,6 +241,7 @@
 
 		{#if isOpen && triggerEl}
 			<div
+				data-date-picker-popup
 				id={calendarId}
 				role="dialog"
 				aria-label={label ?? m.select_date_placeholder()}
@@ -234,14 +257,14 @@
 							type="button"
 							onclick={prev}
 							aria-label={m.previous_month()}
-							class="rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+							class="min-h-10 min-w-10 rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							<ChevronLeft class="h-5 w-5" />
 						</button>
 						<button
 							type="button"
 							onclick={toggleView}
-							class="rounded-lg font-semibold text-text transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+							class="min-h-10 rounded-lg px-2 font-semibold text-text transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							{headerText}
 						</button>
@@ -249,7 +272,7 @@
 							type="button"
 							onclick={next}
 							aria-label={m.next_month()}
-							class="rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+							class="min-h-10 min-w-10 rounded-lg p-1 text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 						>
 							<ChevronRight class="h-5 w-5" />
 						</button>
@@ -275,10 +298,15 @@
 												type="button"
 												onclick={() => selectDate(date)}
 												disabled={isBeforeMinDate(date)}
+												aria-label={date.toLocaleDateString(resolveLocale(), {
+													day: 'numeric',
+													month: 'long',
+													year: 'numeric'
+												})}
 												class="aspect-square rounded-lg text-sm font-medium text-text hover:bg-border/50
 															{value === formatDateValue(date)
-													? 'bg-brand font-bold text-white hover:opacity-90'
-													: ''} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+													? 'bg-brand-strong font-bold text-surface hover:opacity-90'
+													: ''} focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
 											>
 												{date.getDate()}
 											</button>
@@ -299,8 +327,8 @@
 										<button
 											type="button"
 											onclick={() => selectMonth(i)}
-											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
-																{viewDate.getMonth() === i ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
+											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none
+																{viewDate.getMonth() === i ? 'bg-brand-strong font-bold text-surface hover:opacity-90' : ''}"
 										>
 											{month.slice(0, 3)}
 										</button>
@@ -318,8 +346,8 @@
 										<button
 											type="button"
 											onclick={() => selectYear(year)}
-											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50
-																{viewDate.getFullYear() === year ? 'bg-brand font-bold text-white hover:opacity-90' : ''}"
+											class="rounded-lg py-3 text-sm font-medium text-text hover:bg-border/50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none
+																{viewDate.getFullYear() === year ? 'bg-brand-strong font-bold text-surface hover:opacity-90' : ''}"
 										>
 											{year}
 										</button>
