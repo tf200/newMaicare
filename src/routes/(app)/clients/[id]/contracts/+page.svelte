@@ -4,14 +4,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import {
-		Calendar,
-		Clock3,
-		HandCoins,
-		Plus,
-		ShieldCheck,
-		ScrollText
-	} from 'lucide-svelte';
+	import { Calendar, Clock3, Eye, HandCoins, Plus, ShieldCheck, ScrollText } from 'lucide-svelte';
 	import DataTable, { type DataTableColumn } from '$lib/components/ui/DataTable.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
@@ -41,6 +34,7 @@
 	const clientId = $derived(data.clientId ?? page.params.id ?? '');
 	const auth = getAuthState();
 	const canCreateContract = $derived(auth.hasPermission(PERMISSIONS.CONTRACT.CREATE));
+	const canViewContract = $derived(auth.hasPermission(PERMISSIONS.CONTRACT.VIEW));
 
 	let showCreateContract = $state(false);
 	let clientDisplayName = $state('');
@@ -83,7 +77,8 @@
 		{ key: 'care', label: m.care(), width: '260px' },
 		{ key: 'financing', label: m.financing(), width: '180px' },
 		{ key: 'period', label: m.period(), width: '230px' },
-		{ key: 'days', label: m.days_left_label(), align: 'right', width: '120px' }
+		{ key: 'days', label: m.days_left_label(), align: 'right', width: '120px' },
+		{ key: 'actions', label: '', align: 'right', width: '70px' }
 	];
 
 	const formatDate = (date: string) =>
@@ -158,6 +153,21 @@
 	{/if}
 {/snippet}
 
+{#snippet actionsCell(contract: ListClientContractsResponse)}
+	<div class="flex justify-end">
+		<PermissionGuard permission={PERMISSIONS.CONTRACT.VIEW}>
+			<a
+				href={resolve('/(app)/contracts/[id]', { id: contract.id })}
+				class="flex h-8 w-8 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-border/50 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+				title={m.view_details()}
+				aria-label={m.view_details()}
+			>
+				<Eye class="h-4 w-4" />
+			</a>
+		</PermissionGuard>
+	</div>
+{/snippet}
+
 <section class="space-y-6 pb-12">
 	<header
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
@@ -209,7 +219,13 @@
 			onPageChange={updatePage}
 			title={m.client_contracts()}
 			description={m.client_contracts_description()}
-			cells={{ care: careCell, financing: financingCell, period: periodCell, days: daysCell }}
+			cells={{
+				care: careCell,
+				financing: financingCell,
+				period: periodCell,
+				days: daysCell,
+				actions: actionsCell
+			}}
 		/>
 	{:then contractsData}
 		{#if contractsData.loadError}
@@ -223,6 +239,9 @@
 			pageSize={contractsData.pagination.pageSize}
 			totalCount={contractsData.pagination.count}
 			onPageChange={updatePage}
+			onRowClick={canViewContract
+				? (row) => goto(resolve('/(app)/contracts/[id]', { id: row.id }))
+				: undefined}
 			title={m.client_contracts()}
 			description={m.client_contracts_description()}
 			emptyTitle={m.no_contracts_found()}
@@ -230,7 +249,13 @@
 			emptyActionLabel={m.create_contract()}
 			emptyAction={() => (showCreateContract = true)}
 			emptyActionDisabled={!canCreateContract}
-			cells={{ care: careCell, financing: financingCell, period: periodCell, days: daysCell }}
+			cells={{
+				care: careCell,
+				financing: financingCell,
+				period: periodCell,
+				days: daysCell,
+				actions: actionsCell
+			}}
 		/>
 	{/await}
 </section>
