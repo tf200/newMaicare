@@ -23,7 +23,7 @@
 			<p class="text-sm text-text-muted">{message}</p>
 		</div>
 		{#if onRetry}
-			<Button variant="ghost" class="h-9 px-4 text-sm" onclick={onRetry}>
+			<Button variant="ghost" class="min-h-11 px-4 text-sm" onclick={onRetry}>
 				{actionLabel}
 			</Button>
 		{/if}

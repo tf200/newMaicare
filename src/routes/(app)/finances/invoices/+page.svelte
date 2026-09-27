@@ -20,7 +20,11 @@
 		type FilterGroup,
 		type FiltersState
 	} from '$lib/components/ui/FilterDropdown.svelte';
-	import type { ListInvoicesResponse, InvoiceStatus } from '$lib/types/api/invoices';
+	import type {
+		ListInvoicesResponse,
+		InvoiceStatus,
+		InvoicesFilters
+	} from '$lib/types/api/invoices';
 	import type { PageProps } from './$types';
 	import { goto, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -64,6 +68,8 @@
 		source_imported?: boolean;
 		type_standard?: boolean;
 		type_credit?: boolean;
+		sort_by?: InvoicesFilters['sort_by'];
+		sort_dir?: InvoicesFilters['sort_dir'];
 	}
 
 	const defaultFilters: UIFilters = {
@@ -76,7 +82,9 @@
 		source_manual: undefined,
 		source_imported: undefined,
 		type_standard: undefined,
-		type_credit: undefined
+		type_credit: undefined,
+		sort_by: undefined,
+		sort_dir: undefined
 	};
 
 	let filters = $derived.by(() => {
@@ -86,7 +94,9 @@
 			q: initial.filters.q,
 			locked: initial.filters.locked,
 			start_date: initial.filters.start_date,
-			end_date: initial.filters.end_date
+			end_date: initial.filters.end_date,
+			sort_by: initial.filters.sort_by,
+			sort_dir: initial.filters.sort_dir
 		};
 		if (initial.filters.source === 'auto') f.source_auto = true;
 		if (initial.filters.source === 'manual') f.source_manual = true;
@@ -162,9 +172,9 @@
 	});
 
 	const columns: DataTableColumn[] = $derived([
-		{ key: 'invoice', label: m.invoice_col(), headerClass: 'pl-14' },
+		{ key: 'invoice_number', label: m.invoice_col(), headerClass: 'pl-14', sortable: true },
 		{ key: 'client', label: m.client() },
-		{ key: 'amount', label: m.amount(), align: 'right' },
+		{ key: 'gross_total_amount', label: m.amount(), align: 'right', sortable: true },
 		{ key: 'status', label: m.status(), width: '130px' },
 		{ key: 'dates', label: m.dates_col() },
 		{ key: 'actions', label: '', align: 'right', width: '80px' }
@@ -201,6 +211,10 @@
 
 		if (nextFilters.type_standard) params.set('invoice_type', 'standard');
 		else if (nextFilters.type_credit) params.set('invoice_type', 'credit_note');
+		if (nextFilters.sort_by && nextFilters.sort_dir) {
+			params.set('sort_by', nextFilters.sort_by);
+			params.set('sort_dir', nextFilters.sort_dir);
+		}
 
 		return params.toString();
 	};
@@ -245,17 +259,22 @@
 		setFilters({ ...filters, q: nextSearch });
 	};
 
+	const sortInvoices = (column: string, direction: 'asc' | 'desc') => {
+		if (column !== 'invoice_number' && column !== 'gross_total_amount') return;
+		updateQuery(1, { ...filters, sort_by: column, sort_dir: direction });
+	};
+
 	const clearFilters = () => {
 		searchTerm = '';
 		updateQuery(1, { ...defaultFilters });
 	};
 
-	const invoiceFilterPills: FilterPill[] = [
+	const invoiceFilterPills: FilterPill[] = $derived([
 		{ id: '', label: m.all() },
 		{ id: 'outstanding', label: m.outstanding_status(), color: 'amber' },
 		{ id: 'paid', label: m.paid(), color: 'emerald' },
 		{ id: 'expired', label: m.overdue_status(), color: 'rose' }
-	];
+	]);
 
 	const hasActiveFilters = $derived(
 		Boolean(
@@ -299,6 +318,7 @@
 					id="invoice-search"
 					type="text"
 					placeholder={m.search_invoices_placeholder()}
+					maxlength="120"
 					bind:value={searchTerm}
 					class="min-h-11 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm font-medium text-text placeholder:text-text-subtle focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:outline-none sm:w-64"
 				/>
@@ -515,13 +535,16 @@
 				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
 			}}
 			rowKey="id"
+			sortColumn={initial.filters.sort_by}
+			sortDirection={initial.filters.sort_dir}
+			onSort={sortInvoices}
 			title={m.all_invoices_title()}
 			description={m.all_invoices_description()}
 			toolbar={tableToolbar}
 			cells={{
-				invoice: invoiceCell,
+				invoice_number: invoiceCell,
 				client: clientCell,
-				amount: amountCell,
+				gross_total_amount: amountCell,
 				status: statusCell,
 				dates: datesCell,
 				actions: actionsCell
@@ -540,6 +563,9 @@
 				onPageChange: (nextPage) => updateQuery(nextPage, { ...filters })
 			}}
 			rowKey="id"
+			sortColumn={initial.filters.sort_by}
+			sortDirection={initial.filters.sort_dir}
+			onSort={sortInvoices}
 			title={m.all_invoices_title()}
 			description={m.all_invoices_description()}
 			toolbar={tableToolbar}
@@ -552,9 +578,9 @@
 			error={invoicesData.loadError ?? undefined}
 			onRetry={retryInvoices}
 			cells={{
-				invoice: invoiceCell,
+				invoice_number: invoiceCell,
 				client: clientCell,
-				amount: amountCell,
+				gross_total_amount: amountCell,
 				status: statusCell,
 				dates: datesCell,
 				actions: actionsCell

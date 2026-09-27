@@ -232,13 +232,14 @@
 
 	{#if error}
 		<div
+			role="alert"
 			class="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-error/20 bg-error/5 px-4 py-3 text-sm font-medium text-error-strong sm:mx-6"
 		>
 			<span>{error}</span>
 			{#if onRetry}
 				<button
 					type="button"
-					class="rounded-lg px-2 py-1 text-xs font-bold hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-error focus-visible:outline-none"
+					class="min-h-11 rounded-lg px-3 text-xs font-bold hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-error focus-visible:outline-none"
 					onclick={onRetry}>{m.retry()}</button
 				>
 			{/if}
@@ -263,7 +264,7 @@
 							{#if column.sortable && onSort}
 								<button
 									type="button"
-									class="inline-flex items-center gap-1.5 rounded-lg hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
+									class="inline-flex min-h-11 items-center gap-1.5 rounded-lg hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
 									onclick={() => handleSort(column.key)}
 								>
 									{column.label}

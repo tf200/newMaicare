@@ -40,6 +40,13 @@ const invoiceStatuses: InvoiceStatus[] = [
 ];
 const invoiceSources: InvoiceSource[] = ['auto', 'manual', 'imported'];
 const invoiceTypes: InvoiceType[] = ['standard', 'credit_note'];
+const invoiceSortFields = [
+	'invoice_number',
+	'issue_date',
+	'due_date',
+	'gross_total_amount'
+] as const satisfies readonly NonNullable<InvoicesFilters['sort_by']>[];
+type InvoiceSortField = (typeof invoiceSortFields)[number];
 
 const parseOption = <T extends string>(
 	value: string | null,
@@ -70,6 +77,8 @@ export const load: PageLoad = ({ url, fetch, depends }) => {
 		source: parseOption(url.searchParams.get('source'), invoiceSources),
 		invoice_type: parseOption(url.searchParams.get('invoice_type'), invoiceTypes),
 		locked: url.searchParams.get('locked') === 'true' ? true : undefined,
+		sort_by: parseOption<InvoiceSortField>(url.searchParams.get('sort_by'), invoiceSortFields),
+		sort_dir: parseOption(url.searchParams.get('sort_dir'), ['asc', 'desc'] as const),
 		start_date: parseDate(url.searchParams.get('start_date')),
 		end_date: parseDate(url.searchParams.get('end_date')),
 		page,

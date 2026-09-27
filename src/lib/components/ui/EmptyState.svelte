@@ -96,7 +96,7 @@
 					type="button"
 					onclick={primaryAction.onclick}
 					disabled={primaryAction.disabled}
-					class="inline-flex h-10 items-center gap-2 rounded-xl bg-btn-primary-bg px-5 text-sm font-semibold text-btn-primary-text shadow-sm transition-all hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+					class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-btn-primary-bg px-5 text-sm font-semibold text-btn-primary-text shadow-sm transition-all hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
 				>
 					{primaryAction.label}
 				</button>
@@ -105,7 +105,7 @@
 				<button
 					type="button"
 					onclick={secondaryAction.onclick}
-					class="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-5 text-sm font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none active:scale-95"
+					class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-5 text-sm font-semibold text-text-muted transition-all hover:bg-border/30 hover:text-text focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none active:scale-95"
 				>
 					{secondaryAction.label}
 				</button>
