@@ -205,16 +205,27 @@ export interface InvoicePayment {
 }
 
 export interface CreateInvoicePaymentRequest {
-	invoice_id: string;
 	amount: number;
 	payment_date: string;
-	payment_method: string;
-	status?: InvoicePaymentStatus;
-	reference?: string | null;
+	payment_method: InvoicePaymentMethod;
+	payment_status: InvoicePaymentStatus;
+	payment_reference?: string | null;
 	notes?: string | null;
 }
 
-export type CreateInvoicePaymentResponse = InvoicePayment;
+export interface CreateInvoicePaymentResponse {
+	payment_id: string;
+	invoice_id: string;
+	payment_method: InvoicePaymentMethod;
+	payment_status: InvoicePaymentStatus;
+	amount: number;
+	payment_date: string;
+	payment_reference: string | null;
+	notes: string | null;
+	invoice_status_changed: boolean;
+	current_invoice_status: InvoiceStatus;
+	recorded_by: string | null;
+}
 
 export interface UpdateInvoicePaymentRequest {
 	payment_method?: InvoicePaymentMethod | null;

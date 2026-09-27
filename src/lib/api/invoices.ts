@@ -68,8 +68,11 @@ export function listInvoicePayments(
 	);
 }
 
-export function createInvoicePayment(payload: CreateInvoicePaymentRequest) {
-	return api.post<ApiEnvelope<CreateInvoicePaymentResponse>>('/invoices/payments', payload);
+export function createInvoicePayment(invoiceId: string, payload: CreateInvoicePaymentRequest) {
+	return api.post<ApiEnvelope<CreateInvoicePaymentResponse>>(
+		`/invoices/${invoiceId}/payments`,
+		payload
+	);
 }
 
 export function updateInvoicePayment(

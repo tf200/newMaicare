@@ -53,13 +53,12 @@
 			onUpdate: async ({ form }) => {
 				if (form.valid) {
 					try {
-						await createInvoicePayment({
-							invoice_id: invoiceId,
+						await createInvoicePayment(invoiceId, {
 							amount: form.data.amount,
 							payment_date: form.data.payment_date,
 							payment_method: form.data.payment_method,
-							status: form.data.status,
-							reference: form.data.reference?.trim() || null,
+							payment_status: form.data.status,
+							payment_reference: form.data.reference?.trim() || null,
 							notes: form.data.notes?.trim() || null
 						});
 						toast.success(m.invoice_payment_recorded_success());
@@ -81,12 +80,9 @@
 
 	const paymentMethodOptions = [
 		{ label: m.bank_transfer(), value: 'bank_transfer' },
-		{ label: m.sepa_direct_debit(), value: 'sepa_direct_debit' },
-		{ label: m.ideal(), value: 'ideal' },
 		{ label: m.credit_card(), value: 'credit_card' },
 		{ label: m.check(), value: 'check' },
 		{ label: m.cash(), value: 'cash' },
-		{ label: m.card(), value: 'card' },
 		{ label: m.other(), value: 'other' }
 	];
 
