@@ -1,25 +1,18 @@
 <script lang="ts">
 	import { getBreadcrumbsState } from '$lib/state/breadcrumbs.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import {
 		Plus,
 		Trash2,
 		Save,
-		ArrowLeft,
 		Calculator,
-		GripVertical,
 		Receipt,
-		Building2,
-		User,
 		CalendarIcon,
-		Clock,
 		Banknote,
 		FileText,
-		Globe,
-		Code,
 		Pencil,
 		Check
 	} from 'lucide-svelte';
@@ -28,27 +21,20 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import SearchSelect from '$lib/components/ui/SearchSelect.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import { CreateInvoiceSchema, type CreateInvoiceInput } from '$lib/schemas/invoice';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 	import { listClientContracts, listClients } from '$lib/api/clients';
 	import { createInvoice } from '$lib/api/invoices';
 	import type { ListClientsResponse } from '$lib/types/api/clients';
 	import type { ListClientContractsResponse } from '$lib/types/api/contracts';
-	import type { CreateInvoiceRequest, InvoiceStatus, InvoiceType } from '$lib/types/api/invoices';
+	import type { CreateInvoiceRequest } from '$lib/types/api/invoices';
 
 	const INVOICE_TYPES = $derived([
 		{ value: 'standard', label: m.standard() },
 		{ value: 'credit_note', label: m.credit_note() }
-	]);
-
-	const INVOICE_STATUSES = $derived([
-		{ value: 'concept', label: m.concept() },
-		{ value: 'outstanding', label: m.outstanding_status() },
-		{ value: 'partially_paid', label: m.partially_paid() },
-		{ value: 'paid', label: m.paid() },
-		{ value: 'expired', label: m.expired() },
-		{ value: 'overpaid', label: m.overpaid() },
-		{ value: 'imported', label: m.imported_status() },
-		{ value: 'canceled', label: m.canceled() }
 	]);
 
 	const LINE_TYPES = $derived([
@@ -70,28 +56,23 @@
 	]);
 
 	// Form State
-	let clientId = $state<string>('');
 	let clientDisplayValue = $state<string>('');
 	let clientsLoadError = $state<string>('');
 	let contractsLoadError = $state<string>('');
 	let submitError = $state<string>('');
 	let isSubmitting = $state(false);
-	let invoiceType = $state<InvoiceType>('standard');
-	let issueDate = $state<string>(new Date().toISOString().split('T')[0]);
-	let dueDate = $state<string>(
-		new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-	);
 	const currency = 'EUR';
-	let billingTimezone = $state<string>('Europe/Amsterdam');
-	let status = $state<InvoiceStatus>('concept');
-	let extraContent = $state<string>('');
-	let clientContracts = $state<ListClientContractsResponse[]>([]);
+	let clientContracts = $state.raw<ListClientContractsResponse[]>([]);
+	let contractRequest = 0;
+	let clientOptionsRequest = 0;
+	let hasEdited = $state(false);
+	let allowNavigation = false;
 
 	const breadcrumbs = getBreadcrumbsState();
 	$effect(() => {
 		breadcrumbs.items = [
-			{ label: m.breadcrumb_home(), href: '/dashboard' },
-			{ label: m.invoices(), href: '/finances/invoices' },
+			{ label: m.breadcrumb_home(), href: resolve('/(app)/dashboard') },
+			{ label: m.invoices(), href: resolve('/(app)/finances/invoices') },
 			{ label: m.breadcrumb_new_invoice() }
 		];
 		return () => {
@@ -99,24 +80,9 @@
 		};
 	});
 
-	// Lines State
-	interface DraftLine {
-		id: string;
-		line_type: 'contract' | 'manual' | 'adjustment';
-		contract_id: string;
-		service_type: 'ambulante' | 'accommodation';
-		description: string;
-		period_start: string;
-		period_end: string;
-		quantity: number;
-		unit: string;
-		unit_price: number;
-		vat_rate: number;
-		isSaved: boolean;
-	}
-
-	let lines = $state<DraftLine[]>([
-		{
+	type DraftLine = CreateInvoiceInput['lines'][number];
+	function newLine(): DraftLine {
+		return {
 			id: crypto.randomUUID(),
 			line_type: 'manual',
 			contract_id: '',
@@ -129,8 +95,42 @@
 			unit_price: 0,
 			vat_rate: 21,
 			isSaved: false
+		};
+	}
+	const today = new Date();
+	const due = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 14);
+	const localDate = (date: Date) =>
+		`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+	const initialData: CreateInvoiceInput = {
+		client_id: '',
+		invoice_type: 'standard',
+		issue_date: localDate(today),
+		due_date: localDate(due),
+		lines: [newLine()]
+	};
+	const { form, errors, enhance, tainted } = superForm(
+		defaults(initialData, valibotClient(CreateInvoiceSchema)),
+		{
+			validators: valibotClient(CreateInvoiceSchema),
+			SPA: true,
+			dataType: 'json',
+			...getFormErrorNavigationOptions(),
+			onUpdate: async ({ form: result }) => {
+				if (!result.valid) {
+					$form.lines = $form.lines.map((line) => ({ ...line, isSaved: false }));
+					return;
+				}
+				if (isSubmitting) return;
+				await createDraftInvoice(result.data);
+			}
 		}
-	]);
+	);
+	beforeNavigate(({ cancel }) => {
+		if (allowNavigation || !($tainted || hasEdited)) return;
+		if (!confirm(m.discard_invoice_changes_confirmation())) cancel();
+	});
+	const lines = $derived($form.lines);
+	const clientId = $derived($form.client_id);
 
 	// Computed Totals
 	const totals = $derived.by(() => {
@@ -151,61 +151,20 @@
 		return { net, vat, gross };
 	});
 
-	const canCreateInvoice = $derived.by(() => {
-		if (!clientId || lines.length === 0 || isSubmitting) return false;
-
-		for (const line of lines) {
-			if (line.line_type === 'contract' && !line.contract_id) {
-				return false;
-			}
-		}
-
-		return true;
-	});
-
-	const lineValidationErrors = $derived.by(() => {
-		const errors: Record<string, string> = {};
-
-		for (const line of lines) {
-			if (line.line_type === 'contract' && !line.contract_id) {
-				errors[line.id] = m.select_contract_for_line();
-			}
-		}
-
-		return errors;
-	});
-
-	const hasLineValidationErrors = $derived.by(() => Object.keys(lineValidationErrors).length > 0);
-
-	let showLineValidationErrors = $state(false);
-
 	// Handlers
 	function addLine() {
-		lines = [
-			...lines,
-			{
-				id: crypto.randomUUID(),
-				line_type: 'manual',
-				contract_id: '',
-				service_type: 'ambulante',
-				description: '',
-				period_start: '',
-				period_end: '',
-				quantity: 1,
-				unit: 'hour',
-				unit_price: 0,
-				vat_rate: 21,
-				isSaved: false
-			}
-		];
+		$form.lines = [...lines, newLine()];
+		hasEdited = true;
 	}
 
 	function removeLine(id: string) {
-		lines = lines.filter((l) => l.id !== id);
+		$form.lines = lines.filter((l) => l.id !== id);
+		hasEdited = true;
 	}
 
 	function toggleLineSave(id: string) {
-		lines = lines.map((l) => (l.id === id ? { ...l, isSaved: !l.isSaved } : l));
+		$form.lines = lines.map((l) => (l.id === id ? { ...l, isSaved: !l.isSaved } : l));
+		hasEdited = true;
 	}
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
@@ -223,33 +182,38 @@
 	};
 
 	async function loadClientOptions(query: string) {
+		const request = ++clientOptionsRequest;
 		clientsLoadError = '';
 		try {
 			const res = await listClients({ search: query, page: 1, pageSize: 50 });
 			return res.data.results;
 		} catch (error) {
-			clientsLoadError = error instanceof Error ? error.message : m.failed_load_clients();
-			return [];
+			if (request === clientOptionsRequest)
+				clientsLoadError = error instanceof Error ? error.message : m.failed_load_clients();
+			throw error;
 		}
 	}
 
-	async function handleClientChange(selectedClientId: string) {
-		clientId = selectedClientId;
+	async function handleClientChange(selectedClientId: string, resetLines = true) {
+		const request = ++contractRequest;
+		if (resetLines) hasEdited = true;
 		submitError = '';
 		contractsLoadError = '';
 		clientContracts = [];
-		lines = lines.map((line) =>
-			line.line_type === 'contract' ? { ...line, contract_id: '' } : line
-		);
+		if (resetLines)
+			$form.lines = lines.map((line) =>
+				line.line_type === 'contract' ? { ...line, contract_id: '', isSaved: false } : line
+			);
 
 		if (!selectedClientId) return;
 
 		try {
 			const res = await listClientContracts(selectedClientId, 1, 100);
-			clientContracts = res.data.results;
+			if (request === contractRequest) clientContracts = res.data.results;
 		} catch (error) {
-			contractsLoadError =
-				error instanceof Error ? error.message : m.failed_load_client_contracts();
+			if (request === contractRequest)
+				contractsLoadError =
+					error instanceof Error ? error.message : m.failed_load_client_contracts();
 		}
 	}
 
@@ -266,31 +230,22 @@
 		);
 	}
 
-	async function handleCreateDraftInvoice() {
+	async function createDraftInvoice(data: CreateInvoiceInput) {
 		submitError = '';
-		showLineValidationErrors = true;
-
-		if (hasLineValidationErrors) {
-			submitError = m.fix_contract_line_fields();
-			return;
-		}
-
-		if (!canCreateInvoice) return;
-
 		isSubmitting = true;
 		try {
 			const payload: CreateInvoiceRequest = {
-				client_id: clientId,
-				invoice_type: invoiceType,
-				issue_date: toRFC3339(issueDate),
-				due_date: toRFC3339(dueDate),
-				lines: lines.map((line) => ({
+				client_id: data.client_id,
+				invoice_type: data.invoice_type,
+				issue_date: toRFC3339(data.issue_date),
+				due_date: toRFC3339(data.due_date),
+				lines: data.lines.map((line) => ({
 					line_type: line.line_type,
 					contract_id: line.line_type === 'contract' ? line.contract_id || null : null,
 					service_type: line.service_type,
 					description: line.description,
-					period_start: toRFC3339(line.period_start || issueDate),
-					period_end: toRFC3339(line.period_end || dueDate),
+					period_start: toRFC3339(line.period_start || data.issue_date),
+					period_end: toRFC3339(line.period_end || data.due_date),
 					quantity: Number(line.quantity),
 					unit: line.unit,
 					unit_price: Number(line.unit_price),
@@ -301,18 +256,27 @@
 
 			const response = await createInvoice(payload);
 			const createdInvoiceId = response.data.id;
+			allowNavigation = true;
 
 			if (createdInvoiceId) {
-				goto(resolve('/(app)/finances/invoices/[id]', { id: createdInvoiceId }));
+				await goto(resolve('/(app)/finances/invoices/[id]', { id: createdInvoiceId }));
 				return;
 			}
 
-			goto(resolve('/(app)/finances/invoices'));
+			await goto(resolve('/(app)/finances/invoices'));
 		} catch (error) {
+			allowNavigation = false;
 			submitError = error instanceof Error ? error.message : m.failed_create_draft_invoice();
 		} finally {
 			isSubmitting = false;
 		}
+	}
+
+	function discardDraft() {
+		if (isSubmitting) return;
+		if (($tainted || hasEdited) && !confirm(m.discard_invoice_changes_confirmation())) return;
+		allowNavigation = true;
+		void goto(resolve('/(app)/finances/invoices'));
 	}
 </script>
 
@@ -344,35 +308,37 @@
 	</div>
 {/snippet}
 
-<div class="space-y-6 pb-20">
+<form use:enhance class="space-y-6 pb-20" oninput={() => (hasEdited = true)}>
 	<!-- Header -->
 	<header
 		class="relative overflow-hidden rounded-3xl border border-border bg-surface/90 p-6 shadow-sm"
 	>
 		<div
-			class="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-brand/10 to-emerald-500/5 blur-2xl"
+			class="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-brand/10 blur-2xl"
 		></div>
 		<div class="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex items-center gap-4">
 				<div class="space-y-4">
-					<div class="hidden"></div>
 					<div>
 						<h1 class="text-2xl font-bold tracking-tight text-text">{m.draft_new_invoice()}</h1>
 						<p class="text-sm font-medium text-text-muted">{m.manually_construct_invoice()}</p>
 					</div>
 				</div>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex flex-wrap items-center gap-2">
 				<Button
 					variant="ghost"
-					class="h-10 gap-2 px-4 ring-1 ring-border transition-all hover:bg-rose-500/10 hover:text-rose-600 hover:ring-rose-500/20 active:scale-95"
+					type="button"
+					onclick={discardDraft}
+					disabled={isSubmitting}
+					class="h-10 gap-2 px-4 ring-1 ring-border hover:bg-error/10 hover:text-error"
 					>{m.discard()}</Button
 				>
 				<Button
+					type="submit"
 					class="h-10 gap-2 px-6 shadow-md shadow-brand/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/30 active:translate-y-0 active:scale-95"
-					onclick={handleCreateDraftInvoice}
 					isLoading={isSubmitting}
-					disabled={!canCreateInvoice}
+					disabled={isSubmitting}
 				>
 					<Save class="h-4 w-4" />
 					{m.save_draft()}
@@ -395,16 +361,32 @@
 					</h2>
 				</div>
 				<div class="p-6">
-					{#if clientsLoadError}
-						<p class="mb-4 text-xs font-medium text-rose-600">{clientsLoadError}</p>
-					{/if}
 					{#if contractsLoadError}
-						<p class="mb-4 text-xs font-medium text-rose-600">{contractsLoadError}</p>
+						<div
+							class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error"
+							role="alert"
+						>
+							<span>{contractsLoadError}</span>
+							<button
+								type="button"
+								class="font-semibold underline focus-visible:outline-2"
+								onclick={() => handleClientChange(clientId, false)}>{m.retry()}</button
+							>
+						</div>
 					{/if}
+					{#if submitError}<p
+							class="mb-4 rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error"
+							role="alert"
+						>
+							{submitError}
+						</p>{/if}
 					<div class="grid gap-6 sm:grid-cols-2">
 						<SearchSelect
 							label="{m.client()} *"
-							bind:value={clientId}
+							bind:value={$form.client_id}
+							error={formatFormError($errors.client_id)}
+							ariaRequired={true}
+							loadErrorText={clientsLoadError || m.failed_load_clients()}
 							bind:displayValue={clientDisplayValue}
 							placeholder={m.choose_client()}
 							searchPlaceholder={m.search_clients()}
@@ -414,15 +396,21 @@
 							labelFn={(client: ListClientsResponse) => `${client.first_name} ${client.last_name}`}
 							valueFn={(client: ListClientsResponse) => client.id}
 						/>
-						<Select label={m.invoice_type()} options={INVOICE_TYPES} bind:value={invoiceType} />
-						<Select label={m.initial_status()} options={INVOICE_STATUSES} bind:value={status} />
-						<Input
-							label={m.billing_timezone()}
-							bind:value={billingTimezone}
-							placeholder={m.billing_timezone_placeholder()}
+						<Select
+							label={m.invoice_type()}
+							options={INVOICE_TYPES}
+							bind:value={$form.invoice_type}
 						/>
-						<DatePicker label={m.issue_date()} bind:value={issueDate} />
-						<DatePicker label={m.due_date_label()} bind:value={dueDate} />
+						<DatePicker
+							label={m.issue_date()}
+							bind:value={$form.issue_date}
+							error={formatFormError($errors.issue_date)}
+						/>
+						<DatePicker
+							label={m.due_date_label()}
+							bind:value={$form.due_date}
+							error={formatFormError($errors.due_date)}
+						/>
 					</div>
 				</div>
 			</section>
@@ -432,15 +420,16 @@
 				class="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm transition-all hover:shadow-md"
 			>
 				<div
-					class="flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/10 bg-linear-to-r from-amber-500/5 to-transparent px-6 py-4"
+					class="flex flex-wrap items-center justify-between gap-4 border-b border-warning/10 bg-linear-to-r from-warning/5 to-transparent px-6 py-4"
 				>
 					<h2
-						class="flex items-center gap-2 text-sm font-bold tracking-wider text-amber-600 uppercase dark:text-amber-500"
+						class="flex items-center gap-2 text-lg font-semibold tracking-tight text-warning-strong"
 					>
 						<FileText class="h-4 w-4" />
 						{m.invoice_lines()}
 					</h2>
 					<Button
+						type="button"
 						variant="ghost"
 						class="h-8 gap-2 text-xs font-semibold text-brand transition-all hover:scale-105 hover:bg-brand/10"
 						onclick={addLine}
@@ -451,6 +440,9 @@
 				</div>
 
 				<div class="p-6">
+					{#if lines.length === 0 && $errors.lines}
+						<p class="mb-4 text-sm text-error" role="alert">{m.invoice_line_required()}</p>
+					{/if}
 					{#if lines.length === 0}
 						<div
 							class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 text-center"
@@ -459,6 +451,7 @@
 							<p class="text-sm font-medium text-text">{m.no_lines_added()}</p>
 							<p class="mt-1 text-xs text-text-muted">{m.add_lines_to_calculate()}</p>
 							<Button
+								type="button"
 								variant="ghost"
 								class="mt-4 h-8 gap-2 text-xs ring-1 ring-border"
 								onclick={addLine}
@@ -472,17 +465,11 @@
 							{#each lines as line, i (line.id)}
 								<div
 									class={[
-										'group relative rounded-2xl border border-border bg-zinc-50/30 p-5 transition-all hover:border-border/80 hover:bg-zinc-50/50 hover:shadow-sm dark:bg-zinc-900/20 dark:hover:bg-zinc-900/40',
+										'group relative rounded-2xl border border-border bg-bg p-5 transition-colors hover:border-brand/30',
 										line.isSaved &&
 											'border-brand/20 bg-linear-to-br from-surface to-brand/5 ring-1 ring-brand/20'
 									]}
 								>
-									<div
-										class="absolute top-1/2 -left-3 hidden -translate-y-1/2 cursor-move text-text-subtle opacity-0 transition-all group-hover:-left-4 group-hover:opacity-100 sm:block"
-									>
-										<GripVertical class="h-5 w-5" />
-									</div>
-
 									<div
 										class="mb-4 flex items-center justify-between border-b border-border/50 pb-4"
 									>
@@ -492,14 +479,15 @@
 											>
 											{#if line.isSaved}
 												<span
-													class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 ring-1 ring-emerald-500/20 ring-inset dark:text-emerald-400"
-													>{m.saved_label()}</span
+													class="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success ring-1 ring-success/20 ring-inset"
+													>{m.line_ready_label()}</span
 												>
 											{/if}
 										</div>
 										<div class="flex items-center gap-2">
 											{#if line.isSaved}
 												<Button
+													type="button"
 													variant="ghost"
 													class="h-7 gap-1.5 px-2 text-xs text-text-subtle transition-colors hover:bg-brand/10 hover:text-brand"
 													onclick={() => toggleLineSave(line.id)}
@@ -509,7 +497,8 @@
 												</Button>
 											{/if}
 											<button
-												class="rounded-lg p-1 text-text-subtle transition-all hover:bg-rose-500/10 hover:text-rose-500"
+												type="button"
+												class="rounded-lg p-1 text-text-subtle transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-2 focus-visible:outline-brand"
 												onclick={() => removeLine(line.id)}
 												aria-label={m.remove_line_label()}
 											>
@@ -531,7 +520,7 @@
 												<div class="flex flex-wrap items-center gap-3 text-xs text-text-muted">
 													<span class="flex items-center gap-1">
 														<span
-															class="rounded bg-zinc-200/50 px-1.5 py-0.5 font-medium text-text-subtle dark:bg-zinc-800/50"
+															class="rounded bg-border/50 px-1.5 py-0.5 font-medium text-text-subtle"
 															>{LINE_TYPES.find((t) => t.value === line.line_type)?.label}</span
 														>
 													</span>
@@ -570,7 +559,7 @@
 													)}
 												</p>
 												<p class="text-[10px] tracking-wider text-text-muted uppercase">
-													{m.gross_total()} ({line.vat_rate}% VAT)
+													{m.gross_total()} ({line.vat_rate}% {m.vat()})
 												</p>
 											</div>
 										</div>
@@ -578,7 +567,11 @@
 										<!-- Edit View -->
 										<div class="grid gap-4 sm:grid-cols-12">
 											<div class="sm:col-span-3">
-												<Select label={m.type()} options={LINE_TYPES} bind:value={line.line_type} />
+												<Select
+													label={m.type()}
+													options={LINE_TYPES}
+													bind:value={$form.lines[i].line_type}
+												/>
 											</div>
 											{#if line.line_type === 'contract'}
 												<div class="sm:col-span-9">
@@ -593,13 +586,9 @@
 														item={contractItem}
 														labelFn={(contract: ListClientContractsResponse) => contract.care_name}
 														valueFn={(contract: ListClientContractsResponse) => contract.id}
-														bind:value={line.contract_id}
+														bind:value={$form.lines[i].contract_id}
+														error={formatFormError($errors.lines?.[i]?.contract_id)}
 													/>
-													{#if showLineValidationErrors && lineValidationErrors[line.id]}
-														<p class="mt-1 text-xs font-medium text-rose-600">
-															{lineValidationErrors[line.id]}
-														</p>
-													{/if}
 													<p class="mt-1 text-[10px] text-text-muted">
 														{m.service_type_determined_by_contract()}
 													</p>
@@ -609,13 +598,13 @@
 													<Select
 														label={m.service_type_label()}
 														options={SERVICE_TYPES}
-														bind:value={line.service_type}
+														bind:value={$form.lines[i].service_type}
 													/>
 												</div>
 												<div class="sm:col-span-6">
 													<Input
 														label={m.description()}
-														bind:value={line.description}
+														bind:value={$form.lines[i].description}
 														placeholder={m.placeholder_service_description()}
 													/>
 												</div>
@@ -626,18 +615,24 @@
 													label={m.qty_col()}
 													type="number"
 													step="0.01"
-													bind:value={line.quantity}
+													bind:value={$form.lines[i].quantity}
+													error={formatFormError($errors.lines?.[i]?.quantity)}
 												/>
 											</div>
 											<div class="sm:col-span-3">
-												<Select label={m.unit()} options={UNIT_OPTIONS} bind:value={line.unit} />
+												<Select
+													label={m.unit()}
+													options={UNIT_OPTIONS}
+													bind:value={$form.lines[i].unit}
+												/>
 											</div>
 											<div class="sm:col-span-3">
 												<Input
 													label={m.unit_price()}
 													type="number"
 													step="0.01"
-													bind:value={line.unit_price}
+													bind:value={$form.lines[i].unit_price}
+													error={formatFormError($errors.lines?.[i]?.unit_price)}
 												/>
 											</div>
 											<div class="sm:col-span-3">
@@ -645,18 +640,24 @@
 													label={m.vat_percent()}
 													type="number"
 													step="0.1"
-													bind:value={line.vat_rate}
+													bind:value={$form.lines[i].vat_rate}
+													error={formatFormError($errors.lines?.[i]?.vat_rate)}
 												/>
 											</div>
 
 											<div class="sm:col-span-6">
 												<DatePicker
 													label={m.period_start_optional()}
-													bind:value={line.period_start}
+													bind:value={$form.lines[i].period_start}
+													error={formatFormError($errors.lines?.[i]?.period_start)}
 												/>
 											</div>
 											<div class="sm:col-span-6">
-												<DatePicker label={m.period_end_optional()} bind:value={line.period_end} />
+												<DatePicker
+													label={m.period_end_optional()}
+													bind:value={$form.lines[i].period_end}
+													error={formatFormError($errors.lines?.[i]?.period_end)}
+												/>
 											</div>
 										</div>
 
@@ -700,12 +701,13 @@
 												</div>
 											</div>
 											<Button
+												type="button"
 												variant="ghost"
 												class="hover:text-brand-foreground ml-auto h-8 gap-2 bg-brand/10 text-xs font-semibold text-brand ring-1 ring-brand/20 transition-all hover:bg-brand hover:ring-brand"
 												onclick={() => toggleLineSave(line.id)}
 											>
 												<Check class="h-3.5 w-3.5" />
-												{m.save_line()}
+												{m.review_line()}
 											</Button>
 										</div>
 									{/if}
@@ -723,9 +725,7 @@
 			<section
 				class="sticky top-6 rounded-3xl border border-border bg-surface p-6 shadow-sm transition-all hover:shadow-md"
 			>
-				<h3
-					class="mb-4 flex items-center gap-2 text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-500"
-				>
+				<h3 class="mb-4 flex items-center gap-2 text-lg font-semibold tracking-tight text-success">
 					<Banknote class="h-4 w-4" />
 					{m.invoice_totals()}
 				</h3>
@@ -743,10 +743,10 @@
 					<div class="my-2 h-px w-full bg-border/50"></div>
 
 					<div
-						class="-mx-3 flex items-center justify-between rounded-xl bg-linear-to-br from-emerald-500/10 to-emerald-500/5 p-4 shadow-xs ring-1 ring-emerald-500/20 ring-inset"
+						class="-mx-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-success/10 p-4 ring-1 ring-success/20 ring-inset"
 					>
 						<span class="text-base font-bold text-text">{m.total_gross()}</span>
-						<span class="text-xl font-bold text-emerald-600 dark:text-emerald-400"
+						<span class="text-xl font-bold text-success"
 							>{formatCurrency(totals.gross, currency)}</span
 						>
 					</div>
@@ -754,27 +754,22 @@
 
 				<div class="mt-6">
 					<Button
+						type="submit"
 						class="w-full shadow-md shadow-brand/20 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/40 active:translate-y-0 active:scale-[0.98]"
-						disabled={!canCreateInvoice}
-						onclick={handleCreateDraftInvoice}
+						disabled={isSubmitting}
 						isLoading={isSubmitting}
 					>
 						{m.create_draft_invoice()}
 					</Button>
 					{#if !clientId}
-						<p class="mt-2 text-center text-xs font-medium text-amber-600 dark:text-amber-500">
+						<p class="mt-2 text-center text-xs font-medium text-warning-strong">
 							{m.client_is_required()}
 						</p>
-					{/if}
-					{#if submitError}
-						<p class="mt-2 text-center text-xs font-medium text-rose-600">{submitError}</p>
 					{/if}
 				</div>
 
 				<!-- Workflow Cues -->
-				<div
-					class="mt-6 rounded-xl border border-border/50 bg-zinc-50 p-4 transition-colors hover:bg-zinc-100 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80"
-				>
+				<div class="mt-6 rounded-xl border border-border/50 bg-bg p-4">
 					<h4
 						class="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-text-subtle uppercase"
 					>
@@ -790,4 +785,4 @@
 			</section>
 		</aside>
 	</div>
-</div>
+</form>
