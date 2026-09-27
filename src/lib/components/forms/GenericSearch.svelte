@@ -74,7 +74,7 @@
 		items = [];
 		isOpen = false;
 		if (searchInputEl) {
-			searchInputEl.focus();
+			searchInputEl.focus({ preventScroll: true });
 		}
 		onSelect?.(null);
 	}

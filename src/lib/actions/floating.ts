@@ -46,7 +46,11 @@ export function floating(node: HTMLElement, options: FloatingOptions) {
 		node.style.left = `${left}px`;
 	}
 
-	// Wait for next frame to ensure node is rendered and has dimensions
+	// Take the node out of document flow immediately; otherwise it sits at the end of
+	// <body> until positioned, and focusing anything inside it scrolls the page there.
+	node.style.position = 'fixed';
+	update();
+	// Re-run next frame once content (e.g. transitions, async options) has settled
 	requestAnimationFrame(update);
 
 	window.addEventListener('scroll', update, true);

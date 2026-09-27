@@ -110,7 +110,7 @@
 		isOpen = !isOpen;
 		if (isOpen) {
 			void fetchOptions('');
-			queueMicrotask(() => searchInput?.focus());
+			queueMicrotask(() => searchInput?.focus({ preventScroll: true }));
 		} else {
 			requestSequence += 1;
 		}
@@ -122,7 +122,7 @@
 		isOpen = false;
 		searchQuery = '';
 		onchange?.(value);
-		triggerEl?.focus();
+		triggerEl?.focus({ preventScroll: true });
 	}
 
 	function optionId(index: number) {
@@ -134,7 +134,7 @@
 		displayValue = '';
 		searchQuery = '';
 		onchange?.('');
-		triggerEl?.focus();
+		triggerEl?.focus({ preventScroll: true });
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
@@ -166,7 +166,7 @@
 		if (event.key === 'Escape') {
 			event.preventDefault();
 			isOpen = false;
-			triggerEl?.focus();
+			triggerEl?.focus({ preventScroll: true });
 		}
 	}
 

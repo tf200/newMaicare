@@ -125,7 +125,7 @@
 		highlightedIndex = -1;
 		onSelect?.(null);
 		// Slight delay so the input is rendered before focusing
-		setTimeout(() => searchInputEl?.focus(), 0);
+		setTimeout(() => searchInputEl?.focus({ preventScroll: true }), 0);
 	}
 
 	// ── Click outside ──────────────────────────────────────────────────────────

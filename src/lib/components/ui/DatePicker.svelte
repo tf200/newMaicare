@@ -126,21 +126,21 @@
 		value = nextValue;
 		onchange?.(nextValue);
 		isOpen = false;
-		triggerEl?.focus();
+		triggerEl?.focus({ preventScroll: true });
 	}
 
 	async function selectMonth(monthIndex: number) {
 		viewDate = new Date(viewDate.getFullYear(), monthIndex, 1);
 		view = 'days';
 		await tick();
-		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
+		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 	}
 
 	async function selectYear(year: number) {
 		viewDate = new Date(year, viewDate.getMonth(), 1);
 		view = 'months';
 		await tick();
-		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
+		dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 	}
 
 	function next() {
@@ -177,7 +177,7 @@
 		isOpen = !isOpen;
 		if (isOpen) {
 			await tick();
-			dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus();
+			dropdownEl?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 		}
 	}
 
@@ -185,7 +185,7 @@
 		if (isOpen && event.key === 'Escape') {
 			isOpen = false;
 			view = 'days';
-			triggerEl?.focus();
+			triggerEl?.focus({ preventScroll: true });
 		}
 	}
 

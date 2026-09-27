@@ -85,7 +85,7 @@
 	function toggle() {
 		isOpen = !isOpen;
 		if (isOpen) {
-			setTimeout(() => searchInput?.focus(), 50);
+			setTimeout(() => searchInput?.focus({ preventScroll: true }), 50);
 			fetchOptions('');
 		}
 	}
@@ -107,7 +107,7 @@
 		if (event.key !== 'Escape' || !isOpen) return;
 		event.preventDefault();
 		isOpen = false;
-		triggerEl?.focus();
+		triggerEl?.focus({ preventScroll: true });
 	}
 
 	function handleOutsideClick(node: HTMLElement) {

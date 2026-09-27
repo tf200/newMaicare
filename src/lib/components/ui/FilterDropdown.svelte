@@ -50,7 +50,7 @@
 		isOpen = !isOpen;
 		if (isOpen) {
 			await tick();
-			popupEl?.querySelector<HTMLButtonElement>('button')?.focus();
+			popupEl?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 		}
 	}
 
@@ -69,7 +69,7 @@
 			!(event.target as Element)?.closest('[data-date-picker-popup]')
 		) {
 			isOpen = false;
-			triggerEl.focus();
+			triggerEl.focus({ preventScroll: true });
 		}
 	}
 

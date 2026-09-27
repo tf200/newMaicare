@@ -185,7 +185,7 @@
 		event.preventDefault();
 		isOpen = false;
 		view = 'days';
-		triggerEl?.focus();
+		triggerEl?.focus({ preventScroll: true });
 	}
 
 	function manageRoot(node: HTMLDivElement) {
