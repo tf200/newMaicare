@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import * as v from 'valibot';
-import { CreateInvoiceSchema, type CreateInvoiceInput } from './invoice';
+import {
+	CreateInvoiceSchema,
+	UpdateInvoiceSchema,
+	type CreateInvoiceInput,
+	type UpdateInvoiceInput
+} from './invoice';
 
 const validInvoice = (): CreateInvoiceInput => ({
 	client_id: 'client-1',
@@ -67,6 +72,74 @@ describe('CreateInvoiceSchema dates', () => {
 				]
 			}).success,
 			false
+		);
+	});
+});
+
+const validUpdate = (): UpdateInvoiceInput => ({
+	issue_date: '2026-09-27',
+	due_date: '2026-10-11',
+	status: 'outstanding',
+	warning_count: 0,
+	lines: [
+		{
+			id: 'line-1',
+			line_type: 'manual',
+			contract_id: '',
+			service_type: 'ambulante',
+			description: 'Service',
+			period_start: '',
+			period_end: '',
+			quantity: 1,
+			unit: 'hour',
+			unit_price: 100,
+			vat_rate: 21
+		}
+	]
+});
+
+describe('UpdateInvoiceSchema', () => {
+	test('accepts a metadata update without editable lines', () => {
+		assert.equal(v.safeParse(UpdateInvoiceSchema, { ...validUpdate(), lines: [] }).success, true);
+	});
+
+	test('rejects invalid amounts and warning counts before updating', () => {
+		const update = validUpdate();
+		assert.equal(v.safeParse(UpdateInvoiceSchema, { ...update, warning_count: -1 }).success, false);
+		assert.equal(
+			v.safeParse(UpdateInvoiceSchema, {
+				...update,
+				lines: [{ ...update.lines[0], quantity: 0 }]
+			}).success,
+			false
+		);
+	});
+
+	test('rejects reversed dates and invalid VAT', () => {
+		const update = validUpdate();
+		assert.equal(
+			v.safeParse(UpdateInvoiceSchema, { ...update, due_date: '2026-09-26' }).success,
+			false
+		);
+		assert.equal(
+			v.safeParse(UpdateInvoiceSchema, {
+				...update,
+				lines: [{ ...update.lines[0], vat_rate: 101 }]
+			}).success,
+			false
+		);
+	});
+
+	test('requires a contract for contract lines', () => {
+		const update = validUpdate();
+		const result = v.safeParse(UpdateInvoiceSchema, {
+			...update,
+			lines: [{ ...update.lines[0], line_type: 'contract', contract_id: '' }]
+		});
+		assert.equal(result.success, false);
+		assert.equal(
+			result.issues?.some((issue) => issue.path?.some((part) => part.key === 'contract_id')),
+			true
 		);
 	});
 });

@@ -14,6 +14,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 
 	type EditablePayment = {
 		id: string;
@@ -42,18 +43,19 @@
 
 	let errorMessage = $state('');
 	const formId = 'edit-invoice-payment-form';
+	const initialFormData: InvoicePaymentSchemaInput = {
+		amount: 0,
+		payment_date: '',
+		payment_method: 'bank_transfer',
+		status: 'pending',
+		reference: '',
+		notes: ''
+	};
 
-	const { form, errors, enhance, delayed, reset } = superForm(
-		defaults(
-			{
-				amount: 0,
-				payment_date: '',
-				payment_method: 'bank_transfer',
-				status: 'pending'
-			} as unknown as InvoicePaymentSchemaInput,
-			valibotClient(InvoicePaymentSchema)
-		),
+	const { form, errors, enhance, submitting, reset } = superForm(
+		defaults(initialFormData, valibotClient(InvoicePaymentSchema)),
 		{
+			...getFormErrorNavigationOptions(),
 			validators: valibotClient(InvoicePaymentSchema),
 			SPA: true,
 			dataType: 'json',
@@ -84,17 +86,17 @@
 		}
 	);
 
-	const validMethods = ['bank_transfer', 'credit_card', 'check', 'cash', 'other'] as const;
-	type KnownInvoicePaymentMethod = (typeof validMethods)[number];
-	const isInvoicePaymentMethod = (value: string): value is KnownInvoicePaymentMethod =>
-		validMethods.some((method) => method === value);
-
-	const normalizeMethod = (value: string | null | undefined): KnownInvoicePaymentMethod => {
-		const normalized = value?.toLowerCase().trim();
-		if (!normalized) return 'other';
-		if (isInvoicePaymentMethod(normalized)) return normalized;
-		return 'other';
-	};
+	const knownMethods = [
+		'bank_transfer',
+		'sepa_direct_debit',
+		'ideal',
+		'credit_card',
+		'check',
+		'cash',
+		'card',
+		'other'
+	] as const;
+	const normalizeMethod = (value: string | null | undefined): string => value?.trim() || 'other';
 
 	const validStatuses = ['completed', 'pending', 'failed', 'reversed', 'refunded'] as const;
 	type KnownInvoicePaymentStatus = (typeof validStatuses)[number];
@@ -127,16 +129,25 @@
 			};
 			reset({ data: initialData });
 			errorMessage = '';
+		} else if (!open) {
+			reset({ data: initialFormData });
+			errorMessage = '';
 		}
 	});
 
-	const paymentMethodOptions = [
+	const paymentMethodOptions = $derived([
 		{ label: m.bank_transfer(), value: 'bank_transfer' },
+		{ label: m.sepa_direct_debit(), value: 'sepa_direct_debit' },
+		{ label: m.ideal(), value: 'ideal' },
 		{ label: m.credit_card(), value: 'credit_card' },
 		{ label: m.check(), value: 'check' },
 		{ label: m.cash(), value: 'cash' },
-		{ label: m.other(), value: 'other' }
-	];
+		{ label: m.card(), value: 'card' },
+		{ label: m.other(), value: 'other' },
+		...(!payment.method || knownMethods.some((method) => method === payment.method)
+			? []
+			: [{ label: payment.method, value: payment.method }])
+	]);
 
 	const paymentStatusOptions = [
 		{ label: m.completed(), value: 'completed' },
@@ -156,9 +167,15 @@
 	};
 </script>
 
-<Sheet bind:open title={m.edit_payment()} description={m.edit_payment_description()} size="lg">
+<Sheet
+	bind:open
+	title={m.edit_payment()}
+	description={m.edit_payment_description()}
+	size="lg"
+	onRequestClose={() => !$submitting}
+>
 	<form id={formId} use:enhance class="space-y-5">
-		<div class="bg-surface-subtle/30 rounded-2xl border border-border/70 p-4">
+		<div class="rounded-2xl border border-border/70 bg-bg p-4">
 			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
 				{m.current_payment()}
 			</p>
@@ -225,10 +242,10 @@
 		<div class="flex items-center justify-between gap-3">
 			<p class="text-xs text-text-muted">{m.update_payment_help()}</p>
 			<div class="flex items-center gap-2">
-				<Button variant="ghost" onclick={() => (open = false)} disabled={$delayed}
+				<Button variant="ghost" onclick={() => (open = false)} disabled={$submitting}
 					>{m.cancel()}</Button
 				>
-				<Button variant="primary" form={formId} type="submit" isLoading={$delayed}
+				<Button variant="primary" form={formId} type="submit" isLoading={$submitting}
 					>{m.update_payment()}</Button
 				>
 			</div>

@@ -13,6 +13,7 @@
 		children,
 		header = undefined,
 		footer = undefined,
+		onRequestClose,
 		size = 'md',
 		class: className = ''
 	}: {
@@ -22,16 +23,18 @@
 		children?: Snippet;
 		header?: Snippet;
 		footer?: Snippet;
+		onRequestClose?: () => boolean | void;
 		size?: SheetSize;
 		class?: string;
 	} = $props();
 
 	function close() {
+		if (onRequestClose?.() === false) return;
 		open = false;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') close();
+		if (e.key === 'Escape' && open) close();
 	}
 
 	const maxWidths: Record<SheetSize, string> = {
@@ -78,7 +81,7 @@
 				{/if}
 				<button
 					onclick={close}
-					class="hover:bg-surface-subtle rounded-full p-2 text-text-muted transition-colors hover:text-text"
+					class="rounded-full p-2 text-text-muted transition-colors hover:bg-bg hover:text-text focus-visible:outline-2 focus-visible:outline-brand"
 					aria-label={m.close()}
 				>
 					<X class="h-5 w-5" />

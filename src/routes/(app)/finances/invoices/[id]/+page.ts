@@ -1,23 +1,15 @@
-import { getInvoice, listInvoicePayments } from '$lib/api/invoices';
+import { getInvoice } from '$lib/api/invoices';
 import type {
 	InvoiceStatus,
 	InvoiceSource,
 	InvoiceType,
-	InvoiceLine,
-	InvoicePayment
+	InvoiceLine
 } from '$lib/types/api/invoices';
-import type { PaginatedResponse } from '$lib/types/api';
 import type { PageLoad } from './$types';
-
-export interface InvoicePaymentView {
-	id: string;
-	date: string;
-	amount: number;
-	method: string;
-	status: 'completed' | 'pending' | 'failed' | 'reversed' | 'refunded';
-	reference: string;
-	notes: string | null;
-}
+import { error } from '@sveltejs/kit';
+import { getAuthState } from '$lib/state/auth.svelte';
+import { PERMISSIONS } from '$lib/config/permissions';
+import { m } from '$lib/paraglide/messages';
 
 export interface InvoiceDetailView {
 	id: string;
@@ -34,7 +26,7 @@ export interface InvoiceDetailView {
 	vatTotalAmount: number;
 	grossTotalAmount: number;
 	pdfAttachmentId: string | null;
-	extraContent?: Record<string, any>;
+	extraContent?: Record<string, unknown>;
 	clientId: string;
 	clientFirstName: string;
 	clientLastName: string;
@@ -48,8 +40,6 @@ export interface InvoiceDetailView {
 	lines: InvoiceLine[];
 	updatedAt: string;
 	createdAt: string;
-	payments: InvoicePaymentView[];
-	hasCompletedPayments: boolean;
 	canEditMeta: boolean;
 	canEditLines: boolean;
 	lineUpdateMode: 'appointment_linked' | 'non_linked';
@@ -59,60 +49,7 @@ export interface InvoiceDetailView {
 export interface InvoiceDetailLoadResult {
 	invoice: InvoiceDetailView | null;
 	loadError: string | null;
-	paymentsLoadError: string | null;
 }
-
-const normalizePaymentStatus = (
-	status: string | null | undefined
-): InvoicePaymentView['status'] => {
-	const normalized = status?.toLowerCase();
-
-	if (normalized === 'completed' || normalized === 'paid' || normalized === 'success') {
-		return 'completed';
-	}
-
-	if (normalized === 'failed' || normalized === 'error' || normalized === 'declined') {
-		return 'failed';
-	}
-
-	if (normalized === 'reversed') {
-		return 'reversed';
-	}
-
-	if (normalized === 'refunded') {
-		return 'refunded';
-	}
-
-	return 'pending';
-};
-
-const mapInvoicePayment = (payment: InvoicePayment): InvoicePaymentView => {
-	const id = payment.payment_id ?? payment.id;
-	const date =
-		payment.payment_date ?? payment.date ?? payment.created_at ?? new Date().toISOString();
-	const method = payment.payment_method ?? payment.method ?? 'Unknown method';
-	const reference =
-		payment.payment_reference ?? payment.reference ?? payment.transaction_reference ?? '—';
-	const status = payment.payment_status ?? payment.status;
-
-	return {
-		id,
-		date,
-		amount: payment.amount,
-		method,
-		status: normalizePaymentStatus(status),
-		reference,
-		notes: payment.notes ?? null
-	};
-};
-
-const extractPayments = (
-	data: InvoicePayment[] | PaginatedResponse<InvoicePayment> | null | undefined
-): InvoicePayment[] => {
-	if (!data) return [];
-	if (Array.isArray(data)) return data;
-	return Array.isArray(data.results) ? data.results : [];
-};
 
 const isLikelyAppointmentLinkedInvoice = (lines: InvoiceLine[]) => {
 	if (lines.length === 0) return false;
@@ -125,41 +62,41 @@ const isLikelyAppointmentLinkedInvoice = (lines: InvoiceLine[]) => {
 	);
 };
 
-export const load: PageLoad = async ({ params, depends }) => {
+function getLineEditBlockReason(
+	source: InvoiceSource,
+	type: InvoiceType,
+	status: InvoiceStatus,
+	isLocked: boolean,
+	hasCompletedPayments: boolean
+): string | null {
+	if (source === 'imported') return m.imported_invoice_line_edit_blocked();
+	if (type === 'credit_note') return m.credit_note_line_edit_blocked();
+	if (status === 'canceled') return m.canceled_invoice_line_edit_blocked();
+	if (isLocked) return m.locked_invoice_line_edit_blocked();
+	if (hasCompletedPayments) return m.paid_invoice_line_edit_blocked();
+	return null;
+}
+
+export const load: PageLoad = ({ params, depends, fetch }) => {
+	if (!getAuthState().hasPermission(PERMISSIONS.INVOICE.VIEW)) {
+		error(403, m.invoices_access_denied());
+	}
+
 	depends(`invoice:detail:${params.id}`);
-	depends(`invoice:payments:${params.id}`);
 
-	const paymentsResultPromise = listInvoicePayments(params.id, {
-		page: 1,
-		page_size: 100,
-		sort_by: 'payment_date',
-		sort_dir: 'desc'
-	})
-		.then((response) => ({ response, error: null }))
-		.catch((error: unknown) => {
-			const message = error instanceof Error ? error.message : 'Failed to load invoice payments.';
-			return { response: null, error: message };
-		});
-
-	const invoiceData = Promise.all([getInvoice(params.id), paymentsResultPromise])
-		.then(([invoiceResponse, paymentsResult]): InvoiceDetailLoadResult => {
+	const invoiceData: Promise<InvoiceDetailLoadResult> = getInvoice(params.id, { fetchFn: fetch })
+		.then((invoiceResponse): InvoiceDetailLoadResult => {
 			const raw = invoiceResponse.data;
-			const payments = extractPayments(paymentsResult.response?.data).map(mapInvoicePayment);
-			const lines = raw.lines as InvoiceLine[];
-			const hasCompletedPayments = payments.some((payment) => payment.status === 'completed');
+			const lines = raw.lines;
+			const hasCompletedPayments = raw.payment_completion_prc > 0;
 			const isLocked = Boolean(raw.locked_at);
-			const lineEditBlockReason =
-				raw.source === 'imported'
-					? 'Imported invoices do not allow line edits.'
-					: raw.invoice_type === 'credit_note'
-						? 'Credit notes do not allow line edits.'
-						: raw.status === 'canceled'
-							? 'Canceled invoices do not allow line edits.'
-							: isLocked
-								? 'This invoice is locked and cannot update lines.'
-								: hasCompletedPayments
-									? 'Invoices with completed payments do not allow line edits.'
-									: null;
+			const lineEditBlockReason = getLineEditBlockReason(
+				raw.source,
+				raw.invoice_type,
+				raw.status,
+				isLocked,
+				hasCompletedPayments
+			);
 			const canEditLines = lineEditBlockReason === null;
 			const canEditMeta = raw.status !== 'canceled';
 			const lineUpdateMode = isLikelyAppointmentLinkedInvoice(lines)
@@ -196,27 +133,24 @@ export const load: PageLoad = async ({ params, depends }) => {
 					lines,
 					updatedAt: raw.updated_at,
 					createdAt: raw.created_at,
-					payments,
-					hasCompletedPayments,
 					canEditMeta,
 					canEditLines,
 					lineUpdateMode,
 					lineEditBlockReason
 				},
-				loadError: null,
-				paymentsLoadError: paymentsResult.error
+				loadError: null
 			};
 		})
 		.catch((error): InvoiceDetailLoadResult => {
-			const message = error instanceof Error ? error.message : 'Failed to load invoice details.';
+			const message = error instanceof Error ? error.message : m.failed_load_invoice_details();
 			return {
 				invoice: null,
-				loadError: message,
-				paymentsLoadError: null
+				loadError: message
 			};
 		});
 
 	return {
+		initial: { id: params.id },
 		invoiceData
 	};
 };

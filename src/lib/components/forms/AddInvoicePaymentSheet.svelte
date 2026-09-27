@@ -13,6 +13,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
 	import { getToastState } from '$lib/state/toast.svelte';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 
 	let {
 		open = $bindable(false),
@@ -30,6 +31,7 @@
 	const toast = getToastState();
 
 	let errorMessage = $state('');
+	let wasOpen = false;
 	const formId = 'add-invoice-payment-form';
 
 	const buildInitialData = (): InvoicePaymentInput => ({
@@ -41,9 +43,10 @@
 		notes: ''
 	});
 
-	const { form, errors, enhance, delayed, reset } = superForm(
+	const { form, errors, enhance, submitting, reset } = superForm(
 		defaults(buildInitialData(), valibotClient(InvoicePaymentSchema)),
 		{
+			...getFormErrorNavigationOptions(),
 			validators: valibotClient(InvoicePaymentSchema),
 			SPA: true,
 			dataType: 'json',
@@ -80,6 +83,8 @@
 		{ label: m.bank_transfer(), value: 'bank_transfer' },
 		{ label: m.sepa_direct_debit(), value: 'sepa_direct_debit' },
 		{ label: m.ideal(), value: 'ideal' },
+		{ label: m.credit_card(), value: 'credit_card' },
+		{ label: m.check(), value: 'check' },
 		{ label: m.cash(), value: 'cash' },
 		{ label: m.card(), value: 'card' },
 		{ label: m.other(), value: 'other' }
@@ -101,16 +106,22 @@
 	};
 
 	$effect(() => {
-		if (open) {
-			reset({ data: buildInitialData() });
-			errorMessage = '';
-		}
+		if (open === wasOpen) return;
+		wasOpen = open;
+		reset({ data: buildInitialData() });
+		errorMessage = '';
 	});
 </script>
 
-<Sheet bind:open title={m.record_payment()} description={m.record_payment_description()} size="lg">
+<Sheet
+	bind:open
+	title={m.record_payment()}
+	description={m.record_payment_description()}
+	size="lg"
+	onRequestClose={() => !$submitting}
+>
 	<form id={formId} use:enhance class="space-y-5">
-		<div class="bg-surface-subtle/30 rounded-2xl border border-border/70 p-4">
+		<div class="rounded-2xl border border-border/70 bg-bg p-4">
 			<p class="text-xs font-semibold tracking-wide text-text-subtle uppercase">
 				{m.invoice_balance()}
 			</p>
@@ -183,11 +194,11 @@
 					onclick={() => {
 						open = false;
 					}}
-					disabled={$delayed}
+					disabled={$submitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button variant="primary" form={formId} type="submit" isLoading={$delayed}
+				<Button variant="primary" form={formId} type="submit" isLoading={$submitting}
 					>{m.save_payment()}</Button
 				>
 			</div>

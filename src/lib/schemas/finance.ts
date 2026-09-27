@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { m } from '$lib/paraglide/messages';
 
 export const InvoicePaymentStatusSchema = v.picklist([
 	'completed',
@@ -17,11 +18,15 @@ export const InvoicePaymentSchema = v.object({
 			const value = Number(normalized);
 			return Number.isFinite(value) ? value : NaN;
 		}),
-		v.number('Enter a valid amount.'),
-		v.minValue(0.01, 'Amount must be greater than 0.')
+		v.number(m.enter_valid_amount()),
+		v.minValue(0.01, m.amount_greater_than_zero())
 	),
-	payment_date: v.pipe(v.string(), v.minLength(1, 'Payment date is required.')),
-	payment_method: v.pipe(v.string(), v.minLength(1, 'Payment method is required.')),
+	payment_date: v.pipe(
+		v.string(),
+		v.minLength(1, m.payment_date_required()),
+		v.check((value) => !Number.isNaN(Date.parse(value)), m.invoice_invalid_date())
+	),
+	payment_method: v.pipe(v.string(), v.minLength(1, m.payment_method_required())),
 	status: InvoicePaymentStatusSchema,
 	reference: v.optional(v.string()),
 	notes: v.optional(v.string())

@@ -24,8 +24,8 @@ export function getInvoiceStats(options?: ApiRequestOptions) {
 	return api.get<ApiEnvelope<InvoiceStatsResponse>>('/invoices/stats', options);
 }
 
-export function getInvoice(id: string) {
-	return api.get<ApiEnvelope<GetInvoiceByIDResponse>>(`/invoices/${id}`);
+export function getInvoice(id: string, options?: ApiRequestOptions) {
+	return api.get<ApiEnvelope<GetInvoiceByIDResponse>>(`/invoices/${id}`, options);
 }
 
 export function generateInvoicePdf(id: string) {
@@ -46,7 +46,8 @@ export function updateInvoice(id: string, payload: UpdateInvoiceRequest) {
 
 export function listInvoicePayments(
 	invoiceId: string,
-	params: Omit<InvoicePaymentsFilters, 'invoice_id'> = {}
+	params: Omit<InvoicePaymentsFilters, 'invoice_id'> = {},
+	options?: ApiRequestOptions
 ) {
 	const searchParams = new URLSearchParams();
 
@@ -61,7 +62,10 @@ export function listInvoicePayments(
 		? `/invoices/${invoiceId}/payments?${query}`
 		: `/invoices/${invoiceId}/payments`;
 
-	return api.get<ApiEnvelope<InvoicePayment[] | PaginatedResponse<InvoicePayment>>>(endpoint);
+	return api.get<ApiEnvelope<InvoicePayment[] | PaginatedResponse<InvoicePayment>>>(
+		endpoint,
+		options
+	);
 }
 
 export function createInvoicePayment(payload: CreateInvoicePaymentRequest) {

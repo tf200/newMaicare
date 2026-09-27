@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
 	import { getLocale } from '$lib/paraglide/runtime';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { beforeNavigate, goto, invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import {
 		FileText,
@@ -21,13 +21,13 @@
 		FileWarning,
 		BadgeEuro,
 		SquarePen,
-		Save,
 		Pencil,
 		Plus,
 		Trash2,
 		Lock
 	} from 'lucide-svelte';
-	import type { InvoiceDetailLoadResult, InvoicePaymentView } from './+page';
+	import type { InvoiceDetailLoadResult, InvoiceDetailView } from './+page';
+	import type { InvoicePaymentView, InvoicePaymentsLoadResult } from './+layout';
 	import { creditInvoice, generateInvoicePdf, updateInvoice } from '$lib/api/invoices';
 	import { listClientContracts } from '$lib/api/clients';
 	import AddInvoicePaymentSheet from '$lib/components/forms/AddInvoicePaymentSheet.svelte';
@@ -37,14 +37,26 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import InlineErrorBanner from '$lib/components/ui/InlineErrorBanner.svelte';
+	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import Sheet from '$lib/components/ui/Sheet.svelte';
+	import PermissionGuard from '$lib/components/ui/PermissionGuard.svelte';
+	import { PERMISSIONS } from '$lib/config/permissions';
+	import type { InvoiceLine, InvoiceSource } from '$lib/types/api/invoices';
 	import { tick } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { ListClientContractsResponse } from '$lib/types/api/contracts';
 	import type { UpdateInvoiceRequest, UpdateInvoiceLineRequest } from '$lib/types/api/invoices';
+	import { superForm, defaults } from 'sveltekit-superforms';
+	import { valibotClient } from 'sveltekit-superforms/adapters';
+	import { UpdateInvoiceSchema, type UpdateInvoiceInput } from '$lib/schemas/invoice';
+	import { formatFormError } from '$lib/utils/form-errors';
+	import { getFormErrorNavigationOptions } from '$lib/utils/form-navigation';
 
 	let { data } = $props<{
 		data: {
+			initial: { id: string };
 			invoiceData: Promise<InvoiceDetailLoadResult>;
+			paymentsData: Promise<InvoicePaymentsLoadResult>;
 		};
 	}>();
 
@@ -55,35 +67,85 @@
 	let creditInvoiceError = $state<string | null>(null);
 	let isAddPaymentSheetOpen = $state(false);
 	let isEditPaymentSheetOpen = $state(false);
+	let paymentSheetInvoice = $state.raw<{
+		id: string;
+		currency: string;
+		defaultAmount: number;
+	} | null>(null);
 	let selectedPayment = $state<InvoicePaymentView | null>(null);
 	let editSheetKey = $state(0);
 	let isEditMode = $state(false);
+	let editingInvoice = $state.raw<InvoiceDetailView | null>(null);
 	let isSavingInvoice = $state(false);
 	let saveInvoiceError = $state<string | null>(null);
-	let showLineValidationErrors = $state(false);
-	let draftIssueDate = $state('');
-	let draftDueDate = $state('');
-	let draftStatus = $state('concept');
-	let draftWarningCount = $state(0);
-	let draftLines = $state<DraftLine[]>([]);
-	let contractOptions = $state<Array<{ value: string; label: string }>>([]);
+	const initialEditData: UpdateInvoiceInput = {
+		issue_date: '',
+		due_date: '',
+		status: 'concept',
+		warning_count: 0,
+		lines: []
+	};
+	const { form, errors, enhance, submitting, reset } = superForm(
+		defaults(initialEditData, valibotClient(UpdateInvoiceSchema)),
+		{
+			validators: valibotClient(UpdateInvoiceSchema),
+			SPA: true,
+			dataType: 'json',
+			resetForm: false,
+			...getFormErrorNavigationOptions(),
+			onUpdate: async ({ form: result }) => {
+				if (!result.valid) {
+					saveInvoiceError = m.fix_line_fields_before_saving();
+					return;
+				}
+				if (editingInvoice) await handleSaveInvoice(editingInvoice, result.data);
+			}
+		}
+	);
+	const draftLines = $derived($form.lines);
+	let contractOptions = $state.raw<Array<{ value: string; label: string }>>([]);
 	let contractsLoadError = $state<string | null>(null);
 	let isLoadingContracts = $state(false);
-	let originalLineOrder = $state<string[]>([]);
+	let originalLineOrder = $state.raw<string[]>([]);
+	let initialDraftSnapshot = $state('');
+	let contractRequestId = 0;
+	const draftSnapshot = $derived(JSON.stringify($form));
+	const hasUnsavedChanges = $derived(isEditMode && draftSnapshot !== initialDraftSnapshot);
+	beforeNavigate(({ cancel, to }) => {
+		if (isSavingInvoice || $submitting) {
+			cancel();
+			return;
+		}
+		if (hasUnsavedChanges && !confirm(m.discard_invoice_changes_confirmation())) {
+			cancel();
+			return;
+		}
+		if (to?.params?.id !== invoiceId) {
+			contractRequestId += 1;
+			isEditMode = false;
+			editingInvoice = null;
+			reset({ data: initialEditData });
+			isAddPaymentSheetOpen = false;
+			isEditPaymentSheetOpen = false;
+			paymentSheetInvoice = null;
+			selectedPayment = null;
+		}
+	});
+	const refreshInvoice = () => invalidate('invoice:detail:' + invoiceId);
+	const refreshPayments = () => invalidate('invoice:payments:' + invoiceId);
+	const refreshInvoiceSummary = async () => {
+		await Promise.all([
+			refreshInvoice(),
+			invalidate('app:invoices:list'),
+			invalidate('app:invoices:stats')
+		]);
+	};
+	const refreshInvoiceResources = async () => {
+		await Promise.all([refreshInvoiceSummary(), refreshPayments()]);
+	};
+	const invoiceId = $derived(data.initial.id);
 
-	interface DraftLine {
-		id: string;
-		line_type: 'contract' | 'manual' | 'adjustment';
-		contract_id: string;
-		service_type: string;
-		description: string;
-		period_start: string;
-		period_end: string;
-		quantity: number;
-		unit: string;
-		unit_price: number;
-		vat_rate: number;
-	}
+	type DraftLine = UpdateInvoiceInput['lines'][number];
 
 	const invoiceStatuses = $derived([
 		{ value: 'concept', label: m.concept() },
@@ -117,42 +179,42 @@
 	const statusMeta = $derived({
 		paid: {
 			label: m.paid(),
-			className: 'bg-emerald-600 text-white border-emerald-700/50 shadow-sm shadow-emerald-700/20',
+			className: 'border-success/30 bg-success/10 text-success-strong',
 			icon: CheckCircle2
 		},
 		outstanding: {
 			label: m.outstanding_status(),
-			className: 'bg-amber-500 text-white border-amber-600/50 shadow-sm shadow-amber-600/20',
+			className: 'border-warning/30 bg-warning/10 text-warning-strong',
 			icon: Clock
 		},
 		partially_paid: {
 			label: m.partially_paid(),
-			className: 'bg-blue-600 text-white border-blue-700/50 shadow-sm shadow-blue-700/20',
+			className: 'border-info/30 bg-info/10 text-info-strong',
 			icon: Wallet
 		},
 		expired: {
 			label: m.expired(),
-			className: 'bg-rose-600 text-white border-rose-700/50 shadow-sm shadow-rose-700/20',
+			className: 'border-error/30 bg-error/10 text-error-strong',
 			icon: FileWarning
 		},
 		overpaid: {
 			label: m.overpaid(),
-			className: 'bg-purple-600 text-white border-purple-700/50 shadow-sm shadow-purple-700/20',
+			className: 'border-secondary/30 bg-secondary/10 text-secondary-strong',
 			icon: BadgeEuro
 		},
 		canceled: {
 			label: m.canceled(),
-			className: 'bg-zinc-500 text-white border-zinc-600/50 shadow-sm shadow-zinc-600/20',
+			className: 'border-border bg-bg text-text-muted',
 			icon: XCircle
 		},
 		concept: {
 			label: m.concept(),
-			className: 'bg-slate-400 text-white border-slate-500/50 shadow-sm shadow-slate-500/20',
+			className: 'border-border bg-bg text-text-muted',
 			icon: FileText
 		},
 		imported: {
 			label: m.imported_status(),
-			className: 'bg-indigo-500 text-white border-indigo-600/50 shadow-sm shadow-indigo-600/20',
+			className: 'border-brand/30 bg-brand/10 text-brand-strong',
 			icon: ArrowRightLeft
 		}
 	});
@@ -160,49 +222,70 @@
 	const paymentStatusMeta = $derived({
 		completed: {
 			label: m.completed(),
-			className:
-				'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400'
+			className: 'border-success/30 bg-success/10 text-success-strong'
 		},
 		pending: {
 			label: m.pending(),
-			className:
-				'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400'
+			className: 'border-warning/30 bg-warning/10 text-warning-strong'
 		},
 		failed: {
 			label: m.failed(),
-			className: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400'
+			className: 'border-error/30 bg-error/10 text-error-strong'
 		},
 		reversed: {
 			label: m.reversed(),
-			className: 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-800/70 dark:text-zinc-300'
+			className: 'border-border bg-bg text-text-muted'
 		},
 		refunded: {
 			label: m.refunded(),
-			className:
-				'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300'
+			className: 'border-brand/30 bg-brand/10 text-brand-strong'
 		}
 	});
 
 	const resolveLocale = () => (getLocale() === 'nl' ? 'nl-NL' : 'en-GB');
+	const paymentMethodLabels = $derived<Record<string, string>>({
+		bank_transfer: m.bank_transfer(),
+		sepa_direct_debit: m.sepa_direct_debit(),
+		ideal: m.ideal(),
+		credit_card: m.credit_card(),
+		check: m.check(),
+		cash: m.cash(),
+		card: m.card(),
+		other: m.other()
+	});
+	function invoiceSourceLabel(source: InvoiceSource): string {
+		switch (source) {
+			case 'auto':
+				return m.auto();
+			case 'manual':
+				return m.manual();
+			case 'imported':
+				return m.imported_status();
+		}
+	}
 
 	const formatDate = (date: string | null | undefined) => {
 		if (!date) return m.not_available_short();
+		const parsed = new Date(date);
+		if (Number.isNaN(parsed.getTime())) return m.not_available_short();
 		return new Intl.DateTimeFormat(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric'
-		}).format(new Date(date));
+		}).format(parsed);
 	};
 
 	const formatDateTime = (date: string | null | undefined) => {
 		if (!date) return m.not_available_short();
+		const parsed = new Date(date);
+		if (Number.isNaN(parsed.getTime())) return m.not_available_short();
 		return new Intl.DateTimeFormat(resolveLocale(), {
 			day: '2-digit',
 			month: 'short',
 			year: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
-		}).format(new Date(date));
+		}).format(parsed);
 	};
 
 	const formatCurrency = (amount: number | null | undefined, currencyCode: string = 'EUR') => {
@@ -219,7 +302,8 @@
 
 	const toDateInputValue = (value: string | null | undefined) => {
 		if (!value) return '';
-		return new Date(value).toISOString().split('T')[0];
+		const date = new Date(value);
+		return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 	};
 
 	const toRFC3339 = (value: string) => {
@@ -245,17 +329,7 @@
 		return { net, vat, gross };
 	});
 
-	const lineValidationErrors = $derived.by(() => {
-		const errors: Record<string, string> = {};
-		for (const line of draftLines) {
-			if (line.line_type === 'contract' && !line.contract_id) {
-				errors[line.id] = m.select_contract_for_line();
-			}
-		}
-		return errors;
-	});
-
-	function toDraftLine(line: any): DraftLine {
+	function toDraftLine(line: InvoiceLine): DraftLine {
 		const periodStart = toDateInputValue(line.period_start);
 		const periodEnd = toDateInputValue(line.period_end) || periodStart;
 
@@ -281,8 +355,8 @@
 			contract_id: '',
 			service_type: 'ambulante',
 			description: '',
-			period_start: draftIssueDate,
-			period_end: draftDueDate,
+			period_start: $form.issue_date,
+			period_end: $form.due_date,
 			quantity: 1,
 			unit: 'hour',
 			unit_price: 0,
@@ -291,52 +365,77 @@
 	}
 
 	function addDraftLine() {
-		draftLines = [...draftLines, createEmptyDraftLine()];
+		$form.lines = [...draftLines, createEmptyDraftLine()];
 	}
 
 	function removeDraftLine(id: string) {
-		draftLines = draftLines.filter((line) => line.id !== id);
+		$form.lines = draftLines.filter((line) => line.id !== id);
 	}
 
 	async function loadContractOptions(clientId: string) {
+		const requestId = ++contractRequestId;
 		contractsLoadError = null;
 		isLoadingContracts = true;
 		try {
 			const res = await listClientContracts(clientId, 1, 100);
+			if (requestId !== contractRequestId) return;
 			contractOptions = (res.data.results ?? []).map((contract: ListClientContractsResponse) => ({
 				value: contract.id,
 				label: contract.care_name
 			}));
 		} catch (error) {
+			if (requestId !== contractRequestId) return;
 			contractOptions = [];
 			contractsLoadError = error instanceof Error ? error.message : m.failed_load_contracts();
 		} finally {
-			isLoadingContracts = false;
+			if (requestId === contractRequestId) isLoadingContracts = false;
 		}
+	}
+
+	function retryContractOptions() {
+		if (editingInvoice) void loadContractOptions(editingInvoice.clientId);
 	}
 
 	function enterEditMode(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
 		saveInvoiceError = null;
-		showLineValidationErrors = false;
-		draftIssueDate = toDateInputValue(invoice.issueDate);
-		draftDueDate = toDateInputValue(invoice.dueDate);
-		draftStatus = invoice.status;
-		draftWarningCount = invoice.warningCount;
-		draftLines = invoice.lines.map(toDraftLine);
+		const draft: UpdateInvoiceInput = {
+			issue_date: toDateInputValue(invoice.issueDate),
+			due_date: toDateInputValue(invoice.dueDate),
+			status: invoice.status,
+			warning_count: invoice.warningCount,
+			lines: invoice.canEditLines ? invoice.lines.map(toDraftLine) : []
+		};
+		reset({ data: draft });
 		originalLineOrder = invoice.lines.map((line) => line.id);
+		editingInvoice = structuredClone(invoice);
+		initialDraftSnapshot = JSON.stringify($form);
 		isEditMode = true;
 		void loadContractOptions(invoice.clientId);
 	}
 
-	function cancelEditMode(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
-		enterEditMode(invoice);
+	function cancelEditMode() {
+		if (isSavingInvoice || $submitting) return;
+		if (hasUnsavedChanges && !confirm(m.discard_invoice_changes_confirmation())) return;
+		contractRequestId += 1;
+		reset({ data: initialEditData });
+		contractOptions = [];
 		isEditMode = false;
+		editingInvoice = null;
 		saveInvoiceError = null;
 	}
 
-	function toUpdateLinePayload(line: DraftLine): UpdateInvoiceLineRequest {
-		const normalizedPeriodStart = line.period_start || draftIssueDate;
-		const normalizedPeriodEnd = line.period_end || normalizedPeriodStart || draftDueDate;
+	function requestCloseEditor() {
+		cancelEditMode();
+		return false;
+	}
+
+	function toUpdateLinePayload(
+		line: DraftLine,
+		issueDate: string,
+		dueDate: string
+	): UpdateInvoiceLineRequest {
+		const normalizedPeriodStart = line.period_start || issueDate;
+		const normalizedPeriodEnd = line.period_end || normalizedPeriodStart || dueDate;
 
 		return {
 			line_type: line.line_type,
@@ -352,43 +451,40 @@
 		};
 	}
 
-	function buildUpdatePayload() {
+	function buildUpdatePayload(values: UpdateInvoiceInput) {
 		const payload: UpdateInvoiceRequest = {
-			issue_date: toRFC3339(draftIssueDate),
-			due_date: toRFC3339(draftDueDate),
-			status: draftStatus as UpdateInvoiceRequest['status'],
-			warning_count: Number(draftWarningCount),
-			extra_content: {},
-			lines: draftLines.map(toUpdateLinePayload)
+			issue_date: toRFC3339(values.issue_date),
+			due_date: toRFC3339(values.due_date),
+			status: values.status,
+			warning_count: values.warning_count,
+			lines: values.lines.map((line) =>
+				toUpdateLinePayload(line, values.issue_date, values.due_date)
+			)
 		};
 
 		return payload;
 	}
 
-	async function handleSaveInvoice(invoice: NonNullable<InvoiceDetailLoadResult['invoice']>) {
+	async function handleSaveInvoice(
+		invoice: NonNullable<InvoiceDetailLoadResult['invoice']>,
+		values: UpdateInvoiceInput
+	) {
 		if (isSavingInvoice) return;
 		saveInvoiceError = null;
-		showLineValidationErrors = true;
-
-		if (Object.keys(lineValidationErrors).length > 0) {
-			saveInvoiceError = m.fix_line_fields_before_saving();
-			return;
-		}
-
-		if (invoice.lineUpdateMode === 'appointment_linked') {
-			if (draftLines.length !== invoice.lines.length) {
+		if (invoice.canEditLines && invoice.lineUpdateMode === 'appointment_linked') {
+			if (values.lines.length !== invoice.lines.length) {
 				saveInvoiceError = m.appointment_linked_requires_same_line_count();
 				return;
 			}
 
-			const currentOrder = draftLines.map((line) => line.id);
+			const currentOrder = values.lines.map((line) => line.id);
 			if (JSON.stringify(currentOrder) !== JSON.stringify(originalLineOrder)) {
 				saveInvoiceError = m.appointment_linked_requires_original_line_order();
 				return;
 			}
 
-			for (let i = 0; i < draftLines.length; i += 1) {
-				const currentLine = draftLines[i];
+			for (let i = 0; i < values.lines.length; i += 1) {
+				const currentLine = values.lines[i];
 				const originalLine = invoice.lines[i];
 				if (
 					currentLine.line_type !== originalLine.line_type ||
@@ -401,7 +497,7 @@
 			}
 		}
 
-		const payload: UpdateInvoiceRequest = buildUpdatePayload();
+		const payload: UpdateInvoiceRequest = buildUpdatePayload(values);
 
 		if (!invoice.canEditLines) {
 			delete payload.lines;
@@ -414,8 +510,13 @@
 		isSavingInvoice = true;
 		try {
 			await updateInvoice(invoice.id, payload);
+			reset({ data: initialEditData });
+			contractRequestId += 1;
+			contractOptions = [];
+			saveInvoiceError = null;
 			isEditMode = false;
-			await invalidateAll();
+			editingInvoice = null;
+			await refreshInvoiceSummary();
 		} catch (error) {
 			saveInvoiceError = error instanceof Error ? error.message : m.failed_update_invoice();
 		} finally {
@@ -433,7 +534,21 @@
 		}
 	}
 
-	async function openEditPaymentSheet(payment: InvoicePaymentView) {
+	function openAddPaymentSheet(invoice: InvoiceDetailView) {
+		paymentSheetInvoice = {
+			id: invoice.id,
+			currency: invoice.currency,
+			defaultAmount: calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc)
+		};
+		isAddPaymentSheetOpen = true;
+	}
+
+	async function openEditPaymentSheet(payment: InvoicePaymentView, invoice: InvoiceDetailView) {
+		paymentSheetInvoice = {
+			id: invoice.id,
+			currency: invoice.currency,
+			defaultAmount: calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc)
+		};
 		selectedPayment = payment;
 		isEditPaymentSheetOpen = false;
 		editSheetKey += 1;
@@ -456,6 +571,7 @@
 			}
 
 			window.open(fileUrl, '_blank', 'noopener,noreferrer');
+			await refreshInvoice();
 		} catch (error) {
 			downloadPdfError = error instanceof Error ? error.message : m.failed_generate_invoice_pdf();
 		} finally {
@@ -477,6 +593,7 @@
 				throw new Error(m.credit_note_missing_id());
 			}
 
+			await Promise.all([invalidate('app:invoices:list'), invalidate('app:invoices:stats')]);
 			await goto(resolve('/(app)/finances/invoices/[id]', { id: creditNoteId }));
 		} catch (error) {
 			creditInvoiceError = error instanceof Error ? error.message : m.failed_create_credit_note();
@@ -503,7 +620,7 @@
 			class="h-32 w-full animate-pulse rounded-3xl border border-border bg-surface/50"
 		></header>
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			{#each [1, 2, 3, 4] as _, i (i)}
+			{#each [1, 2, 3, 4] as i (i)}
 				<div class="h-32 animate-pulse rounded-3xl border border-border bg-surface/50"></div>
 			{/each}
 		</div>
@@ -516,58 +633,45 @@
 				<div class="h-48 animate-pulse rounded-3xl border border-border bg-surface/50"></div>
 			</div>
 		</div>
-	{:then { invoice, loadError, paymentsLoadError }}
+	{:then { invoice, loadError }}
 		{#if loadError}
-			<InlineErrorBanner message={loadError} onRetry={() => invalidateAll()} />
+			<InlineErrorBanner message={loadError} onRetry={refreshInvoice} />
 		{/if}
 
 		{#if invoice}
 			<!-- Actions -->
 			<div class="flex items-center justify-end">
 				<div class="flex flex-wrap items-center gap-2">
-					{#if isEditMode}
-						<Button
-							variant="ghost"
-							class="h-9 gap-2 px-4 ring-1 ring-border"
-							onclick={() => cancelEditMode(invoice)}
-							disabled={isSavingInvoice}
-						>
-							{m.cancel_edit()}
-						</Button>
-						<Button
-							class="h-9 gap-2 px-4 shadow-md shadow-brand/20"
-							onclick={() => handleSaveInvoice(invoice)}
-							isLoading={isSavingInvoice}
-						>
-							<Save class="h-4 w-4" />
-							{m.save_changes()}
-						</Button>
-					{:else}
-						<Button
-							variant="ghost"
-							class="h-9 gap-2 px-4 ring-1 ring-border"
-							onclick={() => enterEditMode(invoice)}
-							disabled={!invoice.canEditMeta && !invoice.canEditLines}
-						>
-							<Pencil class="h-4 w-4" />
-							{m.edit_invoice_details()}
-						</Button>
+					{#if !isEditMode}
+						<PermissionGuard permission={PERMISSIONS.INVOICE.UPDATE}>
+							<Button
+								variant="ghost"
+								class="h-9 gap-2 px-4 ring-1 ring-border"
+								onclick={() => enterEditMode(invoice)}
+								disabled={!invoice.canEditMeta && !invoice.canEditLines}
+							>
+								<Pencil class="h-4 w-4" />
+								{m.edit_invoice_details()}
+							</Button>
+						</PermissionGuard>
 					{/if}
 					{#if invoice.invoiceType !== 'credit_note'}
-						<Button
-							variant="destructive"
-							class="h-9 gap-2 px-4 shadow-md shadow-rose-900/10"
-							onclick={() => handleCreditInvoice(invoice.id)}
-							disabled={isCreditingInvoice}
-						>
-							<XCircle class="h-4 w-4" />
-							{isCreditingInvoice ? m.creating_credit() : m.create_credit_note()}
-						</Button>
+						<PermissionGuard permission={PERMISSIONS.INVOICE.CREATE}>
+							<Button
+								variant="destructive"
+								class="h-9 gap-2 px-4"
+								onclick={() => handleCreditInvoice(invoice.id)}
+								disabled={isCreditingInvoice || isEditMode}
+							>
+								<XCircle class="h-4 w-4" />
+								{isCreditingInvoice ? m.creating_credit() : m.create_credit_note()}
+							</Button>
+						</PermissionGuard>
 					{/if}
 					<Button
 						class="h-9 gap-2 px-4 shadow-md shadow-brand/20"
 						onclick={() => handleDownloadPdf(invoice.id)}
-						disabled={isGeneratingPdf}
+						disabled={isGeneratingPdf || isEditMode}
 					>
 						<Download class="h-4 w-4" />
 						{isGeneratingPdf ? m.generating_pdf() : m.download_pdf()}
@@ -586,12 +690,9 @@
 					onRetry={() => handleCreditInvoice(invoice.id)}
 				/>
 			{/if}
-			{#if isEditMode && saveInvoiceError}
-				<InlineErrorBanner message={saveInvoiceError} />
-			{/if}
 			{#if !isEditMode && invoice.lineEditBlockReason}
 				<div
-					class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+					class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-strong"
 				>
 					{invoice.lineEditBlockReason}
 				</div>
@@ -606,7 +707,7 @@
 				<div class="flex flex-wrap items-center justify-between gap-4">
 					<div class="flex items-center gap-4">
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-50 text-xl font-bold text-zinc-700 shadow-inner ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:text-zinc-300 dark:ring-white/10"
+							class="flex h-14 w-14 items-center justify-center rounded-2xl bg-bg text-brand ring-1 ring-border"
 						>
 							<Receipt class="h-6 w-6 text-brand/70" />
 						</div>
@@ -623,7 +724,7 @@
 							<p
 								class="mt-1 flex items-center gap-2 text-sm font-medium text-text-muted capitalize"
 							>
-								{invoice.invoiceType.replace('_', ' ')}
+								{invoice.invoiceType === 'credit_note' ? m.credit_note() : m.standard()}
 								{m.invoice_label()}
 								<span class="h-1 w-1 rounded-full bg-border"></span>
 								{m.invoice_number_label()}:
@@ -645,16 +746,16 @@
 									>
 								{:else if invoice.source === 'manual'}
 									<span
-										class="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/10 text-amber-600"
+										class="flex h-4 w-4 items-center justify-center rounded-full bg-warning/10 text-warning-strong"
 										><User class="h-2.5 w-2.5" /></span
 									>
 								{:else}
 									<span
-										class="flex h-4 w-4 items-center justify-center rounded-full bg-purple-500/10 text-purple-600"
+										class="flex h-4 w-4 items-center justify-center rounded-full bg-secondary/10 text-secondary-strong"
 										><ArrowRightLeft class="h-2.5 w-2.5" /></span
 									>
 								{/if}
-								{invoice.source}
+								{invoiceSourceLabel(invoice.source)}
 							</p>
 						</div>
 						<div class="border-l border-border pl-6">
@@ -664,109 +765,46 @@
 							<p class="mt-0.5 font-semibold text-text">{formatDate(invoice.issueDate)}</p>
 						</div>
 						<div class="border-l border-border pl-6">
-							<p class="text-[10px] font-bold tracking-wider text-rose-500 uppercase">
+							<p class="text-[10px] font-bold tracking-wider text-error-strong uppercase">
 								{m.due_date_label()}
 							</p>
-							<p class="mt-0.5 font-semibold text-rose-600">{formatDate(invoice.dueDate)}</p>
+							<p class="mt-0.5 font-semibold text-error-strong">{formatDate(invoice.dueDate)}</p>
 						</div>
 					</div>
 				</div>
 			</header>
 
-			<!-- KPI Cards (Listing style with background icons) -->
 			<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-zinc-300 dark:hover:border-zinc-700"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-zinc-900 opacity-[0.03] transition-opacity group-hover:opacity-10 dark:text-white dark:opacity-5"
-					>
-						<Banknote class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.net_total()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{formatCurrency(invoice.netTotalAmount, invoice.currency)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.pre_vat_subtotal()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-blue-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-blue-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Euro class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.vat_amount()}
-						</div>
-						<div
-							class="mt-2 text-2xl font-bold tracking-tight text-blue-600 sm:text-3xl dark:text-blue-400"
-						>
-							{formatCurrency(invoice.vatTotalAmount, invoice.currency)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.total_tax()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm ring-1 ring-brand/10 transition-colors hover:border-brand/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-brand opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<Wallet class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-brand uppercase">
-							{m.gross_total()}
-						</div>
-						<div class="mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-							{formatCurrency(invoice.grossTotalAmount, invoice.currency)}
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">{m.including_vat()}</p>
-					</div>
-				</div>
-
-				<div
-					class="group relative overflow-hidden rounded-3xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-amber-500/30"
-				>
-					<div
-						class="absolute -right-4 -bottom-4 text-amber-500 opacity-[0.03] transition-opacity group-hover:opacity-10"
-					>
-						<FileWarning class="h-32 w-32" />
-					</div>
-					<div class="relative">
-						<div class="text-[10px] font-bold tracking-widest text-text-subtle uppercase">
-							{m.balance_due()}
-						</div>
-						<div class="mt-2 flex items-baseline gap-2">
-							<span
-								class="text-2xl font-bold tracking-tight text-amber-600 sm:text-3xl dark:text-amber-500"
-							>
-								{formatCurrency(
-									calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc),
-									invoice.currency
-								)}
-							</span>
-						</div>
-						<div class="mt-3 w-full overflow-hidden rounded-full bg-border/50">
-							<div
-								class="h-1.5 rounded-full bg-emerald-500 transition-all"
-								style="width: {Math.min(invoice.paymentCompletionPrc, 100)}%"
-							></div>
-						</div>
-						<p class="mt-2 text-xs font-medium text-text-muted">
-							{m.percent_paid({ percent: invoice.paymentCompletionPrc.toFixed(1) })}
-						</p>
-					</div>
-				</div>
+				<StatCard
+					label={m.net_total()}
+					value={formatCurrency(invoice.netTotalAmount, invoice.currency)}
+					description={m.pre_vat_subtotal()}
+					icon={Banknote}
+				/>
+				<StatCard
+					label={m.vat_amount()}
+					value={formatCurrency(invoice.vatTotalAmount, invoice.currency)}
+					description={m.total_tax()}
+					icon={Euro}
+					color="blue"
+				/>
+				<StatCard
+					label={m.gross_total()}
+					value={formatCurrency(invoice.grossTotalAmount, invoice.currency)}
+					description={m.including_vat()}
+					icon={Wallet}
+					color="brand"
+				/>
+				<StatCard
+					label={m.balance_due()}
+					value={formatCurrency(
+						calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc),
+						invoice.currency
+					)}
+					description={m.percent_paid({ percent: invoice.paymentCompletionPrc.toFixed(1) })}
+					icon={FileWarning}
+					color="amber"
+				/>
 			</section>
 
 			<div class="grid gap-6 lg:grid-cols-[2.5fr_1fr]">
@@ -829,294 +867,98 @@
 							</div>
 						</div>
 
-						{#if isEditMode}
-							<section class="mb-6 space-y-5 rounded-2xl border border-border bg-zinc-50/40 p-5">
-								<div class="flex items-center justify-between">
-									<h2 class="text-base font-bold text-text">{m.edit_invoice_details()}</h2>
-									{#if invoice.lineUpdateMode === 'appointment_linked'}
-										<span
-											class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700"
+						<!-- Invoice Lines -->
+						<div class="mb-6 flex items-center gap-2">
+							<h2 class="text-lg font-bold text-text">{m.service_breakdown()}</h2>
+							{#if invoice.periodStart}
+								<span class="rounded-full bg-bg px-2 py-0.5 text-xs font-medium text-text-muted">
+									{m.period_range({
+										start: formatDate(invoice.periodStart),
+										end: invoice.periodEnd ? formatDate(invoice.periodEnd) : m.ongoing_label()
+									})}
+								</span>
+							{/if}
+						</div>
+
+						<div class="overflow-x-auto rounded-xl border border-border ring-1 ring-border">
+							<table class="w-full text-left text-sm">
+								<thead class="bg-bg text-xs font-bold text-text-subtle uppercase">
+									<tr class="border-b border-border">
+										<th class="px-4 py-3 font-semibold">{m.description()}</th>
+										<th class="px-4 py-3 font-semibold">{m.qty_col()}</th>
+										<th class="px-4 py-3 font-semibold">{m.unit_price()}</th>
+										<th class="px-4 py-3 font-semibold">{m.net_amt_col()}</th>
+										<th class="px-4 py-3 font-semibold">{m.vat_percent()}</th>
+										<th class="px-4 py-3 text-right font-semibold">{m.gross_amt_col()}</th>
+										<th class="w-10 px-4 py-3 text-center"
+											><span class="sr-only">{m.contract_type_label()}</span></th
 										>
-											<Lock class="h-3 w-3" />
-											{m.appointment_linked_line_rules()}
-										</span>
-									{/if}
-								</div>
-
-								<div class="grid gap-4 sm:grid-cols-2">
-									<div class={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}>
-										<DatePicker label={m.issue_date()} bind:value={draftIssueDate} />
-									</div>
-									<div class={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}>
-										<DatePicker label={m.due_date_label()} bind:value={draftDueDate} />
-									</div>
-									<Select
-										label={m.status()}
-										options={invoiceStatuses}
-										bind:value={draftStatus}
-										className={!invoice.canEditMeta ? 'pointer-events-none opacity-60' : ''}
-									/>
-									<Input
-										label={m.warning_count()}
-										type="number"
-										bind:value={draftWarningCount}
-										disabled={!invoice.canEditMeta}
-									/>
-								</div>
-								{#if contractsLoadError}
-									<p class="text-xs font-medium text-rose-600">{contractsLoadError}</p>
-								{/if}
-
-								<div class="flex items-center justify-between">
-									<h3 class="text-sm font-bold text-text">{m.invoice_lines()}</h3>
-									<Button
-										variant="ghost"
-										class="h-8 gap-2 text-xs ring-1 ring-border"
-										onclick={addDraftLine}
-										disabled={!invoice.canEditLines ||
-											invoice.lineUpdateMode === 'appointment_linked' ||
-											isLoadingContracts}
-									>
-										<Plus class="h-3.5 w-3.5" />
-										{m.add_line()}
-									</Button>
-								</div>
-
-								<div class="space-y-4">
-									{#each draftLines as line, index (line.id)}
-										<div class="rounded-2xl border border-border bg-surface p-4">
-											<div class="mb-4 flex items-center justify-between">
-												<p class="text-xs font-bold tracking-wide text-text-subtle uppercase">
-													{m.line_number({ number: index + 1 })}
-												</p>
-												<Button
-													variant="ghost"
-													class="h-7 w-7 !p-0 text-rose-600"
-													onclick={() => removeDraftLine(line.id)}
-													disabled={!invoice.canEditLines ||
-														invoice.lineUpdateMode === 'appointment_linked'}
-												>
-													<Trash2 class="h-4 w-4" />
-												</Button>
-											</div>
-
-											<div class="grid gap-4 sm:grid-cols-12">
-												<div class="sm:col-span-3">
-													<Select
-														label={m.line_type_label()}
-														options={lineTypeOptions}
-														bind:value={line.line_type}
-														className={!invoice.canEditLines ||
-														invoice.lineUpdateMode === 'appointment_linked'
-															? 'pointer-events-none opacity-60'
-															: ''}
-													/>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-border/50 bg-surface">
+									{#each invoice.lines as line (line.id)}
+										<tr class="group/row transition-colors hover:bg-bg">
+											<td class="px-4 py-3">
+												<p class="font-medium text-text">{line.description}</p>
+												<div class="mt-1 flex items-center gap-2 text-[11px] text-text-muted">
+													<span class="capitalize">{line.service_type}</span>
+													{#if line.period_start}
+														<span class="inline-block h-1 w-1 rounded-full bg-border"></span>
+														<span
+															>{formatDate(line.period_start)} - {formatDate(line.period_end) ||
+																m.not_available_short()}</span
+														>
+													{/if}
 												</div>
-												{#if line.line_type === 'contract'}
-													<div class="sm:col-span-5">
-														<Select
-															label={m.contract_type_label()}
-															options={contractOptions}
-															bind:value={line.contract_id}
-															className={!invoice.canEditLines ||
-															invoice.lineUpdateMode === 'appointment_linked' ||
-															contractOptions.length === 0
-																? 'pointer-events-none opacity-60'
-																: ''}
-														/>
-														{#if showLineValidationErrors && lineValidationErrors[line.id]}
-															<p class="mt-1 text-xs font-medium text-rose-600">
-																{lineValidationErrors[line.id]}
-															</p>
-														{/if}
-													</div>
-													<div class="sm:col-span-4">
-														<Input
-															label={m.description()}
-															bind:value={line.description}
-															disabled={!invoice.canEditLines}
-														/>
-													</div>
-												{:else}
-													<div class="sm:col-span-3">
-														<Select
-															label={m.service_type_label()}
-															options={serviceTypeOptions}
-															bind:value={line.service_type}
-															className={!invoice.canEditLines ||
-															invoice.lineUpdateMode === 'appointment_linked'
-																? 'pointer-events-none opacity-60'
-																: ''}
-														/>
-													</div>
-													<div class="sm:col-span-6">
-														<Input
-															label={m.description()}
-															bind:value={line.description}
-															disabled={!invoice.canEditLines}
-														/>
-													</div>
+											</td>
+											<td class="px-4 py-3 text-text"
+												>{line.quantity}
+												<span class="text-xs text-text-muted">{line.unit}</span></td
+											>
+											<td class="px-4 py-3 text-text"
+												>{formatCurrency(line.unit_price, invoice.currency)}</td
+											>
+											<td class="px-4 py-3 text-text"
+												>{formatCurrency(line.net_amount, invoice.currency)}</td
+											>
+											<td class="px-4 py-3 text-text">{line.vat_rate}%</td>
+											<td class="px-4 py-3 text-right font-semibold text-text"
+												>{formatCurrency(line.gross_amount, invoice.currency)}</td
+											>
+											<td class="px-4 py-3">
+												{#if line.contract_id}
+													<a
+														href={resolve('/(app)/contracts/[id]', { id: line.contract_id })}
+														class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand transition-all hover:bg-brand hover:text-white focus-visible:outline-2 focus-visible:outline-brand"
+														title={m.view_contract()}
+														aria-label={m.view_contract()}
+													>
+														<FileText class="h-4 w-4" />
+													</a>
 												{/if}
-
-												<div class="sm:col-span-3">
-													<Input
-														label={m.quantity_label()}
-														type="number"
-														bind:value={line.quantity}
-														disabled={!invoice.canEditLines}
-													/>
-												</div>
-												<div class="sm:col-span-3">
-													<Select
-														label={m.unit()}
-														options={unitOptions}
-														bind:value={line.unit}
-														className={!invoice.canEditLines
-															? 'opacity-60 pointer-events-none'
-															: ''}
-													/>
-												</div>
-												<div class="sm:col-span-3">
-													<Input
-														label={m.unit_price()}
-														type="number"
-														bind:value={line.unit_price}
-														disabled={!invoice.canEditLines}
-													/>
-												</div>
-												<div class="sm:col-span-3">
-													<Input
-														label={m.vat_percent()}
-														type="number"
-														bind:value={line.vat_rate}
-														disabled={!invoice.canEditLines}
-													/>
-												</div>
-												<div class="sm:col-span-6">
-													<div
-														class={!invoice.canEditLines ? 'pointer-events-none opacity-60' : ''}
-													>
-														<DatePicker
-															label={m.period_start_label()}
-															bind:value={line.period_start}
-														/>
-													</div>
-												</div>
-												<div class="sm:col-span-6">
-													<div
-														class={!invoice.canEditLines ? 'pointer-events-none opacity-60' : ''}
-													>
-														<DatePicker label={m.period_end_label()} bind:value={line.period_end} />
-													</div>
-												</div>
-											</div>
-											<div class="mt-4 flex justify-end text-sm font-semibold text-text">
-												{m.line_gross_label()}
-												{formatCurrency(lineGross(line), invoice.currency)}
-											</div>
-										</div>
-									{/each}
-								</div>
-							</section>
-						{:else}
-							<!-- Invoice Lines -->
-							<div class="mb-6 flex items-center gap-2">
-								<h2 class="text-lg font-bold text-text">{m.service_breakdown()}</h2>
-								{#if invoice.periodStart}
-									<span
-										class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-text-muted dark:bg-zinc-800"
-									>
-										{m.period_range({
-											start: formatDate(invoice.periodStart),
-											end: invoice.periodEnd ? formatDate(invoice.periodEnd) : m.ongoing_label()
-										})}
-									</span>
-								{/if}
-							</div>
-
-							<div
-								class="overflow-x-auto rounded-xl border border-border ring-1 ring-black/5 dark:ring-white/5"
-							>
-								<table class="w-full text-left text-sm">
-									<thead
-										class="bg-zinc-50/50 text-xs font-bold text-text-subtle uppercase dark:bg-zinc-900/50"
-									>
-										<tr class="border-b border-border">
-											<th class="px-4 py-3 font-semibold">{m.description()}</th>
-											<th class="px-4 py-3 font-semibold">{m.qty_col()}</th>
-											<th class="px-4 py-3 font-semibold">{m.unit_price()}</th>
-											<th class="px-4 py-3 font-semibold">{m.net_amt_col()}</th>
-											<th class="px-4 py-3 font-semibold">{m.vat_percent()}</th>
-											<th class="px-4 py-3 text-right font-semibold">{m.gross_amt_col()}</th>
-											<th class="w-10 px-4 py-3 text-center"
-												><span class="sr-only">{m.contract_type_label()}</span></th
+											</td>
+										</tr>
+									{:else}
+										<tr>
+											<td colspan="7" class="px-4 py-8 text-center text-text-muted"
+												>{m.no_invoice_lines()}</td
 											>
 										</tr>
-									</thead>
-									<tbody class="divide-y divide-border/50 bg-white dark:bg-zinc-900">
-										{#each invoice.lines as line (line.id)}
-											<tr
-												class="group/row transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50"
-											>
-												<td class="px-4 py-3">
-													<p class="font-medium text-text">{line.description}</p>
-													<div class="mt-1 flex items-center gap-2 text-[11px] text-text-muted">
-														<span class="capitalize">{line.service_type}</span>
-														{#if line.period_start}
-															<span class="inline-block h-1 w-1 rounded-full bg-border"></span>
-															<span
-																>{formatDate(line.period_start)} - {formatDate(line.period_end) ||
-																	m.not_available_short()}</span
-															>
-														{/if}
-													</div>
-												</td>
-												<td class="px-4 py-3 text-text"
-													>{line.quantity}
-													<span class="text-xs text-text-muted">{line.unit}</span></td
-												>
-												<td class="px-4 py-3 text-text"
-													>{formatCurrency(line.unit_price, invoice.currency)}</td
-												>
-												<td class="px-4 py-3 text-text"
-													>{formatCurrency(line.net_amount, invoice.currency)}</td
-												>
-												<td class="px-4 py-3 text-text">{line.vat_rate}%</td>
-												<td class="px-4 py-3 text-right font-semibold text-text"
-													>{formatCurrency(line.gross_amount, invoice.currency)}</td
-												>
-												<td class="px-4 py-3">
-													{#if line.contract_id}
-														<a
-															href={resolve('/(app)/contracts/[id]', { id: line.contract_id })}
-															class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand transition-all hover:bg-brand hover:text-white"
-															title={m.view_contract()}
-														>
-															<FileText class="h-4 w-4" />
-														</a>
-													{/if}
-												</td>
-											</tr>
-										{:else}
-											<tr>
-												<td colspan="7" class="px-4 py-8 text-center text-text-muted"
-													>{m.no_invoice_lines()}</td
-												>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{/if}
+									{/each}
+								</tbody>
+							</table>
+						</div>
 
 						<!-- Totals Summary -->
 						<div class="mt-6 flex flex-col items-end">
-							<div class="w-full max-w-sm space-y-3 rounded-2xl bg-zinc-50 p-6 dark:bg-zinc-900/40">
+							<div class="w-full max-w-sm space-y-3 rounded-2xl bg-bg p-6">
 								<div class="flex justify-between text-sm">
 									<span class="text-text-muted">{m.subtotal_pre_vat()}</span>
 									<span class="font-medium text-text"
 										>{formatCurrency(
-											isEditMode ? draftTotals.net : invoice.netTotalAmount,
+											isEditMode && editingInvoice?.canEditLines
+												? draftTotals.net
+												: invoice.netTotalAmount,
 											invoice.currency
 										)}</span
 									>
@@ -1125,7 +967,9 @@
 									<span class="text-text-muted">{m.vat_total()}</span>
 									<span class="font-medium text-text"
 										>{formatCurrency(
-											isEditMode ? draftTotals.vat : invoice.vatTotalAmount,
+											isEditMode && editingInvoice?.canEditLines
+												? draftTotals.vat
+												: invoice.vatTotalAmount,
 											invoice.currency
 										)}</span
 									>
@@ -1134,14 +978,16 @@
 									<span class="text-text">{m.total_gross()}</span>
 									<span class="text-brand"
 										>{formatCurrency(
-											isEditMode ? draftTotals.gross : invoice.grossTotalAmount,
+											isEditMode && editingInvoice?.canEditLines
+												? draftTotals.gross
+												: invoice.grossTotalAmount,
 											invoice.currency
 										)}</span
 									>
 								</div>
 								<div class="mt-1 flex justify-between border-t border-border/50 pt-3 text-sm">
 									<span class="text-text-muted">{m.amount_paid()}</span>
-									<span class="font-medium text-emerald-600 dark:text-emerald-500">
+									<span class="font-medium text-success-strong">
 										{formatCurrency(
 											invoice.grossTotalAmount -
 												calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc),
@@ -1149,9 +995,7 @@
 										)}
 									</span>
 								</div>
-								<div
-									class="flex justify-between pt-2 text-base font-bold text-amber-600 dark:text-amber-500"
-								>
+								<div class="flex justify-between pt-2 text-base font-bold text-warning-strong">
 									<span>{m.balance_due()}</span>
 									<span
 										>{formatCurrency(
@@ -1169,113 +1013,128 @@
 				<aside class="space-y-6">
 					<!-- Payments List -->
 					{#if invoice.invoiceType !== 'credit_note'}
-						<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-							<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-								<div class="flex items-center gap-3">
-									<div
-										class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"
-									>
-										<Banknote class="h-5 w-5" />
-									</div>
-									<div>
-										<h2 class="text-lg font-bold text-text">{m.payments()}</h2>
-										<p class="text-xs text-text-subtle">{m.transactions_for_invoice()}</p>
-									</div>
-								</div>
-								<Button
-									class="h-9 w-full shrink-0 gap-2 px-4 text-xs shadow-md shadow-brand/20 sm:w-auto"
-									onclick={() => (isAddPaymentSheetOpen = true)}
+						<PermissionGuard permission={PERMISSIONS.INVOICE.PAYMENT_VIEW}>
+							<section class="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+								<div
+									class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
 								>
-									{m.add_payment()}
-								</Button>
-							</div>
+									<div class="flex items-center gap-3">
+										<div
+											class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"
+										>
+											<Banknote class="h-5 w-5" />
+										</div>
+										<div>
+											<h2 class="text-lg font-bold text-text">{m.payments()}</h2>
+											<p class="text-xs text-text-subtle">{m.transactions_for_invoice()}</p>
+										</div>
+									</div>
+									<PermissionGuard permission={PERMISSIONS.INVOICE.PAYMENT_CREATE}>
+										<Button
+											class="h-9 w-full shrink-0 gap-2 px-4 text-xs shadow-md shadow-brand/20 sm:w-auto"
+											onclick={() => openAddPaymentSheet(invoice)}
+											disabled={isEditMode}
+										>
+											{m.add_payment()}
+										</Button>
+									</PermissionGuard>
+								</div>
 
-							{#if paymentsLoadError}
-								<InlineErrorBanner message={paymentsLoadError} onRetry={() => invalidateAll()} />
-							{/if}
-
-							{#if invoice.payments && invoice.payments.length > 0}
-								<div class="divide-y divide-border/40">
-									{#each invoice.payments as payment (payment.id)}
-										{@const isExpanded = expandedPaymentIds.has(payment.id)}
-										{@const pMeta =
-											paymentStatusMeta[payment.status as keyof typeof paymentStatusMeta] ||
-											paymentStatusMeta.pending}
-										<div class="py-3 last:pb-0">
-											<div class="flex items-center justify-between gap-2">
-												<div class="flex items-center gap-3">
-													<button
-														class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 transition-colors hover:bg-brand/10 hover:text-brand dark:bg-zinc-800"
-														onclick={() => togglePaymentDetails(payment.id)}
-														aria-label={isExpanded ? m.hide_details() : m.show_details()}
-													>
-														<ChevronRight
-															class="h-3.5 w-3.5 transition-transform {isExpanded
-																? 'rotate-90'
-																: ''}"
-														/>
-													</button>
-													<div>
-														<p class="text-sm font-bold text-text">
-															{formatCurrency(payment.amount, invoice.currency)}
-														</p>
-														<span
-															class="mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase {pMeta.className}"
-														>
-															{pMeta.label}
-														</span>
-													</div>
-												</div>
-												<div class="flex items-center gap-1.5">
-													<Button
-														variant="ghost"
-														class="h-8 w-8 rounded-lg border border-border bg-surface !p-0 text-brand shadow-sm transition-all hover:border-brand hover:bg-brand hover:text-white"
-														onclick={() => openEditPaymentSheet(payment)}
-														aria-label={m.edit_payment()}
-													>
-														<SquarePen class="h-4 w-4" />
-													</Button>
-												</div>
-											</div>
-
-											{#if isExpanded}
-												<div
-													class="mt-3 ml-11 space-y-2 rounded-xl bg-zinc-50/50 p-3 text-[11px] text-text-muted ring-1 ring-black/5 dark:bg-zinc-900/40 dark:ring-white/5"
-												>
-													<div class="flex items-center justify-between">
-														<span class="text-text-subtle">{m.processed_on()}</span>
-														<span class="font-medium text-text">{formatDateTime(payment.date)}</span
-														>
-													</div>
-													<div class="flex items-center justify-between">
-														<span class="text-text-subtle">{m.payment_method()}</span>
-														<span class="font-medium text-text capitalize">{payment.method}</span>
-													</div>
-													{#if payment.reference}
-														<div class="flex items-center justify-between gap-4">
-															<span class="shrink-0 text-text-subtle">{m.ref_label()}</span>
-															<span class="truncate font-mono font-medium text-text"
-																>{payment.reference}</span
+								{#await data.paymentsData}
+									<div class="h-24 animate-pulse rounded-2xl bg-border/50"></div>
+								{:then { payments, loadError: paymentsLoadError }}
+									{#if paymentsLoadError}
+										<InlineErrorBanner message={paymentsLoadError} onRetry={refreshPayments} />
+									{:else if payments.length > 0}
+										<div class="divide-y divide-border/40">
+											{#each payments as payment (payment.id)}
+												{@const isExpanded = expandedPaymentIds.has(payment.id)}
+												{@const pMeta =
+													paymentStatusMeta[payment.status as keyof typeof paymentStatusMeta] ||
+													paymentStatusMeta.pending}
+												<div class="py-3 last:pb-0">
+													<div class="flex items-center justify-between gap-2">
+														<div class="flex items-center gap-3">
+															<button
+																class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg transition-colors hover:bg-brand/10 hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
+																onclick={() => togglePaymentDetails(payment.id)}
+																aria-label={isExpanded ? m.hide_details() : m.show_details()}
 															>
+																<ChevronRight
+																	class="h-3.5 w-3.5 transition-transform {isExpanded
+																		? 'rotate-90'
+																		: ''}"
+																/>
+															</button>
+															<div>
+																<p class="text-sm font-bold text-text">
+																	{formatCurrency(payment.amount, invoice.currency)}
+																</p>
+																<span
+																	class="mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase {pMeta.className}"
+																>
+																	{pMeta.label}
+																</span>
+															</div>
+														</div>
+														<div class="flex items-center gap-1.5">
+															<PermissionGuard permission={PERMISSIONS.INVOICE.PAYMENT_UPDATE}>
+																<Button
+																	variant="ghost"
+																	class="h-8 w-8 rounded-lg border border-border bg-surface !p-0 text-brand shadow-sm transition-all hover:border-brand hover:bg-brand hover:text-white"
+																	onclick={() => openEditPaymentSheet(payment, invoice)}
+																	disabled={isEditMode}
+																	aria-label={m.edit_payment()}
+																>
+																	<SquarePen class="h-4 w-4" />
+																</Button>
+															</PermissionGuard>
+														</div>
+													</div>
+
+													{#if isExpanded}
+														<div
+															class="mt-3 ml-11 space-y-2 rounded-xl bg-bg p-3 text-[11px] text-text-muted ring-1 ring-border"
+														>
+															<div class="flex items-center justify-between">
+																<span class="text-text-subtle">{m.processed_on()}</span>
+																<span class="font-medium text-text"
+																	>{formatDateTime(payment.date)}</span
+																>
+															</div>
+															<div class="flex items-center justify-between">
+																<span class="text-text-subtle">{m.payment_method()}</span>
+																<span class="font-medium text-text"
+																	>{paymentMethodLabels[payment.method] ?? payment.method}</span
+																>
+															</div>
+															{#if payment.reference}
+																<div class="flex items-center justify-between gap-4">
+																	<span class="shrink-0 text-text-subtle">{m.ref_label()}</span>
+																	<span class="truncate font-mono font-medium text-text"
+																		>{payment.reference}</span
+																	>
+																</div>
+															{/if}
 														</div>
 													{/if}
 												</div>
-											{/if}
+											{/each}
 										</div>
-									{/each}
-								</div>
-							{:else}
-								<div
-									class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-zinc-50/30 px-6 py-12 text-center dark:bg-zinc-900/20"
-								>
-									<Banknote class="mb-3 h-8 w-8 text-brand/30" />
-									<h3 class="text-sm font-bold text-text">{m.no_payments_recorded()}</h3>
-									<p class="mt-1 text-xs text-text-muted">
-										{m.no_transactions_linked()}
-									</p>
-								</div>
-							{/if}
-						</section>
+									{:else}
+										<div
+											class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-bg px-6 py-12 text-center"
+										>
+											<Banknote class="mb-3 h-8 w-8 text-brand/30" />
+											<h3 class="text-sm font-bold text-text">{m.no_payments_recorded()}</h3>
+											<p class="mt-1 text-xs text-text-muted">
+												{m.no_transactions_linked()}
+											</p>
+										</div>
+									{/if}
+								{/await}
+							</section>
+						</PermissionGuard>
 					{/if}
 
 					<!-- Timeline/Meta Info -->
@@ -1319,40 +1178,288 @@
 					</section>
 				</aside>
 			</div>
-
-			{#if invoice.invoiceType !== 'credit_note'}
-				<AddInvoicePaymentSheet
-					bind:open={isAddPaymentSheetOpen}
-					invoiceId={invoice.id}
-					currency={invoice.currency}
-					defaultAmount={calculateBalance(invoice.grossTotalAmount, invoice.paymentCompletionPrc)}
-					onCreated={() => invalidateAll()}
-				/>
-				{#if selectedPayment}
-					{#key `${selectedPayment.id}-${editSheetKey}`}
-						<EditInvoicePaymentSheet
-							bind:open={isEditPaymentSheetOpen}
-							invoiceId={invoice.id}
-							payment={selectedPayment}
-							currency={invoice.currency}
-							onUpdated={async () => {
-								await invalidateAll();
-								selectedPayment = null;
-							}}
-						/>
-					{/key}
-				{/if}
-			{/if}
 		{:else}
 			<div
 				class="rounded-3xl border border-border bg-surface p-12 text-center text-sm text-text-muted shadow-sm"
 			>
 				<Info class="mx-auto h-8 w-8 text-text-subtle opacity-50" />
 				<p class="mt-4">{m.invoice_not_available()}</p>
-				<Button variant="ghost" class="mt-6 ring-1 ring-border" onclick={() => invalidateAll()}
+				<Button variant="ghost" class="mt-6 ring-1 ring-border" onclick={refreshInvoice}
 					>{m.retry()}</Button
 				>
 			</div>
 		{/if}
 	{/await}
+	{#if paymentSheetInvoice}
+		<PermissionGuard permission={PERMISSIONS.INVOICE.PAYMENT_CREATE}>
+			<AddInvoicePaymentSheet
+				bind:open={isAddPaymentSheetOpen}
+				invoiceId={paymentSheetInvoice.id}
+				currency={paymentSheetInvoice.currency}
+				defaultAmount={paymentSheetInvoice.defaultAmount}
+				onCreated={refreshInvoiceResources}
+			/>
+		</PermissionGuard>
+		{#if selectedPayment}
+			<PermissionGuard permission={PERMISSIONS.INVOICE.PAYMENT_UPDATE}>
+				{#key `${selectedPayment.id}-${editSheetKey}`}
+					<EditInvoicePaymentSheet
+						bind:open={isEditPaymentSheetOpen}
+						invoiceId={paymentSheetInvoice.id}
+						payment={selectedPayment}
+						currency={paymentSheetInvoice.currency}
+						onUpdated={async () => {
+							await refreshInvoiceResources();
+							selectedPayment = null;
+						}}
+					/>
+				{/key}
+			</PermissionGuard>
+		{/if}
+	{/if}
+	{#if editingInvoice}
+		<Sheet
+			bind:open={isEditMode}
+			title={m.edit_invoice_details()}
+			size="full"
+			class="invoice-editor"
+			onRequestClose={requestCloseEditor}
+		>
+			{#if saveInvoiceError}
+				<InlineErrorBanner message={saveInvoiceError} />
+			{/if}
+			<form id="invoice-edit-form" use:enhance novalidate>
+				<section class="mb-6 space-y-5 rounded-2xl border border-border bg-bg p-5">
+					<div class="flex items-center justify-between">
+						<h2 class="text-base font-bold text-text">{m.edit_invoice_details()}</h2>
+						{#if editingInvoice.lineUpdateMode === 'appointment_linked'}
+							<span
+								class="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-1 text-xs font-semibold text-warning-strong"
+							>
+								<Lock class="h-3 w-3" />
+								{m.appointment_linked_line_rules()}
+							</span>
+						{/if}
+					</div>
+					{#if !editingInvoice.canEditLines && editingInvoice.lineEditBlockReason}
+						<p
+							class="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-strong"
+						>
+							{editingInvoice.lineEditBlockReason}
+						</p>
+					{/if}
+
+					<div class="grid gap-4 sm:grid-cols-2">
+						<fieldset
+							disabled={!editingInvoice.canEditMeta}
+							class:opacity-60={!editingInvoice.canEditMeta}
+						>
+							<DatePicker
+								label={m.issue_date()}
+								bind:value={$form.issue_date}
+								error={formatFormError($errors.issue_date)}
+							/>
+						</fieldset>
+						<fieldset
+							disabled={!editingInvoice.canEditMeta}
+							class:opacity-60={!editingInvoice.canEditMeta}
+						>
+							<DatePicker
+								label={m.due_date_label()}
+								bind:value={$form.due_date}
+								error={formatFormError($errors.due_date)}
+							/>
+						</fieldset>
+						<Select
+							label={m.status()}
+							options={invoiceStatuses}
+							bind:value={$form.status}
+							error={formatFormError($errors.status)}
+							disabled={!editingInvoice.canEditMeta}
+						/>
+						<Input
+							label={m.warning_count()}
+							type="number"
+							min="0"
+							step="1"
+							bind:value={$form.warning_count}
+							error={formatFormError($errors.warning_count)}
+							disabled={!editingInvoice.canEditMeta}
+						/>
+					</div>
+					{#if contractsLoadError}
+						<InlineErrorBanner message={contractsLoadError} onRetry={retryContractOptions} />
+					{/if}
+
+					<div class="flex items-center justify-between">
+						<h3 class="text-sm font-bold text-text">{m.invoice_lines()}</h3>
+						<Button
+							variant="ghost"
+							class="h-8 gap-2 text-xs ring-1 ring-border"
+							onclick={addDraftLine}
+							disabled={!editingInvoice.canEditLines ||
+								editingInvoice.lineUpdateMode === 'appointment_linked' ||
+								isLoadingContracts}
+						>
+							<Plus class="h-3.5 w-3.5" />
+							{m.add_line()}
+						</Button>
+					</div>
+
+					<div class="space-y-4">
+						{#each draftLines as line, index (line.id)}
+							<div class="rounded-2xl border border-border bg-surface p-4">
+								<div class="mb-4 flex items-center justify-between">
+									<p class="text-xs font-bold tracking-wide text-text-subtle uppercase">
+										{m.line_number({ number: index + 1 })}
+									</p>
+									<Button
+										variant="ghost"
+										class="h-7 w-7 !p-0 text-error-strong"
+										onclick={() => removeDraftLine(line.id)}
+										aria-label={`${m.remove()} ${m.line_number({ number: index + 1 })}`}
+										disabled={!editingInvoice.canEditLines ||
+											editingInvoice.lineUpdateMode === 'appointment_linked'}
+									>
+										<Trash2 class="h-4 w-4" />
+									</Button>
+								</div>
+
+								<div class="grid gap-4 sm:grid-cols-12">
+									<div class="sm:col-span-3">
+										<Select
+											label={m.line_type_label()}
+											options={lineTypeOptions}
+											bind:value={$form.lines[index].line_type}
+											disabled={!editingInvoice.canEditLines ||
+												editingInvoice.lineUpdateMode === 'appointment_linked'}
+										/>
+									</div>
+									{#if line.line_type === 'contract'}
+										<div class="sm:col-span-5">
+											<Select
+												label={m.contract_type_label()}
+												options={contractOptions}
+												bind:value={$form.lines[index].contract_id}
+												error={formatFormError($errors.lines?.[index]?.contract_id)}
+												disabled={!editingInvoice.canEditLines ||
+													editingInvoice.lineUpdateMode === 'appointment_linked' ||
+													contractOptions.length === 0}
+											/>
+										</div>
+										<div class="sm:col-span-4">
+											<Input
+												label={m.description()}
+												bind:value={$form.lines[index].description}
+												disabled={!editingInvoice.canEditLines}
+											/>
+										</div>
+									{:else}
+										<div class="sm:col-span-3">
+											<Select
+												label={m.service_type_label()}
+												options={serviceTypeOptions}
+												bind:value={$form.lines[index].service_type}
+												disabled={!editingInvoice.canEditLines ||
+													editingInvoice.lineUpdateMode === 'appointment_linked'}
+											/>
+										</div>
+										<div class="sm:col-span-6">
+											<Input
+												label={m.description()}
+												bind:value={$form.lines[index].description}
+												disabled={!editingInvoice.canEditLines}
+											/>
+										</div>
+									{/if}
+
+									<div class="sm:col-span-3">
+										<Input
+											label={m.quantity_label()}
+											type="number"
+											min="0.01"
+											step="0.01"
+											bind:value={$form.lines[index].quantity}
+											error={formatFormError($errors.lines?.[index]?.quantity)}
+											disabled={!editingInvoice.canEditLines}
+										/>
+									</div>
+									<div class="sm:col-span-3">
+										<Select
+											label={m.unit()}
+											options={unitOptions}
+											bind:value={$form.lines[index].unit}
+											disabled={!editingInvoice.canEditLines}
+										/>
+									</div>
+									<div class="sm:col-span-3">
+										<Input
+											label={m.unit_price()}
+											type="number"
+											min="0"
+											step="0.01"
+											bind:value={$form.lines[index].unit_price}
+											error={formatFormError($errors.lines?.[index]?.unit_price)}
+											disabled={!editingInvoice.canEditLines}
+										/>
+									</div>
+									<div class="sm:col-span-3">
+										<Input
+											label={m.vat_percent()}
+											type="number"
+											min="0"
+											max="100"
+											step="0.1"
+											bind:value={$form.lines[index].vat_rate}
+											error={formatFormError($errors.lines?.[index]?.vat_rate)}
+											disabled={!editingInvoice.canEditLines}
+										/>
+									</div>
+									<div class="sm:col-span-6">
+										<fieldset
+											disabled={!editingInvoice.canEditLines}
+											class:opacity-60={!editingInvoice.canEditLines}
+										>
+											<DatePicker
+												label={m.period_start_label()}
+												bind:value={$form.lines[index].period_start}
+												error={formatFormError($errors.lines?.[index]?.period_start)}
+											/>
+										</fieldset>
+									</div>
+									<div class="sm:col-span-6">
+										<fieldset
+											disabled={!editingInvoice.canEditLines}
+											class:opacity-60={!editingInvoice.canEditLines}
+										>
+											<DatePicker
+												label={m.period_end_label()}
+												bind:value={$form.lines[index].period_end}
+												error={formatFormError($errors.lines?.[index]?.period_end)}
+											/>
+										</fieldset>
+									</div>
+								</div>
+								<div class="mt-4 flex justify-end text-sm font-semibold text-text">
+									{m.line_gross_label()}
+									{formatCurrency(lineGross(line), editingInvoice.currency)}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</section>
+			</form>
+
+			{#snippet footer()}
+				<div class="flex justify-end gap-2">
+					<Button variant="ghost" onclick={cancelEditMode} disabled={isSavingInvoice || $submitting}
+						>{m.cancel_edit()}</Button
+					>
+					<Button type="submit" form="invoice-edit-form" isLoading={isSavingInvoice || $submitting}
+						>{m.save_changes()}</Button
+					>
+				</div>
+			{/snippet}
+		</Sheet>
+	{/if}
 </div>
